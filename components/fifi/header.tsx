@@ -50,7 +50,10 @@ export function FifiHeader() {
   }, [open]);
 
   return (
-    <header ref={bar} className="sticky top-0 z-50 border-b-[3px] border-on-dark bg-bg/95 backdrop-blur-md">
+    <header ref={bar} className="sticky top-0 z-50 border-b-[3px] border-on-dark">
+      {/* El fondo esmerilado va en su propia capa: un backdrop-filter en el <header> lo volvería el bloque contenedor del
+          panel fijo del menú, que quedaría con alto 0 (top y bottom medidos contra la barra, no contra la pantalla). */}
+      <div aria-hidden="true" className="absolute inset-0 -z-1 bg-bg/95 backdrop-blur-md" />
       <div className="gutter-1360 flex min-h-[72px] items-center gap-3 py-2">
         <a href="#top" aria-label={`${c.name}, inicio`} className="flex min-h-11 min-w-0 items-center gap-2.5 text-on-dark no-underline max-[440px]:[&_.brand-eyebrow]:hidden">
           <Brand size={48} wordSize="clamp(1.15rem,calc(4vw + .2rem),1.55rem)" eyebrowSize=".52em" eager />
