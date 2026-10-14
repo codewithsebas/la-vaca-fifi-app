@@ -7,19 +7,20 @@ import { fmtTime, type SiteConfig } from "./site";
 
 type Cfg = SiteConfig;
 
-const X = { bg: "#EFE6D2", card: "#FFFCF5", box: "#F6EAD2", ink: "#22301C", muted: "#56604F", brand: "#22301C", cream: "#F6EAD2", hl: "#E3A64F", line: "#E9D8B4", accent: "#EF8A6A", accentSoft: "#E3EBD9" };
+const X = { bg: "#FFF8EB", card: "#FFFFFF", box: "#FFF3DC", ink: "#241A14", muted: "#5E5550", brand: "#241A14", cream: "#FFF8EB", hl: "#FFD23F", line: "#F3E6D2", accent: "#157AB8", accentSoft: "#DDF0FA" };
 const FONT = "Arial, Helvetica, sans-serif";
-const DISPLAY = "'Bebas Neue', Impact, 'Arial Narrow', Arial, sans-serif";
-// El nombre, como en el letrero: romana gruesa (las fuentes web no llegan a todos los clientes de correo).
-const WORDMARK = "Georgia, 'Times New Roman', serif";
+const DISPLAY = "'Lilita One', 'Arial Rounded MT Bold', 'Arial Black', Arial, sans-serif";
+// El nombre, en letras redondas y gruesas como las del letrero de Fifí (las fuentes web no llegan a todos los clientes
+// de correo: Lilita One si está, si no una gruesa del sistema).
+const WORDMARK = "'Lilita One', 'Arial Rounded MT Bold', 'Arial Black', Arial, sans-serif";
 const DARK =
-  ".em-body{background:#0E140B!important}.em-card{background:#1A2516!important}.em-text{color:#F6EAD2!important}.em-muted{color:#C9CBB8!important}.em-box{background:#24331E!important}.em-line{border-color:#34462C!important}.em-code{color:#E9B868!important}.em-ok{background:#34462C!important;color:#E3EBD9!important}";
+  ".em-body{background:#120D0A!important}.em-card{background:#241A14!important}.em-text{color:#FFF8EB!important}.em-muted{color:#CFC6BD!important}.em-box{background:#33261D!important}.em-line{border-color:#4A382B!important}.em-code{color:#FFD23F!important}.em-ok{background:#33261D!important;color:#DDF0FA!important}";
 
 // Todo dato del huésped o del equipo se escapa antes de entrar al HTML.
 export const esc = (s: string | number) =>
   String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 
-const h1 = (t: string) => `<h1 class="em-text em-h1" style="margin:0 0 12px;font-family:${DISPLAY};font-size:38px;line-height:40px;font-weight:400;text-transform:uppercase;color:${X.ink}">${t}</h1>`;
+const h1 = (t: string) => `<h1 class="em-text em-h1" style="margin:0 0 12px;font-family:${DISPLAY};font-size:32px;line-height:36px;font-weight:400;color:${X.ink}">${t}</h1>`;
 const p = (t: string) => `<p class="em-text" style="margin:0 0 14px;font-family:${FONT};font-size:16px;line-height:24px;color:${X.ink}">${t}</p>`;
 const small = (t: string) => `<p class="em-muted" style="margin:0 0 10px;font-family:${FONT};font-size:13px;line-height:20px;color:${X.muted}">${t}</p>`;
 const h2 = (t: string) => `<h2 class="em-text" style="margin:26px 0 10px;font-family:${FONT};font-size:13px;line-height:18px;font-weight:bold;text-transform:uppercase;letter-spacing:1.5px;color:${X.ink}">${t}</h2>`;
@@ -65,7 +66,7 @@ export function emailLayout(c: Cfg, { title, preheader, body }: { title: string;
       .map((r) => prefix + r + "}")
       .join("");
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${title}</title>
-<style>@media (max-width:620px){.em-container{width:100%!important}.em-pad{padding:22px 18px!important}.em-col{display:block!important;width:100%!important}.em-h1{font-size:30px!important;line-height:32px!important}}
+<style>@media (max-width:620px){.em-container{width:100%!important}.em-pad{padding:22px 18px!important}.em-col{display:block!important;width:100%!important}.em-h1{font-size:27px!important;line-height:31px!important}}
 @media (prefers-color-scheme:dark){${DARK}}
 ${darkRules("[data-ogsc] ")}
 ${darkRules(".dm ")}</style></head>
@@ -73,11 +74,11 @@ ${darkRules(".dm ")}</style></head>
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${preheader}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="em-body" style="background:${X.bg}"><tr><td align="center" style="padding:24px 10px">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="em-container" style="width:600px;max-width:600px">
-<tr><td class="em-pad" style="background:${X.brand};border-radius:20px 20px 0 0;padding:22px 32px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right:12px"><img src="{{logoUrl}}" width="44" height="44" alt="${c.name}" style="display:block;border:0;width:44px;height:44px"></td><td style="font-family:${FONT};color:${X.cream}"><span style="display:block;font-family:${WORDMARK};font-size:24px;line-height:26px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:${X.hl}">La Vaca Fifí</span><span style="display:block;font-size:11px;letter-spacing:4px;text-transform:uppercase">Cabañas · Restaurante</span></td></tr></table></td></tr>
+<tr><td class="em-pad" style="background:${X.brand};border-radius:20px 20px 0 0;padding:22px 32px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right:12px"><img src="{{logoUrl}}" width="44" height="44" alt="${c.name}" style="display:block;border:0;width:44px;height:44px"></td><td style="font-family:${FONT};color:${X.cream}"><span style="display:block;font-family:${WORDMARK};font-size:24px;line-height:26px;font-weight:normal;color:${X.hl}">La Vaca Fifí</span><span style="display:block;font-size:11px;letter-spacing:3px;text-transform:uppercase">Cabañas · Restaurante · Café</span></td></tr></table></td></tr>
 <tr><td class="em-card em-pad" style="background:${X.card};padding:32px">${body}</td></tr>
 <tr><td class="em-pad" style="background:${X.brand};border-radius:0 0 20px 20px;padding:24px 32px;font-family:${FONT};font-size:12px;line-height:19px;color:${X.cream}">
 <p style="margin:0 0 6px;font-weight:bold">${c.name}</p><p style="margin:0 0 6px">${c.address}</p><p style="margin:0 0 6px">Tel. ${phones} · WhatsApp +${c.whatsapp}</p>${c.rnt ? `<p style="margin:0 0 10px">RNT ${c.rnt}</p>` : ""}
-<p style="margin:0;color:#C9CBB8">Ley 679 de 2001: rechazamos la explotación y el abuso sexual de niños, niñas y adolescentes. Recibes este correo por tu reserva con nosotros.</p></td></tr>
+<p style="margin:0;color:#CFC6BD">Ley 679 de 2001: rechazamos la explotación y el abuso sexual de niños, niñas y adolescentes. Recibes este correo por tu reserva con nosotros.</p></td></tr>
 </table></td></tr></table></body></html>`;
 }
 

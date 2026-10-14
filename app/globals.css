@@ -1,27 +1,30 @@
 @import "tailwindcss";
 
-/* Paleta "Letrero" del diseño (los colores del letrero de La Vaca Fifí). `static` porque varios colores (estados) se usan desde JS.
+/* Paleta "Fifí" del diseño: leche de fondo, la tinta del contorno de la caricatura, el azul del letrero, el amarillo del arete
+   y el rojo de la lengua. Las claves vienen del sistema de colores del panel: en esta identidad el fondo es claro y
+   «on-dark» es la tinta (texto sobre el fondo, contornos y sombras de las calcomanías). `static` porque varios colores
+   (estados) se usan desde JS.
    Los colores del sitio (fondos, tarjetas, textos, acentos y botón principal) se pueden cambiar desde el panel:
    lib/theme.ts los vuelve a declarar en :root, en las páginas públicas (components/site-theme.tsx) y en el panel
    (PanelTheme, components/admin/shell.tsx), que además deriva de ellos su zona de trabajo. */
 @theme static {
-  --color-bg: #22301c;
-  --color-surface: #2c3d25;
-  --color-card: #f6ead2;
-  --color-card-muted: #e9d8b4;
-  --color-on-dark: #f6ead2;
-  --color-on-dark-muted: color-mix(in srgb, #f6ead2 85%, #22301c);
-  --color-on-light: #22301c;
-  --color-on-light-muted: color-mix(in srgb, #22301c 75%, #e9d8b4);
-  --color-accent: #e3a64f;
-  --color-highlight: #ef8a6a;
-  --color-cta: #8a3518;
-  --color-cta-text: #f6ead2;
+  --color-bg: #fff8eb;
+  --color-surface: #fcebcb;
+  --color-card: #fffdf8;
+  --color-card-muted: #f3e6d2;
+  --color-on-dark: #241a14;
+  --color-on-dark-muted: color-mix(in srgb, #241a14 85%, #fff8eb);
+  --color-on-light: #241a14;
+  --color-on-light-muted: color-mix(in srgb, #241a14 75%, #f3e6d2);
+  --color-accent: #157ab8;
+  --color-highlight: #ffd23f;
+  --color-cta: #d2283f;
+  --color-cta-text: #ffffff;
   --color-error: #9b2c1a;
-  --color-footer: color-mix(in srgb, #22301c 72%, #000);
-  /* Profundidad del mismo verde (de claro a oscuro): bg → deep (valles de las secciones) → night (pie de página). */
-  --color-deep: #1a2516;
-  --color-night: #0a0f08;
+  --color-footer: color-mix(in srgb, #fff8eb 72%, #000);
+  /* Cielo claro (servicios) y café (restaurante). */
+  --color-deep: #d9f0fb;
+  --color-night: #3b2416;
 
   --color-status-pending: #d9a441;
   --color-status-confirmed: #7fae84;
@@ -38,24 +41,24 @@
   --radius-md: 18px;
   --radius-lg: 28px;
 
-  --shadow-card: 0 22px 44px -20px rgb(0 0 0 / 0.55);
-  --shadow-pop: 0 30px 60px -24px rgb(0 0 0 / 0.6), 0 0 0 1px #e9d8b4;
+  --shadow-card: 0 22px 44px -20px rgb(0 0 0 / 0.35);
+  --shadow-pop: 0 30px 60px -24px rgb(0 0 0 / 0.35), 0 0 0 1px #f3e6d2;
 
   /* Panel de administración: superficie clara para trabajar con datos; la marca queda en la barra lateral.
      Del lienzo a las series, los valores salen de la paleta del sitio: son los que da panelVars() (lib/theme.ts) con
-     "Letrero"; con otra paleta, el panel los vuelve a declarar. Los colores de estado (éxito, aviso, error) son fijos. */
-  --color-canvas: #f6f3ec;
+     "Fifí"; con otra paleta, el panel los vuelve a declarar. Los colores de estado (éxito, aviso, error) son fijos. */
+  --color-canvas: #f9f8f7;
   --color-panel: #ffffff;
-  --color-line: #e7decc;
-  --color-line-strong: #cfc3aa;
-  --color-ink: #22301c;
-  --color-ink-muted: #61675f;
-  --color-ink-subtle: #8e928c;
-  --color-focus: #4d7a37;
-  --color-chart: #5b8946;
+  --color-line: #ece5db;
+  --color-line-strong: #d6cdbf;
+  --color-ink: #241a14;
+  --color-ink-muted: #625e5c;
+  --color-ink-subtle: #8e8b89;
+  --color-focus: #0375b3;
+  --color-chart: #0a83c8;
   /* Dos series (abonos y saldos): contraste ≥ 3:1 sobre blanco y separadas también con daltonismo (ΔE ≥ 8). */
-  --color-series-1: #35621d;
-  --color-series-2: #d27050;
+  --color-series-1: #0375b3;
+  --color-series-2: #a98703;
   --color-success: #2f7d52;
   --color-success-soft: #e5f1e8;
   --color-warning: #8a5a00;
@@ -101,9 +104,15 @@
   --animate-sky-arrive: ec-sky-arrive 2.6s cubic-bezier(0.16, 0.84, 0.3, 1) both;
   --animate-sky-drift: ec-sky-drift 38s ease-in-out infinite alternate;
   --animate-shooting-star: ec-shooting-star 9s ease-in infinite;
-  --animate-cow-walk: ec-cow-walk 150s linear infinite;
-  --animate-cow-bob: ec-cow-bob 1.6s ease-in-out infinite alternate;
-  --animate-cow-tail: ec-cow-tail 2.4s ease-in-out infinite alternate;
+  /* ── Fifí (components/fifi): parpadea, se relame, se le mece el arete y saltan los granos de café ── */
+  --animate-fifi-blink: ec-fifi-blink 5.5s ease-in-out infinite;
+  --animate-fifi-lick: ec-fifi-lick 3.2s ease-in-out infinite;
+  --animate-fifi-tag: ec-fifi-tag 2.6s ease-in-out infinite alternate;
+  --animate-fifi-bean: ec-fifi-bean 2.4s ease-in-out infinite alternate;
+  --animate-fifi-bob: ec-fifi-bob 4.5s ease-in-out infinite alternate;
+  --animate-bubble-pop: ec-bubble-pop 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  --animate-menu-drop: ec-menu-drop 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-sway: ec-sway 3.8s ease-in-out infinite alternate;
   --animate-steam: ec-steam 7s ease-out infinite;
   --animate-flicker: ec-flicker 0.9s ease-in-out infinite;
   --animate-glow: ec-glow 5s ease-in-out infinite alternate;
@@ -282,29 +291,75 @@
       transform: translateX(var(--travel, 240px)) scaleX(1);
     }
   }
-  /* Vaca de estrellas de la portada: cruza el cielo de lado a lado, se mece al caminar y mueve la cola. */
-  @keyframes ec-cow-walk {
-    from {
-      transform: translateX(-34vw);
+  /* Fifí parpadea: los ojos se cierran un instante y se vuelven a abrir. */
+  @keyframes ec-fifi-blink {
+    0%,
+    90%,
+    100% {
+      transform: scaleY(1);
     }
-    to {
-      transform: translateX(104vw);
-    }
-  }
-  @keyframes ec-cow-bob {
-    from {
-      transform: translateY(-3px) rotate(-1.2deg);
-    }
-    to {
-      transform: translateY(3px) rotate(1.2deg);
+    94% {
+      transform: scaleY(0.08);
     }
   }
-  @keyframes ec-cow-tail {
+  /* Se relame: la lengua sube desde la comisura y vuelve. */
+  @keyframes ec-fifi-lick {
+    0%,
+    55%,
+    100% {
+      transform: rotate(0deg) scale(1);
+    }
+    68% {
+      transform: rotate(-9deg) scale(1.04);
+    }
+    80% {
+      transform: rotate(5deg) scale(1);
+    }
+  }
+  @keyframes ec-fifi-tag {
     from {
-      transform: rotate(-9deg);
+      transform: rotate(-7deg);
     }
     to {
-      transform: rotate(10deg);
+      transform: rotate(7deg);
+    }
+  }
+  @keyframes ec-fifi-bean {
+    from {
+      transform: translateY(4px) rotate(-6deg);
+    }
+    to {
+      transform: translateY(-7px) rotate(8deg);
+    }
+  }
+  @keyframes ec-fifi-bob {
+    from {
+      transform: translateY(0) rotate(-1deg);
+    }
+    to {
+      transform: translateY(-8px) rotate(1deg);
+    }
+  }
+  /* El globo de Fifí: cada frase nueva aparece con un rebote. */
+  @keyframes ec-bubble-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.82) translateY(6px);
+    }
+  }
+  @keyframes ec-menu-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+  }
+  /* Calcomanías que se mecen (flores, etiquetas). */
+  @keyframes ec-sway {
+    from {
+      transform: rotate(-4deg);
+    }
+    to {
+      transform: rotate(4deg);
     }
   }
   /* Vapor (fumarola del nevado): sube, se abre y se deshace. */
@@ -739,10 +794,9 @@
 }
 
 @theme inline {
-  --font-display: var(--font-bebas), Impact, sans-serif;
-  --font-body: var(--font-manrope), system-ui, sans-serif;
-  --font-script: var(--font-caveat), cursive;
-  --font-wordmark: var(--font-alegreya-sc), Georgia, serif;
+  --font-display: var(--font-lilita), "Arial Rounded MT Bold", "Arial Black", sans-serif;
+  --font-body: var(--font-nunito), system-ui, sans-serif;
+  --font-wordmark: var(--font-lilita), "Arial Rounded MT Bold", "Arial Black", sans-serif;
 }
 
 /* Márgenes laterales: el contenido se centra en `n` px con un mínimo de 16 px. */
@@ -776,9 +830,9 @@
     font-size: 16px;
     line-height: 1.5;
   }
-  /* El color y el grosor del anillo se ajustan por zona (--ring*); en el sitio, dorado sobre el fondo oscuro. */
+  /* El color y el grosor del anillo se ajustan por zona (--ring*); en el sitio, el azul del letrero sobre la leche. */
   :focus-visible {
-    outline: var(--ring-width, 3px) solid var(--ring, var(--color-highlight)) !important;
+    outline: var(--ring-width, 3px) solid var(--ring, var(--color-accent)) !important;
     outline-offset: var(--ring-offset, 3px);
   }
   /* Títulos y secciones que reciben el foco por código (cambio de página, resultado de una consulta) para los lectores
@@ -904,37 +958,51 @@
     transform-origin: center;
   }
 
-  /* Titulares en Bebas Neue */
+  /* Titulares en Lilita One: redonda y gruesa, como las letras del letrero de Fifí. */
   .display {
     font-family: var(--font-display);
     font-weight: 400;
-    text-transform: uppercase;
+    letter-spacing: 0.005em;
   }
   .display-xl {
     font-family: var(--font-display);
     font-weight: 400;
-    text-transform: uppercase;
-    font-size: clamp(2.6rem, 5.6cqi, 5.6rem);
-    line-height: 0.92;
+    font-size: clamp(2.3rem, 4.8cqi, 4.6rem);
+    line-height: 0.98;
   }
   .page-title {
     font-family: var(--font-display);
     font-weight: 400;
-    text-transform: uppercase;
-    font-size: clamp(2.6rem, 6vw, 4.4rem);
-    line-height: 0.92;
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    line-height: 1;
   }
 
-  /* Letra manuscrita con destello */
+  /* Línea corta que presenta un título, ladeada como un letrero. */
   .kicker {
     display: flex;
     align-items: center;
     gap: 8px;
     margin: 0;
-    font-family: var(--font-script);
-    font-size: 1.6rem;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
     line-height: 1.1;
-    transform: rotate(-3deg);
+    transform: rotate(-2deg);
+  }
+
+  /* Calcomanía: contorno de tinta y sombra sólida corrida, como el trazo de la caricatura de Fifí. */
+  .sticker {
+    border: 3px solid var(--color-on-dark);
+    box-shadow: 6px 6px 0 var(--color-on-dark);
+  }
+  .sticker-sm {
+    border: 2.5px solid var(--color-on-dark);
+    box-shadow: 3px 3px 0 var(--color-on-dark);
+  }
+  /* Letras de cartel: relleno claro con contorno grueso de tinta y sombra corrida (la tinta queda detrás del relleno). */
+  .poster-text {
+    -webkit-text-stroke: 0.09em var(--color-on-dark);
+    paint-order: stroke fill;
+    text-shadow: 0.06em 0.07em 0 var(--color-on-dark);
   }
 
   .eyebrow {
@@ -944,25 +1012,38 @@
     text-transform: uppercase;
   }
 
-  /* Botones: siempre pill, el color lo da la variante */
+  /* Botones: calcomanías redondeadas con contorno de tinta y sombra corrida; al pasar el mouse se levantan y al
+     pulsarlos se hunden. El color lo da la variante. */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    border: 0;
+    border: 2.5px solid var(--color-on-dark);
     border-radius: 999px;
+    box-shadow: 3px 3px 0 var(--color-on-dark);
     font: inherit;
     font-weight: 800;
     text-decoration: none;
-    transition: background-color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .btn:not(:disabled):hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--color-on-dark);
+  }
+  .btn:not(:disabled):active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--color-on-dark);
   }
   .btn-cta {
     background: var(--color-cta);
     color: var(--color-cta-text);
   }
   .btn-cta:not(:disabled):hover {
-    background: color-mix(in srgb, var(--color-cta) 80%, var(--color-accent));
+    background: color-mix(in srgb, var(--color-cta) 88%, #000);
   }
   .btn-card {
     background: var(--color-card);
@@ -983,13 +1064,13 @@
     color: var(--color-on-light);
   }
   .btn-outline-dark {
-    border: 2px solid var(--color-on-dark);
-    background: transparent;
+    background: var(--color-bg);
     color: var(--color-on-dark);
   }
   .btn-outline-light {
-    border: 2px solid var(--color-on-light);
-    background: transparent;
+    border-color: var(--color-on-light);
+    box-shadow: 3px 3px 0 var(--color-on-light);
+    background: var(--color-card);
     color: var(--color-on-light);
   }
   .btn-icon {

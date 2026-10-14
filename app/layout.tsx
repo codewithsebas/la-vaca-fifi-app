@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Alegreya_SC, Bebas_Neue, Caveat, Manrope } from "next/font/google";
+import { Lilita_One, Nunito } from "next/font/google";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteProvider } from "@/components/site-provider";
 import { config } from "@/lib/config";
@@ -7,11 +7,10 @@ import { getSiteCabins } from "@/lib/server/cabins";
 import { getSiteContent } from "@/lib/server/site";
 import "./globals.css";
 
-const bebas = Bebas_Neue({ variable: "--font-bebas", weight: "400", subsets: ["latin"] });
-const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"] });
-const caveat = Caveat({ variable: "--font-caveat", weight: ["500", "600"], subsets: ["latin"] });
-// La letra del letrero (romana con versalitas): solo para el nombre de la marca.
-const alegreyaSc = Alegreya_SC({ variable: "--font-alegreya-sc", weight: "800", subsets: ["latin"] });
+// Las letras de Fifí: Lilita One para títulos y nombre (redonda y gruesa, como las letras del letrero) y Nunito para
+// el texto (redondeada y fácil de leer).
+const lilita = Lilita_One({ variable: "--font-lilita", weight: "400", subsets: ["latin"] });
+const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"] });
 
 // Las páginas se regeneran cada hora o al guardar contenido en el panel (revalidatePath).
 export const revalidate = 3600;
@@ -27,13 +26,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#22301C",
+  themeColor: "#FFF8EB",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [content, cabins] = await Promise.all([getSiteContent(), getSiteCabins()]);
   return (
-    <html lang="es" data-scroll-behavior="smooth" className={`${bebas.variable} ${manrope.variable} ${caveat.variable} ${alegreyaSc.variable}`}>
+    <html lang="es" data-scroll-behavior="smooth" className={`${lilita.variable} ${nunito.variable}`}>
       <body>
         <SiteProvider content={content} cabins={cabins}>
           {children}

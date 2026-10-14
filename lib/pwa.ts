@@ -4,7 +4,7 @@ import { config } from "./config";
 // Dos apps instalables: el sitio de reservas (huéspedes) y el panel (equipo), cada una con su manifiesto e ícono.
 // Van como Route Handlers enlazados desde `metadata.manifest`: un app/manifest.ts tendría prioridad sobre el del panel.
 
-const BG = "#22301C";
+const BG = "#FFF8EB";
 const png = (src: string, size: number, purpose: "any" | "maskable" = "any") => ({ src, sizes: `${size}x${size}`, type: "image/png", purpose });
 
 export const siteManifest: MetadataRoute.Manifest = {

@@ -1,6 +1,8 @@
 // Colores del sitio, editables desde el panel (Contenido del sitio → Colores). Lo usan servidor y navegador.
 // Cada clave reemplaza una variable de la paleta de app/globals.css. El panel usa la misma paleta: su zona de trabajo
 // (fondo claro, textos, líneas, foco y gráficos) se deriva de ella en panelVars().
+// Las claves vienen del sistema de colores del panel; en la identidad de Fifí el fondo es claro (leche) y «onDark» es la
+// tinta: el texto sobre el fondo y el contorno de las calcomanías. «night» es el café de las secciones oscuras.
 
 export type ThemeKey = "bg" | "surface" | "deep" | "night" | "card" | "cardMuted" | "onDark" | "onLight" | "accent" | "highlight" | "cta" | "ctaText";
 export type SiteTheme = Record<ThemeKey, string>; // "#rrggbb"
@@ -27,37 +29,37 @@ export const THEME_GROUPS: { label: string; fields: { key: ThemeKey; label: stri
   {
     label: "Fondos",
     fields: [
-      { key: "bg", label: "Fondo principal", hint: "Fondo de todo el sitio y del menú." },
-      { key: "surface", label: "Bloques", hint: "Portada, tarjetas oscuras y botones secundarios." },
-      { key: "deep", label: "Fondo profundo", hint: "Sección «La finca» y cielo alto de la portada." },
-      { key: "night", label: "Franja final", hint: "Última franja del pie de página." },
+      { key: "bg", label: "Leche", hint: "Fondo general del sitio y del menú." },
+      { key: "surface", label: "Crema", hint: "Secciones alternas (cabañas, antes de venir) y bloques suaves." },
+      { key: "deep", label: "Cielo claro", hint: "Sección de servicios y fondos suaves de las fotos." },
+      { key: "night", label: "Café", hint: "Sección del restaurante. Su texto va en el color de las tarjetas." },
     ],
   },
   {
-    label: "Tarjetas claras",
+    label: "Tarjetas",
     fields: [
-      { key: "card", label: "Tarjeta", hint: "Cabañas, formulario de reserva y botones claros." },
-      { key: "cardMuted", label: "Tarjeta secundaria", hint: "Etiquetas, bordes de los campos y zonas suaves." },
+      { key: "card", label: "Tarjeta", hint: "Cabañas, formulario de reserva, globos de Fifí y texto sobre el café." },
+      { key: "cardMuted", label: "Tarjeta secundaria", hint: "Campos del formulario y zonas suaves dentro de las tarjetas." },
     ],
   },
   {
-    label: "Textos",
+    label: "Tinta",
     fields: [
-      { key: "onDark", label: "Texto sobre fondos oscuros", hint: "Títulos y párrafos sobre los fondos." },
-      { key: "onLight", label: "Texto sobre tarjetas", hint: "Títulos y párrafos sobre las tarjetas claras." },
+      { key: "onDark", label: "Tinta", hint: "Títulos, textos, contornos y sombras de las calcomanías, y fondo del pie de página." },
+      { key: "onLight", label: "Texto sobre tarjetas", hint: "Títulos y párrafos sobre las tarjetas y las etiquetas." },
     ],
   },
   {
     label: "Acentos",
     fields: [
-      { key: "accent", label: "Acento", hint: "Segunda línea de los títulos, ilustraciones y detalles." },
-      { key: "highlight", label: "Resaltado", hint: "Etiquetas destacadas, marcas y contorno del foco." },
+      { key: "accent", label: "Azul del letrero", hint: "El cielo de la portada, enlaces y detalles." },
+      { key: "highlight", label: "Amarillo del arete", hint: "Etiquetas de precio, insignias, la franja final y el foco." },
     ],
   },
   {
     label: "Botón principal",
     fields: [
-      { key: "cta", label: "Botón", hint: "«Reservar», «Consultar» y las demás acciones principales." },
+      { key: "cta", label: "Rojo lengua", hint: "«Reservar» y las demás acciones principales; también el trazo que subraya los títulos." },
       { key: "ctaText", label: "Texto del botón", hint: "Letra de los botones principales." },
     ],
   },
@@ -68,79 +70,24 @@ export const themeField = (k: ThemeKey) => THEME_GROUPS.flatMap((g) => g.fields)
 // Paletas listas para usar (contraste de textos ≥ 4.5:1 y de acentos ≥ 3:1). La primera es la del diseño.
 export const THEME_PRESETS: { id: string; label: string; description: string; theme: SiteTheme }[] = [
   {
-    // Del letrero de la entrada: el verde oscuro de sus franjas, el dorado de las letras, el coral de sus flores y el
-    // terracota del fondo en los botones.
-    id: "letrero",
-    label: "Letrero",
-    description: "Verde de finca, dorado de las letras y terracota del letrero. La paleta original.",
-    theme: { bg: "#22301c", surface: "#2c3d25", deep: "#1a2516", night: "#0a0f08", card: "#f6ead2", cardMuted: "#e9d8b4", onDark: "#f6ead2", onLight: "#22301c", accent: "#e3a64f", highlight: "#ef8a6a", cta: "#8a3518", ctaText: "#f6ead2" },
-  },
-  {
-    // El letrero al revés: fondos del terracota, botones del verde y resaltado del verde claro de las hojas.
-    id: "terracota",
-    label: "Letrero terracota",
-    description: "Terracota del letrero con dorado y verde de hojas.",
-    theme: { bg: "#5c2410", surface: "#6d2e16", deep: "#4a1c0b", night: "#1e0b04", card: "#f6ead2", cardMuted: "#e9d8b4", onDark: "#f6ead2", onLight: "#3a1708", accent: "#e8b25e", highlight: "#9fc27a", cta: "#22301c", ctaText: "#f6ead2" },
-  },
-  {
-    id: "bosque",
-    label: "Bosque",
-    description: "Verde de montaña, crema y dorado.",
-    theme: { bg: "#163a2a", surface: "#1d4633", deep: "#11301f", night: "#07140d", card: "#f2ebd3", cardMuted: "#e6dcbe", onDark: "#f2ebd3", onLight: "#163a2a", accent: "#7fae84", highlight: "#d9a441", cta: "#163a2a", ctaText: "#f2ebd3" },
-  },
-  {
-    id: "nevado",
-    label: "Nevado",
-    description: "Azul glaciar con blanco hielo.",
-    theme: { bg: "#1b3445", surface: "#24445a", deep: "#152a38", night: "#08121a", card: "#eef2f3", cardMuted: "#dbe4e8", onDark: "#eef2f3", onLight: "#1b3445", accent: "#8fb8cf", highlight: "#e0b04a", cta: "#1b3445", ctaText: "#eef2f3" },
-  },
-  {
-    id: "paramo",
-    label: "Páramo",
-    description: "Verde oliva de frailejón y amarillo de flor.",
-    theme: { bg: "#2f3a2a", surface: "#3a4734", deep: "#262f22", night: "#0f130d", card: "#f1eedf", cardMuted: "#e2dcc6", onDark: "#f1eedf", onLight: "#2f3a2a", accent: "#b5c27a", highlight: "#e3b23c", cta: "#2f3a2a", ctaText: "#f1eedf" },
+    // De Fifí y su letrero: leche de fondo, la tinta del contorno, el azul del cielo, el amarillo del arete y el rojo de
+    // la lengua en los botones; café para el restaurante.
+    id: "fifi",
+    label: "Fifí",
+    description: "Leche, azul del letrero, amarillo del arete y rojo lengua. La paleta original.",
+    theme: { bg: "#fff8eb", surface: "#fcebcb", deep: "#d9f0fb", night: "#3b2416", card: "#fffdf8", cardMuted: "#f3e6d2", onDark: "#241a14", onLight: "#241a14", accent: "#157ab8", highlight: "#ffd23f", cta: "#d2283f", ctaText: "#ffffff" },
   },
   {
     id: "cafe",
-    label: "Café de montaña",
-    description: "Madera, arena y naranja de fogata.",
-    theme: { bg: "#3b2a20", surface: "#4a3528", deep: "#2f2119", night: "#140d09", card: "#f4ead8", cardMuted: "#e8d9bf", onDark: "#f4ead8", onLight: "#3b2a20", accent: "#c9a27a", highlight: "#d98c3f", cta: "#3b2a20", ctaText: "#f4ead8" },
+    label: "Café de la casa",
+    description: "Crema, caramelo y café tostado.",
+    theme: { bg: "#fbf4ea", surface: "#f2e1c8", deep: "#efe3d3", night: "#2d1b10", card: "#fffdf8", cardMuted: "#eedfc9", onDark: "#2a1b12", onLight: "#2a1b12", accent: "#9a4f1c", highlight: "#f4b942", cta: "#5a2e17", ctaText: "#fff6ea" },
   },
   {
-    id: "cascada",
-    label: "Cascada",
-    description: "Verde azulado de agua de montaña con blanco de espuma.",
-    theme: { bg: "#0f3d3e", surface: "#165052", deep: "#0a2f30", night: "#041516", card: "#ecf4f0", cardMuted: "#d6e6df", onDark: "#ecf4f0", onLight: "#0f3d3e", accent: "#7cc4bd", highlight: "#e7b74c", cta: "#0f3d3e", ctaText: "#ecf4f0" },
-  },
-  {
-    id: "niebla",
-    label: "Niebla",
-    description: "Gris pizarra, sobrio, con blanco de neblina.",
-    theme: { bg: "#2c3b40", surface: "#384b51", deep: "#212d31", night: "#0d1214", card: "#f0f3f1", cardMuted: "#dde4e0", onDark: "#f0f3f1", onLight: "#2c3b40", accent: "#a5c4c0", highlight: "#dcb45c", cta: "#2c3b40", ctaText: "#f0f3f1" },
-  },
-  {
-    id: "orquidea",
-    label: "Orquídea",
-    description: "Morado profundo con lila, como la flor.",
-    theme: { bg: "#33204a", surface: "#42295f", deep: "#27173a", night: "#100917", card: "#f4eef6", cardMuted: "#e4d9ea", onDark: "#f4eef6", onLight: "#33204a", accent: "#c6a5e3", highlight: "#e9b85a", cta: "#33204a", ctaText: "#f4eef6" },
-  },
-  {
-    id: "atardecer",
-    label: "Atardecer",
-    description: "Vino tinto, durazno y dorado del sol que cae.",
-    theme: { bg: "#4a1d2b", surface: "#5d2838", deep: "#3a1520", night: "#17080d", card: "#f7eadf", cardMuted: "#ecd8c8", onDark: "#f7eadf", onLight: "#4a1d2b", accent: "#e9a48c", highlight: "#f0b64e", cta: "#4a1d2b", ctaText: "#f7eadf" },
-  },
-  {
-    id: "arcilla",
-    label: "Arcilla",
-    description: "Terracota, arena y ocre de los caminos.",
-    theme: { bg: "#6b2f1d", surface: "#7d3a25", deep: "#552415", night: "#220d07", card: "#f6ebdc", cardMuted: "#ead9c2", onDark: "#f6ebdc", onLight: "#6b2f1d", accent: "#e6b48a", highlight: "#f0bd4f", cta: "#6b2f1d", ctaText: "#f6ebdc" },
-  },
-  {
-    id: "volcan",
-    label: "Volcán",
-    description: "Roca oscura, ceniza y naranja de lava.",
-    theme: { bg: "#2b2a2c", surface: "#39373a", deep: "#201f21", night: "#0c0b0c", card: "#f2ede6", cardMuted: "#e2d9cc", onDark: "#f2ede6", onLight: "#2b2a2c", accent: "#d9a88a", highlight: "#ee7b3c", cta: "#2b2a2c", ctaText: "#f2ede6" },
+    id: "rosa",
+    label: "Hocico rosado",
+    description: "Rosado suave con azul y rojo lengua.",
+    theme: { bg: "#fff6f4", surface: "#fde3e0", deep: "#e2f2fb", night: "#3a1d25", card: "#ffffff", cardMuted: "#f5e0dd", onDark: "#2a1a1e", onLight: "#2a1a1e", accent: "#1874b0", highlight: "#ffd23f", cta: "#c21f3d", ctaText: "#ffffff" },
   },
 ];
 
@@ -201,17 +148,17 @@ export function contrast(a: string, b: string) {
 
 // Combinaciones que se leen en el sitio. Texto normal: 4.5:1; títulos grandes y detalles: 3:1.
 const CHECKS: { fg: ThemeKey; bg: ThemeKey; min: number; label: string }[] = [
-  { fg: "onDark", bg: "bg", min: 4.5, label: "Texto sobre el fondo principal" },
-  { fg: "onDark", bg: "surface", min: 4.5, label: "Texto sobre los bloques" },
-  { fg: "onDark", bg: "deep", min: 4.5, label: "Texto sobre el fondo profundo" },
-  { fg: "onDark", bg: "night", min: 4.5, label: "Texto de la franja final" },
+  { fg: "onDark", bg: "bg", min: 4.5, label: "Tinta sobre la leche" },
+  { fg: "onDark", bg: "surface", min: 4.5, label: "Tinta sobre la crema" },
+  { fg: "onDark", bg: "deep", min: 4.5, label: "Tinta sobre el cielo claro" },
+  { fg: "card", bg: "night", min: 4.5, label: "Texto sobre el café" },
   { fg: "onLight", bg: "card", min: 4.5, label: "Texto sobre las tarjetas" },
   { fg: "onLight", bg: "cardMuted", min: 4.5, label: "Texto sobre la tarjeta secundaria" },
-  { fg: "onLight", bg: "highlight", min: 4.5, label: "Etiquetas resaltadas" },
+  { fg: "onLight", bg: "highlight", min: 4.5, label: "Etiquetas amarillas" },
   { fg: "ctaText", bg: "cta", min: 4.5, label: "Texto del botón principal" },
-  { fg: "accent", bg: "bg", min: 3, label: "Acento sobre el fondo principal" },
-  { fg: "accent", bg: "surface", min: 3, label: "Títulos con acento en la portada" },
-  { fg: "highlight", bg: "bg", min: 3, label: "Resaltado sobre el fondo principal" },
+  { fg: "accent", bg: "bg", min: 3, label: "Azul sobre la leche" },
+  { fg: "accent", bg: "surface", min: 3, label: "Azul sobre la crema" },
+  { fg: "highlight", bg: "night", min: 3, label: "Amarillo sobre el café" },
 ];
 
 export type ThemeIssue = { fg: ThemeKey; bg: ThemeKey; label: string; ratio: number; min: number };
@@ -297,9 +244,9 @@ export function panelVars(t: SiteTheme): Record<string, string> {
   const ink = contrast(t.onLight, WHITE) >= 9 ? t.onLight : tone(t.onLight, 11, chromaOf(t.onLight)[0]);
   // Si alguien elige tarjetas oscuras, el panel sigue siendo claro.
   const paper = (c: string) => (luminance(c) >= 0.55 ? c : mix(c, WHITE, 0.88));
-  // Color de marca: el fondo del sitio; si es gris (sin matiz), el acento o el resaltado. Más vivo que el fondo, dentro
-  // de un margen: en un gráfico un color apagado se confunde con gris.
-  const brands = [t.bg, t.accent, t.highlight].filter((c) => chromaOf(c)[0] >= 0.012);
+  // Color de marca: el fondo del sitio si es oscuro; si es claro (leche) o gris (sin matiz), el acento o el resaltado.
+  // Más vivo que el fondo, dentro de un margen: en un gráfico un color apagado se confunde con gris.
+  const brands = [...(luminance(t.bg) < 0.3 ? [t.bg] : []), t.accent, t.highlight].filter((c) => chromaOf(c)[0] >= 0.012);
   const brand = brands[0] ?? t.bg;
   const vivid = (c: string) => Math.min(0.15, Math.max(0.11, chromaOf(c)[0] * 2.2));
   // Dos series (abonos y saldos): la marca y el resaltado. Si se parecen, la primera cambia de luminosidad o de matiz

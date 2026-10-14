@@ -82,7 +82,7 @@ export function PayLink({ token }: { token: string }) {
       <section aria-labelledby="pl-title" className="flex flex-col gap-3.5 rounded-lg bg-card p-[clamp(22px,4vw,36px)] text-on-light lg:col-start-1">
         <StatusPill status={r.status} />
         <div className="flex flex-col gap-1">
-          <p className="font-script text-[1.6rem] leading-none">{r.guestFirstName ? `Hola, ${r.guestFirstName}` : "Hola"}</p>
+          <p className="font-display text-[1.6rem] leading-none">{r.guestFirstName ? `Hola, ${r.guestFirstName}` : "Hola"}</p>
           <h1 id="pl-title" className="display text-[clamp(2.4rem,7vw,3.6rem)] leading-none tracking-[.04em]">
             Reserva {r.code}
           </h1>

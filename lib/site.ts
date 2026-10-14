@@ -16,7 +16,8 @@ export type SitePolicy = Policy & { id: string };
 
 // Textos editables desde el panel (columna site_settings.content). Vacío = se usa el valor por defecto.
 export type SiteTexts = {
-  // rotating: otras frases que se alternan con el título resaltado en la portada (una por línea).
+  // title + highlight: el título de la portada (highlight va subrayado con la lengua de Fifí).
+  // rotating: lo que dice Fifí en su globo de la portada (una frase por línea).
   hero: { title: string; highlight: string; rotating: string; badge: string; description: string };
   location: { note: string };
   payment: { instructions: string };
@@ -42,11 +43,11 @@ export type SiteConfig = Omit<typeof config, "policies"> & { policies: SitePolic
 
 export const defaultTexts: SiteTexts = {
   hero: {
-    title: "Cabañas de colores",
-    highlight: "en Murillo, Tolima",
-    rotating: "con vista a la montaña\ny sabor de finca",
-    badge: "A 5 minutos de Murillo · 9,2 en Booking.com",
-    description: "Cabañas con baño privado, balcón con vista a la montaña y desayuno americano incluido. Restaurante y café, jardines, fogata y parque para los niños, con atención familiar.",
+    title: "Duerme rico,",
+    highlight: "come mejor",
+    rotating: "¡Muuuy bienvenidos!\nEl café va por mi cuenta\nA 5 minutos de Murillo",
+    badge: "A 5 minutos de Murillo, Tolima",
+    description: "Cabañas de colores con baño privado, balcón con vista a la montaña y desayuno americano incluido. Al lado, el restaurante y café de Fifí: comida casera, parque para los niños y atención familiar.",
   },
   location: { note: "A 5 minutos de Murillo por la vía Líbano – Murillo, en la vereda Pajonales. El Nevado del Ruiz queda a aproximadamente 1 hora en carro." },
   payment: { instructions: "" },
@@ -56,9 +57,9 @@ export const defaultTexts: SiteTexts = {
 // Límites de cada texto (los aplica la API al guardar).
 export const TEXT_LIMITS = { title: 40, highlight: 40, rotating: 200, rotatingLines: 5, badge: 60, description: 320, note: 160, instructions: 600, url: 200 };
 
-// Frases que se alternan con el título resaltado: líneas no vacías del campo «rotating», con el mismo límite por línea.
-export const rotatingPhrases = (hero: { highlight: string; rotating: string }) =>
-  [hero.highlight, ...hero.rotating.split("\n")].map((x) => x.trim()).filter(Boolean).slice(0, TEXT_LIMITS.rotatingLines + 1);
+// Lo que dice Fifí en su globo: las líneas no vacías del campo «rotating», con el mismo límite por línea.
+export const fifiPhrases = (hero: { rotating: string }) =>
+  hero.rotating.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, TEXT_LIMITS.rotatingLines);
 
 // Mezcla lo guardado con los valores por defecto; ignora claves desconocidas o que no sean texto.
 export function mergeTexts(raw: unknown): SiteTexts {
@@ -78,12 +79,9 @@ export type PhotoSlotDef = { id: string; group: string; label: string; alt: stri
 
 // Huecos de imagen del sitio, en el orden en que aparecen en el panel. Las fotos de cada cabaña se administran en su ficha.
 export const PHOTO_SLOTS: PhotoSlotDef[] = [
-  { id: "hero-main", group: "Portada · banner grande", label: "Banner grande", alt: "Corredor de las cabañas de colores de La Vaca Fifí", placeholder: "Foto real (4:5): las cabañas y su corredor", aspect: "4/5", hint: "Vertical 4:5", min: [1200, 1500] },
-  { id: "hero-thumb-1", group: "Portada · banners pequeños", label: "Banner pequeño 1", alt: "Fachada de una cabaña", placeholder: "Foto real: exterior de una cabaña", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
-  { id: "hero-thumb-2", group: "Portada · banners pequeños", label: "Banner pequeño 2", alt: "Habitación de una cabaña", placeholder: "Foto real: interior de una cabaña", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
-  { id: "hero-thumb-3", group: "Portada · banners pequeños", label: "Banner pequeño 3", alt: "Restaurante de La Vaca Fifí", placeholder: "Foto real: el restaurante", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
-  { id: "hero-thumb-4", group: "Portada · banners pequeños", label: "Banner pequeño 4", alt: "Balcón con vista a las montañas", placeholder: "Foto real: balcón o desayuno con vista", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
-  { id: "exp-restaurante", group: "La finca", label: "Restaurante y café", alt: "Restaurante y café de finca", placeholder: "Foto real: el restaurante", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
+  { id: "hero-main", group: "Foto principal", label: "Foto principal", alt: "Corredor de las cabañas de colores de La Vaca Fifí", placeholder: "Foto real (4:5): las cabañas y su corredor", aspect: "4/5", hint: "Vertical 4:5", min: [1200, 1500] },
+  { id: "exp-restaurante", group: "Restaurante", label: "Foto del restaurante 1", alt: "Restaurante y café de La Vaca Fifí", placeholder: "Foto real: el restaurante por dentro", aspect: "4/3", hint: "Horizontal 4:3", min: [1200, 900] },
+  { id: "restaurante-2", group: "Restaurante", label: "Foto del restaurante 2", alt: "El restaurante de La Vaca Fifí por fuera", placeholder: "Foto real: el restaurante por fuera", aspect: "4/3", hint: "Horizontal 4:3", min: [1200, 900] },
   { id: "exp-desayuno", group: "La finca", label: "Desayuno con vista", alt: "Desayuno con vista a la montaña", placeholder: "Foto real: desayuno o balcón con vista", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
   { id: "exp-parque", group: "La finca", label: "Parque infantil", alt: "Parque infantil", placeholder: "Foto real: el parque infantil", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
   { id: "exp-jardines", group: "La finca", label: "Jardines y flores", alt: "Jardines y flores", placeholder: "Foto real: los jardines", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
@@ -135,11 +133,8 @@ export function mergeSite(s: SiteSettings, policies: SitePolicy[], texts: SiteTe
 // muestra la foto que se sube desde el panel.
 export const DEFAULT_PHOTOS: Record<string, string> = {
   "hero-main": "/fotos/cabanas-corredor.jpg",
-  "hero-thumb-1": "/fotos/cabana-fachada-roja.jpg",
-  "hero-thumb-2": "/fotos/habitacion-camarote.jpg",
-  "hero-thumb-3": "/fotos/restaurante-techo-colores.jpg",
-  "hero-thumb-4": "/fotos/balcon-vista-montanas.jpg",
   "exp-restaurante": "/fotos/restaurante-musica-en-vivo.jpg",
+  "restaurante-2": "/fotos/restaurante-techo-colores.jpg",
   "exp-desayuno": "/fotos/balcon-vista-montanas.jpg",
   "exp-parque": "/fotos/parque-infantil.jpg",
   "exp-jardines": "/fotos/jardin-flores.jpg",

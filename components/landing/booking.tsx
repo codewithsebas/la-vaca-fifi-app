@@ -79,11 +79,11 @@ export function CabinReserveButton({ cabin }: { cabin: CabinTypeId }) {
 
 function fieldStyle(focused: boolean, filled: boolean) {
   return {
-    border: focused ? "border-on-light" : filled ? "border-on-light/22" : "border-transparent",
+    border: focused ? "border-on-light" : filled ? "border-on-light/40" : "border-on-light/15",
     bg: filled || focused ? "bg-card" : "bg-card-muted",
     ring: focused ? "shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-highlight)_50%,transparent)]" : "",
     value: filled ? "font-extrabold text-on-light" : "font-medium text-on-light-muted",
-    icon: filled ? "bg-cta text-cta-text" : "bg-transparent text-on-light",
+    icon: filled ? "border-2 border-on-light bg-highlight text-on-light" : "bg-transparent text-on-light",
   };
 }
 
@@ -123,7 +123,7 @@ function Switch({ label, on, note, onToggle }: { label: string; on: boolean; not
   );
 }
 
-const popover = "absolute top-[calc(100%+10px)] left-0 z-40 rounded-md bg-card text-on-light shadow-pop";
+const popover = "absolute top-[calc(100%+10px)] left-0 z-40 rounded-[22px] border-[2.5px] border-on-dark bg-card text-on-light shadow-[4px_4px_0_var(--color-on-dark)]";
 
 export function BookingWidget() {
   const { s, cabins, cabinOf, set, selectCabin } = useBooking();
@@ -252,11 +252,12 @@ export function BookingWidget() {
   const datesFocused = s.open === "dates";
 
   return (
-    // scroll-mt: al llegar con «Reservar ahora» (#reserva), el módulo queda con aire arriba en vez de pegado al borde.
-    <section id="reserva" aria-labelledby="reserva-title" className="gutter-1360 relative z-5 mt-4 scroll-mt-[clamp(20px,4svh,40px)]">
-      <div ref={ref} className="flex flex-col gap-5 rounded-lg bg-card p-[calc(16px_+_1cqi)] text-on-light shadow-card">
+    // Una calcomanía grande que se monta sobre el pie del cartel de la portada. scroll-mt: al llegar con «Reservar»
+    // (#reserva), el módulo queda con aire bajo la barra fija en vez de pegado a ella.
+    <section id="reserva" aria-labelledby="reserva-title" className="gutter-1360 relative z-5 -mt-[clamp(28px,4vw,56px)] scroll-mt-[calc(var(--header-offset,76px)+16px)]">
+      <div ref={ref} className="sticker flex flex-col gap-5 rounded-[30px] bg-card p-[calc(16px_+_1cqi)] text-on-light">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-1">
-          <h2 id="reserva-title" className="display text-[2.2rem] leading-[.95]">
+          <h2 id="reserva-title" className="display text-[clamp(1.9rem,3vw,2.4rem)] leading-none">
             Reserva tu cabaña
           </h2>
           <p className="max-w-[48ch] text-[.9rem] font-semibold">Elige fechas, cabaña y huéspedes: ves el total al instante y reservas en línea con un abono del {config.depositPct} %.</p>
@@ -390,12 +391,12 @@ export function BookingWidget() {
         </div>
 
         {s.notice && (
-          <p role="status" className="rounded-md bg-[color-mix(in_srgb,var(--color-highlight)_30%,var(--color-card))] px-[18px] py-3 text-[.9rem] font-bold">
+          <p role="status" className="rounded-[18px] border-2 border-on-light bg-[color-mix(in_srgb,var(--color-highlight)_45%,var(--color-card))] px-[18px] py-3 text-[.9rem] font-bold">
             {s.notice}
           </p>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-md bg-card-muted px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] border-[2.5px] border-dashed border-on-light/30 bg-bg px-5 py-4">
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-0.5">
             <span className="text-[.74rem] font-bold uppercase tracking-[.06em]">Total estimado</span>
             <strong className="display text-[2.6rem] leading-none">{totalLabel}</strong>

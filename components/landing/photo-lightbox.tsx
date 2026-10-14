@@ -7,7 +7,8 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { config } from "@/lib/config";
-import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, SparkleIcon } from "../icons";
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "../icons";
+import { Bean } from "../fifi/decor";
 
 const TITLE = `Galería de ${config.name}`;
 const CLOSE_MS = 320;
@@ -118,7 +119,7 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
         <div className="flex size-full flex-col gap-[clamp(10px,2svh,20px)] bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-surface)_55%,transparent),transparent_70%)] py-[clamp(12px,2.5svh,24px)]">
           <header className="gutter-1360 flex items-center justify-between gap-4">
             <h2 id="lb-title" className="display flex min-w-0 items-center gap-2.5 text-[clamp(1.6rem,3.6svh,2.4rem)] leading-none">
-              <SparkleIcon className="flex-none motion-safe:animate-twinkle" />
+              <Bean size={18} light />
               <span className="truncate">{TITLE}</span>
             </h2>
             <div className="flex flex-none items-center gap-3">

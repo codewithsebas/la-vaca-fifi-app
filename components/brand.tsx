@@ -1,33 +1,33 @@
 import Image from "next/image";
 import logo from "@/public/logo-la-vaca-fifi.png";
 
-// Logo del cliente: un sello redondo con los colores del letrero de la entrada (aro terracota con filete dorado y fondo
-// verde), la vaca Holstein con pestañas y su corona de flores. Decorativo: junto a él siempre va el nombre, o el enlace
-// que lo envuelve lo nombra. El original, en vector, es public/logo-la-vaca-fifi.svg.
+// Logo: Fifí, la vaca del letrero del restaurante, relamiéndose dentro de un sello azul de borde oscuro. Decorativo:
+// junto a él siempre va el nombre, o el enlace que lo envuelve lo nombra. El vector es public/logo-la-vaca-fifi.svg
+// (lo genera scripts/fifi-logo.ts con los trazos de components/fifi/fifi-paths.ts).
 // eager: visible al cargar (encabezado), sin esperar a que entre en pantalla.
 export function Logo({ size, eager = false, className = "" }: { size: number; eager?: boolean; className?: string }) {
   return <Image src={logo} alt="" width={size} height={size} loading={eager ? "eager" : undefined} className={`flex-none rounded-full ${className}`} />;
 }
 
-// «La Vaca Fifí» con la letra del letrero: romana gruesa en versalitas (Alegreya SC). El tamaño es el de la letra heredada.
+// «La Vaca Fifí» en la letra de los títulos (Lilita One, redonda y gruesa como las letras del letrero).
 export function Wordmark({ className = "" }: { className?: string }) {
-  return <span className={`font-wordmark font-extrabold tracking-[.02em] whitespace-nowrap ${className}`}>La Vaca Fifí</span>;
+  return <span className={`font-wordmark whitespace-nowrap ${className}`}>La Vaca Fifí</span>;
 }
 
-// «La Vaca Fifí / cabañas · restaurante»: el segundo renglón, como la franja de arriba del letrero.
-export function BrandName({ wordSize, eyebrowSize = ".44em", className = "" }: { wordSize: string; eyebrowSize?: string; className?: string }) {
+// «La Vaca Fifí / cabañas · restaurante · café».
+export function BrandName({ wordSize, eyebrowSize = ".5em", className = "" }: { wordSize: string; eyebrowSize?: string; className?: string }) {
   return (
-    <span className={`flex min-w-0 flex-col gap-[.2em] leading-none ${className}`} style={{ fontSize: wordSize }}>
+    <span className={`flex min-w-0 flex-col gap-[.14em] leading-none ${className}`} style={{ fontSize: wordSize }}>
       <Wordmark />
-      <span className="font-wordmark font-extrabold tracking-[.14em] whitespace-nowrap opacity-75" style={{ fontSize: eyebrowSize }}>
-        cabañas · restaurante
+      <span className="brand-eyebrow font-body font-extrabold tracking-[.12em] whitespace-nowrap uppercase opacity-80" style={{ fontSize: eyebrowSize }}>
+        cabañas · restaurante · café
       </span>
     </span>
   );
 }
 
-// Logo + «La Vaca Fifí / cabañas · restaurante».
-export function Brand({ size = 46, wordSize = "1.4rem", eyebrowSize = ".64rem", eager = false }) {
+// Logo + nombre.
+export function Brand({ size = 46, wordSize = "1.4rem", eyebrowSize = ".5em", eager = false }) {
   return (
     <>
       <Logo size={size} eager={eager} />

@@ -9,9 +9,10 @@ import {
 import { api } from "@/lib/api";
 import { config, isMockApi } from "@/lib/config";
 import { resizeImage, type Crop } from "@/lib/image-resize";
-import { PHOTO_SLOTS, TEXT_LIMITS, fmtTime, type PhotoSlotDef, type SitePolicy, type SiteSettings, type SiteTexts } from "@/lib/site";
+import { PHOTO_SLOTS, TEXT_LIMITS, fifiPhrases, fmtTime, type PhotoSlotDef, type SitePolicy, type SiteSettings, type SiteTexts } from "@/lib/site";
 import { themeIssues, type SiteTheme } from "@/lib/theme";
 import { Combobox } from "@/components/ui/combobox";
+import { Fifi } from "@/components/fifi/fifi";
 import { useAdmin } from "./context";
 import { CONTENT_GROUPS, CONTENT_SECTIONS, MODULES, isContentSection, paths, type ContentSectionId } from "./routes";
 import { PhotoCropper } from "./photo-cropper";
@@ -178,18 +179,19 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
                   <Field label="Título (primera línea)" error={err("heroTitle")} hint={`${f.t.hero.title.length}/${TEXT_LIMITS.title}`}>
                     {(p) => <input {...p} type="text" maxLength={TEXT_LIMITS.title} value={f.t.hero.title} onChange={(e) => setT("hero", { title: e.target.value })} className={adminInput} />}
                   </Field>
-                  <Field label="Título resaltado (segunda línea)" hint={`${f.t.hero.highlight.length}/${TEXT_LIMITS.highlight}`}>
+                  <Field label="Título resaltado (va subrayado con la lengua de Fifí)" hint={`${f.t.hero.highlight.length}/${TEXT_LIMITS.highlight}`}>
                     {(p) => <input {...p} type="text" maxLength={TEXT_LIMITS.highlight} value={f.t.hero.highlight} onChange={(e) => setT("hero", { highlight: e.target.value })} className={adminInput} />}
                   </Field>
                 </div>
                 <Field
-                  label="Frases que se alternan con el título resaltado (opcional)"
+                  label="Lo que dice Fifí (opcional)"
                   error={err("heroRotating")}
-                  hint={`Una por línea, hasta ${TEXT_LIMITS.rotatingLines}. En la portada cambian solas, letra por letra: «en Murillo, Tolima» → «con vista a la montaña»… Déjalo vacío para que no cambie.`}
+                  hint={`Una frase por línea, hasta ${TEXT_LIMITS.rotatingLines}, de máximo ${TEXT_LIMITS.highlight} caracteres. Aparecen una tras otra en el globo de Fifí. Déjalo vacío para que no hable.`}
                 >
-                  {(p) => <textarea {...p} rows={3} maxLength={TEXT_LIMITS.rotating} value={f.t.hero.rotating} onChange={(e) => setT("hero", { rotating: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} placeholder={"la Vía Láctea\nel cielo andino"} />}
+                  {(p) => <textarea {...p} rows={3} maxLength={TEXT_LIMITS.rotating} value={f.t.hero.rotating} onChange={(e) => setT("hero", { rotating: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} placeholder={"¡Muuuy bienvenidos!\nEl café va por mi cuenta"} />}
                 </Field>
-                <Field label="Etiqueta junto al título" hint="Corta. Ej. «A 5 minutos de Murillo · 9,2 en Booking.com».">
+                <Field label="Etiqueta sobre el título" hint="Corta. Ej. «A 5 minutos de Murillo, Tolima».">
+
                   {(p) => <input {...p} type="text" maxLength={TEXT_LIMITS.badge} value={f.t.hero.badge} onChange={(e) => setT("hero", { badge: e.target.value })} className={adminInput} />}
                 </Field>
                 <Field label="Descripción" hint={`${f.t.hero.description.length}/${TEXT_LIMITS.description}`}>
@@ -198,11 +200,11 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
               </div>
               <HeroPreview t={f.t} theme={f.theme} />
             </Card>
-            <PhotoGroups groups={["Portada · banner grande", "Portada · banners pequeños"]} />
+            <PhotoGroups groups={["Foto principal"]} />
           </>
         )}
 
-        {id === "experiencias" && <PhotoGroups groups={["La finca"]} />}
+        {id === "experiencias" && <PhotoGroups groups={["Restaurante", "La finca"]} />}
 
         {id === "colores" && <ThemeEditor theme={f.theme} saved={saved.theme} onChange={setTheme} />}
 
@@ -386,16 +388,21 @@ function HeroPreview({ t, theme }: { t: SiteTexts; theme: SiteTheme }) {
         <CheckIcon size={14} />
         Vista previa
       </h3>
-      <div aria-hidden="true" style={themeStyle(theme)} className="flex flex-col gap-4 rounded-lg bg-surface p-5 text-on-dark">
-        <p className="display text-[2.6rem] leading-[.9]">
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>{t.hero.title || "Título"}</span>
-            {t.hero.badge && <span className="rounded-sm bg-card px-2 py-1 font-body text-[.62rem] leading-tight font-semibold tracking-normal text-on-light normal-case">{t.hero.badge}</span>}
-          </span>
-          {t.hero.highlight && <span className="block text-accent">{t.hero.highlight}</span>}
+      {/* La portada en pequeño: el cartel azul, el título en letras de cartel, la descripción y Fifí con su globo. */}
+      <div aria-hidden="true" style={themeStyle(theme)} className="relative flex flex-col gap-3 overflow-hidden rounded-[22px] border-[3px] border-on-dark bg-[color-mix(in_srgb,var(--color-accent)_62%,white)] p-5 text-on-dark">
+        {t.hero.badge && <span className="self-start rounded-full border-2 border-on-dark bg-highlight px-2.5 py-0.5 text-[.66rem] font-extrabold text-on-light">{t.hero.badge}</span>}
+        <p className="display text-[2.1rem] leading-[1]">
+          <span className="poster-text text-card">{t.hero.title || "Título"}</span>{" "}
+          {t.hero.highlight && <span className="poster-text text-highlight">{t.hero.highlight}</span>}
         </p>
-        <p className="text-[.85rem] text-on-dark-muted">{t.hero.description}</p>
-        <span className="btn btn-cta min-h-10 self-start px-4 text-[.8rem]">Reservar ahora</span>
+        <p className="max-w-[34ch] text-[.8rem] font-bold">{t.hero.description}</p>
+        <div className="flex items-end justify-between gap-3">
+          <span className="btn btn-cta min-h-10 px-4 text-[.8rem]">Reservar cabaña</span>
+          <span className="flex w-[42%] flex-col items-end gap-2">
+            {fifiPhrases(t.hero)[0] && <span className="rounded-xl border-2 border-on-dark bg-card px-2 py-1 font-display text-[.72rem] leading-tight text-on-light">{fifiPhrases(t.hero)[0]}</span>}
+            <Fifi className="w-full" />
+          </span>
+        </div>
       </div>
     </section>
   );

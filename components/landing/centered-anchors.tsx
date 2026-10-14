@@ -1,15 +1,17 @@
 "use client";
 
-// Navegación a secciones de la portada (#cabanas, #reserva…): la sección queda centrada en la pantalla si cabe en ella;
-// si es más alta, se muestra desde el inicio de su contenido (sin el margen superior de la sección), con un poco de aire.
+// Navegación a secciones de la portada (#cabanas, #reserva…): la sección queda centrada en la parte visible de la
+// pantalla (bajo la barra fija, que publica su alto en --header-offset) si cabe en ella; si es más alta, se muestra
+// desde el inicio de su contenido (sin el margen superior de la sección), con un poco de aire.
 import { useEffect } from "react";
 
 const AIR = 24;
 
 export function scrollToSection(el: HTMLElement, smooth = true) {
   const r = el.getBoundingClientRect();
-  const vh = window.innerHeight;
-  const top = r.top + window.scrollY;
+  const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-offset")) || 0;
+  const vh = window.innerHeight - bar;
+  const top = r.top + window.scrollY - bar;
   // +2: las secciones de pantalla completa miden el alto de la ventana con decimales.
   const target = r.height <= vh + 2 ? top - Math.max(0, vh - r.height) / 2 : top + Math.max(0, parseFloat(getComputedStyle(el).paddingTop) - AIR);
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;

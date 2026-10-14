@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { FIFI } from "./fifi/fifi-paths";
 
 type IconProps = { size?: number; stroke?: number; className?: string; style?: CSSProperties };
 
@@ -101,24 +102,19 @@ export const StarIcon = ({ size = 18 }: IconProps) => (
   </svg>
 );
 
-export const SparkleIcon = ({ size = 18, className, style }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={className} style={style}>
-    <path d="M12 0C12.9 7.6 16.4 11.1 24 12C16.4 12.9 12.9 16.4 12 24C11.1 16.4 7.6 12.9 0 12C7.6 11.1 11.1 7.6 12 0Z" className="fill-highlight" />
-  </svg>
-);
-
-// Silueta de la cabeza de la vaca del logo (lienzo 48×48) para el ícono de las notificaciones de Android, que solo usa
-// la forma (lib/app-icon.tsx). Cada trazo se rellena con evenodd: los ojos y las fosas nasales quedan calados. El logo
-// de la marca es la imagen de components/brand.tsx.
-export const MARK_COW = [
-  // Cuernos
-  "M18.5 13.5C17.5 10.5 15.5 8.5 13 8C14 9.5 15 12 16.5 15ZM29.5 13.5C30.5 10.5 32.5 8.5 35 8C34 9.5 33 12 31.5 15Z",
-  // Orejas
-  "M17.5 17C14 15 9.5 15.5 7 18C9.5 21 14 21.5 17.5 20.5ZM30.5 17C34 15 38.5 15.5 41 18C38.5 21 34 21.5 30.5 20.5Z",
-  // Cabeza con los ojos calados
-  "M17 14C18 10 30 10 31 14C32.5 19 32 25 31 28L17 28C16 25 15.5 19 17 14ZM18.9 20.5a1.6 1.9 0 1 0 3.2 0a1.6 1.9 0 1 0 -3.2 0ZM25.9 20.5a1.6 1.9 0 1 0 3.2 0a1.6 1.9 0 1 0 -3.2 0Z",
-  // Hocico con las fosas nasales caladas
-  "M14.5 31.5a9.5 6.5 0 1 0 19 0a9.5 6.5 0 1 0 -19 0ZM19.6 31.2a1.4 2 0 1 0 2.8 0a1.4 2 0 1 0 -2.8 0ZM25.6 31.2a1.4 2 0 1 0 2.8 0a1.4 2 0 1 0 -2.8 0Z",
+// Silueta de Fifí (trazos de components/fifi/fifi-paths.ts, encuadre MARK_FIFI_VIEWBOX) para el ícono de las
+// notificaciones de Android, que solo usa la forma (lib/app-icon.tsx). Cada trazo se rellena con evenodd: los ojos y
+// la fosa nasal quedan calados. El logo de la marca es la imagen de components/brand.tsx.
+export const MARK_FIFI_VIEWBOX = "14 14 330 282";
+export const MARK_FIFI = [
+  FIFI.hornLeft,
+  FIFI.hornRight,
+  FIFI.earLeft,
+  FIFI.earRight,
+  `${FIFI.head}M130 172a26 29 0 1 0 52 0a26 29 0 1 0 -52 0ZM204 154a24 27 0 1 0 48 0a24 27 0 1 0 -48 0Z`,
+  `${FIFI.muzzle}M79 244a21 12 0 1 0 42 0a21 12 0 1 0 -42 0Z`,
+  FIFI.tongue,
+  FIFI.tag,
 ];
 
 // Una huella (mascotas).
