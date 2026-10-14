@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { BookingProvider, BookingWidget, CabinReserveButton } from "@/components/landing/booking";
 import { CenteredAnchors } from "@/components/landing/centered-anchors";
@@ -16,7 +17,7 @@ import { ArrowRightIcon, LoginIcon, LogoutIcon, PhoneIcon, PinIcon, WhatsAppFabI
 import { config, type Cabin } from "@/lib/config";
 import { getSiteCabins } from "@/lib/server/cabins";
 import { getSite } from "@/lib/server/site";
-import { fifiPhrases, type SiteConfig } from "@/lib/site";
+import type { SiteConfig } from "@/lib/site";
 import { EXPERIENCES, HIGHLIGHTS, RATING } from "@/lib/content";
 import { cop, dirHref, tel, wa } from "@/lib/format";
 
@@ -138,7 +139,6 @@ export default async function HomePage() {
   const [cabins, { c: site, photos, texts, services: allServices }] = await Promise.all([getSiteCabins(), getSite()]);
   const services = allServices.filter((s) => s.visible);
   const fromPrice = cabins.length ? Math.min(...cabins.map((c) => c.couple)) : 0;
-  const says = fifiPhrases(texts.hero);
   return (
     <div id="top" className="@container relative overflow-x-clip">
       <SiteTheme />
@@ -148,17 +148,27 @@ export default async function HomePage() {
 
       <main>
         <BookingProvider cabins={cabins}>
-          {/* Portada: un cartel como el del restaurante. Cielo azul con lomas blancas y la guirnalda de flores al pie; a
-              la izquierda el título en letras de cartel (lo resaltado, subrayado con la lengua) y las acciones; a la
-              derecha Fifí relamiéndose junto a su café, con su globo y la insignia de la calificación. En el celular el
-              texto va primero y Fifí debajo. */}
+          {/* Portada: la foto de la entrada con la guirnalda de flores al pie, como el letrero del restaurante. A la
+              izquierda el título en letras de cartel (lo resaltado, subrayado con la lengua) y las acciones; a la
+              derecha el letrero de la foto y la insignia de la calificación. En el celular el texto va primero. */}
           <section aria-labelledby="hero-title" className="gutter-1360 pt-[clamp(14px,2.4vw,30px)]">
-            <div className="sticker relative isolate overflow-hidden rounded-[clamp(28px,4vw,48px)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent)_74%,white)_0%,color-mix(in_srgb,var(--color-accent)_48%,white)_72%)]">
-              <svg aria-hidden="true" viewBox="0 0 1200 400" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 -z-1 h-[52%] w-full">
-                <path d="M0 170C150 110 300 190 470 150C640 110 760 60 930 110C1060 150 1130 120 1200 100V400H0Z" fill="#ffffff" opacity={0.6} />
-                <path d="M0 250C200 196 380 268 600 226C820 184 980 236 1200 204V400H0Z" fill="#ffffff" />
-              </svg>
-              <div className="grid items-center gap-x-6 gap-y-2 px-[clamp(20px,4.5vw,72px)] pt-[clamp(26px,4.5vw,64px)] pb-[clamp(84px,10vw,140px)] lg:grid-cols-[minmax(0,1.08fr)_minmax(0,.92fr)]">
+            <div className="sticker relative isolate overflow-hidden rounded-[clamp(28px,4vw,48px)] bg-accent">
+              {/* Foto real de la entrada (letrero, parque y portón) de fondo. Un velo azul cielo cubre la mitad izquierda
+                  hasta el portón de la foto (deja leer el título) y deja ver el letrero de la derecha. */}
+              <Image
+                src="/fotos/entrada-letrero.jpg"
+                alt=""
+                fill
+                priority
+                quality={90}
+                sizes="(min-width: 1400px) 1360px, 100vw"
+                className="-z-3 object-cover object-[70%_55%]"
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 -z-2 bg-[linear-gradient(90deg,color-mix(in_srgb,color-mix(in_srgb,var(--color-accent)_55%,white)_94%,transparent)_0%,color-mix(in_srgb,color-mix(in_srgb,var(--color-accent)_55%,white)_86%,transparent)_47%,color-mix(in_srgb,var(--color-accent)_35%,transparent)_51%,transparent_56%)] max-lg:bg-[linear-gradient(180deg,color-mix(in_srgb,color-mix(in_srgb,var(--color-accent)_55%,white)_92%,transparent)_0%,color-mix(in_srgb,color-mix(in_srgb,var(--color-accent)_55%,white)_86%,transparent)_68%,transparent_86%)]"
+              />
+              <div className="grid items-center gap-x-6 gap-y-2 px-[clamp(20px,4.5vw,72px)] pt-[clamp(26px,4.5vw,64px)] pb-[clamp(84px,10vw,140px)] lg:pb-[min(calc(10cqi+28px),164px)] lg:grid-cols-[minmax(0,1.08fr)_minmax(0,.92fr)]">
                 <div className="flex flex-col items-start gap-[clamp(14px,2vw,22px)]">
                   {texts.hero.badge && (
                     <Tag className="text-[.92rem]">
@@ -183,12 +193,10 @@ export default async function HomePage() {
                   {fromPrice > 0 && <p className="text-[.95rem] font-extrabold">{`Desde ${cop(fromPrice)} la noche para 2, con desayuno.`}</p>}
                 </div>
 
-                <div className="relative mx-auto w-full max-w-[min(100%,440px)] pt-[clamp(64px,8vw,96px)] lg:max-w-[600px]">
-                  <SpeechBubble phrases={says} className="absolute top-0 left-0 z-2 max-w-[62%]" />
-                  <div className="motion-safe:animate-fifi-bob">
-                    <Fifi cup title="Fifí, la vaca de La Vaca Fifí, se relame junto a su taza de café" />
-                  </div>
-                  <p className="sticker-sm absolute top-[clamp(4px,1vw,14px)] right-0 grid size-[clamp(86px,9vw,112px)] rotate-[9deg] place-items-center rounded-full bg-highlight text-center text-on-light">
+                {/* Lado derecho libre para que se vea el letrero de la foto; solo la insignia de la calificación. En el
+                    celular deja una ventana de foto bajo el texto. */}
+                <div className="relative min-h-[clamp(150px,42vw,240px)] lg:min-h-0 lg:self-stretch">
+                  <p className="sticker-sm absolute top-0 right-0 grid size-[clamp(86px,9vw,112px)] rotate-[9deg] place-items-center rounded-full bg-highlight text-center text-on-light">
                     <span className="flex flex-col items-center leading-none">
                       <span className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)]">{RATING.score}</span>
                       <span className="mt-0.5 text-[.58rem] font-extrabold uppercase">en Booking</span>
@@ -196,7 +204,10 @@ export default async function HomePage() {
                   </p>
                 </div>
               </div>
-              <FlowerBorder className="absolute inset-x-0 bottom-0 h-[clamp(60px,8vw,104px)]" />
+              {/* Cantero de flores: en el celular de lado a lado; en escritorio solo abajo a la izquierda, hasta donde
+                  termina el velo azul (56 %). */}
+              <FlowerBorder className="absolute inset-x-0 bottom-0 h-[clamp(72px,9vw,120px)] w-full lg:hidden" />
+              <FlowerBorder side="left" className="absolute bottom-0 left-0 hidden aspect-[600/130] w-[56%] lg:block" />
             </div>
           </section>
 

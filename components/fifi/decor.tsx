@@ -91,28 +91,73 @@ export function FlowerShape({ x, y, r, color, turn = 0 }: { x: number; y: number
   );
 }
 
-// Guirnalda de flores y hojas a lo ancho (como el borde de abajo del letrero). Llena su contenedor apoyada abajo.
-const GARDEN = (() => {
-  const rnd = random(17);
-  const leaves: string[] = [];
-  const flowers: { x: number; y: number; r: number; color: string; turn: number }[] = [];
-  for (let x = -10; x < 1220; x += 34 + rnd() * 26) {
-    const lx = x + rnd() * 20;
-    const h = 30 + rnd() * 40;
-    const lean = (rnd() - 0.5) * 30;
-    leaves.push(`M${r1(lx)} 130C${r1(lx - 14 + lean)} ${r1(130 - h * 0.5)} ${r1(lx + lean)} ${r1(130 - h)} ${r1(lx + lean * 0.6)} ${r1(130 - h)}C${r1(lx + 12 + lean)} ${r1(130 - h * 0.6)} ${r1(lx + 8)} ${r1(118)} ${r1(lx)} 130Z`);
-    flowers.push({ x: x + 10 + rnd() * 16, y: 62 + rnd() * 52, r: 9 + rnd() * 13, color: PETALS[Math.floor(rnd() * PETALS.length)], turn: rnd() * 72 });
-  }
-  return { leaves: leaves.join(""), flowers: flowers.sort((a, b) => a.y - b.y) };
-})();
+// Cantero de flores (como el borde de abajo del letrero): una franja de pasto, hojas en dos verdes y dos filas de
+// flores con tallo (atrás más pequeñas, adelante más grandes), todo con contorno de tinta para que se lea sobre una
+// foto. Llena su contenedor apoyado abajo. side="left": un tramo más corto que termina a la derecha en una lomita de
+// pasto (sin corte seco), para la esquina inferior izquierda de la portada.
+const LEAF = ["#3f9a3a", "#2f7d2e"];
 
-export function FlowerBorder({ className = "" }: { className?: string }) {
+function garden(w: number, seed: number, taper = false) {
+  const rnd = random(seed);
+  const leaves: { d: string; fill: string }[] = [];
+  const stems: string[] = [];
+  const flowers: { x: number; y: number; r: number; color: string; turn: number }[] = [];
+  let last = "";
+  const pick = () => {
+    let c = PETALS[Math.floor(rnd() * PETALS.length)];
+    if (c === last) c = PETALS[(PETALS.indexOf(c) + 3) % PETALS.length];
+    return (last = c);
+  };
+  // Con taper, todo termina antes del borde derecho y las hojas del final son más bajitas.
+  const end = taper ? w - 26 : w + 20;
+  for (let x = -14; x < end; x += 16 + rnd() * 14) {
+    const h = (34 + rnd() * 44) * (taper ? Math.min(1, 0.45 + (w - x) / 160) : 1);
+    const lean = (rnd() - 0.5) * 34;
+    leaves.push({
+      d: `M${r1(x)} 132C${r1(x - 12 + lean)} ${r1(132 - h * 0.5)} ${r1(x + lean)} ${r1(132 - h)} ${r1(x + lean * 0.6)} ${r1(132 - h)}C${r1(x + 12 + lean)} ${r1(132 - h * 0.6)} ${r1(x + 9)} 120 ${r1(x + 4)} 132Z`,
+      fill: LEAF[Math.floor(rnd() * 2)],
+    });
+  }
+  // Tres filas intercaladas (atrás, al medio y adelante).
+  for (const [start, gap, yMin, yRange, rMin, rRange] of [
+    [6, 40, 30, 20, 9, 4],
+    [24, 46, 50, 18, 11, 5],
+    [-4, 48, 70, 24, 14, 6],
+  ]) {
+    for (let x = start; x < (taper ? w - 60 + start / 2 : w + 20); x += gap + rnd() * 14) {
+      const f = { x: x + rnd() * 10, y: yMin + rnd() * yRange, r: rMin + rnd() * rRange, color: pick(), turn: rnd() * 72 };
+      stems.push(`M${r1(f.x)} ${r1(f.y)}Q${r1(f.x + (rnd() - 0.5) * 16)} ${r1((f.y + 130) / 2)} ${r1(f.x + (rnd() - 0.5) * 8)} 132`);
+      flowers.push(f);
+    }
+  }
+  // Pasto ondulado; con taper baja al final hasta el borde de abajo en una lomita.
+  const grassEnd = taper ? w - 40 : w;
+  let grass = "M0 118";
+  for (let x = 0, i = 0; x < grassEnd; i++) {
+    x = Math.min(grassEnd, x + 70 + rnd() * 30);
+    grass += `S${r1(x - 30)} ${i % 2 ? 110 : 122} ${r1(x)} ${r1(113 + rnd() * 6)}`;
+  }
+  if (taper) grass += `C${w - 20} 116 ${w - 8} 122 ${w} 131`;
+  return { w, leaves, stems: stems.join(""), flowers: flowers.sort((a, b) => a.y - b.y), grass: `${grass}V131H0Z` };
+}
+
+const GARDENS = { full: garden(1200, 17), left: garden(600, 23, true) };
+
+export function FlowerBorder({ side = "full", className = "" }: { side?: keyof typeof GARDENS; className?: string }) {
+  const g = GARDENS[side];
   return (
-    <svg aria-hidden="true" viewBox="0 0 1200 130" preserveAspectRatio="xMidYMax slice" className={`block w-full ${className}`}>
-      <path d={GARDEN.leaves} fill="#3f9a3a" />
-      {GARDEN.flowers.map((f, i) => (
-        <FlowerShape key={i} {...f} />
-      ))}
+    <svg aria-hidden="true" viewBox={`0 0 ${g.w} 130`} preserveAspectRatio={side === "full" ? "xMidYMax slice" : "xMinYMax meet"} className={`block ${className}`}>
+      <path d={g.stems} fill="none" stroke="#2f7d2e" strokeWidth={3.5} strokeLinecap="round" />
+      <g stroke="var(--color-on-dark)" strokeWidth={2} strokeLinejoin="round">
+        {g.leaves.map((l, i) => (
+          <path key={i} d={l.d} fill={l.fill} />
+        ))}
+        {g.flowers.map((f, i) => (
+          <FlowerShape key={i} {...f} />
+        ))}
+      </g>
+      {/* Franja de pasto donde se apoya el cantero. */}
+      <path d={g.grass} fill="#3f9a3a" stroke="var(--color-on-dark)" strokeWidth={2.5} strokeLinejoin="round" />
     </svg>
   );
 }

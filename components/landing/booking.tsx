@@ -252,9 +252,9 @@ export function BookingWidget() {
   const datesFocused = s.open === "dates";
 
   return (
-    // Una calcomanía grande que se monta sobre el pie del cartel de la portada. scroll-mt: al llegar con «Reservar»
-    // (#reserva), el módulo queda con aire bajo la barra fija en vez de pegado a ella.
-    <section id="reserva" aria-labelledby="reserva-title" className="gutter-1360 relative z-5 -mt-[clamp(28px,4vw,56px)] scroll-mt-[calc(var(--header-offset,76px)+16px)]">
+    // Una calcomanía grande, separada del cartel de la portada (no se monta sobre las flores). scroll-mt: al llegar
+    // con «Reservar» (#reserva), el módulo queda con aire bajo la barra fija en vez de pegado a ella.
+    <section id="reserva" aria-labelledby="reserva-title" className="gutter-1360 relative z-5 mt-[clamp(20px,3vw,40px)] scroll-mt-[calc(var(--header-offset,76px)+16px)]">
       <div ref={ref} className="sticker flex flex-col gap-5 rounded-[30px] bg-card p-[calc(16px_+_1cqi)] text-on-light">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-1">
           <h2 id="reserva-title" className="display text-[clamp(1.9rem,3vw,2.4rem)] leading-none">
