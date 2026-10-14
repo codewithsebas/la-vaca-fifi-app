@@ -1,11 +1,13 @@
 import type { CSSProperties } from "react";
 import { PhotoSlot } from "../photo-slot";
+import { FAUNA_TONES, HolsteinCow } from "./fauna";
 import { pine } from "./scenery";
 
 // Paisaje de la portada: la cordillera nevada con el Nevado del Ruiz y su fumarola, colinas en capas, pinos y, sobre
-// una loma, el domo encendido con su jacuzzi, el telescopio, las luces y la fogata. Es una sola ilustración (de x -200
+// una loma, la cabaña de colores encendida con su baranda de palos pintados, las luces, la fogata y La Vaca Fifí
+// pastando al lado. Es una sola ilustración (de x -200
 // a 1640 y de y 0 a 600) que llena su contenedor apoyada en el borde inferior: lo que sobra se recorta por arriba
-// (cielo) y por los lados. En pantallas angostas se centra entre el nevado y el domo (x = 860), así que lo importante
+// (cielo) y por los lados. En pantallas angostas se centra entre el nevado y la cabaña (x = 860), así que lo importante
 // va entre x 580 y 1140 y por debajo de y = 170. En pantallas anchas y bajas (o con zoom) la ilustración se ajusta al
 // ancho y el recorte de arriba crece: para que las cumbres (desde y = 150, con la fumarola) no se corten, el
 // contenedor debe medir de alto al menos 450 / 1840 ≈ 24,5 % de su ancho (lo asegura la portada, app/page.tsx). El
@@ -50,7 +52,7 @@ const HILL =
   "M-240 640V398C-180 388-100 400-40 416L0 420C120 380 220 350 330 372C430 392 500 440 600 430C720 418 800 340 920 330C1040 320 1120 400 1240 410C1320 416 1390 390 1440 372L1480 366C1540 356 1600 366 1680 384V640Z";
 // Pliegues de las colinas: las laderas que quedan en sombra.
 const HILL_FOLDS = ["M330 372C400 384 470 420 540 436C460 440 380 452 300 480C310 440 320 400 330 372Z", "M920 330C990 326 1060 350 1130 390C1060 392 990 404 930 424C926 392 922 360 920 330Z"];
-// La loma del domo: su cima queda en (960, 394).
+// La loma de la cabaña: su cima queda en (960, 394).
 const HILL_NEAR =
   "M-240 640V492C-170 472-90 468-40 472L0 470C100 450 200 462 300 480C420 502 520 520 640 500C760 480 840 400 960 394C1080 388 1180 470 1280 490C1350 504 1400 500 1440 492L1480 488C1540 480 1600 486 1680 500V640Z";
 const FRONT = "M-240 640V566C-160 548-80 540-40 544L0 540C140 500 300 520 460 548C600 572 760 580 900 560C1060 538 1240 520 1440 548L1480 552C1540 558 1600 552 1680 540V640Z";
@@ -68,11 +70,14 @@ const PINES_NEAR: Tree[] = [
 const PINES_FRONT: Tree[] = [[-160, 566, 220], [-92, 556, 150], [26, 552, 96], [1410, 552, 110], [1500, 560, 190], [1584, 564, 250]];
 const trees = (list: Tree[]) => list.map(([x, base, h]) => pine(x, base, h)).join("");
 
-// Domo geodésico (centro de la base en 960, 428; toda la terraza se dibuja ahí, y se amplía y sube a la cima de la loma).
-const DOME = "M908 428L915 402L934 383L960 376L986 383L1005 402L1012 428Z";
-const DOME_STRUTS = "M915 402H1005M934 383L946 402L960 376L974 402L986 383M915 402L926 428L946 402L960 428L974 402L994 428L1005 402";
-const DOME_LIT = "M946 402L960 376L974 402L960 428Z";
-const BULBS: [x: number, y: number][] = [[1002, 392], [1018, 396], [1034, 397], [1050, 394]];
+// Cabaña de colores (centro de la base en 960, 428; toda la terraza se dibuja ahí, y se amplía y sube a la cima de la
+// loma): paredes claras, techo de lámina, puerta, ventanas encendidas, pilares y baranda de palos pintados, como las de
+// la finca.
+const ROOF = "M900 405L960 379L1020 405Z";
+const WINDOWS = [944, 978];
+const PICKETS = Array.from({ length: 11 }, (_, i) => 966 + i * 3.6);
+const PICKET_TONES = ["fill-accent", "fill-highlight", "fill-card", "fill-cta"];
+const BULBS: [x: number, y: number][] = [[1013, 403], [1027, 405], [1040, 404], [1053, 399]];
 const FIREFLIES: [x: number, y: number][] = [[-120, 530], [120, 522], [238, 548], [384, 562], [566, 556], [706, 572], [1178, 540], [1292, 560], [1362, 524], [1560, 536]];
 
 // Cuánto se desplaza una capa al mover el mouse (las cercanas, más).
@@ -90,9 +95,9 @@ const PHOTOS: { id: string; tilt: string }[] = [
 
 export function HeroScene({ photos, className = "" }: { photos: Record<string, string>; className?: string }) {
   return (
-    <div className={`relative overflow-hidden ${className}`} style={TONES}>
+    <div className={`relative overflow-hidden ${className}`} style={{ ...TONES, ...FAUNA_TONES }}>
       {/* En pantallas angostas la ilustración toma el alto del contenedor y se centra en x = 860 (57,6 % de su ancho),
-          entre el nevado y el domo; desde md llena el contenedor centrada, recortando el cielo que sobre. */}
+          entre el nevado y la cabaña; desde md llena el contenedor centrada, recortando el cielo que sobre. */}
       <svg
         viewBox="-200 0 1840 600"
         preserveAspectRatio="xMidYMax slice"
@@ -153,38 +158,46 @@ export function HeroScene({ photos, className = "" }: { photos: Record<string, s
           </g>
         </g>
 
-        {/* Loma del domo */}
+        {/* Loma de la cabaña */}
         <g style={depth(17, 8)}>
           <g className="motion-safe:animate-land-rise" style={rise(360)}>
             <circle cx={960} cy={374} r={128} fill="url(#sc-glow)" className="motion-safe:animate-glow" />
             <path d={HILL_NEAR} className="fill-(--sc-hill-near)" />
             <path d={trees(PINES_NEAR)} className="fill-(--sc-pine)" />
 
-            {/* Terraza: jacuzzi con vapor, domo, telescopio y luces */}
+            {/* Terraza: la cabaña de colores con su baranda y las luces */}
             <g transform="translate(960 398) scale(1.22) translate(-960 -428)">
             <g className="fill-(--sc-dark) stroke-(--sc-dark)" strokeWidth={0}>
-              <rect x={882} y={428} width={174} height={5} rx={2} />
-              {[892, 940, 992, 1044].map((x) => (
+              <rect x={904} y={428} width={152} height={5} rx={2} />
+              {[912, 960, 1006, 1044].map((x) => (
                 <rect key={x} x={x} y={432} width={3} height={10} />
               ))}
               <path d="M1066 386V438" fill="none" strokeWidth={2} strokeLinecap="round" />
-              <path d="M1034 414L1028 428M1034 414L1040 428M1034 414V428" fill="none" strokeWidth={1.6} strokeLinecap="round" />
-              <path d="M1026 419L1045 407" fill="none" strokeWidth={4} strokeLinecap="round" />
             </g>
-            <rect x={885} y={419} width={20} height={9} rx={3} className="fill-[color-mix(in_srgb,var(--color-accent)_70%,var(--color-card))]" />
-            <g className="fill-(--sc-snow)">
-              {[0, 2.4].map((d) => (
-                <circle key={d} cx={895} cy={412} r={4} opacity={0} className="svg-pivot motion-safe:animate-steam" style={{ animationDelay: `${-d}s`, animationDuration: "5s" }} />
-              ))}
-            </g>
-            <path d={DOME} className="fill-highlight" />
-            <path d={DOME_LIT} className="fill-[color-mix(in_srgb,var(--color-highlight)_50%,var(--color-card))]" />
-            <path d={DOME_STRUTS} fill="none" strokeWidth={1.7} strokeLinejoin="round" className="stroke-[color-mix(in_srgb,var(--color-bg)_80%,var(--color-highlight))]" />
-            <path d="M986 384Q1026 408 1066 388" fill="none" strokeWidth={1} className="stroke-(--sc-dark)" />
+            <rect x={912} y={403} width={96} height={25} className="fill-[color-mix(in_srgb,var(--color-card)_86%,var(--color-highlight))]" />
+            <rect x={922} y={410} width={11} height={18} rx={1} className="fill-[color-mix(in_srgb,var(--color-accent)_55%,var(--color-bg))]" />
+            {WINDOWS.map((x) => (
+              <g key={x}>
+                <rect x={x} y={409} width={16} height={10} className="fill-[color-mix(in_srgb,var(--color-highlight)_45%,var(--color-card))]" />
+                <path d={`M${x + 8} 409V419M${x} 414H${x + 16}`} fill="none" strokeWidth={1} className="stroke-(--sc-dark)" />
+              </g>
+            ))}
+            <path d={ROOF} className="fill-highlight" />
+            <path d="M900 405L960 379L1020 405" fill="none" strokeWidth={1.6} strokeLinejoin="round" className="stroke-[color-mix(in_srgb,var(--color-bg)_70%,var(--color-highlight))]" />
+            <rect x={912} y={405} width={3} height={23} className="fill-accent" />
+            <rect x={1005} y={405} width={3} height={23} className="fill-accent" />
+            <rect x={964} y={417.4} width={44} height={1.6} className="fill-card" />
+            {PICKETS.map((x, i) => (
+              <rect key={x} x={x} y={419} width={1.8} height={9} className={PICKET_TONES[i % PICKET_TONES.length]} />
+            ))}
+            <path d="M1000 396Q1034 412 1066 390" fill="none" strokeWidth={1} className="stroke-(--sc-dark)" />
             {BULBS.map(([x, y], i) => (
               <circle key={x} cx={x} cy={y} r={2.2} className="fill-highlight motion-safe:animate-star" style={{ animationDelay: `${-i * 0.9}s` }} />
             ))}
             </g>
+
+            {/* La Vaca Fifí, pastando en la ladera junto a la cabaña */}
+            <HolsteinCow x={798} y={398} width={44} />
 
             {/* Fogata, en la ladera */}
             <g transform="translate(0 -15)">
@@ -210,7 +223,7 @@ export function HeroScene({ photos, className = "" }: { photos: Record<string, s
         </g>
       </svg>
 
-      <ul aria-label="Fotos del glamping" className="no-scrollbar absolute inset-x-0 bottom-0 z-1 flex snap-x items-end gap-3 overflow-x-auto px-4 pt-4 pb-[clamp(10px,2.2svh,22px)] sm:justify-center">
+      <ul aria-label="Fotos de La Vaca Fifí" className="no-scrollbar absolute inset-x-0 bottom-0 z-1 flex snap-x items-end gap-3 overflow-x-auto px-4 pt-4 pb-[clamp(10px,2.2svh,22px)] sm:justify-center">
         {PHOTOS.map(({ id, tilt }, i) => (
           <li
             key={id}

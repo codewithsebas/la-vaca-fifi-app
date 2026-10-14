@@ -1,4 +1,4 @@
--- Reservas de Stellarium Glamping.
+-- Reservas de La Vaca Fifí.
 -- Acceso: el servidor Next.js usa la clave secreta (service_role) para las rutas públicas;
 -- el panel usa la sesión del administrador (authenticated + app_metadata.role = 'admin').
 -- El rol anon no tiene acceso a ninguna tabla.
@@ -132,7 +132,10 @@ revoke all on public.cabin_types, public.reservations, public.reservation_notes,
 grant select, insert, update, delete on public.cabin_types, public.reservations, public.reservation_notes, public.blocks to authenticated, service_role;
 grant usage, select on sequence public.reservation_notes_id_seq to authenticated, service_role;
 
--- Domos iniciales (ajusta `units` al número real de domos por tipo).
+-- Cabañas iniciales: los cuatro tipos de habitación que La Vaca Fifí publica en Booking.com. Tarifas de referencia
+-- (desde $160.000 la noche para 2 con desayuno); ajusta tarifas en el panel y `units` al número real de cabañas por tipo.
 insert into public.cabin_types (id, nombre, precio_pareja, persona_adicional, max_personas, units, badge, sort) values
-  ('pareja', 'Domo Pareja', 470000, 50000, 2, 1, 'Jacuzzi privado', 1),
-  ('familiar', 'Domo Familiar', 470000, 50000, 4, 1, 'Hasta 4 personas', 2);
+  ('doble', 'Cabaña Doble', 160000, 40000, 2, 1, 'Desayuno incluido', 1),
+  ('dos-camas', 'Cabaña Dos Camas', 160000, 40000, 4, 1, 'Hasta 4 personas', 2),
+  ('familiar', 'Cabaña Familiar', 160000, 40000, 6, 1, 'Hasta 6 personas', 3),
+  ('familiar-vista', 'Cabaña Familiar con Vista', 160000, 40000, 4, 1, 'Vista a la montaña', 4);

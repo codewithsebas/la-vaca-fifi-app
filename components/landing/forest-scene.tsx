@@ -1,17 +1,17 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Wordmark } from "../brand";
-import { AndeanDeer, Condor, Cotinga, FAUNA, FAUNA_TONES, Hummingbird, MountainEagle, MountainTapir, Redstart, SpectacledBear, WhiteTailedEagle } from "./fauna";
+import { AndeanDeer, Condor, Cotinga, FAUNA, FAUNA_TONES, HolsteinCow, Hummingbird, MountainEagle, MountainTapir, Redstart, SpectacledBear, WhiteTailedEagle } from "./fauna";
 import { forest, frailejon, frailejonFlowers, pine, ridge, shrubs, type Pt } from "./scenery";
 
 // Paisaje del pie de página: el bosque andino de Murillo en capas, como se ve al caer la tarde desde la montaña. Al
 // fondo, el resplandor del cielo y la cordillera con el Nevado del Ruiz; después, laderas de pinos que bajan hacia un
 // valle entre franjas de niebla, las lomas cercanas, los pinos grandes del frente y el matorral con frailejones, cada
-// capa más oscura que la anterior (la perspectiva de la bruma). En él viven los animales de la zona.
+// capa más oscura que la anterior (la perspectiva de la bruma). En él viven los animales de la zona y, en la loma del
+// centro, La Vaca Fifí.
 // Es una sola ilustración (1440 × 560) que llena su contenedor apoyada en el borde inferior: en pantallas angostas se
 // recorta por los lados, así que los animales que caminan van entre x 240 y 1200. Las aves van fuera del SVG, en
-// posiciones relativas al contenedor, para que siempre se vean. Sobre la cordillera va escrito el nombre, como en el
-// logo: su tamaño y su posición siguen la escala de la ilustración (--s, px por unidad), así queda a la misma altura
-// en cualquier pantalla y el nevado asoma justo entre las dos palabras.
+// posiciones relativas al contenedor, para que siempre se vean. Sobre la cordillera va escrito el nombre, con la letra
+// del letrero: su tamaño y su posición siguen la escala de la ilustración (--s, px por unidad), así queda a la misma
+// altura en cualquier pantalla y el nevado asoma justo entre «La Vaca» y «Fifí».
 
 export const SCENE_TONES = {
   "--fs-glow": "color-mix(in srgb, var(--color-accent) 52%, var(--color-surface))",
@@ -89,19 +89,20 @@ export function ForestScene({ title = false, className = "" }: { title?: boolean
     <div role="img" aria-label={ARIA} className={`@container pointer-events-none relative h-(--scene-h) overflow-hidden [content-visibility:auto] ${className}`} style={{ ...SIZE, ...FAUNA_TONES }}>
       {/* Resplandor del cielo detrás de la cordillera, más cálido sobre el valle. */}
       <div className="absolute inset-0 bg-[radial-gradient(52%_46%_at_54%_58%,var(--fs-glow-warm),transparent_72%),radial-gradient(90%_62%_at_50%_62%,var(--fs-glow),transparent_78%)] opacity-80" />
-      {/* El nombre, con la letra y la S de estrellas del logo. El hueco entre las dos palabras cae sobre el nevado
-          (--dx desde el centro) y la línea de base (--base desde abajo) queda sobre la cordillera, que solo tapa las
-          colas de las letras. El tamaño es el menor de cuatro: 96 unidades de la ilustración (el nombre queda entre
-          los pinos grandes), lo que cabe a lo ancho («Stellarium» más medio hueco, 6.9em, hasta el borde izquierdo y
-          medio hueco más «glamping», 5.52em, hasta el derecho) y lo que cabe a lo alto (las ramas de la S, 1.52em
-          sobre la línea de base). El degradado va del tono claro, a la altura de las minúsculas, al de la cordillera. */}
+      {/* El nombre, con la letra del letrero. El hueco entre «La Vaca» y «Fifí» cae sobre el nevado (--dx desde el
+          centro) y la línea de base (--base desde abajo) queda sobre la cordillera. El tamaño es el menor de cuatro:
+          120 unidades de la ilustración (el nombre queda entre los pinos grandes), lo que cabe a lo ancho («La Vaca»
+          más medio hueco, 4.19em, hasta el borde izquierdo y medio hueco más «Fifí», 2.37em, hasta el derecho; medidos
+          en Alegreya SC) y lo que cabe a lo alto (las mayúsculas con la tilde de la í, .9em sobre la línea de base). La
+          línea de base queda a .288em del borde de abajo (el relleno de .12em más el descendente de la letra). El
+          degradado va del tono claro, arriba, al de la cordillera. */}
       {title && (
         <p
-          className="font-wordmark absolute -translate-x-[6.9em] bg-linear-to-b from-[color-mix(in_srgb,var(--color-accent)_62%,var(--color-card))] from-35% via-accent/75 via-76% to-(--fs-1) bg-clip-text pb-[.12em] leading-none font-normal whitespace-nowrap text-transparent [&_svg]:[fill:url(#forest-name)] [&_svg]:[stroke:url(#forest-name)]"
-          style={{ "--dx": `calc(var(--s) * ${NEVADO_X - W / 2})`, "--base": `calc(var(--s) * ${H - NAME_Y})`, "--font": `min(calc(var(--s) * 96), calc((50cqw + var(--dx) - 16px) / 6.9), calc((50cqw - var(--dx) - 8px) / 5.52), calc((var(--scene-h) - var(--base) - 40px) / 1.52))`, fontSize: "var(--font)", left: "calc(50% + var(--dx))", bottom: "calc(var(--base) - 0.265 * var(--font))" } as CSSProperties}
+          className="font-wordmark absolute -translate-x-[4.19em] bg-linear-to-b from-[color-mix(in_srgb,var(--color-accent)_62%,var(--color-card))] from-35% via-accent/75 via-76% to-(--fs-1) bg-clip-text pb-[.12em] leading-none font-extrabold whitespace-nowrap text-transparent"
+          style={{ "--dx": `calc(var(--s) * ${NEVADO_X - W / 2})`, "--base": `calc(var(--s) * ${H - NAME_Y})`, "--font": `min(calc(var(--s) * 120), calc((50cqw + var(--dx) - 16px) / 4.19), calc((50cqw - var(--dx) - 8px) / 2.37), calc((var(--scene-h) - var(--base) - 40px) / 0.9))`, fontSize: "var(--font)", left: "calc(50% + var(--dx))", bottom: "calc(var(--base) - 0.288 * var(--font))" } as CSSProperties}
         >
-          <Wordmark />
-          <span className="ml-[1.44em]">glamping</span>
+          La Vaca
+          <span className="ml-[1.44em]">Fifí</span>
         </p>
       )}
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" aria-hidden="true" className="absolute inset-0 size-full">
@@ -109,13 +110,6 @@ export function ForestScene({ title = false, className = "" }: { title?: boolean
           <clipPath id="forest-far">
             <path d={ridge(FAR, H)} />
           </clipPath>
-          {/* El degradado del nombre para la S, en sus unidades (213 de alto): los mismos tres tonos que las letras, a
-              las mismas alturas. */}
-          <linearGradient id="forest-name" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="213">
-            <stop offset="0.57" style={{ stopColor: "color-mix(in srgb, var(--color-accent) 62%, var(--color-card))" }} />
-            <stop offset="0.82" style={{ stopColor: "var(--color-accent)", stopOpacity: 0.75 }} />
-            <stop offset="0.965" style={{ stopColor: "var(--fs-1)" }} />
-          </linearGradient>
           <linearGradient id="forest-mist" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" style={{ stopColor: "var(--color-card)", stopOpacity: 0 }} />
             <stop offset="0.55" style={{ stopColor: "var(--color-card)", stopOpacity: 0.16 }} />
@@ -144,7 +138,8 @@ export function ForestScene({ title = false, className = "" }: { title?: boolean
         <path d={SLOPE_PINES} className="fill-(--fs-3)" />
         <Mist y={384} h={96} back />
 
-        {/* Lomas cercanas, con el oso que sale de detrás de los pinos y el venado en su rellano */}
+        {/* Lomas cercanas, con el oso que sale de detrás de los pinos, La Vaca Fifí pastando en el valle y el venado en
+            su rellano */}
         <path d={ridge(NEAR, H)} className="fill-(--fs-4)" />
         <path d={NEAR_PINES} className="fill-(--fs-4)" />
         <g transform="translate(250 344)">
@@ -152,6 +147,7 @@ export function ForestScene({ title = false, className = "" }: { title?: boolean
             <SpectacledBear width={100} className="pointer-events-auto" />
           </g>
         </g>
+        <HolsteinCow x={612} y={402} width={86} className="pointer-events-auto" />
         <AndeanDeer x={1036} y={357} width={84} className="pointer-events-auto" />
         <Mist y={448} h={100} />
 

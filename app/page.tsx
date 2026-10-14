@@ -6,7 +6,7 @@ import { CopyButton } from "@/components/landing/copy-button";
 import { HeroParallax, RotatingWords } from "@/components/landing/hero-motion";
 import { LandingHeader } from "@/components/landing/landing-header";
 import { HeroScene } from "@/components/landing/hero-scene";
-import { ShootingStar, Stars, StarWhale } from "@/components/landing/night-sky";
+import { ShootingStar, StarCow, Stars } from "@/components/landing/night-sky";
 import { Section, SectionHeader } from "@/components/landing/section";
 import { PhotoLightbox } from "@/components/landing/photo-lightbox";
 import { PhotoSlot } from "@/components/photo-slot";
@@ -22,11 +22,11 @@ import { EXPERIENCES } from "@/lib/content";
 import { cop, dirHref, tel, wa } from "@/lib/format";
 
 export const metadata: Metadata = {
-  title: { absolute: `${config.name} · Domos con jacuzzi bajo las estrellas en Murillo, Tolima` },
-  description: "Glamping en domos geodésicos con jacuzzi privado, a 2.950 metros de altura en Murillo, Tolima. Desayuno, fogata, cielo estrellado y pet friendly. Reserva en línea.",
+  title: { absolute: `${config.name} · Cabañas y restaurante en Murillo, Tolima` },
+  description: "Cabañas de colores con baño privado, balcón con vista a la montaña y desayuno americano incluido, a 5 minutos de Murillo, Tolima. Restaurante, fogata, parque infantil y pet friendly. Reserva en línea.",
   openGraph: {
     title: `${config.name} · Murillo, Tolima`,
-    description: "Duerme bajo las estrellas en el glamping más alto del Tolima. Domos geodésicos con jacuzzi privado.",
+    description: "Cabañas y restaurante de finca a 5 minutos de Murillo, Tolima. Desayuno incluido y pet friendly.",
   },
   twitter: { card: "summary_large_image" },
 };
@@ -79,8 +79,8 @@ function WazeIcon() {
   );
 }
 
-// Un domo: su foto en un arco (la silueta de un domo) y, al lado, lo que incluye y el precio; alterna de lado. La foto,
-// los títulos y los espacios se ajustan también al alto de la pantalla (svh), para que el domo (con el encabezado, en
+// Una cabaña: su foto en un arco (como una ventana) y, al lado, lo que incluye y el precio; alterna de lado. La foto,
+// los títulos y los espacios se ajustan también al alto de la pantalla (svh), para que la cabaña (con el encabezado, en
 // el primero) quepa entero en ella aunque la ventana sea baja o tenga zoom.
 function CabinRow({ c, i, total }: { c: Cabin; i: number; total: number }) {
   return (
@@ -116,7 +116,7 @@ function CabinRow({ c, i, total }: { c: Cabin; i: number; total: number }) {
         <div className="mt-1 flex flex-wrap items-end justify-between gap-x-6 gap-y-5 border-t-2 border-dotted border-on-dark/20 pt-[clamp(8px,1.8svh,20px)]">
           <dl className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
-              <dt className="eyebrow text-on-dark-muted">Noche en pareja</dt>
+              <dt className="eyebrow text-on-dark-muted">Noche para 2</dt>
               <dd className="display mt-1 text-[clamp(2rem,6svh,2.6rem)] leading-none">{cop(c.couple)}</dd>
             </div>
             {c.max > 2 && (
@@ -153,8 +153,9 @@ export default async function HomePage() {
         <BookingProvider cabins={cabins}>
           {/* Portada */}
           {/* Portada ilustrada a pantalla completa: el cielo es el fondo (de la noche, arriba, al resplandor del
-              horizonte), con estrellas, una ballena de estrellas que lo cruza despacio y estrellas fugaces; el título va
-              centrado y, debajo, el paisaje con el nevado y el domo encendido (components/landing/hero-scene.tsx). El
+              horizonte), con estrellas, La Vaca Fifí hecha constelación que lo cruza despacio y estrellas fugaces; el
+              título va centrado y, debajo, el paisaje con el nevado, la cabaña de colores y la vaca
+              (components/landing/hero-scene.tsx). El
               encabezado va encima del cielo. El título sube palabra por palabra y su segunda línea alterna frases; con
               mouse, las capas se desplazan un poco en profundidad. Ocupa al menos toda la primera pantalla. */}
           <HeroParallax
@@ -162,7 +163,7 @@ export default async function HomePage() {
             className="relative isolate flex min-h-svh flex-col overflow-hidden bg-[linear-gradient(to_bottom,var(--color-deep)_0%,var(--color-bg)_28%,color-mix(in_srgb,var(--color-accent)_24%,var(--color-surface))_56%,color-mix(in_srgb,var(--color-highlight)_34%,var(--color-surface))_74%)] pt-(--header-h)"
           >
             <Stars count={72} height={56} className="-z-1 [mask-image:linear-gradient(to_bottom,black_52%,transparent_76%)]" />
-            <StarWhale className="absolute top-[clamp(96px,16svh,160px)] left-[3%] -z-1 w-[clamp(170px,21cqi,320px)]" />
+            <StarCow className="absolute top-[clamp(96px,16svh,160px)] left-[3%] -z-1 w-[clamp(170px,21cqi,320px)]" />
             <ShootingStar className="absolute top-[11%] right-[9%] -z-1" every={8} delay={3} />
             <ShootingStar className="absolute top-[26%] left-[34%] -z-1" angle={162} travel={190} every={13} delay={8} />
 
@@ -200,7 +201,7 @@ export default async function HomePage() {
               >
                 <CalendarIcon size={20} className="flex-none" />
                 <span className="flex min-w-0 flex-col leading-tight">
-                  <span className="text-[.68rem] font-extrabold tracking-[.1em] text-on-light-muted uppercase">{fromPrice ? "Noche en pareja" : "Reserva en línea"}</span>
+                  <span className="text-[.68rem] font-extrabold tracking-[.1em] text-on-light-muted uppercase">{fromPrice ? "Noche para 2" : "Reserva en línea"}</span>
                   <span className="truncate text-[1.05rem] font-extrabold tabular-nums">{fromPrice ? `Desde ${cop(fromPrice)}` : "Elige tus fechas"}</span>
                 </span>
                 <span className="btn btn-cta ml-auto min-h-12 flex-none gap-2.5 px-5 whitespace-nowrap sm:px-6">
@@ -216,21 +217,21 @@ export default async function HomePage() {
 
           <BookingWidget />
 
-          {/* Recorrido de la página, como un descenso por la montaña: Portada → Reserva → Domos (cumbres nevadas) →
-              Servicios (páramo) → Experiencias (bosque) → Ubicación (valle) → Antes de venir (monte) → Contacto →
+          {/* Recorrido de la página, como un descenso por la montaña: Portada → Reserva → Cabañas (cumbres nevadas) →
+              Servicios (páramo) → La finca (bosque) → Ubicación (valle) → Antes de venir (monte) → Contacto →
               pie de página (el bosque al atardecer, con su fauna). Cada sección cierra con su tramo de paisaje. */}
 
-          {/* Domos, bajo un cielo nocturno con la Vía Láctea: cada uno ocupa una pantalla completa; la primera lleva
+          {/* Cabañas, bajo un cielo nocturno con la Vía Láctea: cada una ocupa una pantalla completa; la primera lleva
               además el encabezado de la sección. */}
-          <Section id="domos" labelledBy="domos-title" ridge="peaks" light="right" night screens>
+          <Section id="cabanas" labelledBy="cabanas-title" ridge="peaks" light="right" night screens>
             {(cabins.length ? cabins : [null]).map((c, i) => (
-              <div key={c?.id ?? "domos"} className="flex min-h-svh flex-col justify-center py-[clamp(16px,3.5svh,64px)]">
+              <div key={c?.id ?? "cabanas"} className="flex min-h-svh flex-col justify-center py-[clamp(16px,3.5svh,64px)]">
                 {i === 0 && (
                   <SectionHeader
-                    id="domos-title"
+                    id="cabanas-title"
                     eyebrow="Dónde vas a dormir"
-                    title="Domos geodésicos"
-                    accent="con jacuzzi privado"
+                    title="Cabañas"
+                    accent="de colores"
                     subtitle="Compara y elige el que mejor se ajusta a tu plan: el precio se calcula al instante con tus fechas."
                     className="mb-[clamp(14px,3svh,48px)]"
                     fit
@@ -263,9 +264,9 @@ export default async function HomePage() {
           <SectionHeader
             id="experiencias-title"
             eyebrow="Lo que te espera"
-            title="Alta montaña"
-            accent="bajo las estrellas"
-            subtitle="Lo que vas a vivir alrededor de tu domo: el cielo de noche, el jacuzzi al aire libre, la fogata y el desayuno con vista a las montañas."
+            title="La finca"
+            accent="para toda la familia"
+            subtitle="Lo que vas a vivir alrededor de tu cabaña: el restaurante y su café, el desayuno con vista a la montaña, los jardines y el parque para los niños."
           />
           <ul className="grid auto-rows-[clamp(150px,19cqi,270px)] grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
             {EXPERIENCES.map((e, i) => (
@@ -287,7 +288,7 @@ export default async function HomePage() {
 
         {/* Ubicación: el mapa ocupa todo el panel y la tarjeta con la dirección flota encima (debajo, en el celular). */}
         <Section id="ubicacion" labelledBy="ubicacion-title" ridge="valley">
-          <SectionHeader id="ubicacion-title" eyebrow="Así se llega" title="En Murillo," accent="el pueblo más alto del Tolima" subtitle="Abre la ruta en Google Maps o Waze desde donde estés, o copia la dirección para compartirla." />
+          <SectionHeader id="ubicacion-title" eyebrow="Así se llega" title="A 5 minutos" accent="de Murillo, Tolima" subtitle="Abre la ruta en Google Maps o Waze desde donde estés, o copia la dirección para compartirla." />
           <div className="reveal-on-scroll relative overflow-hidden rounded-[36px] bg-surface ring-1 ring-on-dark/12 lg:min-h-[clamp(440px,60svh,580px)]">
             <div className="relative h-[300px] lg:absolute lg:inset-0 lg:h-auto">
               <iframe
@@ -389,13 +390,13 @@ export default async function HomePage() {
             <figcaption className="pointer-events-none absolute inset-x-5 bottom-5 flex items-center gap-3 rounded-2xl bg-bg/70 px-4 py-3 ring-1 ring-card/15 backdrop-blur-md">
               <Logo size={40} />
               <span className="flex min-w-0 flex-col leading-tight">
-                <span className="font-bold text-card">Te esperamos en la montaña</span>
-                <span className="text-[.8rem] font-semibold text-on-dark-muted">Murillo, Tolima · a 2.950 m de altura</span>
+                <span className="font-bold text-card">Te esperamos en la finca</span>
+                <span className="text-[.8rem] font-semibold text-on-dark-muted">Vereda Pajonales · a 5 min de Murillo</span>
               </span>
             </figcaption>
           </figure>
           <div className="flex flex-col gap-7">
-            <SectionHeader id="contact-title" align="left" className="" eyebrow="Atención familiar" title="Contacto" accent="directo" subtitle="Será un placer atenderte. Resolvemos contigo fechas, domos, mascotas o una ocasión especial." />
+            <SectionHeader id="contact-title" align="left" className="" eyebrow="Atención familiar" title="Contacto" accent="directo" subtitle="Será un placer atenderte. Resolvemos contigo fechas, cabañas, mascotas, el restaurante o una celebración." />
             <a href={wa(site.whatsapp, "Hola, quiero información para reservar.")} target="_blank" rel="noopener" className="reveal-on-scroll group btn btn-highlight min-h-16 gap-3 self-start px-7 text-[1.05rem]">
               <WhatsAppIcon size={22} />
               Escríbenos por WhatsApp

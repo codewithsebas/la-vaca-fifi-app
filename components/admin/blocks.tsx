@@ -33,12 +33,12 @@ export function BlocksView() {
   const setParams = useSetParams();
   const [filter, setFilter] = useParam<Filter>("mostrar", "vigentes");
 
-  // El editor se abre desde la URL: ?editar=<bloqueo> o ?nuevo=1[&domo=&unidad=&fecha=] (atajo desde el calendario).
+  // El editor se abre desde la URL: ?editar=<bloqueo> o ?nuevo=1[&cabana=&unidad=&fecha=] (atajo desde el calendario).
   const editId = params.get("editar");
   const isNew = params.has("nuevo");
   const draftFromUrl = (): Draft | null => {
     if (isNew) {
-      const type = params.get("domo");
+      const type = params.get("cabana");
       const cabin = data.cabinTypes.find((c) => c.id === type && c.units > 0) ?? data.cabinTypes.find((c) => c.units > 0);
       const unit = Number(params.get("unidad"));
       const date = params.get("fecha");
@@ -50,7 +50,7 @@ export function BlocksView() {
   };
   const editing = draftFromUrl();
   const openNew = () => setParams({ nuevo: "1", editar: null });
-  const close = () => setParams({ nuevo: null, editar: null, domo: null, unidad: null, fecha: null });
+  const close = () => setParams({ nuevo: null, editar: null, cabana: null, unidad: null, fecha: null });
 
   const sorted = useMemo(
     () => [...data.blocks].sort((a, b) => stateOf(a, today).order - stateOf(b, today).order || (a.from < b.from ? -1 : 1)),
@@ -97,7 +97,7 @@ export function BlocksView() {
         }
       />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard label="En curso hoy" value={inCourse} hint={inCourse ? "domos cerrados ahora" : "Todo abierto"} icon={<BanIcon size={15} />} tone={inCourse ? "warning" : undefined} />
+        <StatCard label="En curso hoy" value={inCourse} hint={inCourse ? "cabañas cerradas ahora" : "Todo abierto"} icon={<BanIcon size={15} />} tone={inCourse ? "warning" : undefined} />
         <StatCard label="Próximos 30 días" value={upcoming} hint="bloqueos programados" icon={<CalendarIcon size={15} />} />
         <StatCard label="Noches bloqueadas" value={nights} hint="en los próximos 30 días" icon={<MoonIcon size={15} />} />
       </div>
@@ -253,7 +253,7 @@ function BlockEditor({ initial, onClose, onDelete }: { initial: Draft; onClose: 
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Domo" className="col-span-2 sm:col-span-1">
+          <Field label="Cabaña" className="col-span-2 sm:col-span-1">
             {(p) => <Combobox id={p.id} value={d.type} onChange={(v) => set({ type: v, unit: "1" })} options={cabins.map((c) => ({ value: c.id, label: c.nombre, description: plural(c.units, "unidad", "unidades") }))} />}
           </Field>
           <Field label="Unidad" className="col-span-2 sm:col-span-1">
@@ -264,7 +264,7 @@ function BlockEditor({ initial, onClose, onDelete }: { initial: Draft; onClose: 
                 onChange={(v) => set({ unit: v })}
                 options={[
                   ...Array.from({ length: units }, (_, i) => ({ value: String(i + 1), label: `Unidad ${i + 1}` })),
-                  ...(!d.id && units > 1 ? [{ value: "all", label: "Todas las unidades", description: "Cierra este tipo de domo completo" }] : []),
+                  ...(!d.id && units > 1 ? [{ value: "all", label: "Todas las unidades", description: "Cierra este tipo de cabaña completo" }] : []),
                 ]}
               />
             )}

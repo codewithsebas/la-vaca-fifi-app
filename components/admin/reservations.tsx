@@ -25,7 +25,7 @@ export function ReservationsView() {
   const [q, setQ] = useParam("q", "");
   const [quick, setQuick] = useParam<Quick>("vista", "todas");
   const [status, setStatus] = useParam("estado", "");
-  const [cabin, setCabin] = useParam("domo", "");
+  const [cabin, setCabin] = useParam("cabana", "");
   const [fromP, setFrom] = useParam("desde", "");
   const [toP, setTo] = useParam("hasta", "");
   const [sort, setSort] = useParam<Sort>("orden", "llegada-desc");
@@ -116,8 +116,8 @@ export function ReservationsView() {
               />
             )}
           </Field>
-          <Field label="Domo">
-            {(p) => <Combobox id={p.id} value={cabin} onChange={setCabin} options={[{ value: "", label: "Todos los domos" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre, description: c.activa ? undefined : "Inactivo" }))]} />}
+          <Field label="Cabaña">
+            {(p) => <Combobox id={p.id} value={cabin} onChange={setCabin} options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre, description: c.activa ? undefined : "Inactiva" }))]} />}
           </Field>
           <Field label="Llegada entre">
             {(p) => (
@@ -169,7 +169,7 @@ export function ReservationsView() {
             <table className="w-full text-[14px]">
               <thead className="border-b border-line bg-canvas/70 text-left text-[12px] font-semibold text-ink-muted">
                 <tr>
-                  {["Reserva", "Huésped", "Domo", "Fechas", "Total", "Pago", "Estado"].map((h) => (
+                  {["Reserva", "Huésped", "Cabaña", "Fechas", "Total", "Pago", "Estado"].map((h) => (
                     <th key={h} scope="col" className={`px-4 py-2.5 font-semibold ${h === "Total" ? "text-right" : ""}`}>
                       {h}
                     </th>

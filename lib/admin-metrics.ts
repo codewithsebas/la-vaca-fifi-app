@@ -212,7 +212,7 @@ export const delta = (now: number, before: number) => (before > 0 ? ((now - befo
 
 type Mark = "busy" | "blocked" | "partial";
 
-// Noches de un tipo de domo sin unidades libres (busy) o con una sola libre (partial), excluyendo una reserva (al reprogramarla).
+// Noches de un tipo de cabaña sin unidades libres (busy) o con una sola libre (partial), excluyendo una reserva (al reprogramarla).
 export function typeMarks(reservations: Reservation[], blocks: Block[], typeId: string, units: number, from: string, to: string, ignoreCode?: string) {
   const out: Record<string, Mark> = {};
   for (let d = from; d <= to; d = addDays(d, 1)) {

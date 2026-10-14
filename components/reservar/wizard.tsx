@@ -19,7 +19,7 @@ import { PlanChoice, payLabel, type Plan } from "../reservation-payments";
 import { useSite } from "../site-provider";
 import { arrivalOptions } from "@/lib/site";
 
-const STEPS = ["Fechas y huéspedes", "Domo", "Tus datos", "Revisar y pagar"];
+const STEPS = ["Fechas y huéspedes", "Cabaña", "Tus datos", "Revisar y pagar"];
 const OCCASIONS: Record<string, string> = { aniversario: "Aniversario", cumpleanos: "Cumpleaños", propuesta: "Propuesta", otra: "Otra" };
 // Errores del servidor (rutas del contrato) → campos del formulario.
 const SERVER_FIELD: Record<string, string> = {
@@ -29,7 +29,7 @@ const SERVER_FIELD: Record<string, string> = {
 const LABEL: Record<string, string> = {
   fullName: "Nombre completo", docType: "Tipo de documento", docNumber: "Número de documento", email: "Correo electrónico", phone: "Celular", city: "Ciudad de procedencia",
   arrival: "Hora estimada de llegada", smallBreed: "Mascota", occasion: "Ocasión", policies: "Políticas de reserva", dataProcessing: "Tratamiento de datos",
-  checkIn: "Fechas", adults: "Huéspedes", cabinTypeId: "Domo", specialRequests: "Solicitudes especiales", captchaToken: "Verificación antispam",
+  checkIn: "Fechas", adults: "Huéspedes", cabinTypeId: "Cabaña", specialRequests: "Solicitudes especiales", captchaToken: "Verificación antispam",
 };
 const FIELD_ID: Record<string, string> = {
   fullName: "f-name", docType: "f-doctype", docNumber: "f-docnum", email: "f-email", phone: "f-phone", city: "f-city", arrival: "f-arrival",
@@ -82,7 +82,7 @@ const DOC_TYPES = [
   { value: "PPT", label: "PPT · Permiso por Protección Temporal" },
 ];
 
-// Días sin ningún domo libre, del mes visible y el siguiente.
+// Días sin ninguna cabaña libre, del mes visible y el siguiente.
 async function unavailableDays(view: string, cabinIds: string[]) {
   const to = addDays(monthStart(addDays(view, 40)), -1);
   const rs = await Promise.all(cabinIds.map((id) => api.calendar({ cabinTypeId: id, from: view, to })));
@@ -153,10 +153,10 @@ export function ReservationWizard() {
   // Números de secuencia: una respuesta vieja que llega tarde no pisa a una más nueva.
   const calSeq = useRef(0);
   const availSeq = useRef(0);
-  // «Ver domos disponibles» mientras la consulta sigue en curso: se avanza apenas responda.
+  // «Ver cabañas disponibles» mientras la consulta sigue en curso: se avanza apenas responda.
   const goNext = useRef(false);
 
-  // Estado inicial desde la URL (la portada envía fechas, huéspedes y domo).
+  // Estado inicial desde la URL (la portada envía fechas, huéspedes y cabaña).
   const [init] = useState(() => {
     const t = todayISO();
     let ci = params.get("checkIn");
@@ -173,12 +173,12 @@ export function ReservationWizard() {
       pick: (ci && !co ? "out" : "in") as "in" | "out",
       pet: params.get("pet") === "1",
       deco: params.get("deco") === "1",
-      paso: params.get("paso"), // desde la portada: "domo" (comparar domos) o "datos" (seguir con el domo elegido)
+      paso: params.get("paso"), // desde la portada: "cabana" (comparar cabañas) o "datos" (seguir con la cabaña elegida)
     };
   });
 
-  // Con fechas válidas se empieza en «Domo»; con paso=datos se pasa a «Tus datos» si el domo elegido tiene cupo.
-  const [step, setStep] = useState(() => (init.ci && init.co && (init.paso === "domo" || (init.paso === "datos" && init.type)) ? 2 : 1));
+  // Con fechas válidas se empieza en «Cabaña»; con paso=datos se pasa a «Tus datos» si la cabaña elegida tiene cupo.
+  const [step, setStep] = useState(() => (init.ci && init.co && (init.paso === "cabana" || (init.paso === "datos" && init.type)) ? 2 : 1));
   const jumpToData = useRef(init.paso === "datos" && !!(init.ci && init.co && init.type));
   const [types, setTypes] = useState<CabinType[]>([]);
   const [ci, setCi] = useState(init.ci);
@@ -208,7 +208,7 @@ export function ReservationWizard() {
   const [sumOpen, setSumOpen] = useState(false);
   const [waiting, setWaiting] = useState(false);
   // Aviso cuando la disponibilidad cambia en tiempo real y afecta lo que el huésped eligió.
-  const [liveNotice, setLiveNotice] = useState<{ text: string; action?: "domo" | "fechas" } | null>(null);
+  const [liveNotice, setLiveNotice] = useState<{ text: string; action?: "cabana" | "fechas" } | null>(null);
   // Selección actual para los callbacks asíncronos (respuestas de la API y avisos en tiempo real).
   const sel = useRef({ ci, co, step, type });
   useEffect(() => {
@@ -218,7 +218,7 @@ export function ReservationWizard() {
   const today = todayISO();
 
   // Las funciones fetch* solo actualizan estado al resolver; quien las llama marca la carga.
-  // Días sin domos libres del mes visible y el siguiente. Si una fecha elegida se acaba de ocupar, se ajusta la selección.
+  // Días sin cabañas libres del mes visible y el siguiente. Si una fecha elegida se acaba de ocupar, se ajusta la selección.
   const fetchCal = useCallback((v: string) => {
     const seq = ++calSeq.current;
     unavailableDays(v, cabinIds ? cabinIds.split(",") : []).then(
@@ -249,7 +249,7 @@ export function ReservationWizard() {
     );
   }, [setUnavail, setCalLoading, setCi, setCo, setPick, setAvail, setLiveNotice, cabinIds]);
 
-  // Domos disponibles para las fechas y huéspedes. `silent`: actualización en tiempo real (sin esqueleto ni error visible).
+  // Cabañas disponibles para las fechas y huéspedes. `silent`: actualización en tiempo real (sin esqueleto ni error visible).
   const fetchAvail = useCallback(
     (q: { ci: string; co: string; adults: number; children: number }, silent = false) => {
       const seq = ++availSeq.current;
@@ -271,7 +271,7 @@ export function ReservationWizard() {
             setWaiting(false);
             if (data.options.some((o) => o.available)) setStep(2);
           }
-          // Si el domo elegido ya no está disponible, se deselecciona (y, si pasó en tiempo real, se avisa).
+          // Si la cabaña elegida ya no está disponible, se deselecciona (y, si pasó en tiempo real, se avisa).
           const s = sel.current;
           if (s.type && !free(s.type)) {
             setType(null);
@@ -279,8 +279,8 @@ export function ReservationWizard() {
               const others = data.options.some((o) => o.available);
               setLiveNotice(
                 others
-                  ? { text: `${cabinName(s.type)} se acaba de ocupar en esas fechas. Elige otro domo.`, action: s.step > 2 ? "domo" : undefined }
-                  : { text: `${cabinName(s.type)} se acaba de ocupar y ya no quedan domos libres en esas fechas. Elige otras fechas.`, action: "fechas" },
+                  ? { text: `${cabinName(s.type)} se acaba de ocupar en esas fechas. Elige otra cabaña.`, action: s.step > 2 ? "cabana" : undefined }
+                  : { text: `${cabinName(s.type)} se acaba de ocupar y ya no quedan cabañas libres en esas fechas. Elige otras fechas.`, action: "fechas" },
               );
             }
           }
@@ -438,7 +438,7 @@ export function ReservationWizard() {
   const waText = () =>
     [
       `Hola, quiero reservar en ${config.name}.`,
-      `Domo: ${type ? cabinName(type) : ""}`,
+      `Cabaña: ${type ? cabinName(type) : ""}`,
       `Llegada: ${ci ? fmtLong(ci) : ""}`,
       `Salida: ${co ? fmtLong(co) : ""}`,
       `Huéspedes: ${adults} adultos, ${children} niños`,
@@ -464,7 +464,7 @@ export function ReservationWizard() {
     setSubmitError(null);
     const b = body();
     try {
-      // 1) Se retienen las fechas (la base de datos impide que otra persona tome el mismo domo) y 2) se abre la pasarela.
+      // 1) Se retienen las fechas (la base de datos impide que otra persona tome la misma cabaña) y 2) se abre la pasarela.
       // La reserva no queda confirmada aquí: se confirma solo cuando la pasarela aprueba el abono.
       const r = await api.createReservation(b);
       if (r.status === 201) {
@@ -525,7 +525,7 @@ export function ReservationWizard() {
   };
   const needCabin = () => {
     if (type) return false;
-    setLiveNotice({ text: "Elige un domo disponible para continuar.", action: "domo" });
+    setLiveNotice({ text: "Elige una cabaña disponible para continuar.", action: "cabana" });
     return true;
   };
   const toStep4 = () => {
@@ -558,21 +558,21 @@ export function ReservationWizard() {
         : checking
           ? "Consultando disponibilidad…"
           : freeOpts.length
-            ? `${plural(freeUnits, "domo libre", "domos libres")} · desde ${cop(Math.min(...freeOpts.map((o) => o.quote.total)))}`
-            : "No hay domos libres para estas fechas y huéspedes. Prueba otras fechas.";
+            ? `${plural(freeUnits, "cabaña libre", "cabañas libres")} · desde ${cop(Math.min(...freeOpts.map((o) => o.quote.total)))}`
+            : "No hay cabañas libres para estas fechas y huéspedes. Prueba otras fechas.";
 
   const errKeys = Object.keys(errors);
   const pn = q?.base && nights ? q.base / nights : 0;
   const xpn = q?.extraGuests && nights ? q.extraAmount / (q.extraGuests * nights) : 0;
   const sumRows = [
-    { k: "Domo", v: type ? cabinName(type) : "Por elegir" },
+    { k: "Cabaña", v: type ? cabinName(type) : "Por elegir" },
     { k: "Llegada", v: ci ? fmtDate(ci, true) : "—" },
     { k: "Salida", v: co ? fmtDate(co, true) : "—" },
     { k: "Noches", v: nights ? String(nights) : "—" },
     { k: "Huéspedes", v: `${plural(adults, "adulto", "adultos")}${children ? ` · ${plural(children, "niño", "niños")}` : ""}` },
   ];
   const sumTotal = q ? cop(q.total) : "—";
-  const depositLine = q ? `Para confirmar: abono de ${cop(q.deposit)} (saldo ${cop(q.balance)}) o el total de una vez.` : "Elige fechas y domo para ver el total.";
+  const depositLine = q ? `Para confirmar: abono de ${cop(q.deposit)} (saldo ${cop(q.balance)}) o el total de una vez.` : "Elige fechas y cabaña para ver el total.";
   const errText = {
     network: "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
     "429": "Recibimos demasiados intentos seguidos. Espera un momento y vuelve a intentarlo.",
@@ -583,7 +583,7 @@ export function ReservationWizard() {
   return (
     <main className="gutter-1240 pt-4 pb-16">
       <h1 className="display mb-5 text-[clamp(2.6rem,6vw,4.6rem)] leading-[.92]">
-        <span>Reserva tu domo</span> <span className="text-accent">en 4 pasos</span>
+        <span>Reserva tu cabaña</span> <span className="text-accent">en 4 pasos</span>
       </h1>
 
       <nav aria-label="Progreso de la reserva" className="mb-6">
@@ -622,7 +622,7 @@ export function ReservationWizard() {
             <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[color-mix(in_srgb,var(--color-highlight)_32%,var(--color-card))] px-5 py-3.5 text-on-light">
               <p className="min-w-0 flex-[1_1_260px] font-bold">{liveNotice.text}</p>
               <div className="flex items-center gap-2">
-                {liveNotice.action && !(liveNotice.action === "domo" && step === 2) && (
+                {liveNotice.action && !(liveNotice.action === "cabana" && step === 2) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -632,7 +632,7 @@ export function ReservationWizard() {
                     }}
                     className="btn btn-cta min-h-11 px-5"
                   >
-                    {liveNotice.action === "fechas" ? "Cambiar fechas" : "Elegir otro domo"}
+                    {liveNotice.action === "fechas" ? "Cambiar fechas" : "Elegir otra cabaña"}
                   </button>
                 )}
                 <button type="button" aria-label="Cerrar aviso" onClick={() => setLiveNotice(null)} className="btn-icon size-11 text-[1.4rem] leading-none hover:bg-on-light/8">
@@ -760,7 +760,7 @@ export function ReservationWizard() {
                       }}
                     />
                     <p className="mt-auto rounded-sm bg-card-muted px-3 py-2.5 text-[.84rem]">
-                      {`Adultos y niños cuentan igual para la capacidad y la tarifa. La tarifa incluye 2 personas; desde la 3.ª se suma el valor por persona adicional. Máximo ${maxGuests} por domo.`}
+                      {`Adultos y niños cuentan igual para la capacidad y la tarifa. La tarifa incluye 2 personas; desde la 3.ª se suma el valor por persona adicional. Máximo ${maxGuests} por cabaña.`}
                     </p>
                   </div>
                 </div>
@@ -785,7 +785,7 @@ export function ReservationWizard() {
                       "Reintentar"
                     ) : (
                       <span>
-                        Ver domos<span className="max-sm:hidden"> disponibles</span>
+                        Ver cabañas<span className="max-sm:hidden"> disponibles</span>
                       </span>
                     )}
                     {!waiting && !availError && <span aria-hidden="true">→</span>}
@@ -798,7 +798,7 @@ export function ReservationWizard() {
           {step === 2 && (
             <section aria-labelledby="step-title" className="flex flex-col gap-5">
               <h2 id="step-title" tabIndex={-1} className={stepTitle}>
-                2 · Elige tu domo
+                2 · Elige tu cabaña
               </h2>
               {availLoading && (
                 <div role="status" aria-label="Consultando disponibilidad" className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
@@ -823,7 +823,7 @@ export function ReservationWizard() {
               {avail && !availLoading && ci && co && (
                 <>
                   <p className="font-semibold">{`${fmtDate(ci)} → ${fmtDate(co)} · ${nTxt(avail.nights)} · ${guestsTxt}`}</p>
-                  <div role="radiogroup" aria-label="Tipo de domo" className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
+                  <div role="radiogroup" aria-label="Tipo de cabaña" className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
                     {avail.options.map((op) => {
                       const ty = typeList.find((x) => x.id === op.cabinTypeId);
                       const cab = cabins.find((x) => x.id === op.cabinTypeId);
@@ -840,10 +840,10 @@ export function ReservationWizard() {
                           </div>
                           <div className="flex flex-col gap-1.5 px-1.5 pb-1.5">
                             <h3 className="display text-[2rem] leading-none">{name}</h3>
-                            <p className="text-[.88rem]">{`${cop(ty?.precioPareja)} la noche en pareja · Persona adicional ${cop(ty?.personaAdicional)} · Máximo ${ty?.maxPersonas} personas`}</p>
+                            <p className="text-[.88rem]">{`${cop(ty?.precioPareja)} la noche para 2 personas · Persona adicional ${cop(ty?.personaAdicional)} · Máximo ${ty?.maxPersonas} personas`}</p>
                             {op.available ? (
                               <>
-                                <p className="text-[.85rem] font-bold">{op.unitsLeft === 1 ? "Queda 1 domo de este tipo" : `Quedan ${op.unitsLeft} domos de este tipo`}</p>
+                                <p className="text-[.85rem] font-bold">{op.unitsLeft === 1 ? "Queda 1 cabaña de este tipo" : `Quedan ${op.unitsLeft} cabañas de este tipo`}</p>
                                 <p className="mt-1.5 flex flex-wrap items-baseline gap-2">
                                   <strong className="display text-[2rem] leading-none">{cop(op.quote.total)}</strong>
                                   <span className="text-[.85rem] font-semibold">{`por ${nTxt(avail.nights)} · ${guestsTxt}`}</span>
@@ -855,12 +855,12 @@ export function ReservationWizard() {
                                   onClick={() => setType(op.cabinTypeId)}
                                   className={`btn mt-1.5 min-h-[52px] self-start border-2 border-cta px-[26px] ${sel ? "bg-cta text-cta-text" : "bg-transparent text-on-light"}`}
                                 >
-                                  {sel ? "Seleccionado ✓" : "Elegir este domo"}
+                                  {sel ? "Seleccionado ✓" : "Elegir esta cabaña"}
                                 </button>
                               </>
                             ) : (
                               <p className="mt-1.5 rounded-sm bg-card-muted px-3.5 py-2.5 font-bold">
-                                {op.reason === "capacity" || (ty && total > ty.maxPersonas) ? `Máximo ${ty?.maxPersonas} personas en este domo` : "Sin disponibilidad en estas fechas"}
+                                {op.reason === "capacity" || (ty && total > ty.maxPersonas) ? `Máximo ${ty?.maxPersonas} personas en esta cabaña` : "Sin disponibilidad en estas fechas"}
                               </p>
                             )}
                           </div>
@@ -1052,7 +1052,7 @@ export function ReservationWizard() {
               </form>
               <div className="flex flex-wrap justify-between gap-3">
                 <button type="button" onClick={back} className={backBtn}>
-                  ← Cambiar domo
+                  ← Cambiar cabaña
                 </button>
                 <button type="button" onClick={toStep4} className={nextBtn}>
                   Revisar reserva →
@@ -1069,7 +1069,7 @@ export function ReservationWizard() {
               <div className="flex flex-col gap-[18px] rounded-lg bg-card p-[clamp(18px,3vw,32px)] text-on-light">
                 <h3 className="text-[1.05rem] font-extrabold">Desglose · {type ? cabinName(type) : ""}</h3>
                 <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-5 gap-y-2.5 text-[.95rem]">
-                  <dt>{`${nTxt(nights)} × ${cop(pn)} (tarifa de pareja)`}</dt>
+                  <dt>{`${nTxt(nights)} × ${cop(pn)} (tarifa para 2)`}</dt>
                   <dd className="text-right font-bold">{cop(q?.base)}</dd>
                   {!!q?.extraGuests && (
                     <>

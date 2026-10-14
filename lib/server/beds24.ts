@@ -88,7 +88,7 @@ export async function loadCredentials(sb: Db): Promise<Credentials | null> {
 
 // Canjea el código de invitación (vence a las 24 h) por el acceso permanente y lo guarda. Conserva la clave del webhook.
 export async function connectBeds24(sb: Db, inviteCode: string) {
-  const r = await raw("GET", "/authentication/setup", { headers: { code: inviteCode, deviceName: "Stellarium Glamping" } });
+  const r = await raw("GET", "/authentication/setup", { headers: { code: inviteCode, deviceName: "La Vaca Fifi" } });
   const d = r.data as { token?: string; expiresIn?: number; refreshToken?: string } | null;
   if (r.status !== 200 || !d?.refreshToken) throw new Beds24Error(r.status === 400 || r.status === 401 ? "Beds24 no aceptó el código: puede que ya se haya usado o que tenga más de 24 horas." : errorOf(r.data, r.status), r.status);
   await sb

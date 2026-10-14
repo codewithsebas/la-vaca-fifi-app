@@ -212,46 +212,56 @@ export function NightSky({ className = "" }: { className?: string }) {
   );
 }
 
-// Ballena de estrellas (viewBox 320×170): la constelación de la Ballena cruza el cielo nadando despacio. El cuerpo
-// apenas se insinúa; lo que se ve son sus estrellas y los trazos que las unen. La cola va aparte para poder moverla.
-const WHALE_BODY = "M302 92C300 68 262 48 214 44C168 40 122 48 88 64C76 70 66 74 58 74L58 87C84 104 124 120 172 124C222 128 270 120 294 104C300 100 303 96 302 92Z";
-const WHALE_FIN = "M206 119C196 135 178 149 156 153C166 141 172 129 176 117Z";
-const WHALE_TAIL = "M62 73C50 72 40 66 34 56C28 46 22 36 10 30C14 44 16 56 22 66C24 70 26 74 26 79C20 83 12 91 8 103C20 99 34 95 46 93C52 91 58 89 62 88Z";
-// [x, y, radio]; las que llevan destello son las más brillantes.
-const WHALE_STARS: [x: number, y: number, r: number][] = [[302, 92, 2.6], [258, 51, 2.2], [172, 42, 2.8], [100, 60, 2.2], [60, 80, 2.6], [172, 124, 2.4], [156, 153, 2]];
-const WHALE_LINES: [from: number, to: number][] = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [5, 6]];
-const WHALE_SPOUT: [x: number, y: number, r: number][] = [[226, 28, 4.5], [240, 15, 6], [252, 31, 4]];
+// Vaca de estrellas (viewBox 320×200): La Vaca Fifí hecha constelación cruza el cielo caminando despacio, con su corona
+// de flores. El cuerpo apenas se insinúa; lo que se ve son sus estrellas y los trazos que las unen. La cola va aparte
+// para poder moverla.
+const COW_BODY =
+  "M78 74C110 62 200 60 236 64C248 56 258 46 270 44C286 46 300 72 306 88C308 98 298 104 288 100C276 96 262 100 250 108C246 120 244 130 240 136L238 182L228 182L226 140C200 144 150 146 110 140L104 182L94 182L90 140C80 130 72 110 74 92C74 84 75 78 78 74Z";
+// Las patas del otro lado, más tenues.
+const COW_FAR_LEGS = "M216 140L214 180L222 180L224 140ZM112 140L116 180L124 180L122 141Z";
+const COW_HORN = "M266 46C262 34 268 26 276 24C272 32 272 40 274 46Z";
+const COW_EAR = "M258 56C246 50 236 52 230 58C240 62 250 62 258 60Z";
+// Manchas de Holstein, apenas marcadas.
+const COW_SPOTS = "M120 70C140 64 160 70 158 86C156 100 132 102 122 92C114 84 112 76 120 70ZM190 66C206 64 220 72 216 86C210 96 194 92 188 84C184 76 184 70 190 66ZM272 52C280 50 288 56 286 64C280 68 272 66 270 60Z";
+const COW_TAIL = "M77 80C64 92 60 116 58 136C52 140 50 150 56 152C60 150 64 146 62 138C64 118 68 96 80 86Z";
+// [x, y, radio]: hocico, punta del cuerno, cruz, lomo, cadera, pezuña delantera, pezuña trasera y panza.
+const COW_STARS: [x: number, y: number, r: number][] = [[306, 90, 2.6], [276, 24, 2.2], [236, 64, 2.8], [156, 62, 2.2], [78, 76, 2.6], [233, 182, 2.4], [99, 182, 2.2], [160, 142, 2]];
+const COW_LINES: [from: number, to: number][] = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [4, 6], [6, 7], [7, 5]];
+// La corona de flores: destellos dorados entre la oreja y el cuerno.
+const COW_CROWN: [x: number, y: number, r: number][] = [[254, 44, 4.5], [262, 34, 5.5], [246, 34, 4]];
 
-type WhaleProps = {
+type StarCowProps = {
   className?: string; // tamaño y posición de partida (absolute…)
   opacity?: number;
-  delay?: number; // segundos ya nadados al cargar (para que aparezca dentro de la pantalla)
+  delay?: number; // segundos ya caminados al cargar (para que aparezca dentro de la pantalla)
 };
 
-// Capas: travesía de lado a lado › vaivén › cola. Con movimiento reducido queda quieta donde se la pone.
-export function StarWhale({ className = "", opacity = 0.9, delay = 26 }: WhaleProps) {
+// Capas: travesía de lado a lado › vaivén del paso › cola. Con movimiento reducido queda quieta donde se la pone.
+export function StarCow({ className = "", opacity = 0.9, delay = 26 }: StarCowProps) {
   return (
     <div aria-hidden="true" className={`pointer-events-none ${className}`}>
-      <div className="motion-safe:animate-whale-swim" style={{ animationDelay: `${-delay}s` }}>
-        <div className="motion-safe:animate-whale-bob">
-          <svg viewBox="0 0 320 170" className="block h-auto w-full overflow-visible" style={{ opacity }}>
-            <g className="motion-safe:animate-whale-tail" style={{ transformBox: "view-box", transformOrigin: "60px 80px" }}>
-              <path d={WHALE_TAIL} className="fill-on-dark/8 stroke-on-dark/25" strokeWidth={1} />
-              <path d="M60 80L10 30M60 80L8 103" className="stroke-on-dark/55" strokeWidth={1.1} strokeDasharray="1 6" strokeLinecap="round" fill="none" />
-              <circle cx={10} cy={30} r={2.4} className="fill-on-dark motion-safe:animate-star" style={{ animationDelay: "-1.3s" }} />
-              <circle cx={8} cy={103} r={2.2} className="fill-on-dark motion-safe:animate-star" style={{ animationDelay: "-3.1s" }} />
+      <div className="motion-safe:animate-cow-walk" style={{ animationDelay: `${-delay}s` }}>
+        <div className="motion-safe:animate-cow-bob">
+          <svg viewBox="0 0 320 200" className="block h-auto w-full overflow-visible" style={{ opacity }}>
+            <g className="motion-safe:animate-cow-tail" style={{ transformBox: "view-box", transformOrigin: "78px 80px" }}>
+              <path d={COW_TAIL} className="fill-on-dark/8 stroke-on-dark/25" strokeWidth={1} />
+              <path d="M78 80L56 150" className="stroke-on-dark/55" strokeWidth={1.1} strokeDasharray="1 6" strokeLinecap="round" fill="none" />
+              <circle cx={56} cy={150} r={2.4} className="fill-on-dark motion-safe:animate-star" style={{ animationDelay: "-1.3s" }} />
             </g>
-            <path d={WHALE_BODY} className="fill-on-dark/8 stroke-on-dark/25" strokeWidth={1} />
-            <path d={WHALE_FIN} className="fill-on-dark/10 stroke-on-dark/25" strokeWidth={1} />
-            {WHALE_LINES.map(([a, b]) => (
-              <line key={`${a}-${b}`} x1={WHALE_STARS[a][0]} y1={WHALE_STARS[a][1]} x2={WHALE_STARS[b][0]} y2={WHALE_STARS[b][1]} className="stroke-on-dark/55" strokeWidth={1.1} strokeDasharray="1 6" strokeLinecap="round" />
+            <path d={COW_FAR_LEGS} className="fill-on-dark/5 stroke-on-dark/15" strokeWidth={1} />
+            <path d={COW_BODY} className="fill-on-dark/8 stroke-on-dark/25" strokeWidth={1} />
+            <path d={COW_SPOTS} className="fill-on-dark/10" />
+            <path d={COW_EAR} className="fill-on-dark/10 stroke-on-dark/25" strokeWidth={1} />
+            <path d={COW_HORN} className="fill-on-dark/12 stroke-on-dark/30" strokeWidth={1} />
+            {COW_LINES.map(([a, b]) => (
+              <line key={`${a}-${b}`} x1={COW_STARS[a][0]} y1={COW_STARS[a][1]} x2={COW_STARS[b][0]} y2={COW_STARS[b][1]} className="stroke-on-dark/55" strokeWidth={1.1} strokeDasharray="1 6" strokeLinecap="round" />
             ))}
-            {WHALE_STARS.map(([x, y, rad], i) => (
+            {COW_STARS.map(([x, y, rad], i) => (
               <circle key={i} cx={x} cy={y} r={rad} className="fill-on-dark motion-safe:animate-star" style={{ animationDelay: `${-((i * 0.73) % 4.5)}s` }} />
             ))}
-            {/* El ojo y lo que sopla: destellos dorados. */}
-            <path d={SPARKLE} transform="translate(266 90) scale(5.5)" className="fill-highlight" />
-            {WHALE_SPOUT.map(([x, y, rad], i) => (
+            {/* El ojo y la corona de flores: destellos dorados. */}
+            <path d={SPARKLE} transform="translate(284 66) scale(5.5)" className="fill-highlight" />
+            {COW_CROWN.map(([x, y, rad], i) => (
               <g key={i} className="motion-safe:animate-star" style={{ animationDelay: `${-i * 1.4}s` }}>
                 <path d={SPARKLE} transform={`translate(${x} ${y}) scale(${rad})`} className="fill-highlight" />
               </g>

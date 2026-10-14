@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>La Vaca Fifí</title>
+  <!-- Sello del letrero: aro terracota con filete dorado y fondo verde; la vaca Holstein con pestañas y su corona de
+       flores (el toque «fifí»), y flores a los lados como en el letrero. -->
+  <defs>
+    <clipPath id="head">
+      <path d="M192 186C204 150 308 150 320 186C334 226 330 280 316 318L196 318C182 280 178 226 192 186Z" />
+    </clipPath>
+    <g id="petals5">
+      <circle cx="0" cy="-13" r="11" />
+      <circle cx="12.4" cy="-4" r="11" />
+      <circle cx="7.6" cy="10.5" r="11" />
+      <circle cx="-7.6" cy="10.5" r="11" />
+      <circle cx="-12.4" cy="-4" r="11" />
+    </g>
+  </defs>
+
+  <circle cx="256" cy="256" r="256" fill="#7b3216" />
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#d99a3e" stroke-width="7" />
+  <circle cx="256" cy="256" r="222" fill="#26331d" />
+
+  <!-- Flores de los lados, como en el letrero -->
+  <g>
+    <path d="M118 372C104 356 104 336 112 322C126 334 130 354 118 372Z" fill="#5e8a3a" />
+    <path d="M150 436C134 438 118 430 110 418C126 410 144 416 150 436Z" fill="#5e8a3a" />
+    <g transform="translate(140 398) scale(1.25)" fill="#c8372a"><use href="#petals5" /></g>
+    <circle cx="140" cy="398" r="9" fill="#f2c14e" />
+    <g transform="translate(176 438) scale(.75)" fill="#e8772e"><use href="#petals5" /></g>
+    <circle cx="176" cy="438" r="5.5" fill="#f6ead2" />
+
+    <path d="M394 372C408 356 408 336 400 322C386 334 382 354 394 372Z" fill="#5e8a3a" />
+    <path d="M362 436C378 438 394 430 402 418C386 410 368 416 362 436Z" fill="#5e8a3a" />
+    <g transform="translate(372 398) scale(1.25)" fill="#c8372a"><use href="#petals5" /></g>
+    <circle cx="372" cy="398" r="9" fill="#f2c14e" />
+    <g transform="translate(336 438) scale(.75)" fill="#f6ead2"><use href="#petals5" /></g>
+    <circle cx="336" cy="438" r="5.5" fill="#e8772e" />
+  </g>
+
+  <g transform="translate(256 262) scale(1.13) translate(-256 -262)">
+  <!-- Cuernos y orejas, detrás de la cabeza -->
+  <path d="M204 178C196 150 180 132 158 125C167 140 176 160 188 186Z" fill="#d99a3e" />
+  <path d="M308 178C316 150 332 132 354 125C345 140 336 160 324 186Z" fill="#d99a3e" />
+  <path d="M196 212C168 194 128 196 102 216C126 242 168 246 198 236Z" fill="#fbf5e8" />
+  <path d="M188 219C168 210 140 211 122 219C141 233 168 236 189 230Z" fill="#f0a69a" />
+  <path d="M316 212C344 194 384 196 410 216C386 242 344 246 314 236Z" fill="#fbf5e8" />
+  <path d="M324 219C344 210 372 211 390 219C371 233 344 236 323 230Z" fill="#f0a69a" />
+
+  <!-- Cabeza con sus manchas -->
+  <path d="M192 186C204 150 308 150 320 186C334 226 330 280 316 318L196 318C182 280 178 226 192 186Z" fill="#fbf5e8" />
+  <path d="M234 162C236 142 252 136 258 152C264 138 282 140 280 162Z" fill="#fbf5e8" />
+  <g clip-path="url(#head)" fill="#1e1b16">
+    <path d="M186 172C204 158 240 160 244 182C247 200 224 208 206 202C190 197 180 186 186 172Z" />
+    <path d="M276 220C290 204 322 208 327 234C332 262 306 276 288 270C271 264 265 238 276 220Z" />
+  </g>
+
+  <!-- Ojos con pestañas (el derecho, sobre la mancha, con su blanco y pestañas claras) -->
+  <ellipse cx="294" cy="245.5" rx="16.5" ry="19.5" fill="#fbf5e8" />
+  <g fill="#1e1b16">
+    <ellipse cx="218" cy="246" rx="13" ry="16" />
+    <ellipse cx="294" cy="246" rx="13" ry="16" />
+  </g>
+  <g fill="#fbf5e8">
+    <circle cx="223" cy="240" r="4.5" />
+    <circle cx="299" cy="240" r="4.5" />
+  </g>
+  <g stroke="#1e1b16" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M207 234L197 225M213 231L208 219M221 230L221 218" />
+  </g>
+  <path d="M308 232L318 223M302 228L307 216M294 226L294 214" stroke="#fbf5e8" stroke-width="5" stroke-linecap="round" fill="none" />
+  <g fill="#f0a69a" opacity=".55">
+    <circle cx="200" cy="282" r="12" />
+    <circle cx="312" cy="282" r="12" />
+  </g>
+
+  <!-- Hocico -->
+  <ellipse cx="256" cy="336" rx="86" ry="56" fill="#f0a69a" />
+  <g fill="#8a3b33">
+    <ellipse cx="226" cy="334" rx="10" ry="15" transform="rotate(-15 226 334)" />
+    <ellipse cx="286" cy="334" rx="10" ry="15" transform="rotate(15 286 334)" />
+  </g>
+  <path d="M230 370Q256 386 282 370" fill="none" stroke="#8a3b33" stroke-width="5" stroke-linecap="round" />
+
+  <!-- Corona de flores -->
+  <path d="M338 176C352 174 362 184 362 196C348 197 340 188 338 176Z" fill="#5e8a3a" />
+  <g transform="translate(290 146) scale(.7)" fill="#e8772e"><use href="#petals5" /></g>
+  <circle cx="290" cy="146" r="5.5" fill="#f2c14e" />
+  <g transform="translate(322 162)" fill="#c8372a"><use href="#petals5" /></g>
+  <circle cx="322" cy="162" r="8" fill="#f2c14e" />
+  </g>
+</svg>

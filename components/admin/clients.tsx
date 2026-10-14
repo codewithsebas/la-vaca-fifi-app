@@ -466,7 +466,7 @@ function InternalReview({ c }: { c: ClientSummary }) {
         />
       </div>
 
-      <Field label="Preferencias" hint="Útil para su próxima visita: domo favorito, horarios, alergias, ocasiones especiales.">
+      <Field label="Preferencias" hint="Útil para su próxima visita: cabaña favorita, horarios, alergias, ocasiones especiales.">
         {(fp) => <textarea {...fp} rows={2} maxLength={2000} value={v.preferences} onChange={(e) => set({ preferences: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} />}
       </Field>
       <Field label="Observaciones generales">

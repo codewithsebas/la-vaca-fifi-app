@@ -10,9 +10,9 @@ import { scrollToSection } from "./centered-anchors";
 import { CloseIcon, LoginIcon, MenuIcon, PhoneIcon, PinIcon, SparkleIcon } from "../icons";
 
 const SECTIONS = [
-  ["domos", "Domos"],
+  ["cabanas", "Cabañas"],
   ["servicios", "Servicios"],
-  ["experiencias", "Experiencias"],
+  ["experiencias", "La finca"],
   ["ubicacion", "Ubicación"],
   ["contacto", "Contacto"],
 ] as const;

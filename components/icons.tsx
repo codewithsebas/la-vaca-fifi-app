@@ -107,12 +107,19 @@ export const SparkleIcon = ({ size = 18, className, style }: IconProps) => (
   </svg>
 );
 
-// Silueta de un domo bajo una estrella (lienzo 48×48) para el ícono de las notificaciones de Android, que solo usa la
-// forma (lib/app-icon.tsx). El logo de la marca es la imagen de components/brand.tsx.
-export const MARK_DOME = "M8 40 L10.2 31.5 L16 25.6 L24 23.4 L32 25.6 L37.8 31.5 L40 40 Z";
-// Estrella de cuatro puntas y dos estrellas pequeñas a los lados.
-export const MARK_STARS =
-  "M24 6.5 C24.5 11 26 12.5 30.5 13 C26 13.5 24.5 15 24 19.5 C23.5 15 22 13.5 17.5 13 C22 12.5 23.5 11 24 6.5 Z M11.3 16.5 a1.2 1.2 0 1 0 2.4 0 a1.2 1.2 0 1 0 -2.4 0 M35 18.5 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0";
+// Silueta de la cabeza de la vaca del logo (lienzo 48×48) para el ícono de las notificaciones de Android, que solo usa
+// la forma (lib/app-icon.tsx). Cada trazo se rellena con evenodd: los ojos y las fosas nasales quedan calados. El logo
+// de la marca es la imagen de components/brand.tsx.
+export const MARK_COW = [
+  // Cuernos
+  "M18.5 13.5C17.5 10.5 15.5 8.5 13 8C14 9.5 15 12 16.5 15ZM29.5 13.5C30.5 10.5 32.5 8.5 35 8C34 9.5 33 12 31.5 15Z",
+  // Orejas
+  "M17.5 17C14 15 9.5 15.5 7 18C9.5 21 14 21.5 17.5 20.5ZM30.5 17C34 15 38.5 15.5 41 18C38.5 21 34 21.5 30.5 20.5Z",
+  // Cabeza con los ojos calados
+  "M17 14C18 10 30 10 31 14C32.5 19 32 25 31 28L17 28C16 25 15.5 19 17 14ZM18.9 20.5a1.6 1.9 0 1 0 3.2 0a1.6 1.9 0 1 0 -3.2 0ZM25.9 20.5a1.6 1.9 0 1 0 3.2 0a1.6 1.9 0 1 0 -3.2 0Z",
+  // Hocico con las fosas nasales caladas
+  "M14.5 31.5a9.5 6.5 0 1 0 19 0a9.5 6.5 0 1 0 -19 0ZM19.6 31.2a1.4 2 0 1 0 2.8 0a1.4 2 0 1 0 -2.8 0ZM25.6 31.2a1.4 2 0 1 0 2.8 0a1.4 2 0 1 0 -2.8 0Z",
+];
 
 // Una huella (mascotas).
 export const PawIcon = ({ size = 18, className }: IconProps) => (

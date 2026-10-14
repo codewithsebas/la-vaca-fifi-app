@@ -36,7 +36,7 @@ function describeChange(a: PublicReservation, b: PublicReservation) {
   const lastA = a.payments?.[0];
   const lastB = b.payments?.[0];
   if (lastB && (lastB.reference !== lastA?.reference || lastB.status !== lastA?.status) && (lastB.status === "declined" || lastB.status === "error")) return "Tu último pago no fue aprobado.";
-  if (a.checkIn !== b.checkIn || a.checkOut !== b.checkOut || a.cabinTypeId !== b.cabinTypeId) return "Se actualizaron las fechas o el domo de tu reserva.";
+  if (a.checkIn !== b.checkIn || a.checkOut !== b.checkOut || a.cabinTypeId !== b.cabinTypeId) return "Se actualizaron las fechas o la cabaña de tu reserva.";
   if (JSON.stringify(a.quote) !== JSON.stringify(b.quote) || a.paid !== b.paid) return "Se actualizaron los valores de tu reserva.";
   return null;
 }
@@ -123,7 +123,7 @@ export function LookupForm() {
     const cd = code.trim().toUpperCase();
     const m = email.trim();
     const next: typeof errs = {};
-    if (!CODE_RE.test(cd)) next.code = "Escribe el código completo, por ejemplo STG-AB12C.";
+    if (!CODE_RE.test(cd)) next.code = "Escribe el código completo, por ejemplo VF-AB12C.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(m)) next.email = "Escribe un correo válido.";
     if (next.code || next.email) {
       setErrs(next);
@@ -201,7 +201,7 @@ export function LookupForm() {
           className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] items-end gap-4 rounded-lg bg-card p-[clamp(18px,3vw,28px)] text-on-light"
         >
           <p id="lk-help" className="col-span-full font-semibold">
-            Escribe el código que recibiste (por ejemplo STG-AB12C) y el correo con el que reservaste.
+            Escribe el código que recibiste (por ejemplo VF-AB12C) y el correo con el que reservaste.
           </p>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="lk-code" className="field-label">

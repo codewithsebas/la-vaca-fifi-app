@@ -98,8 +98,8 @@ export const statusOf = (s: string) => STATUS[s as ReservationStatus] ?? { label
 export const ics = (r: Pick<Reservation, "code" | "checkIn" | "checkOut" | "cabinTypeId">, c: SiteConfig, cabin = cabinName(r.cabinTypeId)) => {
   const d = (s: string) => s.replace(/-/g, "");
   return [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Stellarium Glamping//Reservas//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
-    `UID:${r.code}@stellariumglamping`,
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//La Vaca Fifi//Reservas//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
+    `UID:${r.code}@lavacafifi`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
     `DTSTART;VALUE=DATE:${d(r.checkIn)}`,
     `DTEND;VALUE=DATE:${d(r.checkOut)}`,

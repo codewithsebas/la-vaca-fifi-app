@@ -124,7 +124,7 @@ function ConfirmDialog({ cf, onChange, onCancel, onOk }: { cf: ConfirmState; onC
           </dl>
         )}
         {cf.reschedule && (
-          <Field label="Nuevas fechas" hint="Los días con punto rojo ya no tienen domos libres de este tipo.">
+          <Field label="Nuevas fechas" hint="Los días con punto rojo ya no tienen cabañas libres de este tipo.">
             {(p) => (
               <DateRangePicker
                 id="cf-first"
@@ -224,10 +224,10 @@ function crumbsFor(pathname: string, data: AdminData): Crumb[] {
       ? `Reserva ${seg.toUpperCase()}`
       : mod === "clientes"
         ? (data.reservations.find((r) => r.clientKey === clientKeyOf(seg))?.guest.fullName ?? "Cliente")
-        : mod === "domos"
-          ? seg === "nuevo"
-            ? "Nuevo domo"
-            : `Editar ${data.cabinTypes.find((c) => c.id === seg)?.nombre ?? "domo"}`
+        : mod === "cabanas"
+          ? seg === "nueva"
+            ? "Nueva cabaña"
+            : `Editar ${data.cabinTypes.find((c) => c.id === seg)?.nombre ?? "cabaña"}`
           : mod === "contenido"
             ? (CONTENT_SECTIONS.find((s) => s.id === seg)?.label ?? "Sección")
             : "Detalle";

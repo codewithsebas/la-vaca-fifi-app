@@ -29,14 +29,14 @@ export const THEME_GROUPS: { label: string; fields: { key: ThemeKey; label: stri
     fields: [
       { key: "bg", label: "Fondo principal", hint: "Fondo de todo el sitio y del menú." },
       { key: "surface", label: "Bloques", hint: "Portada, tarjetas oscuras y botones secundarios." },
-      { key: "deep", label: "Fondo profundo", hint: "Sección «Alta montaña bajo las estrellas» y cielo alto de la portada." },
+      { key: "deep", label: "Fondo profundo", hint: "Sección «La finca» y cielo alto de la portada." },
       { key: "night", label: "Franja final", hint: "Última franja del pie de página." },
     ],
   },
   {
     label: "Tarjetas claras",
     fields: [
-      { key: "card", label: "Tarjeta", hint: "Domos, formulario de reserva y botones claros." },
+      { key: "card", label: "Tarjeta", hint: "Cabañas, formulario de reserva y botones claros." },
       { key: "cardMuted", label: "Tarjeta secundaria", hint: "Etiquetas, bordes de los campos y zonas suaves." },
     ],
   },
@@ -68,18 +68,19 @@ export const themeField = (k: ThemeKey) => THEME_GROUPS.flatMap((g) => g.fields)
 // Paletas listas para usar (contraste de textos ≥ 4.5:1 y de acentos ≥ 3:1). La primera es la del diseño.
 export const THEME_PRESETS: { id: string; label: string; description: string; theme: SiteTheme }[] = [
   {
-    id: "noche",
-    label: "Noche estrellada",
-    description: "Azul noche con dorado de estrellas. La paleta original.",
-    theme: { bg: "#1a1f3a", surface: "#252b4d", deep: "#141830", night: "#080a16", card: "#f3eee2", cardMuted: "#e3dccb", onDark: "#f3eee2", onLight: "#1a1f3a", accent: "#9aa8e0", highlight: "#e6b450", cta: "#1a1f3a", ctaText: "#f3eee2" },
+    // Del letrero de la entrada: el verde oscuro de sus franjas, el dorado de las letras, el coral de sus flores y el
+    // terracota del fondo en los botones.
+    id: "letrero",
+    label: "Letrero",
+    description: "Verde de finca, dorado de las letras y terracota del letrero. La paleta original.",
+    theme: { bg: "#22301c", surface: "#2c3d25", deep: "#1a2516", night: "#0a0f08", card: "#f6ead2", cardMuted: "#e9d8b4", onDark: "#f6ead2", onLight: "#22301c", accent: "#e3a64f", highlight: "#ef8a6a", cta: "#8a3518", ctaText: "#f6ead2" },
   },
   {
-    // Del logo del cliente (public/logo-stellarium.png): fondos del verde de sus montañas (#42ae8a) oscurecido, acento
-    // del verde claro, resaltado del salmón y tarjetas del rosado del cielo.
-    id: "logo",
-    label: "Logo Stellarium",
-    description: "Verde de las montañas y rosado del cielo del logo.",
-    theme: { bg: "#18473b", surface: "#215a4b", deep: "#123a30", night: "#071a15", card: "#fdeee9", cardMuted: "#f6d3ca", onDark: "#fdf3ef", onLight: "#18473b", accent: "#aed8b4", highlight: "#f6baae", cta: "#18473b", ctaText: "#fdf3ef" },
+    // El letrero al revés: fondos del terracota, botones del verde y resaltado del verde claro de las hojas.
+    id: "terracota",
+    label: "Letrero terracota",
+    description: "Terracota del letrero con dorado y verde de hojas.",
+    theme: { bg: "#5c2410", surface: "#6d2e16", deep: "#4a1c0b", night: "#1e0b04", card: "#f6ead2", cardMuted: "#e9d8b4", onDark: "#f6ead2", onLight: "#3a1708", accent: "#e8b25e", highlight: "#9fc27a", cta: "#22301c", ctaText: "#f6ead2" },
   },
   {
     id: "bosque",

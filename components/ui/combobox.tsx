@@ -10,7 +10,7 @@ export type ComboOption = {
   value: string;
   label: string;
   description?: string;
-  color?: string; // punto de color (estado, domo)
+  color?: string; // punto de color (estado, cabaña)
   disabled?: boolean;
   keywords?: string; // texto extra para la búsqueda
 };

@@ -15,6 +15,11 @@ export const FAUNA_TONES = {
   "--fa-warm": "color-mix(in srgb, color-mix(in srgb, var(--color-highlight) 40%, #b0502a) 62%, var(--color-night))",
   "--fa-gold": "var(--color-highlight)",
   "--fa-red": "color-mix(in srgb, #d2452c 82%, var(--color-highlight))",
+  // La vaca: blanca con manchas negras, hocico rosado y cuernos del dorado de la paleta.
+  "--fa-cow": "color-mix(in srgb, var(--color-card) 94%, #ffffff)",
+  "--fa-cow-shade": "color-mix(in srgb, var(--color-card) 70%, var(--color-bg))",
+  "--fa-pink": "color-mix(in srgb, #f0a69a 86%, var(--color-card))",
+  "--fa-horn": "color-mix(in srgb, var(--color-accent) 88%, var(--color-card))",
 } as CSSProperties;
 
 type FaunaProps = SVGProps<SVGSVGElement>;
@@ -312,8 +317,47 @@ export function AndeanDeer(props: FaunaProps) {
   );
 }
 
+// La Vaca Fifí: vaca Holstein, blanca con manchas negras, hocico rosado, cuernos cortos y una flor junto a la oreja (la
+// del logo). Mira a la izquierda: pasta, levanta la cabeza, mueve las orejas y la cola.
+export function HolsteinCow(props: FaunaProps) {
+  return (
+    <Figure viewBox="0 0 104 72" label="La Vaca Fifí, vaca Holstein de la finca" {...props}>
+      <path d="M36 46H41L41 66L42 70H36.5L36 66ZM78 46H83L83 66L84 70H78.5L78 66Z" className="fill-(--fa-cow-shade)" />
+      <g className="motion-safe:animate-tail-flick" style={pivot("0% 4%", { animationDuration: "3.6s" })}>
+        <path d="M91 28C95 32 96 42 95 50" fill="none" strokeWidth={1.6} strokeLinecap="round" className="stroke-(--fa-cow)" />
+        <path d="M93 49C96 49 97 53 95 56C93 54 92 52 93 49Z" className="fill-(--fa-ink)" />
+      </g>
+      <path d="M30 30C32 23 44 20 60 20C76 20 87 22 92 27C96 31 96 40 93 45C90 50 84 51 76 51H38C31 51 27 44 30 30Z" className="fill-(--fa-cow)" />
+      <path d="M44 21C52 19 61 22 62 28C63 35 55 38 48 36C42 34 40 27 44 21ZM74 23C82 22 90 26 90 33C88 39 80 39 76 35C72 31 71 26 74 23ZM56 42C62 40 70 42 70 47L69 51H56C53 48 53 44 56 42Z" className="fill-(--fa-ink)" />
+      <path d="M62 50C63 54 70 54 71 50Z" className="fill-(--fa-pink)" />
+      <path d="M33 46H38L38.4 66H33ZM84 44H89.5L89 66H84.4Z" className="fill-(--fa-cow)" />
+      <path d="M32.6 66H38.6L39 70H32.4ZM84 66H89.2L89.6 70H83.6Z" className="fill-(--fa-ink)" />
+      <g className="motion-safe:animate-graze" style={pivot("88% 94%", { animationDuration: "15s" })}>
+        <path d="M34 38C28 36 24 32 21 27L12 24C7 23 5 20 7 16C9 12 15 11 21 13L25 14C30 16 34 22 36 28Z" className="fill-(--fa-cow)" />
+        <path d="M15 13C19 11 24 13 25 16C23 19 18 19 15 17Z" className="fill-(--fa-ink)" />
+        <path d="M19 12.6L17.4 7.6L20.4 8.6L21.4 12.6Z" className="fill-(--fa-horn)" />
+        <g className="motion-safe:animate-ear-flick" style={pivot("10% 50%", { animationDuration: "5.8s" })}>
+          <path d="M23 14.5C27 12.2 31 12.6 32.4 14.6C29.6 17 26 17.4 23 16.6Z" className="fill-(--fa-cow)" />
+        </g>
+        <ellipse cx={8.5} cy={19.5} rx={4.2} ry={3.8} className="fill-(--fa-pink)" />
+        <circle cx={6.8} cy={19} r={0.7} className="fill-(--fa-ink)" />
+        <circle cx={16.4} cy={16.2} r={1} className="fill-(--fa-ink)" />
+        <g className="fill-(--fa-red)">
+          <circle cx={24.6} cy={9.4} r={1.6} />
+          <circle cx={26.2} cy={10.6} r={1.6} />
+          <circle cx={25.6} cy={12.5} r={1.6} />
+          <circle cx={23.6} cy={12.5} r={1.6} />
+          <circle cx={23} cy={10.6} r={1.6} />
+        </g>
+        <circle cx={24.6} cy={11.2} r={1} className="fill-(--fa-horn)" />
+      </g>
+    </Figure>
+  );
+}
+
 // Las especies, para los textos que las nombran (pie de página).
 export const FAUNA = [
+  "La Vaca Fifí",
   "Oso de anteojos",
   "Venado rojo andino",
   "Tapir andino",

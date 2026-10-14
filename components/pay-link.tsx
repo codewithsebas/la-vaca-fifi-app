@@ -68,7 +68,7 @@ export function PayLink({ token }: { token: string }) {
 
   const nights = nightsBetween(r.checkIn, r.checkOut);
   const rows = [
-    { k: "Domo", v: cabinName(r.cabinTypeId), wide: true },
+    { k: "Cabaña", v: cabinName(r.cabinTypeId), wide: true },
     { k: "Llegada", v: `${fmtFullDate(r.checkIn)} · ${c.checkIn}` },
     { k: "Salida", v: `${fmtFullDate(r.checkOut)} · hasta las ${c.checkOut}` },
     { k: "Estadía", v: plural(nights, "noche", "noches") },

@@ -39,7 +39,7 @@ type Ctx = {
 const BookingCtx = createContext<Ctx | null>(null);
 const useBooking = () => useContext(BookingCtx)!;
 
-// Estado compartido entre el formulario de reserva y los botones "Reservar" de los domos.
+// Estado compartido entre el formulario de reserva y los botones "Reservar" de las cabañas.
 // `cabins` llega del servidor con las tarifas vigentes.
 export function BookingProvider({ cabins, children }: { cabins: Cabin[]; children: ReactNode }) {
   const [s, setS] = useState<BookingState>({
@@ -151,7 +151,7 @@ export function BookingWidget() {
     };
   }, [quoteKey, s.checkIn, s.checkOut, s.guests, quoteRev]);
 
-  // Noches sin cupo del domo elegido en el mes visible del calendario (al abrirlo, al cambiar de mes o de domo).
+  // Noches sin cupo de la cabaña elegida en el mes visible del calendario (al abrirlo, al cambiar de mes o de cabaña).
   const monthEnd = (v: string) => addDays(monthStart(addDays(v, 32)), -1);
   const marksKey = s.open === "dates" && s.view ? `${s.type}|${s.view}` : null;
   useEffect(() => {
@@ -195,11 +195,11 @@ export function BookingWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.open]);
 
-  if (!cab) return null; // sin domos activos no hay nada que cotizar
+  if (!cab) return null; // sin cabañas activas no hay nada que cotizar
 
   const today = todayISO();
   const openDates = (pick: "in" | "out") => set({ open: "dates", pick, view: s.checkIn ? monthStart(s.checkIn) : (s.view ?? monthStart(today)) });
-  // No se puede elegir un rango con noches sin cupo para el domo elegido (el servidor lo vuelve a validar al reservar).
+  // No se puede elegir un rango con noches sin cupo para la cabaña elegida (el servidor lo vuelve a validar al reservar).
   const pickDate = (iso: string) => {
     if (s.pick === "in" || !s.checkIn || iso <= s.checkIn) {
       if (unavailable?.[iso]) return;
@@ -208,7 +208,7 @@ export function BookingWidget() {
     }
     for (let x = s.checkIn; x < iso; x = addDays(x, 1))
       if (unavailable?.[x]) {
-        set({ error: `La noche del ${fmtDate(x)} no tiene cupo en el ${cab.full}. Elige otra fecha de salida o cambia de domo.` });
+        set({ error: `La noche del ${fmtDate(x)} no tiene cupo en el ${cab.full}. Elige otra fecha de salida o cambia de cabaña.` });
         return;
       }
     set({ checkOut: iso, open: null, error: "" });
@@ -229,7 +229,7 @@ export function BookingWidget() {
       : qq
         ? `${cab.full} · ${guestsTxt} · ${nightsTxt}: ${cop(qq.base)}${qq.extraGuests ? ` + ${plural(qq.extraGuests, "persona adicional", "personas adicionales")} (${cop(qq.extraAmount)})` : ""}`
         : qOpt
-          ? "Sin disponibilidad en estas fechas para este domo. Prueba otro domo o cambia las fechas."
+          ? "Sin disponibilidad en estas fechas para esta cabaña. Prueba otra cabaña o cambia las fechas."
           : "No pudimos calcular el total en este momento.";
 
   const rq = new URLSearchParams();
@@ -257,9 +257,9 @@ export function BookingWidget() {
       <div ref={ref} className="flex flex-col gap-5 rounded-lg bg-card p-[calc(16px_+_1cqi)] text-on-light shadow-card">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-1">
           <h2 id="reserva-title" className="display text-[2.2rem] leading-[.95]">
-            Reserva tu domo
+            Reserva tu cabaña
           </h2>
-          <p className="max-w-[48ch] text-[.9rem] font-semibold">Elige fechas, domo y huéspedes: ves el total al instante y reservas en línea con un abono del {config.depositPct} %.</p>
+          <p className="max-w-[48ch] text-[.9rem] font-semibold">Elige fechas, cabaña y huéspedes: ves el total al instante y reservas en línea con un abono del {config.depositPct} %.</p>
         </div>
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,330px),1fr))] gap-3">
@@ -328,9 +328,9 @@ export function BookingWidget() {
           </div>
 
           <div data-popover-root="type" className="relative flex">
-            <PillField label="Tipo de domo" value={cab.name} focused={s.open === "type"} filled popup="listbox" icon={<HomeIcon />} onClick={() => set({ open: s.open === "type" ? null : "type" })} />
+            <PillField label="Tipo de cabaña" value={cab.name} focused={s.open === "type"} filled popup="listbox" icon={<HomeIcon />} onClick={() => set({ open: s.open === "type" ? null : "type" })} />
             {s.open === "type" && (
-              <div role="listbox" aria-label="Tipo de domo" className={`${popover} right-0 flex min-w-[min(320px,calc(100cqi-32px))] flex-col gap-1.5 p-2.5`}>
+              <div role="listbox" aria-label="Tipo de cabaña" className={`${popover} right-0 flex min-w-[min(320px,calc(100cqi-32px))] flex-col gap-1.5 p-2.5`}>
                 {cabins.map((c) => {
                   const sel = s.type === c.id;
                   return (
@@ -344,7 +344,7 @@ export function BookingWidget() {
                     >
                       <span className="flex flex-col">
                         <strong className="text-[.95rem]">{c.full}</strong>
-                        <span className="text-[.8rem]">{`${cop(c.couple)} la noche en pareja · máx. ${c.max} personas`}</span>
+                        <span className="text-[.8rem]">{`${cop(c.couple)} la noche para 2 personas · máx. ${c.max} personas`}</span>
                       </span>
                       <span aria-hidden="true" className={`font-extrabold ${sel ? "" : "opacity-0"}`}>
                         ✓
@@ -403,13 +403,13 @@ export function BookingWidget() {
             {s.deco && <span className="text-[.84rem]">Decoración especial: valor adicional, se cotiza por WhatsApp.</span>}
             <span className="mt-1.5 text-[.8rem]">Precio estimado. La reserva se confirma con un abono del {config.depositPct} % (no reembolsable).</span>
           </div>
-          {/* «Continuar» lleva directo a «Tus datos» si el domo tiene cupo; «Ver disponibilidad» compara todos los domos en esas fechas. */}
+          {/* «Continuar» lleva directo a «Tus datos» si la cabaña tiene cupo; «Ver disponibilidad» compara todas las cabañas en esas fechas. */}
           <div className="flex w-full flex-[0_1_auto] flex-col items-stretch gap-2 sm:w-auto sm:min-w-[280px]">
             <Link href={`/reservar?${rq}&paso=datos`} onClick={needDates} className="btn btn-cta min-h-16 px-7 text-center">
               Continuar con la reserva
               <ArrowRightIcon />
             </Link>
-            <Link href={`/reservar?${rq}${s.checkIn && s.checkOut ? "&paso=domo" : ""}`} className="btn btn-outline-light min-h-12 px-6 text-center text-[.95rem] hover:bg-card">
+            <Link href={`/reservar?${rq}${s.checkIn && s.checkOut ? "&paso=cabana" : ""}`} className="btn btn-outline-light min-h-12 px-6 text-center text-[.95rem] hover:bg-card">
               Ver disponibilidad
             </Link>
           </div>

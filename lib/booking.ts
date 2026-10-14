@@ -19,7 +19,7 @@ export type Units = Partial<Record<CabinTypeId, number>>;
 
 type Priced = Pick<CabinType, "id" | "precioPareja" | "personaAdicional">;
 
-// Tarifa de una noche: la temporada activa que la cubre o, si no hay, la tarifa base del domo.
+// Tarifa de una noche: la temporada activa que la cubre o, si no hay, la tarifa base de la cabaña.
 export function nightlyRate(t: Priced, seasons: RateSeason[], night: string) {
   const s = seasons.find((x) => x.activa && x.cabinTypeId === t.id && x.from <= night && night <= x.to);
   return s ? { couple: s.precioPareja, extra: s.personaAdicional, season: s } : { couple: t.precioPareja, extra: t.personaAdicional, season: null };
@@ -73,12 +73,12 @@ export function validateManualReservation(b: ManualReservationInput, types: Cabi
   else if (b.checkIn < today) f.checkIn = "La fecha de llegada ya pasó.";
   else if (nightsBetween(b.checkIn, b.checkOut) > 30) f.checkIn = "La estadía máxima es de 30 noches.";
   const t = types.find((x) => x.id === b.cabinTypeId);
-  if (!t) f.cabinTypeId = "Elige el domo.";
+  if (!t) f.cabinTypeId = "Elige la cabaña.";
   else if (b.unit !== null && (!Number.isInteger(b.unit) || b.unit < 1 || b.unit > (units[t.id] ?? 0))) f.cabinTypeId = "Esa unidad no existe.";
   const adults = Number(b.adults);
   const children = Number(b.children);
   if (!Number.isInteger(adults) || adults < 1 || !Number.isInteger(children) || children < 0) f.adults = "Número de huéspedes no válido.";
-  else if (t && adults + children > t.maxPersonas) f.adults = `Máximo ${t.maxPersonas} personas en este domo.`;
+  else if (t && adults + children > t.maxPersonas) f.adults = `Máximo ${t.maxPersonas} personas en esta cabaña.`;
   if (!g.fullName || g.fullName.trim().length < 3 || g.fullName.length > 120) f["guest.fullName"] = "Escribe el nombre completo.";
   if (!["CC", "CE", "Pasaporte", "PPT"].includes(g.docType)) f["guest.docType"] = "Elige el tipo de documento.";
   if (!g.docNumber || !/^[A-Za-z0-9]{5,15}$/.test(g.docNumber.trim())) f["guest.docNumber"] = "Escribe el número de documento (sin puntos).";
@@ -104,7 +104,7 @@ export function freeUnits(occ: Occupancy, units: number, typeId: string, date: s
 }
 
 // Primera unidad libre todas las noches del rango, o 0 si no hay. `prefer`: unidades que se prueban primero, en ese orden
-// (las que no se venden en Booking.com y las de los grupos con más domos libres, para dejar libres las que sí).
+// (las que no se venden en Booking.com y las de los grupos con más cabañas libres, para dejar libres las que sí).
 export function findUnit(occ: Occupancy, units: number, typeId: string, ci: string, co: string, ignoreCode?: string, prefer: number[] = []) {
   const all = Array.from({ length: units }, (_, i) => i + 1);
   for (const u of [...prefer.filter((x) => all.includes(x)), ...all.filter((x) => !prefer.includes(x))]) {
@@ -149,7 +149,7 @@ export function validateReservation(b: ReservationInput, types: CabinType[], tod
   const t = types.find((x) => x.id === b.cabinTypeId);
   const adults = Number(b.adults);
   const children = Number(b.children);
-  if (!t) f.cabinTypeId = "Tipo de domo no válido.";
+  if (!t) f.cabinTypeId = "Tipo de cabaña no válido.";
   if (!Number.isInteger(adults) || adults < 1 || !Number.isInteger(children) || children < 0) f.adults = "Número de huéspedes no válido.";
   else if (t && adults + children > t.maxPersonas) f.adults = `Máximo ${t.maxPersonas} personas.`;
   if (!g.fullName || g.fullName.trim().length < 3 || g.fullName.length > 120) f["guest.fullName"] = "Escribe tu nombre completo.";
@@ -171,7 +171,7 @@ export function validateReservation(b: ReservationInput, types: CabinType[], tod
 export function newReservationCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = crypto.getRandomValues(new Uint8Array(5));
-  return "STG-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+  return "VF-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
 // Las fechas se retienen mientras se paga el abono; si no se aprueba a tiempo, la retención vence y se liberan.
@@ -210,12 +210,12 @@ export function unitFree(occ: Occupancy, units: number, typeId: string, unit: nu
   return true;
 }
 
-// Domos de la app que cubre cada tipo de alojamiento de Booking enlazado (uno por calendario). Booking vende una por
+// Cabañas de la app que cubre cada tipo de alojamiento de Booking enlazado (uno por calendario). Booking vende una por
 // noche de cada tipo, así que mientras al grupo le quede una libre, lo que venda Booking tiene dónde quedarse.
 export type Pool = number[];
 
 // Orden en que la web prueba las unidades de un tipo para [ci, co): primero las que no se venden en Booking; después las
-// de los grupos con más domos libres esas noches. Así cada tipo de Booking conserva una libre el mayor tiempo posible.
+// de los grupos con más cabañas libres esas noches. Así cada tipo de Booking conserva una libre el mayor tiempo posible.
 export function poolFirst(occ: Occupancy, units: number, typeId: string, ci: string, co: string, pools: Pool[], ignoreCode?: string) {
   const slack = new Map<Pool, number>();
   for (const p of pools) {
@@ -254,7 +254,7 @@ export function planChannelMoves(occ: Occupancy, stays: ChannelSpan[], units: Un
   return { moves, conflicts };
 }
 
-// "Domo Familiar Grande" → "familiar-grande" (id de un domo nuevo).
+// "Cabaña Familiar Grande" → "familiar-grande" (id de una cabaña nueva).
 export const slugify = (s: string) =>
   s
     .normalize("NFD")

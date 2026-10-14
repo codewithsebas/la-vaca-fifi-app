@@ -4,14 +4,14 @@ import { config } from "./config";
 // Dos apps instalables: el sitio de reservas (huéspedes) y el panel (equipo), cada una con su manifiesto e ícono.
 // Van como Route Handlers enlazados desde `metadata.manifest`: un app/manifest.ts tendría prioridad sobre el del panel.
 
-const BG = "#1A1F3A";
+const BG = "#22301C";
 const png = (src: string, size: number, purpose: "any" | "maskable" = "any") => ({ src, sizes: `${size}x${size}`, type: "image/png", purpose });
 
 export const siteManifest: MetadataRoute.Manifest = {
   id: "/",
   name: config.name,
-  short_name: "Stellarium",
-  description: "Reserva tu domo con jacuzzi bajo las estrellas en Murillo, Tolima, y consulta tu reserva.",
+  short_name: "La Vaca Fifí",
+  description: "Reserva tu cabaña en La Vaca Fifí, a 5 minutos de Murillo, Tolima, y consulta tu reserva.",
   lang: "es-CO",
   dir: "ltr",
   start_url: "/",
@@ -36,7 +36,7 @@ export const siteManifest: MetadataRoute.Manifest = {
 export const panelManifest: MetadataRoute.Manifest = {
   id: "/admin",
   name: `Panel de reservas · ${config.name}`,
-  short_name: "Panel Stellarium",
+  short_name: "Panel Vaca Fifí",
   description: "Reservas, pagos, calendario y contenido del sitio.",
   lang: "es-CO",
   dir: "ltr",

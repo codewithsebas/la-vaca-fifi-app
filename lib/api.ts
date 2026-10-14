@@ -79,14 +79,14 @@ const formOf = (fields: Record<string, string | Blob>, fileName?: string) => {
 
 // Clave de idempotencia por intento de reserva (sobrevive a reintentos y recargas de la pestaña).
 export function idemKey() {
-  let k = sessionStorage.getItem("sg-idem");
+  let k = sessionStorage.getItem("vf-idem");
   if (!k) {
     k = crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2);
-    sessionStorage.setItem("sg-idem", k);
+    sessionStorage.setItem("vf-idem", k);
   }
   return k;
 }
-export const resetIdem = () => sessionStorage.removeItem("sg-idem");
+export const resetIdem = () => sessionStorage.removeItem("vf-idem");
 
 export type ValidationError = { error: "VALIDATION_ERROR"; fields: FieldErrors };
 export type ApiError = { error: string; fields?: FieldErrors };

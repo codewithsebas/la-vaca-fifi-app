@@ -253,7 +253,7 @@ async function pushBeds24(sb: Db, client: Client, cals: Mapped[], types: CabinTy
         sb,
         "channel_conflict",
         `Posible sobreventa con Booking.com · ${w.sourceId}`,
-        `Beds24 no pudo cerrar ${where} para la reserva ${w.sourceId}: Booking.com ya tiene alguna de esas noches. Reubícala en otro domo o revisa la reserva en Beds24.`,
+        `Beds24 no pudo cerrar ${where} para la reserva ${w.sourceId}: Booking.com ya tiene alguna de esas noches. Reubícala en otra cabaña o revisa la reserva en Beds24.`,
         w.sourceId,
       );
     else
@@ -348,7 +348,7 @@ export async function syncBeds24(mode: "push" | "all" = "all"): Promise<Beds24Sy
     await sb.from("channel_credentials").update({ last_error: message, last_error_at: new Date().toISOString() }).eq("provider", "beds24");
     // Se avisa una vez, cuando la conexión que funcionaba deja de responder.
     if (!cred.last_error)
-      await notify(sb, "channel_sync_failed", "No se pudo sincronizar con Beds24", `${message} Mientras tanto, la web no vende los domos de Booking.com que Beds24 no confirme.`, null).catch(() => {});
+      await notify(sb, "channel_sync_failed", "No se pudo sincronizar con Beds24", `${message} Mientras tanto, la web no vende las cabañas de Booking.com que Beds24 no confirme.`, null).catch(() => {});
     return { ok: false, error: message };
   }
 }

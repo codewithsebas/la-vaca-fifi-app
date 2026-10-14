@@ -6,7 +6,7 @@ import type { Rates } from "@/lib/types";
 
 const money = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 50_000_000;
 
-// PUT /api/admin/cabin-types { [id]: { precioPareja, personaAdicional, maxPersonas } } → tarifas base (uno o varios domos).
+// PUT /api/admin/cabin-types { [id]: { precioPareja, personaAdicional, maxPersonas } } → tarifas base (una o varias cabañas).
 // Las reservas existentes conservan su cotización; el sitio se regenera con los precios nuevos.
 export const PUT = route(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin();

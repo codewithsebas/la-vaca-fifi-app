@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { defaultContent, mergeSite, mergeTexts, type SiteContent } from "@/lib/site";
+import { DEFAULT_PHOTOS, defaultContent, mergeSite, mergeTexts, type SiteContent } from "@/lib/site";
 import { mergeTheme } from "@/lib/theme";
 import { createServiceClient, hasServiceConfig } from "@/lib/supabase/server";
 import type { Db } from "./db";
@@ -35,11 +35,14 @@ export async function loadSiteContent(sb: Db): Promise<SiteContent> {
   };
 }
 
-// Contenido para las páginas públicas (una consulta por render). Si Supabase no responde, valores del diseño.
+// Contenido para las páginas públicas (una consulta por render). Si Supabase no responde, valores del diseño. Los huecos
+// sin foto subida muestran la del diseño (public/fotos) hasta que se suba una desde el panel; el panel lee
+// loadSiteContent, así que ahí siguen apareciendo vacíos.
 export const getSiteContent = cache(async (): Promise<SiteContent> => {
   if (!hasServiceConfig()) return defaultContent;
   try {
-    return await loadSiteContent(createServiceClient());
+    const content = await loadSiteContent(createServiceClient());
+    return { ...content, photos: { ...DEFAULT_PHOTOS, ...content.photos } };
   } catch (e) {
     console.error("No se pudo leer el contenido del sitio:", e);
     return defaultContent;

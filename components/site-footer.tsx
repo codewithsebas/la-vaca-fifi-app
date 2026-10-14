@@ -9,8 +9,8 @@ import { ShootingStar, Stars } from "./landing/night-sky";
 
 // Pie de página: el bosque andino al caer la tarde, el cierre de la portada. Arriba, el cielo con estrellas y la
 // invitación a reservar; en el medio, el paisaje en capas (cordillera con el nevado, laderas de pinos entre la niebla,
-// lomas, frailejones) donde viven el oso de anteojos, el venado, el tapir, el colibrí chivito, las águilas, la cotinga,
-// la candelita y el cóndor, con el nombre gigante que se hunde detrás de las montañas; abajo, sobre el suelo del bosque,
+// lomas, frailejones) donde viven La Vaca Fifí, el oso de anteojos, el venado, el tapir, el colibrí chivito, las águilas,
+// la cotinga, la candelita y el cóndor, con el nombre gigante que se hunde detrás de las montañas; abajo, sobre el suelo del bosque,
 // los datos de contacto. Todo lo que se mueve respeta «reducir movimiento».
 
 const heading = "mb-2 flex items-center gap-2 font-body text-[.78rem] font-extrabold uppercase tracking-[.12em] text-accent";
@@ -59,13 +59,13 @@ export async function SiteFooter() {
       <div className="gutter-1360 relative z-1 pt-[clamp(56px,8vw,128px)]">
         <div className="reveal-on-scroll flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
           <p className="display max-w-[16ch] text-[clamp(2.6rem,6vw,5.2rem)] leading-[.9]">
-            ¿Listo para dormir <span className="text-accent">bajo las estrellas?</span>
+            ¿Listo para unos días <span className="text-accent">de finca?</span>
           </p>
           <div className="flex flex-wrap gap-3">
             <Link href="/reservar" className="btn btn-highlight min-h-14 px-7 font-bold transition-transform hover:-translate-y-0.5">
               Reservar ahora
             </Link>
-            <a href={wa(c.whatsapp, "Hola, quiero reservar un domo.")} target="_blank" rel="noopener" className="btn btn-outline-dark min-h-14 gap-2 px-6 font-bold transition-colors hover:bg-on-dark hover:text-on-light">
+            <a href={wa(c.whatsapp, "Hola, quiero reservar una cabaña.")} target="_blank" rel="noopener" className="btn btn-outline-dark min-h-14 gap-2 px-6 font-bold transition-colors hover:bg-on-dark hover:text-on-light">
               <WhatsAppIcon size={18} />
               Escríbenos
             </a>

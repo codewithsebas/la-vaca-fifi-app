@@ -196,7 +196,7 @@ function ServiceEditor({ draft, onClose, onSaved, onAuthError }: { draft: Draft;
             {isNew ? "Nuevo servicio" : "Editar servicio"}
           </h2>
           <Field label="Nombre" error={errors.title} hint={`${d.title.length}/${SERVICE_LIMITS.title}`}>
-            {(p) => <input {...p} data-autofocus type="text" maxLength={SERVICE_LIMITS.title} value={d.title} onChange={(e) => set({ title: e.target.value })} className={adminInput} placeholder="Ej. Wifi en el domo" />}
+            {(p) => <input {...p} data-autofocus type="text" maxLength={SERVICE_LIMITS.title} value={d.title} onChange={(e) => set({ title: e.target.value })} className={adminInput} placeholder="Ej. Wifi en la cabaña" />}
           </Field>
           <Field label="Descripción (opcional)" error={errors.description} hint={`Una línea que lo explique. ${d.description.length}/${SERVICE_LIMITS.description}`}>
             {(p) => <textarea {...p} rows={2} maxLength={SERVICE_LIMITS.description} value={d.description} onChange={(e) => set({ description: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} />}

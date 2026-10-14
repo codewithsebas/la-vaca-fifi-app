@@ -2,28 +2,26 @@
 import type { ServiceIcon } from "./service-icons";
 
 export const EXPERIENCES = [
-  { id: "jacuzzi", label: "Jacuzzi al aire libre" },
-  { id: "estrellas", label: "Noches bajo las estrellas" },
-  { id: "desayuno", label: "Desayuno con vista" },
-  { id: "fogata", label: "Fogata y vino" },
-  { id: "nevado", label: "Nevado del Ruiz" },
+  { id: "restaurante", label: "Restaurante y café de finca" },
+  { id: "desayuno", label: "Desayuno con vista a la montaña" },
+  { id: "parque", label: "Parque infantil" },
+  { id: "jardines", label: "Jardines y flores" },
+  { id: "finca", label: "Ambiente de finca tradicional" },
 ];
 
 // Servicios por defecto: los mismos que siembra la migración «servicios_del_sitio». Desde el panel se crean, editan,
 // ocultan, ordenan y eliminan (tabla site_services); estos solo se usan si la base de datos no responde.
 export const DEFAULT_SERVICES: { title: string; icon: ServiceIcon; description?: string; note?: string }[] = [
-  { title: "Domo geodésico", icon: "domo" },
-  { title: "Jacuzzi privado al aire libre", icon: "jacuzzi" },
-  { title: "Cielo estrellado", icon: "estrellas" },
-  { title: "Cama king", icon: "cama" },
-  { title: "Baño privado con ducha", icon: "ducha" },
-  { title: "Calefacción", icon: "calefaccion" },
-  { title: "Desayuno en tu domo", icon: "desayuno" },
-  { title: "Terraza con vista a las montañas", icon: "montana" },
+  { title: "Desayuno americano incluido", icon: "desayuno" },
+  { title: "Baño privado con agua caliente", icon: "ducha" },
+  { title: "Balcón con vista a la montaña", icon: "montana" },
+  { title: "TV de pantalla plana", icon: "tv" },
+  { title: "Wifi en toda la finca", icon: "wifi" },
+  { title: "Restaurante y café", icon: "restaurante" },
   { title: "Zona de fogata", icon: "fogata" },
-  { title: "Minibar", icon: "minibar" },
-  { title: "Juegos de mesa", icon: "juegos" },
-  { title: "Parqueadero privado", icon: "parqueadero" },
+  { title: "Parque infantil", icon: "parque" },
+  { title: "Jardines", icon: "flores" },
+  { title: "Parqueadero privado gratis", icon: "parqueadero" },
   { title: "Pet friendly, sin costo", icon: "mascota" },
-  { title: "Vino y decoración para ocasiones", icon: "corazon", note: "Valor adicional" },
+  { title: "Celebraciones y eventos", icon: "corazon", note: "Se cotiza aparte" },
 ];

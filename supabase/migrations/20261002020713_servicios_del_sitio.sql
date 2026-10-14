@@ -24,19 +24,17 @@ create policy "Administradores gestionan los servicios" on public.site_services
 revoke all on public.site_services from anon;
 grant select, insert, update, delete on public.site_services to authenticated, service_role;
 
--- Los servicios que ya mostraba el sitio, en el mismo orden.
+-- Los servicios de La Vaca Fifí (los mismos de DEFAULT_SERVICES en lib/content.ts), en el orden del sitio.
 insert into public.site_services (title, icon, note, sort) values
-  ('Domo geodésico', 'domo', '', 1),
-  ('Jacuzzi privado al aire libre', 'jacuzzi', '', 2),
-  ('Cielo estrellado', 'estrellas', '', 3),
-  ('Cama king', 'cama', '', 4),
-  ('Baño privado con ducha', 'ducha', '', 5),
-  ('Calefacción', 'calefaccion', '', 6),
-  ('Desayuno en tu domo', 'desayuno', '', 7),
-  ('Terraza con vista a las montañas', 'montana', '', 8),
-  ('Zona de fogata', 'fogata', '', 9),
-  ('Minibar', 'minibar', '', 10),
-  ('Juegos de mesa', 'juegos', '', 11),
-  ('Parqueadero privado', 'parqueadero', '', 12),
-  ('Pet friendly, sin costo', 'mascota', '', 13),
-  ('Vino y decoración para ocasiones', 'corazon', 'Valor adicional', 14);
+  ('Desayuno americano incluido', 'desayuno', '', 1),
+  ('Baño privado con agua caliente', 'ducha', '', 2),
+  ('Balcón con vista a la montaña', 'montana', '', 3),
+  ('TV de pantalla plana', 'tv', '', 4),
+  ('Wifi en toda la finca', 'wifi', '', 5),
+  ('Restaurante y café', 'restaurante', '', 6),
+  ('Zona de fogata', 'fogata', '', 7),
+  ('Parque infantil', 'parque', '', 8),
+  ('Jardines', 'flores', '', 9),
+  ('Parqueadero privado gratis', 'parqueadero', '', 10),
+  ('Pet friendly, sin costo', 'mascota', '', 11),
+  ('Celebraciones y eventos', 'corazon', 'Se cotiza aparte', 12);

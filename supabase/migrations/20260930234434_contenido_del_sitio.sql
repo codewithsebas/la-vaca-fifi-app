@@ -79,13 +79,15 @@ create policy "Administradores borran imágenes del sitio" on storage.objects
 
 -- Valores iniciales (los que traía el diseño).
 insert into public.site_settings (check_in_start, check_in_end, check_out_time, phones, whatsapp, rnt)
-values ('15:00', '19:00', '12:00', array['315 591 8577'], '573155918577', '107343');
+values ('14:00', '22:00', '12:00', array['314 237 4008'], '573142374008', '208820');
 
 insert into public.site_policies (question, answer, sort) values
   ('Confirmación de la reserva', 'Para confirmar tu reserva se requiere un abono del 30 % del valor total. Este abono no es reembolsable.', 1),
   ('Documento de identidad', 'Todo huésped debe presentar su documento de identidad físico al llegar.', 2),
   ('Cambios de fecha', '– Con 5 días o más: reprogramación hasta 3 meses (según disponibilidad).  – Con menos de 120 horas: no se permiten cambios.', 3),
-  ('Clima de alta montaña', 'Estamos a 2.950 metros sobre el nivel del mar y las noches son frías. Cada domo tiene calefacción; aun así, trae ropa abrigada.', 4),
-  ('Daños', 'Los daños, las manchas en la lencería o cualquier afectación al domo generan un cobro adicional.', 5),
-  ('Responsabilidad', 'No nos hacemos responsables por condiciones climáticas, objetos personales ni vehículos.', 6),
-  ('Mascotas', 'Tu mascota es bienvenida, sin costo adicional. Cuéntanos de ella al reservar.', 7);
+  ('Clima de montaña', 'Murillo está a casi 3.000 metros de altura y las noches son frías: trae ropa abrigada.', 4),
+  ('Niños', 'Los niños de cualquier edad son bienvenidos. Las cabañas no tienen cunas ni camas supletorias: elige una con capacidad para todos.', 5),
+  ('Mascotas', 'Tu mascota es bienvenida, sin costo adicional. Cuéntanos de ella al reservar.', 6),
+  ('Espacios sin humo', 'No se permite fumar dentro de las cabañas.', 7),
+  ('Daños', 'Los daños, las manchas en la lencería o cualquier afectación a la cabaña generan un cobro adicional.', 8),
+  ('Responsabilidad', 'No nos hacemos responsables por condiciones climáticas, objetos personales ni vehículos.', 9);

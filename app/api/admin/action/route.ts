@@ -12,10 +12,10 @@ import { HOLD_OPTIONS, manualDueAt } from "@/lib/payments";
 import type { Tables } from "@/lib/supabase/database.types";
 import type { AdminAction, Quote, ReservationStatus } from "@/lib/types";
 
-// Lo que Beds24 necesita de una reserva para retener su domo (si se vende en Booking).
+// Lo que Beds24 necesita de una reserva para retener su cabaña (si se vende en Booking).
 const holdOf = (r: Tables<"reservations">) => ({ source: "reservation" as const, sourceId: r.code, cabinTypeId: r.cabin_type_id, label: `Web ${r.code}`, adults: r.adults, children: r.children });
 
-// Reactivar una retención vencida (pagarla o darle un plazo nuevo) vuelve a ocupar sus noches: si el domo se vende en
+// Reactivar una retención vencida (pagarla o darle un plazo nuevo) vuelve a ocupar sus noches: si la cabaña se vende en
 // Booking por Beds24, se retiene allá antes. Las demás no necesitan retener nada.
 async function reclaim(r: Tables<"reservations">): Promise<{ hold: Hold } | { error: Response }> {
   if (r.status !== "expired") return { hold: { commit: async () => {}, release: async () => {} } };
@@ -96,7 +96,7 @@ export const POST = route(async (req: NextRequest) => {
       const [{ types, units }, seasons] = await Promise.all([loadCabinTypes(sb), loadSeasons(sb, { activeOnly: true })]);
       const type = types.find((t) => t.id === current.cabin_type_id)!;
       const occ = await loadOccupancy(sb, ci, addDays(co, -1), type.id);
-      // Si el domo se vende en Booking por Beds24, las noches nuevas se retienen allá antes de guardar.
+      // Si la cabaña se vende en Booking por Beds24, las noches nuevas se retienen allá antes de guardar.
       const claim = await claimUnit(occ, { ...holdOf(current), units: units[type.id] ?? 0, checkIn: ci, checkOut: co, ignoreCode: current.code });
       if (!claim.hold) return claim.channelDown ? fail(503, "CHANNEL_UNAVAILABLE") : fail(409, "DATES_UNAVAILABLE");
       const { unit, hold } = claim;

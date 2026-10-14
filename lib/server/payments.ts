@@ -36,7 +36,7 @@ export function activeProvider(): Exclude<PaymentProvider, "manual"> | null {
   return simulatorAllowed() ? "simulado" : null;
 }
 
-// Referencia única por intento: STG-7W9DX-A-K3M9QZ (A = abono, T = pago total, S = saldo). Sin caracteres ambiguos.
+// Referencia única por intento: VF-7W9DX-A-K3M9QZ (A = abono, T = pago total, S = saldo). Sin caracteres ambiguos.
 export function newReference(code: string, kind: PaymentKind) {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const tail = Array.from(randomBytes(6), (b) => alphabet[b % alphabet.length]).join("");
@@ -52,7 +52,7 @@ type Payer = { email: string; fullName: string; phone: string; docType: string; 
 
 // El CDN de Wompi rechaza (403) el checkout si la URL de retorno es localhost o 127.0.0.1. En desarrollo se vuelve por
 // un subdominio de localhost, que el navegador también resuelve a este equipo. En producción la base es el dominio https.
-const wompiReturnBase = (base: string) => base.replace(/^(https?:\/\/)(localhost|127\.0\.0\.1|\[::1\])(?=[:/]|$)/, "$1stellarium.localhost");
+const wompiReturnBase = (base: string) => base.replace(/^(https?:\/\/)(localhost|127\.0\.0\.1|\[::1\])(?=[:/]|$)/, "$1lavacafifi.localhost");
 
 // A dónde llevar al huésped para pagar. Wompi: Web Checkout con firma de integridad y vencimiento (no acepta pagos
 // después de que termine la retención o el plazo del saldo). Simulado: página propia de pruebas.

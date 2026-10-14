@@ -118,8 +118,8 @@ function units(cabins: CabinType[], filter: string): Unit[] {
         key: `${c.id}:${i + 1}`,
         cabin: c,
         unit: i + 1,
-        label: `${c.nombre.replace(/^Domo\s+/i, "")} ${i + 1}`,
-        short: `${c.nombre.replace(/^Domo\s+/i, "").split(" ")[0]} ${i + 1}`,
+        label: `${c.nombre.replace(/^Cabaña\s+/i, "")} ${i + 1}`,
+        short: `${c.nombre.replace(/^Cabaña\s+/i, "").split(" ")[0]} ${i + 1}`,
       })),
     );
 }
@@ -183,7 +183,7 @@ export function CalendarView() {
   const pref = usePref(PREF.calendarView, "auto");
   const [viewParam, setViewParam] = useParam<CalView | "">("vista", "");
   const [dateParam, setDateParam] = useParam("fecha", "");
-  const [filter, setFilter] = useParam("domo", "");
+  const [filter, setFilter] = useParam("cabana", "");
   const [draft, setDraft] = useState<NewReservationDraft | null>(null);
   const rows = useMemo(() => units(data.cabinTypes, filter), [data.cabinTypes, filter]);
 
@@ -228,7 +228,7 @@ export function CalendarView() {
   const capacity = rows.length * days.length - blockedNights;
   const occupancy = capacity ? Math.round((busyNights / capacity) * 100) : 0;
 
-  const cabinOptions = [{ value: "", label: "Todos los domos" }, ...data.cabinTypes.filter((c) => c.units > 0).map((c) => ({ value: c.id, label: c.nombre, description: plural(c.units, "unidad", "unidades") }))];
+  const cabinOptions = [{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.filter((c) => c.units > 0).map((c) => ({ value: c.id, label: c.nombre, description: plural(c.units, "unidad", "unidades") }))];
   const showDay = (d: string) => {
     setAnchor(d);
     setViewParam("dia");
@@ -256,7 +256,7 @@ export function CalendarView() {
             {title}
           </p>
         </div>
-        {/* En móvil: fecha y domo lado a lado, la vista debajo y «Nueva reserva» a todo el ancho; así la cuadrícula empieza más arriba. */}
+        {/* En móvil: fecha y cabaña lado a lado, la vista debajo y «Nueva reserva» a todo el ancho; así la cuadrícula empieza más arriba. */}
         <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <div className="min-w-0 sm:w-[168px]">
             <DatePicker value={anchor} onChange={(d) => d && setAnchor(d)} clearable={false} placeholder="Ir a fecha" className="h-8 min-h-8 text-[13px]" />
@@ -275,11 +275,11 @@ export function CalendarView() {
         <div className="rounded-2xl border border-line bg-panel p-4 shadow-panel">
           <EmptyState
             icon={<HomeIcon size={18} />}
-            title="No hay domos para mostrar"
-            text="Crea un domo (o asígnale unidades) para ver su ocupación aquí."
+            title="No hay cabañas para mostrar"
+            text="Crea una cabaña (o asígnale unidades) para ver su ocupación aquí."
             action={
-              <Link href={paths.domos} className={buttonClass()}>
-                Ir a Domos
+              <Link href={paths.cabanas} className={buttonClass()}>
+                Ir a Cabañas
               </Link>
             }
           />
@@ -358,9 +358,9 @@ function Legend() {
 type TimelineProps = { days: string[]; rows: Unit[]; view: CalView; today: string; width: number; onDay: (d: string) => void; onNew: (d: NewReservationDraft) => void };
 type Line = { kind: "group"; cabin: CabinType; units: Unit[] } | { kind: "unit"; u: Unit };
 
-// Agrupada por tipo de domo: cada tipo muestra por día cuántas unidades quedan libres y su tarifa (lo que se necesita
+// Agrupada por tipo de cabaña: cada tipo muestra por día cuántas unidades quedan libres y su tarifa (lo que se necesita
 // para vender por WhatsApp); debajo, una fila por unidad con sus reservas, bloqueos y noches de Booking.
-// Arrastrar sobre noches libres de una unidad (con el mouse) abre «Nueva reserva» con ese domo y esas fechas.
+// Arrastrar sobre noches libres de una unidad (con el mouse) abre «Nueva reserva» con esa cabaña y esas fechas.
 function Timeline({ days, rows, view, today, width, onDay, onNew }: TimelineProps) {
   const { data, cabinLabel, now } = useAdmin();
   const calBlocks = useCalBlocks();
@@ -468,11 +468,11 @@ function Timeline({ days, rows, view, today, width, onDay, onNew }: TimelineProp
   return (
     <div className="flex min-h-[300px] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-panel">
       <div ref={scroller} className={`relative min-h-0 flex-1 overflow-auto overscroll-x-contain ${sel ? "cursor-col-resize select-none" : ""}`}>
-        <div role="grid" aria-label="Ocupación por domo" aria-rowcount={lines.length + 1} className="grid" style={gridStyle}>
+        <div role="grid" aria-label="Ocupación por cabaña" aria-rowcount={lines.length + 1} className="grid" style={gridStyle}>
           {/* Encabezado de días */}
           <div role="row" className="contents">
             <div role="columnheader" className="sticky top-0 left-0 z-30 flex items-end border-r border-b border-line bg-panel px-3 pb-2 text-[12px] font-semibold text-ink-muted">
-              Domo
+              Cabaña
             </div>
             {days.map((d, i) => {
               const dt = parseISO(d);
@@ -502,13 +502,13 @@ function Timeline({ days, rows, view, today, width, onDay, onNew }: TimelineProp
               return (
                 <div key={`g-${line.cabin.id}`} role="row" className="contents">
                   <div role="rowheader" className="sticky left-0 z-10 flex min-w-0 items-center gap-2 border-r border-b border-line bg-canvas px-3" style={{ gridRow }}>
-                    <span className="truncate text-[12px] font-bold tracking-[.02em] text-ink">{line.cabin.nombre.replace(/^Domo\s+/i, "")}</span>
+                    <span className="truncate text-[12px] font-bold tracking-[.02em] text-ink">{line.cabin.nombre.replace(/^Cabaña\s+/i, "")}</span>
                     {!line.cabin.activa && <span className="flex-none rounded-full bg-ink/8 px-1.5 text-[10.5px] font-semibold text-ink-muted">Inactivo</span>}
                   </div>
                   {days.map((d, i) => {
                     const f = all.filter((u) => free(u, d)).length;
                     const r = nightlyRate(line.cabin, data.seasons, d);
-                    const text = `${line.cabin.nombre} · ${fmtDate(d)}: ${f === 0 ? "sin unidades libres" : `${f} de ${total} libres`} · ${cop(r.couple)} la noche en pareja${r.season ? ` (${r.season.nombre})` : ""}`;
+                    const text = `${line.cabin.nombre} · ${fmtDate(d)}: ${f === 0 ? "sin unidades libres" : `${f} de ${total} libres`} · ${cop(r.couple)} la noche para 2 personas${r.season ? ` (${r.season.nombre})` : ""}`;
                     const tone = f === 0 ? "text-error" : f < total ? "text-warning" : "text-ink-subtle/70";
                     return (
                       <div
@@ -685,7 +685,7 @@ function Timeline({ days, rows, view, today, width, onDay, onNew }: TimelineProp
         )}
       </div>
       <p className="hidden border-t border-line bg-canvas/50 px-4 py-2 text-[12px] text-ink-muted pointer-fine:block">
-        Arrastra sobre los días libres de un domo para crear una reserva con esas fechas, o haz clic en un día libre para reservar o bloquear.
+        Arrastra sobre los días libres de una cabaña para crear una reserva con esas fechas, o haz clic en un día libre para reservar o bloquear.
       </p>
 
       {/* Fecha libre: acciones al tocar o hacer clic (en móvil, hoja inferior) */}
@@ -696,7 +696,7 @@ function Timeline({ days, rows, view, today, width, onDay, onNew }: TimelineProp
               <p className="text-[12px] font-bold tracking-[.04em] text-success uppercase">Libre</p>
               <p className="mt-0.5 text-[15px] font-bold text-ink">{cabinLabel(cell.u.cabin.id, cell.u.unit)}</p>
               <p className="text-[13px] text-ink-muted">{fmtFullDate(cell.d)}</p>
-              {rate && <p className="mt-1 text-[13px] text-ink">{`Noche en pareja: ${cop(rate.couple)}${rate.season ? ` · ${rate.season.nombre}` : ""}`}</p>}
+              {rate && <p className="mt-1 text-[13px] text-ink">{`Noche para 2: ${cop(rate.couple)}${rate.season ? ` · ${rate.season.nombre}` : ""}`}</p>}
             </div>
             <div className="flex flex-col gap-1.5">
               <Button
@@ -711,7 +711,7 @@ function Timeline({ days, rows, view, today, width, onDay, onNew }: TimelineProp
               >
                 Nueva reserva desde este día
               </Button>
-              <Link href={paths.bloqueos({ nuevo: 1, domo: cell.u.cabin.id, unidad: cell.u.unit, fecha: cell.d })} className={buttonClass("secondary", "md", "justify-start")}>
+              <Link href={paths.bloqueos({ nuevo: 1, cabana: cell.u.cabin.id, unidad: cell.u.unit, fecha: cell.d })} className={buttonClass("secondary", "md", "justify-start")}>
                 <BanIcon size={15} />
                 Bloquear desde este día
               </Link>
@@ -768,7 +768,7 @@ function MonthGrid({ month, rows, today, onPick }: { month: string; rows: Unit[]
           const states = rows.map((u) => ({ u, s: stateOf(u, d) }));
           const freeCount = states.filter((x) => x.s.kind === "free").length;
           const arrivals = data.reservations.filter((r) => r.checkIn === d && rows.some((u) => occupies(r, u))).length;
-          const summary = `${fmtDate(d, true)}: ${freeCount === 0 ? "sin domos libres" : `${freeCount} de ${rows.length} libres`}${arrivals ? `, ${plural(arrivals, "llegada", "llegadas")}` : ""}`;
+          const summary = `${fmtDate(d, true)}: ${freeCount === 0 ? "sin cabañas libres" : `${freeCount} de ${rows.length} libres`}${arrivals ? `, ${plural(arrivals, "llegada", "llegadas")}` : ""}`;
           return (
             <button
               key={d}
@@ -832,7 +832,7 @@ function MonthGrid({ month, rows, today, onPick }: { month: string; rows: Unit[]
   );
 }
 
-/* ───────────── Día: agenda por domo ───────────── */
+/* ───────────── Día: agenda por cabaña ───────────── */
 
 function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onNew: (d: NewReservationDraft) => void }) {
   const { data, cabinLabel, today, now } = useAdmin();
@@ -899,13 +899,13 @@ function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onNew: (d:
               </Link>
             ) : (
               <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line-strong px-3 py-3 text-[13px] text-ink-muted">
-                <span>{`Disponible esta noche · ${cop(rate.couple)} en pareja${rate.season ? ` (${rate.season.nombre})` : ""}`}</span>
+                <span>{`Disponible esta noche · ${cop(rate.couple)} para 2${rate.season ? ` (${rate.season.nombre})` : ""}`}</span>
                 {day >= today && (
                   <span className="flex flex-wrap gap-1.5">
                     <Button size="sm" variant="primary" icon={<PlusIcon size={13} />} onClick={() => onNew({ cabinTypeId: u.cabin.id, unit: u.unit, checkIn: day, checkOut: addDays(day, 1) })}>
                       Reservar
                     </Button>
-                    <Link href={paths.bloqueos({ nuevo: 1, domo: u.cabin.id, unidad: u.unit, fecha: day })} className={buttonClass("ghost", "sm")}>
+                    <Link href={paths.bloqueos({ nuevo: 1, cabana: u.cabin.id, unidad: u.unit, fecha: day })} className={buttonClass("ghost", "sm")}>
                       <BanIcon size={14} />
                       Bloquear
                     </Link>

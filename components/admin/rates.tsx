@@ -50,7 +50,7 @@ export function RatesView() {
 
       <section aria-labelledby="rt-base" className="flex flex-col gap-3">
         <h2 id="rt-base" className="text-[15px] font-bold text-ink">
-          Tarifa base por domo
+          Tarifa base por cabaña
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.cabinTypes.map((c) => (
@@ -64,7 +64,7 @@ export function RatesView() {
           id="rt-seasons"
           icon={<CalendarIcon size={18} />}
           title="Temporadas"
-          subtitle="Precio especial por fechas. Dos temporadas activas del mismo domo no pueden cruzarse."
+          subtitle="Precio especial por fechas. Dos temporadas activas de la misma cabaña no pueden cruzarse."
           actions={
             <Button
               variant="primary"
@@ -123,7 +123,7 @@ function BaseRateCard({ c }: { c: CabinType }) {
       title: "Guardar tarifa base",
       text: `${c.nombre}. Aplica a las cotizaciones desde ahora; las reservas existentes conservan su valor.`,
       details: [
-        ...(v.precioPareja !== c.precioPareja ? [{ k: "Noche en pareja", v: `${cop(c.precioPareja)} → ${cop(v.precioPareja)}` }] : []),
+        ...(v.precioPareja !== c.precioPareja ? [{ k: "Noche para 2", v: `${cop(c.precioPareja)} → ${cop(v.precioPareja)}` }] : []),
         ...(v.personaAdicional !== c.personaAdicional ? [{ k: "Persona adicional", v: `${cop(c.personaAdicional)} → ${cop(v.personaAdicional)}` }] : []),
       ],
       okLabel: "Guardar tarifa",
@@ -140,7 +140,7 @@ function BaseRateCard({ c }: { c: CabinType }) {
         subtitle={`Máximo ${plural(c.maxPersonas, "persona", "personas")} · ${plural(c.units, "unidad", "unidades")}`}
         actions={!c.activa ? <Badge>Inactivo</Badge> : undefined}
       />
-      <Field label="Noche en pareja" error={invalid ? "La tarifa debe ser mayor que cero." : undefined}>
+      <Field label="Noche para 2" error={invalid ? "La tarifa debe ser mayor que cero." : undefined}>
         {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} invalid={invalid} value={v.precioPareja} onChange={(n) => setV({ ...v, precioPareja: n })} />}
       </Field>
       <Field label="Persona adicional por noche" hint="Desde la 3.ª persona.">
@@ -236,11 +236,11 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
   };
   const ref = data.cabinTypes.find((c) => c.id === (initial.id ? s.cabinTypeId : cabins[0]));
 
-  // Cruces con otras temporadas activas de los mismos domos.
+  // Cruces con otras temporadas activas de las mismas cabañas.
   const clash = s.activa && s.from && s.to ? data.seasons.filter((x) => x.id !== s.id && x.activa && cabins.includes(x.cabinTypeId) && x.from <= s.to && s.from <= x.to) : [];
   const errs = {
     nombre: !s.nombre.trim() ? "Escribe un nombre, por ejemplo «Temporada alta de diciembre»." : "",
-    cabins: !cabins.length ? "Elige al menos un domo." : "",
+    cabins: !cabins.length ? "Elige al menos una cabaña." : "",
     dates: !s.from || !s.to ? "Elige la primera y la última noche." : "",
     price: s.precioPareja <= 0 ? "La tarifa debe ser mayor que cero." : "",
   };
@@ -265,7 +265,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
         last = r.data;
       }
       if (last) setData((d) => ({ ...d, seasons: last! }));
-      toast(s.id ? "Temporada actualizada" : cabins.length > 1 ? `Temporada creada para ${plural(cabins.length, "domo", "domos")}` : "Temporada creada");
+      toast(s.id ? "Temporada actualizada" : cabins.length > 1 ? `Temporada creada para ${plural(cabins.length, "cabaña", "cabañas")}` : "Temporada creada");
       onClose();
     } catch {
       setError("Error de conexión. Inténtalo de nuevo.");
@@ -289,7 +289,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
           {(p) => <input {...p} id="se-name" type="text" maxLength={80} value={s.nombre} onChange={(e) => set({ nombre: e.target.value })} placeholder="Temporada alta de fin de año" className={adminInput} />}
         </Field>
         {s.id ? (
-          <Field label="Domo">{(p) => <Combobox id={p.id} value={s.cabinTypeId} onChange={(v) => {
+          <Field label="Cabaña">{(p) => <Combobox id={p.id} value={s.cabinTypeId} onChange={(v) => {
                   set({ cabinTypeId: v });
                   setCabins([v]);
                 }} options={data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))} />}</Field>
@@ -314,7 +314,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
           {(p) => <DateRangePicker id={p.id} describedBy={p["aria-describedby"]} invalid={!!p["aria-invalid"]} mode="days" from={s.from || null} to={s.to || null} min={s.id ? undefined : today} onChange={(from, to) => set({ from: from ?? "", to: to ?? "" })} />}
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Noche en pareja" error={tried ? errs.price : undefined} hint={ref ? `Base ${cop(ref.precioPareja)} · ${diff(s.precioPareja, ref.precioPareja)}` : undefined}>
+          <Field label="Noche para 2" error={tried ? errs.price : undefined} hint={ref ? `Base ${cop(ref.precioPareja)} · ${diff(s.precioPareja, ref.precioPareja)}` : undefined}>
             {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} invalid={!!p["aria-invalid"]} value={s.precioPareja} onChange={(n) => set({ precioPareja: n })} />}
           </Field>
           <Field label="Persona adicional" hint={ref ? `Base ${cop(ref.personaAdicional)}` : undefined}>
@@ -324,12 +324,12 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
         <Switch checked={s.activa} onChange={(v) => set({ activa: v })} label="Activa" description="Si la pausas, se guarda pero no se aplica a las cotizaciones." />
         {clash.length > 0 && (
           <Callout tone="error" role="alert">
-            Se cruza con {clash.map((x) => `«${x.nombre}» (${fmtDate(x.from)} → ${fmtDate(x.to)})`).join(", ")} del mismo domo. Ajusta las fechas o pausa una de las dos.
+            Se cruza con {clash.map((x) => `«${x.nombre}» (${fmtDate(x.from)} → ${fmtDate(x.to)})`).join(", ")} de la misma cabaña. Ajusta las fechas o pausa una de las dos.
           </Callout>
         )}
         {s.from && s.to && !clash.length && ref && s.precioPareja > 0 && (
           <Callout>
-            Ejemplo: 2 noches en pareja en {ref.nombre} durante esta temporada = <strong>{cop(s.precioPareja * 2)}</strong> (con la tarifa base serían {cop(ref.precioPareja * 2)}).
+            Ejemplo: 2 noches para 2 personas en {ref.nombre} durante esta temporada = <strong>{cop(s.precioPareja * 2)}</strong> (con la tarifa base serían {cop(ref.precioPareja * 2)}).
           </Callout>
         )}
         {error && <FieldError>{error}</FieldError>}
@@ -374,7 +374,7 @@ function Simulator() {
     <Card aria-labelledby="rt-sim" className="flex flex-col gap-4 p-4 sm:p-5">
       <CardHeader id="rt-sim" icon={<TagIcon size={18} />} title="Simulador de precio" subtitle="Comprueba cuánto se cobraría con las tarifas y temporadas actuales." />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.4fr_auto]">
-        <Field label="Domo">{(p) => <Combobox id={p.id} value={cabinId} onChange={setCabinId} options={active.map((x) => ({ value: x.id, label: x.nombre }))} />}</Field>
+        <Field label="Cabaña">{(p) => <Combobox id={p.id} value={cabinId} onChange={setCabinId} options={active.map((x) => ({ value: x.id, label: x.nombre }))} />}</Field>
         <Field label="Fechas">{(p) => <DateRangePicker id={p.id} mode="nights" from={range.from} to={range.to} onChange={(from, to) => setRange({ from, to })} clearable={false} />}</Field>
         <Field label="Huéspedes">{(p) => <Stepper id={p.id} value={guests} onChange={setGuests} min={1} max={c?.maxPersonas ?? 12} />}</Field>
       </div>
@@ -405,7 +405,7 @@ function Simulator() {
           </div>
         </div>
       ) : (
-        <p className="text-[13px] text-ink-muted">Elige un domo y las fechas de llegada y salida.</p>
+        <p className="text-[13px] text-ink-muted">Elige una cabaña y las fechas de llegada y salida.</p>
       )}
     </Card>
   );

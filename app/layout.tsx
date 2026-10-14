@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bebas_Neue, Caveat, Manrope, Source_Code_Pro } from "next/font/google";
+import { Alegreya_SC, Bebas_Neue, Caveat, Manrope } from "next/font/google";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteProvider } from "@/components/site-provider";
 import { config } from "@/lib/config";
@@ -10,30 +10,30 @@ import "./globals.css";
 const bebas = Bebas_Neue({ variable: "--font-bebas", weight: "400", subsets: ["latin"] });
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"] });
 const caveat = Caveat({ variable: "--font-caveat", weight: ["500", "600"], subsets: ["latin"] });
-// La letra del logo («Stellarium» junto a la S de estrellas): solo para el nombre de la marca.
-const sourceCode = Source_Code_Pro({ variable: "--font-source-code", weight: "400", subsets: ["latin"] });
+// La letra del letrero (romana con versalitas): solo para el nombre de la marca.
+const alegreyaSc = Alegreya_SC({ variable: "--font-alegreya-sc", weight: "800", subsets: ["latin"] });
 
 // Las páginas se regeneran cada hora o al guardar contenido en el panel (revalidatePath).
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: { default: config.name, template: `%s | ${config.name}` },
-  description: "Glamping en domos geodésicos con jacuzzi privado, a 2.950 metros de altura en Murillo, Tolima.",
+  description: "Cabañas y restaurante de finca a 5 minutos de Murillo, Tolima: baño privado, balcón con vista a la montaña y desayuno incluido.",
   openGraph: { locale: "es_CO", siteName: config.name, type: "website" },
   // PWA: los íconos salen de app/favicon.ico, app/icon.tsx y app/apple-icon.tsx (el logo, lib/app-icon.tsx); el manifiesto, de app/manifest.webmanifest.
   manifest: "/manifest.webmanifest",
   applicationName: config.name,
-  appleWebApp: { capable: true, title: "Stellarium", statusBarStyle: "black" },
+  appleWebApp: { capable: true, title: "La Vaca Fifí", statusBarStyle: "black" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1A1F3A",
+  themeColor: "#22301C",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [content, cabins] = await Promise.all([getSiteContent(), getSiteCabins()]);
   return (
-    <html lang="es" data-scroll-behavior="smooth" className={`${bebas.variable} ${manrope.variable} ${caveat.variable} ${sourceCode.variable}`}>
+    <html lang="es" data-scroll-behavior="smooth" className={`${bebas.variable} ${manrope.variable} ${caveat.variable} ${alegreyaSc.variable}`}>
       <body>
         <SiteProvider content={content} cabins={cabins}>
           {children}

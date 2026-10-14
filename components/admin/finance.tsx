@@ -19,7 +19,7 @@ const short = (n: number) => (n >= 1e6 ? `$${(n / 1e6).toLocaleString("es-CO", {
 export function FinanceView() {
   const { data } = useAdmin();
   const period = usePeriod("30");
-  const [cabinId, setCabinId] = useParam("domo", "");
+  const [cabinId, setCabinId] = useParam("cabana", "");
   const range = period.range;
   const prev = previousRange(range);
   const now = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, range, cabinId, data.channelStays), [data, range.from, range.to, cabinId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -27,8 +27,8 @@ export function FinanceView() {
   const pending = data.reservations.filter((r) => (!cabinId || r.cabinTypeId === cabinId) && pendingOf(r).total > 0);
   const pendingTotal = pending.reduce((s, r) => s + pendingOf(r).total, 0);
   const awaiting = pending.filter((r) => r.status === "pending_deposit");
-  // Los enlaces a Pagos conservan el periodo y el domo elegidos aquí.
-  const same = { periodo: period.preset === "30" ? null : period.preset, desde: period.preset === "personalizado" ? range.from : null, hasta: period.preset === "personalizado" ? range.to : null, domo: cabinId || null };
+  // Los enlaces a Pagos conservan el periodo y la cabaña elegida aquí.
+  const same = { periodo: period.preset === "30" ? null : period.preset, desde: period.preset === "personalizado" ? range.from : null, hasta: period.preset === "personalizado" ? range.to : null, cabana: cabinId || null };
   const toPagos = (q: Record<string, string | null>, text: string) => (
     <Link href={paths.pagos(q)} className="font-semibold text-ink underline-offset-2 hover:underline">
       {text}
@@ -50,7 +50,7 @@ export function FinanceView() {
       <div className="flex flex-wrap items-end gap-3">
         <PeriodFilter period={period} />
         <div className="w-full sm:w-[220px]">
-          <Combobox value={cabinId} onChange={setCabinId} options={[{ value: "", label: "Todos los domos" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]} icon={<HomeIcon size={15} className="text-ink-muted" />} />
+          <Combobox value={cabinId} onChange={setCabinId} options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]} icon={<HomeIcon size={15} className="text-ink-muted" />} />
         </div>
         <p className="text-[13px] text-ink-muted lg:ml-auto">
           {period.label} · {period.daysLabel} · comparado con los {period.daysLabel} anteriores
@@ -70,7 +70,7 @@ export function FinanceView() {
         <RevenueChart buckets={now.buckets} />
         <div className="flex flex-col gap-4">
           <StaysMeter stays={now.stays} />
-          <BarList id="fi-cabin" title="Ingresos por domo" subtitle="¿Qué domo genera más?" rows={now.byCabin} total={now.received} />
+          <BarList id="fi-cabin" title="Ingresos por cabaña" subtitle="¿Qué cabaña genera más?" rows={now.byCabin} total={now.received} />
           <BarList id="fi-type" title="Ingresos por tipo de estadía" subtitle="Pareja, familia (con niños), grupo (3 o más adultos) o individual." rows={now.byType} total={now.received} />
         </div>
       </div>

@@ -22,15 +22,15 @@ import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, Modal, Pag
 
 type Unit = { key: string; cabinTypeId: string; unit: number; name: string; cal: ChannelCalendar | null };
 type Draft = { cabinTypeId: string; unit: number; units: number[]; name: string; label: string; importUrl: string; beds24RoomId: number | null };
-// Domo del mismo tipo para elegir el grupo: takenBy, el tipo de Booking que ya lo cubre (otro calendario).
+// Cabaña del mismo tipo para elegir el grupo: takenBy, el tipo de Booking que ya lo cubre (otro calendario).
 type PoolOption = { unit: number; name: string; takenBy: string | null };
 
-// Domos que cubre un tipo de Booking (los datos simulados viejos no traen units).
+// Cabañas que cubre un tipo de Booking (los datos simulados viejos no traen units).
 const poolOf = (c: ChannelCalendar) => (c.units?.length ? c.units : [c.unit]);
 
 const ERRORS: Record<string, string> = {
   CHANNELS_NOT_READY: "Falta aplicar en la base de datos la actualización para Booking.com.",
-  INVALID_UNIT: "Ese domo ya no existe. Recarga la página.",
+  INVALID_UNIT: "Esa cabaña ya no existe. Recarga la página.",
   BEDS24_NOT_CONNECTED: "Primero conecta Beds24.",
   NOT_AVAILABLE_IN_MOCK: "No disponible en modo simulado.",
 };
@@ -69,7 +69,7 @@ export function ChannelsView() {
   const [syncing, setSyncing] = useState(false);
   const beds24 = data.beds24;
 
-  // El tipo de Booking que cubre un domo (primero los enlazados: un calendario sin enlazar de ese domo no cuenta).
+  // El tipo de Booking que cubre una cabaña (primero los enlazados: un calendario sin enlazar de esa cabaña no cuenta).
   const calOf = (typeId: string, unit: number) => {
     const all = data.channelCalendars.filter((x) => x.cabinTypeId === typeId && poolOf(x).includes(unit));
     return all.find((x) => x.importUrl || x.beds24RoomId) ?? all[0] ?? null;
@@ -145,7 +145,7 @@ export function ChannelsView() {
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard label="Domos enlazados" value={`${linked.length} de ${units.length}`} hint={live.length ? `${live.length} en tiempo real por Beds24` : linked.length ? "con su calendario de Booking.com" : "Ninguno todavía"} icon={<RefreshIcon size={15} />} />
+        <StatCard label="Cabañas enlazadas" value={`${linked.length} de ${units.length}`} hint={live.length ? `${live.length} en tiempo real por Beds24` : linked.length ? "con su calendario de Booking.com" : "Ninguna todavía"} icon={<RefreshIcon size={15} />} />
         <StatCard label="Noches de Booking.com" value={nights30} hint="ocupadas en los próximos 30 días" icon={<CalendarIcon size={15} />} />
         <StatCard
           label="Última lectura"
@@ -166,7 +166,7 @@ export function ChannelsView() {
       <Beds24Card status={beds24} mapped={live.length} onConnected={(c, msg, ok) => (apply(c), toast(msg, ok ? "ok" : "error"))} onAuthError={onAuthError} errorOf={errorOf} copy={copy} />
 
       <Card className="flex flex-col">
-        <CardHeader id="ch-units" className="p-4 sm:px-5" icon={<RefreshIcon size={18} />} title="Domos y tipos de alojamiento" subtitle="Enlaza cada domo con su tipo de alojamiento en Booking.com. Los que no se venden allá quedan sin enlazar." />
+        <CardHeader id="ch-units" className="p-4 sm:px-5" icon={<RefreshIcon size={18} />} title="Cabañas y tipos de alojamiento" subtitle="Enlaza cada cabaña con su tipo de alojamiento en Booking.com. Los que no se venden allá quedan sin enlazar." />
         <ul aria-labelledby="ch-units" className="flex flex-col divide-y divide-line border-t border-line">
           {units.map((u) => {
             const st = stateOf(u.cal, now, beds24);
@@ -242,7 +242,7 @@ export function ChannelsView() {
           ) : (
             // Sin fechas, el aviso ocupa el alto de la tarjeta (que iguala el de las instrucciones de al lado).
             <div className="flex flex-1 flex-col border-t border-line p-4 sm:px-5 [&>div]:flex-1">
-              <EmptyState compact icon={<CalendarIcon size={20} />} title={linked.length ? "Sin fechas ocupadas en Booking.com" : "Todavía no hay domos enlazados"} text={linked.length ? "Cuando alguien reserve allá, las fechas aparecerán aquí." : "Enlaza un domo para empezar."} />
+              <EmptyState compact icon={<CalendarIcon size={20} />} title={linked.length ? "Sin fechas ocupadas en Booking.com" : "Todavía no hay cabañas enlazadas"} text={linked.length ? "Cuando alguien reserve allá, las fechas aparecerán aquí." : "Enlaza una cabaña para empezar."} />
             </div>
           )}
           {cancelled.length > 0 && (
@@ -254,39 +254,39 @@ export function ChannelsView() {
 
         {beds24 ? (
           <Card className="flex flex-col gap-3 p-4 sm:p-5">
-            <h2 className="text-[15px] font-bold text-ink">Cómo enlazar un domo por Beds24</h2>
+            <h2 className="text-[15px] font-bold text-ink">Cómo enlazar una cabaña por Beds24</h2>
             <ol className="flex list-decimal flex-col gap-2 pl-5 text-[13.5px] leading-snug text-ink">
               <li>
                 En Beds24, conecta Booking.com en <strong>Settings → Channel Manager → Booking.com</strong> y trae las reservas que ya existen con <strong>Import existing bookings</strong>.
               </li>
               <li>
-                Aquí, en cada domo que se vende en Booking.com, pulsa <strong>Editar</strong> y elige su habitación de Beds24. La app sube allá sus reservas y bloqueos.
+                Aquí, en cada cabaña que se vende en Booking.com, pulsa <strong>Editar</strong> y elige su habitación de Beds24. La app sube allá sus reservas y bloqueos.
               </li>
               <li>
                 Pega la <strong>dirección del aviso</strong> (arriba) en Beds24 → <strong>Settings → Properties → Access → Booking webhook</strong>.
               </li>
               <li>
-                Revisa que Beds24 muestre las reservas de la web («Web STG-…») y activa la conexión completa con Booking.com.
+                Revisa que Beds24 muestre las reservas de la web («Web VF-…») y activa la conexión completa con Booking.com.
               </li>
             </ol>
-            <Callout tone="success">Cada venta de la web se reserva primero en Beds24: si Booking.com ya vendió esas noches, la web no la confirma y ofrece otro domo.</Callout>
+            <Callout tone="success">Cada venta de la web se reserva primero en Beds24: si Booking.com ya vendió esas noches, la web no la confirma y ofrece otra cabaña.</Callout>
           </Card>
         ) : (
           <Card className="flex flex-col gap-3 p-4 sm:p-5">
-            <h2 className="text-[15px] font-bold text-ink">Cómo enlazar un domo por calendario</h2>
+            <h2 className="text-[15px] font-bold text-ink">Cómo enlazar una cabaña por calendario</h2>
             <ol className="flex list-decimal flex-col gap-2 pl-5 text-[13.5px] leading-snug text-ink">
               <li>
                 En el extranet de Booking.com entra a <strong>Tarifas y disponibilidad → Sincronizar calendarios</strong> y pulsa <strong>Conectar un calendario</strong> en el tipo de alojamiento.
               </li>
               <li>
-                Paso 1, <strong>Importar calendario</strong>: pega el <strong>enlace para Booking</strong> del domo que corresponde (aquí, en <strong>Enlazar</strong>) y ponle de nombre «Web Stellarium».
+                Paso 1, <strong>Importar calendario</strong>: pega el <strong>enlace para Booking</strong> de la cabaña que corresponde (aquí, en <strong>Enlazar</strong>) y ponle de nombre «Web La Vaca Fifí».
               </li>
               <li>
-                Paso 2, <strong>Exportar calendario</strong>: copia el enlace de Booking.com y pégalo aquí, en ese mismo domo.
+                Paso 2, <strong>Exportar calendario</strong>: copia el enlace de Booking.com y pégalo aquí, en esa misma cabaña.
               </li>
             </ol>
             <Callout tone="warning">
-              Booking.com descarga el calendario de la web a su ritmo (cada pocas horas; cada domo muestra cuándo lo vio por última vez). Si en ese rato alguien reserva allá un domo ya vendido aquí, la app reacomoda la reserva en otro libre del mismo tipo o te avisa de la posible sobreventa. Para evitarlo, conecta Beds24.
+              Booking.com descarga el calendario de la web a su ritmo (cada pocas horas; cada cabaña muestra cuándo lo vio por última vez). Si en ese rato alguien reserva allá una cabaña ya vendida aquí, la app reacomoda la reserva en otra libre del mismo tipo o te avisa de la posible sobreventa. Para evitarlo, conecta Beds24.
             </Callout>
             <p className="text-[12.5px] text-ink-muted">
               Booking.com solo permite sincronizar calendarios si cada tipo de alojamiento tiene una unidad y no hay un channel manager conectado.{" "}
@@ -408,7 +408,7 @@ function Beds24Card({
         }
         subtitle={
           [
-            mapped ? plural(mapped, "domo enlazado", "domos enlazados") : "Ningún domo enlazado todavía: elige su habitación de Beds24 en Editar",
+            mapped ? plural(mapped, "cabaña enlazada", "cabañas enlazadas") : "Ninguna cabaña enlazada todavía: elige su habitación de Beds24 en Editar",
             status.lastWebhookAt ? `último aviso de Beds24 ${timeAgo(status.lastWebhookAt, now)}` : "Beds24 aún no ha enviado avisos",
             status.lastPullAt && `revisado ${timeAgo(status.lastPullAt, now)}`,
           ]
@@ -425,7 +425,7 @@ function Beds24Card({
       />
       {!ok && (
         <Callout tone="error" role="alert">
-          {status.lastError} Mientras tanto, la web no vende los domos de Booking.com que Beds24 no confirme.
+          {status.lastError} Mientras tanto, la web no vende las cabañas de Booking.com que Beds24 no confirme.
         </Callout>
       )}
       {open && form}
@@ -472,7 +472,7 @@ function LinkEditor({
   const unlinking = viaBeds24 ? false : (!!cal?.importUrl && !d.importUrl.trim()) || (!!cal?.beds24RoomId && !d.importUrl.trim());
   const linking = viaBeds24 && d.beds24RoomId !== (cal?.beds24RoomId ?? null);
 
-  // Habitaciones de la cuenta de Beds24, para elegir la de este domo.
+  // Habitaciones de la cuenta de Beds24, para elegir la de esta cabaña.
   useEffect(() => {
     if (!beds24) return;
     let alive = true;
@@ -550,10 +550,10 @@ function LinkEditor({
             {d.name} en Booking.com
           </h2>
           <p className="mt-1 text-[13.5px] text-ink-muted">
-            {beds24 ? "Elige su habitación de Beds24 (en tiempo real) o pega el enlace de exportación del calendario." : "Pega el enlace de exportación del tipo de alojamiento que corresponde a este domo."}
+            {beds24 ? "Elige su habitación de Beds24 (en tiempo real) o pega el enlace de exportación del calendario." : "Pega el enlace de exportación del tipo de alojamiento que corresponde a esta cabaña."}
           </p>
         </div>
-        <Field label="Nombre en Booking.com (opcional)" error={errors.label} hint="Como aparece en el extranet, para reconocerla. Ej. «Tienda con jacuzzi».">
+        <Field label="Nombre en Booking.com (opcional)" error={errors.label} hint="Como aparece en el extranet, para reconocerla. Ej. «Habitación Doble con baño privado».">
           {(p) => <input {...p} data-autofocus type="text" maxLength={80} value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} className={adminInput} />}
         </Field>
         {beds24 && (
@@ -573,7 +573,7 @@ function LinkEditor({
         )}
         {!viaBeds24 && poolOptions.length > 1 && (
           <fieldset className="flex min-w-0 flex-col gap-2">
-            <legend className="mb-1.5 text-[13px] font-semibold text-ink">Domos de la web que cubre</legend>
+            <legend className="mb-1.5 text-[13px] font-semibold text-ink">Cabañas de la web que cubre</legend>
             <div className="flex flex-wrap gap-2">
               {poolOptions.map((o) => {
                 const on = d.units.includes(o.unit);
@@ -601,7 +601,7 @@ function LinkEditor({
           </fieldset>
         )}
         {linking && (
-          <Callout tone="info">Al guardar, la app sube a Beds24 las reservas y bloqueos de la web de este domo y empieza a recibir las de Booking.com. Deja de usar el calendario iCal.</Callout>
+          <Callout tone="info">Al guardar, la app sube a Beds24 las reservas y bloqueos de la web de esta cabaña y empieza a recibir las de Booking.com. Deja de usar el calendario iCal.</Callout>
         )}
         {!viaBeds24 && (
           <>

@@ -205,7 +205,7 @@ function ProofsTab() {
 function ReceivedTab() {
   const { data, cabin } = useAdmin();
   const period = usePeriod("30");
-  const [cabinId, setCabinId] = useParam("domo", "");
+  const [cabinId, setCabinId] = useParam("cabana", "");
   const rows = data.reservations
     .filter((r) => !cabinId || r.cabinTypeId === cabinId)
     .flatMap(paymentsOf)
@@ -216,7 +216,7 @@ function ReceivedTab() {
   const exportCsv = () =>
     download(
       `pagos-${period.range.from}-a-${period.range.to}.csv`,
-      csv([["Fecha", "Reserva", "Huésped", "Domo", "Concepto", "Valor"], ...rows.map((p) => [p.date, p.r.code, p.r.guest.fullName, cabin(p.r.cabinTypeId)?.nombre ?? p.r.cabinTypeId, p.kind === "deposit" ? "Abono" : "Saldo", p.amount])]),
+      csv([["Fecha", "Reserva", "Huésped", "Cabaña", "Concepto", "Valor"], ...rows.map((p) => [p.date, p.r.code, p.r.guest.fullName, cabin(p.r.cabinTypeId)?.nombre ?? p.r.cabinTypeId, p.kind === "deposit" ? "Abono" : "Saldo", p.amount])]),
       "text/csv;charset=utf-8",
     );
 
@@ -225,7 +225,7 @@ function ReceivedTab() {
       <div className="flex flex-wrap items-end gap-3">
         <PeriodFilter period={period} />
         <div className="w-full sm:w-[220px]">
-          <Combobox value={cabinId} onChange={setCabinId} options={[{ value: "", label: "Todos los domos" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]} icon={<HomeIcon size={15} className="text-ink-muted" />} />
+          <Combobox value={cabinId} onChange={setCabinId} options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]} icon={<HomeIcon size={15} className="text-ink-muted" />} />
         </div>
       </div>
       <Card aria-labelledby="pg-rec" className="flex flex-col gap-3 p-4 sm:p-5">

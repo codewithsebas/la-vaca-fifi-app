@@ -6,7 +6,7 @@ import { loadOccupancy, loadPricing, runDeadlines } from "@/lib/server/db";
 import { fail, json, route } from "@/lib/server/http";
 import { createServiceClient } from "@/lib/supabase/server";
 
-// GET /api/availability?checkIn&checkOut&adults&children → opciones por tipo de domo con su cotización.
+// GET /api/availability?checkIn&checkOut&adults&children → opciones por tipo de cabaña con su cotización.
 export const GET = route(async (req: NextRequest) => {
   const p = req.nextUrl.searchParams;
   const ci = p.get("checkIn");

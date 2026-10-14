@@ -59,10 +59,16 @@ create policy "Administradores leen fechas de canales" on public.channel_stays
   for select to authenticated
   using (((select auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin');
 
--- Los dos tipos de alojamiento de Booking («Tienda») y su domo en la app (se pueden cambiar en el panel).
+-- Los cuatro tipos de habitación de La Vaca Fifí en Booking y su cabaña en la app (el enlace del calendario se pega en
+-- el panel: Booking.com).
 insert into public.channel_calendars (cabin_type_id, unit, label)
 select v.cabin_type_id, v.unit, v.label
-from (values ('pareja', 1, 'Tienda (cama king)'), ('familiar', 1, 'Tienda (camas king y queen)')) as v (cabin_type_id, unit, label)
+from (values
+  ('doble', 1, 'Habitación Doble con baño privado'),
+  ('dos-camas', 1, 'Habitación Doble - 2 camas'),
+  ('familiar', 1, 'Habitación Familiar con baño privado'),
+  ('familiar-vista', 1, 'Habitación Familiar con vistas a la montaña')
+) as v (cabin_type_id, unit, label)
 where exists (select 1 from public.cabin_types c where c.id = v.cabin_type_id and c.units >= v.unit);
 
 -- Tiempo real: las fechas de Booking también avisan al sitio cuando cambia la disponibilidad.

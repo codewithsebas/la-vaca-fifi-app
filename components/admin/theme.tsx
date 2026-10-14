@@ -213,7 +213,7 @@ function paint(frame: HTMLIFrameElement | null, theme: SiteTheme) {
   return true;
 }
 
-// La página de inicio tal como está publicada (textos, fotos, domos), pintada con los colores que se están eligiendo:
+// La página de inicio tal como está publicada (textos, fotos, cabañas), pintada con los colores que se están eligiendo:
 // se puede recorrer y abrir sus enlaces. Lo publicado no cambia hasta guardar.
 function ThemePreview({ theme, issues, unpublished }: { theme: SiteTheme; issues: number; unpublished: boolean }) {
   const [device, setDevice] = useState<Device>("escritorio");

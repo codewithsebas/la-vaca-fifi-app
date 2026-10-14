@@ -5,9 +5,9 @@
 import { useSyncExternalStore } from "react";
 
 export const PREF = {
-  sound: "sg-admin-sound", // "on" | "off"
-  mutedSounds: "sg-admin-sound-muted", // grupos silenciados, separados por coma
-  calendarView: "sg-admin-calendar-view", // "auto" | vista del calendario
+  sound: "vf-admin-sound", // "on" | "off"
+  mutedSounds: "vf-admin-sound-muted", // grupos silenciados, separados por coma
+  calendarView: "vf-admin-calendar-view", // "auto" | vista del calendario
 } as const;
 
 const listeners = new Set<() => void>();

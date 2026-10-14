@@ -31,7 +31,7 @@ export function toCabinType(row: Tables<"cabin_types">): CabinType {
   };
 }
 
-// Todos los domos (el panel) o solo los activos (sitio público, disponibilidad y nuevas reservas).
+// Todas las cabañas (el panel) o solo las activas (sitio público, disponibilidad y nuevas reservas).
 export async function loadCabinTypes(sb: Db, { activeOnly = false } = {}) {
   let q = sb.from("cabin_types").select("*").order("sort").order("created_at");
   if (activeOnly) q = q.eq("activa", true);
@@ -59,7 +59,7 @@ export async function loadSeasons(sb: Db, { activeOnly = false } = {}) {
   return data.map(toSeason);
 }
 
-// Tarifas vigentes para cotizar: domos activos, unidades y temporadas activas.
+// Tarifas vigentes para cotizar: cabañas activas, unidades y temporadas activas.
 export async function loadPricing(sb: Db) {
   const [{ types, units }, seasons] = await Promise.all([loadCabinTypes(sb, { activeOnly: true }), loadSeasons(sb, { activeOnly: true })]);
   return { types, units, seasons };

@@ -18,7 +18,7 @@ function parse(payload: unknown): AvailabilityChange | null {
   return from && to && from <= to ? { cabinTypeId: cabin, from, to } : cabin ? { cabinTypeId: cabin, from: null, to: null } : null;
 }
 
-// ¿Los cambios tocan estas noches (first a last, inclusive) de este domo (o de cualquiera si no se indica)?
+// ¿Los cambios tocan estas noches (first a last, inclusive) de esta cabaña (o de cualquiera si no se indica)?
 export function touches(changes: AvailabilityChanges, first: string, last: string, cabinTypeId?: string | null) {
   if (!changes) return true;
   return changes.some((c) => (!cabinTypeId || !c.cabinTypeId || c.cabinTypeId === cabinTypeId) && (!c.from || !c.to || (c.from <= last && c.to >= first)));

@@ -1,6 +1,6 @@
 "use client";
 
-// Nueva reserva tomada por el equipo (WhatsApp, teléfono, en persona). Retiene el domo con las mismas reglas que la web
+// Nueva reserva tomada por el equipo (WhatsApp, teléfono, en persona). Retiene la cabaña con las mismas reglas que la web
 // y devuelve un enlace de pago con plazo para enviarle al huésped. Si no paga a tiempo, las fechas se liberan solas.
 import { useMemo, useState } from "react";
 import { CalendarIcon, CheckIcon, HomeIcon, UsersIcon, WalletIcon, WarningIcon } from "@/components/icons";
@@ -18,7 +18,7 @@ import { paths } from "./routes";
 import { adminInput } from "./shared";
 import { Button, Callout, Field, FieldError, Modal, MoneyInput, Segmented, Stepper, Switch } from "./ui";
 
-// Lo que llega ya elegido (desde el calendario: un domo y unas fechas).
+// Lo que llega ya elegido (desde el calendario: una cabaña y unas fechas).
 export type NewReservationDraft = { cabinTypeId?: string; unit?: number | null; checkIn?: string | null; checkOut?: string | null };
 
 type Form = {
@@ -49,8 +49,8 @@ const DOCS: { value: DocType; label: string }[] = [
 ];
 
 const ERRORS: Record<string, string> = {
-  DATES_UNAVAILABLE: "Esas fechas ya no están libres en ese domo. Elige otras o deja que el sistema asigne una unidad.",
-  CHANNEL_UNAVAILABLE: "No se pudo retener el domo en Booking.com (Beds24 no respondió). Inténtalo en un momento.",
+  DATES_UNAVAILABLE: "Esas fechas ya no están libres en esa cabaña. Elige otras o deja que el sistema asigne una unidad.",
+  CHANNEL_UNAVAILABLE: "No se pudo retener la cabaña en Booking.com (Beds24 no respondió). Inténtalo en un momento.",
 };
 
 export function NewReservationDialog({ draft, onClose }: { draft: NewReservationDraft; onClose: () => void }) {
@@ -100,11 +100,11 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   const due = range ? manualDueAt(range.ci, f.hold) : null;
 
   const errs: Record<string, string> = {};
-  if (!type) errs.cabinTypeId = "Elige el domo.";
+  if (!type) errs.cabinTypeId = "Elige la cabaña.";
   if (!range) errs.checkIn = "Elige la llegada y la salida.";
-  else if (!free) errs.checkIn = unit ? `${cabinLabel(type!.id, unit)} no está libre en esas fechas.` : "No hay unidades libres de este domo en esas fechas.";
+  else if (!free) errs.checkIn = unit ? `${cabinLabel(type!.id, unit)} no está libre en esas fechas.` : "No hay unidades libres de esta cabaña en esas fechas.";
   else if (nightsBetween(range.ci, range.co) > 30) errs.checkIn = "La estadía máxima es de 30 noches.";
-  if (type && guests > type.maxPersonas) errs.adults = `Máximo ${type.maxPersonas} personas en este domo.`;
+  if (type && guests > type.maxPersonas) errs.adults = `Máximo ${type.maxPersonas} personas en esta cabaña.`;
   if (f.fullName.trim().length < 3) errs["guest.fullName"] = "Escribe el nombre completo.";
   if (!/^\+\d{8,15}$/.test(normalizePhone(f.phone))) errs["guest.phone"] = "Escribe el celular con WhatsApp.";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) errs["guest.email"] = "Escribe un correo válido: ahí le llega la confirmación.";
@@ -192,7 +192,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
             Estadía
           </h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Domo" error={err("cabinTypeId")}>
+            <Field label="Cabaña" error={err("cabinTypeId")}>
               {(p) => (
                 <Combobox
                   id={p.id}

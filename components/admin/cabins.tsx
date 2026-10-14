@@ -17,7 +17,7 @@ import { adminInput } from "./shared";
 import { themeStyle } from "./theme";
 import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, IconButton, MoneyInput, PageHeader, SaveBar, Spinner, Stepper, Switch, buttonClass } from "./ui";
 
-const SUGGESTED = ["Jacuzzi privado", "Cama king", "Cama queen", "Baño privado con ducha", "Calefacción", "Terraza con vista", "Vista a las montañas", "Cielo estrellado", "Desayuno", "Zona de fogata", "Minibar", "Pet friendly"];
+const SUGGESTED = ["Cama doble", "Dos camas dobles", "Cama doble y camarote", "Baño privado con agua caliente", "Balcón con vista a la montaña", "TV de pantalla plana", "Wifi", "Desayuno americano", "Vista al Nevado", "Cerca del parque infantil", "Pet friendly"];
 
 /* ───────────── Listado ───────────── */
 
@@ -32,11 +32,11 @@ export function CabinList() {
   });
   const toggle = (c: CabinType) =>
     ask({
-      title: c.activa ? "Desactivar domo" : "Activar domo",
+      title: c.activa ? "Desactivar cabaña" : "Activar cabaña",
       text: c.activa ? `${c.nombre} deja de mostrarse en el sitio y no se puede reservar. Las reservas existentes no cambian.` : `${c.nombre} vuelve a mostrarse en el sitio y se puede reservar.`,
       okLabel: c.activa ? "Desactivar" : "Activar",
       danger: c.activa,
-      done: c.activa ? "Domo desactivado" : "Domo activado",
+      done: c.activa ? "Cabaña desactivada" : "Cabaña activada",
       run: () => api.admin.updateCabin({ ...toInput(c), id: c.id, activa: !c.activa }),
     });
   const move = async (i: number, d: number) => {
@@ -54,23 +54,23 @@ export function CabinList() {
   };
   const remove = (c: CabinType) =>
     ask({
-      title: "Eliminar domo",
+      title: "Eliminar cabaña",
       text: `${c.nombre} se elimina con sus fotos, temporadas y bloqueos. Esta acción no se puede deshacer.`,
-      okLabel: "Eliminar domo",
+      okLabel: "Eliminar cabaña",
       danger: true,
-      done: "Domo eliminado",
+      done: "Cabaña eliminada",
       run: () => api.admin.deleteCabin(c.id),
     });
 
   return (
     <>
       <PageHeader
-        title={MODULES.domos.label}
+        title={MODULES.cabanas.label}
         description="Lo que ves aquí es lo que se ofrece en el sitio. El orden también es el del sitio."
         actions={
-          <Link href={paths.nuevoDomo} className={buttonClass("primary")}>
+          <Link href={paths.nuevaCabana} className={buttonClass("primary")}>
             <PlusIcon size={14} />
-            Nuevo domo
+            Nueva cabaña
           </Link>
         }
       />
@@ -93,9 +93,9 @@ export function CabinList() {
                   )}
                   <span className="absolute top-2.5 left-2.5 flex gap-1.5">
                     <Badge tone={c.activa ? "success" : "neutral"} className="shadow-panel">
-                      {c.activa ? "Activo" : "Inactivo"}
+                      {c.activa ? "Activa" : "Inactiva"}
                     </Badge>
-                    {/* La etiqueta del domo, como en el sitio. No usa Badge: su fondo neutro le gana al resaltado y no se lee sobre la foto. */}
+                    {/* La etiqueta de la cabaña, como en el sitio. No usa Badge: su fondo neutro le gana al resaltado y no se lee sobre la foto. */}
                     {c.badge && <span className="inline-flex items-center rounded-full bg-highlight px-2 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-on-light shadow-panel">{c.badge}</span>}
                   </span>
                 </div>
@@ -122,7 +122,7 @@ export function CabinList() {
                     {plural(c.fotos.length, "foto", "fotos")} · {plural(c.caracteristicas.length, "característica", "características")} · {plural(n, "reserva", "reservas")}
                   </p>
                   <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
-                    <Link href={paths.domo(c.id)} className={buttonClass("primary", "sm")}>
+                    <Link href={paths.cabana(c.id)} className={buttonClass("primary", "sm")}>
                       <PencilIcon size={13} />
                       Editar
                     </Link>
@@ -156,7 +156,7 @@ export function CabinList() {
         </ul>
       ) : (
         <Card className="p-4">
-          <EmptyState icon={<HomeIcon size={18} />} title="Aún no hay domos" text="Crea el primero para que aparezca en el sitio y se pueda reservar." action={<Link href={paths.nuevoDomo} className={buttonClass()}>Nuevo domo</Link>} />
+          <EmptyState icon={<HomeIcon size={18} />} title="Aún no hay cabañas" text="Crea la primera para que aparezca en el sitio y se pueda reservar." action={<Link href={paths.nuevaCabana} className={buttonClass()}>Nueva cabaña</Link>} />
         </Card>
       )}
     </>
@@ -167,7 +167,7 @@ export function CabinList() {
 
 const EMPTY: CabinInput = { nombre: "", descripcion: "", caracteristicas: [], badge: "", maxPersonas: 2, units: 1, precioPareja: 0, personaAdicional: 0, activa: true };
 
-// Crear (sin id) o editar un domo.
+// Crear (sin id) o editar una cabaña.
 export function CabinEditor({ id }: { id?: string }) {
   const { data, setData, toast, go, onAuthError } = useAdmin();
   const current = id ? data.cabinTypes.find((c) => c.id === id) : null;
@@ -184,9 +184,9 @@ export function CabinEditor({ id }: { id?: string }) {
   if (id && !current)
     return (
       <>
-        <PageHeader title="Domo no encontrado" />
+        <PageHeader title="Cabaña no encontrada" />
         <Card className="p-4">
-          <EmptyState icon={<HomeIcon size={18} />} title="Este domo ya no existe" action={<Link href={paths.domos} className={buttonClass("primary")}>Ir a Domos</Link>} />
+          <EmptyState icon={<HomeIcon size={18} />} title="Esta cabaña ya no existe" action={<Link href={paths.cabanas} className={buttonClass("primary")}>Ir a Cabañas</Link>} />
         </Card>
       </>
     );
@@ -202,7 +202,7 @@ export function CabinEditor({ id }: { id?: string }) {
     if (busy) return;
     const e: Record<string, string> = {};
     if (v.nombre.trim().length < 3) e.nombre = "El nombre debe tener al menos 3 caracteres.";
-    if (v.precioPareja <= 0) e.precioPareja = "Escribe la tarifa por noche en pareja.";
+    if (v.precioPareja <= 0) e.precioPareja = "Escribe la tarifa por noche para 2 personas.";
     setErrors(e);
     if (Object.keys(e).length) {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('main [aria-invalid="true"]')?.focus());
@@ -217,13 +217,13 @@ export function CabinEditor({ id }: { id?: string }) {
       if (r.status !== 200 || !Array.isArray(r.data)) throw 0;
       const list = r.data;
       setData((d) => ({ ...d, cabinTypes: list }));
-      toast(current ? "Cambios guardados" : "Domo creado. Ahora puedes agregarle fotos.");
+      toast(current ? "Cambios guardados" : "Cabaña creada. Ahora puedes agregarle fotos.");
       if (!current) {
         const created = list.find((c) => !data.cabinTypes.some((x) => x.id === c.id));
-        if (created) go(paths.domo(created.id));
+        if (created) go(paths.cabana(created.id));
       }
     } catch {
-      toast("No se pudo guardar el domo. Inténtalo de nuevo.", "error");
+      toast("No se pudo guardar la cabaña. Inténtalo de nuevo.", "error");
     } finally {
       setBusy(false);
     }
@@ -232,12 +232,12 @@ export function CabinEditor({ id }: { id?: string }) {
   return (
     <>
       <PageHeader
-        title={current ? current.nombre : "Nuevo domo"}
+        title={current ? current.nombre : "Nueva cabaña"}
         description={current ? "Los cambios se publican en el sitio al guardar." : "Completa la información básica. Después de crearla podrás agregar fotos."}
         actions={
-          <Link href={paths.domos} className={buttonClass("ghost")}>
+          <Link href={paths.cabanas} className={buttonClass("ghost")}>
             <ArrowLeftIcon size={15} />
-            Volver a Domos
+            Volver a Cabañas
           </Link>
         }
       />
@@ -247,27 +247,27 @@ export function CabinEditor({ id }: { id?: string }) {
             <CardHeader id="cb-info" icon={<HomeIcon size={18} />} title="Información" subtitle="Nombre, etiqueta y descripción que ven los huéspedes." />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_220px]">
               <Field label="Nombre" error={errors.nombre}>
-                {(p) => <input {...p} type="text" maxLength={60} value={v.nombre} onChange={(e) => set({ nombre: e.target.value })} placeholder="Domo Familiar" className={adminInput} />}
+                {(p) => <input {...p} type="text" maxLength={60} value={v.nombre} onChange={(e) => set({ nombre: e.target.value })} placeholder="Cabaña Familiar" className={adminInput} />}
               </Field>
               <Field label="Etiqueta (opcional)" hint="Se muestra sobre la foto." error={errors.badge}>
-                {(p) => <input {...p} type="text" maxLength={30} value={v.badge} onChange={(e) => set({ badge: e.target.value })} placeholder="Con jacuzzi" className={adminInput} />}
+                {(p) => <input {...p} type="text" maxLength={30} value={v.badge} onChange={(e) => set({ badge: e.target.value })} placeholder="Desayuno incluido" className={adminInput} />}
               </Field>
             </div>
             <Field label="Descripción" hint={`${v.descripcion.length}/1200`} error={errors.descripcion}>
-              {(p) => <textarea {...p} rows={4} maxLength={1200} value={v.descripcion} onChange={(e) => set({ descripcion: e.target.value })} placeholder="Domo geodésico con cama king, terraza privada con jacuzzi y vista a las montañas." className={`${adminInput} resize-y leading-relaxed`} />}
+              {(p) => <textarea {...p} rows={4} maxLength={1200} value={v.descripcion} onChange={(e) => set({ descripcion: e.target.value })} placeholder="Cabaña con cama doble, baño privado con agua caliente y balcón con vista a la montaña." className={`${adminInput} resize-y leading-relaxed`} />}
             </Field>
           </Card>
 
           <Card aria-labelledby="cb-cap" className="flex flex-col gap-4 p-4 sm:p-5">
             <CardHeader id="cb-cap" icon={<UsersIcon size={18} />} title="Capacidad y precio base" subtitle="Las temporadas con precio especial se configuran en Tarifas." />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Capacidad máxima" hint="Personas por domo, incluidos niños." error={errors.maxPersonas}>
+              <Field label="Capacidad máxima" hint="Personas por cabaña, incluidos niños." error={errors.maxPersonas}>
                 {(p) => <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.maxPersonas} onChange={(n) => set({ maxPersonas: n })} min={1} max={12} unit="personas" />}
               </Field>
-              <Field label="Unidades" hint="Cuántos domos iguales de este tipo hay." error={errors.units}>
-                {(p) => <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.units} onChange={(n) => set({ units: n })} min={0} max={20} unit="domos" />}
+              <Field label="Unidades" hint="Cuántas cabañas iguales de este tipo hay." error={errors.units}>
+                {(p) => <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.units} onChange={(n) => set({ units: n })} min={0} max={20} unit="cabañas" />}
               </Field>
-              <Field label="Noche en pareja" error={errors.precioPareja}>
+              <Field label="Noche para 2" error={errors.precioPareja}>
                 {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} invalid={!!p["aria-invalid"]} value={v.precioPareja} onChange={(n) => set({ precioPareja: n })} />}
               </Field>
               <Field label="Persona adicional por noche" hint="Desde la 3.ª persona." error={errors.personaAdicional}>
@@ -277,7 +277,7 @@ export function CabinEditor({ id }: { id?: string }) {
           </Card>
 
           <Card aria-labelledby="cb-feat" className="flex flex-col gap-4 p-4 sm:p-5">
-            <CardHeader id="cb-feat" icon={<TagIcon size={18} />} title="Características" subtitle="Aparecen como etiquetas en la tarjeta del domo." />
+            <CardHeader id="cb-feat" icon={<TagIcon size={18} />} title="Características" subtitle="Aparecen como etiquetas en la tarjeta de la cabaña." />
             {v.caracteristicas.length > 0 && (
               <ul className="flex flex-wrap gap-1.5">
                 {v.caracteristicas.map((f) => (
@@ -324,11 +324,11 @@ export function CabinEditor({ id }: { id?: string }) {
             <Switch checked={v.activa} onChange={(a) => set({ activa: a })} label="Activo" description="Se muestra en el sitio y se puede reservar. Si lo desactivas, las reservas existentes no cambian." />
           </Card>
 
-          <SaveBar dirty={dirty || !current} onDiscard={() => (current ? setV(base) : go(paths.domos))} onSave={save} saveLabel={busy ? "Guardando…" : current ? "Guardar cambios" : "Crear domo"} />
+          <SaveBar dirty={dirty || !current} onDiscard={() => (current ? setV(base) : go(paths.cabanas))} onSave={save} saveLabel={busy ? "Guardando…" : current ? "Guardar cambios" : "Crear cabaña"} />
         </div>
 
         <div className="flex flex-col gap-4 xl:sticky xl:top-20">
-          {current ? <PhotoManager c={current} /> : <Callout>Guarda el domo para agregar fotos.</Callout>}
+          {current ? <PhotoManager c={current} /> : <Callout>Guarda la cabaña para agregar fotos.</Callout>}
           <Preview v={v} photo={current?.fotos[0]} />
         </div>
       </div>
@@ -336,7 +336,7 @@ export function CabinEditor({ id }: { id?: string }) {
   );
 }
 
-/* ───────────── Fotos del domo ───────────── */
+/* ───────────── Fotos de la cabaña ───────────── */
 
 function PhotoManager({ c }: { c: CabinType }) {
   const { setData, ask, toast, onAuthError } = useAdmin();
@@ -499,7 +499,7 @@ function Preview({ v, photo }: { v: CabinInput; photo?: string }) {
           {v.badge && <span className="absolute top-2.5 left-2.5 rounded-full bg-highlight px-3 py-1 text-[.72rem] font-extrabold">{v.badge}</span>}
         </div>
         <div className="flex flex-col gap-2 px-1.5 pb-1.5">
-          <h3 className="display text-[1.9rem] leading-none">{v.nombre || "Nombre del domo"}</h3>
+          <h3 className="display text-[1.9rem] leading-none">{v.nombre || "Nombre de la cabaña"}</h3>
           {v.descripcion && <p className="line-clamp-3 text-[.82rem]">{v.descripcion}</p>}
           {v.caracteristicas.length > 0 && (
             <ul className="flex flex-wrap gap-1">
@@ -511,7 +511,7 @@ function Preview({ v, photo }: { v: CabinInput; photo?: string }) {
             </ul>
           )}
           <dl className="grid grid-cols-[auto_auto] justify-start gap-x-4 gap-y-0.5 text-[.8rem]">
-            <dt>Noche en pareja</dt>
+            <dt>Noche para 2</dt>
             <dd className="font-extrabold">{cop(v.precioPareja)}</dd>
             <dt>Persona adicional</dt>
             <dd className="font-bold">{cop(v.personaAdicional)}</dd>

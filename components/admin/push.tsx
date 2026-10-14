@@ -25,7 +25,7 @@ export type PushState =
   | { s: "on"; endpoint: string; device: PushDevice };
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
-const CHANGED = "stellarium:push-changed"; // avisa a las otras vistas (campana, Configuración) que el estado cambió
+const CHANGED = "vacafifi:push-changed"; // avisa a las otras vistas (campana, Configuración) que el estado cambió
 
 function keyBytes(b64: string) {
   const raw = atob((b64 + "=".repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));

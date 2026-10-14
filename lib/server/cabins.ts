@@ -18,14 +18,15 @@ export const toPublicCabin = (t: CabinType): Cabin => ({
   photos: t.fotos,
 });
 
-// Domos activos para las páginas públicas, en el orden del panel. Si Supabase no responde, los de config.
+// Cabañas activas para las páginas públicas, en el orden del panel. Si Supabase no responde, las de config. Una cabaña
+// sin fotos subidas muestra las del diseño de su tipo (public/fotos), si las hay.
 export const getSiteCabins = cache(async (): Promise<Cabin[]> => {
   if (!hasServiceConfig()) return fallbackCabins;
   try {
     const { types } = await loadCabinTypes(createServiceClient(), { activeOnly: true });
-    return types.map(toPublicCabin);
+    return types.map(toPublicCabin).map((c) => (c.photos.length ? c : { ...c, photos: fallbackCabins.find((f) => f.id === c.id)?.photos ?? [] }));
   } catch (e) {
-    console.error("No se pudieron leer los domos de Supabase:", e);
+    console.error("No se pudieron leer las cabañas de Supabase:", e);
     return fallbackCabins;
   }
 });

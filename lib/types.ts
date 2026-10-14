@@ -219,7 +219,7 @@ export type ChannelCalendar = {
   label: string;
   cabinTypeId: CabinTypeId;
   unit: number;
-  // Domos de la app que cubre este tipo de Booking (el primero es `unit`). Booking vende uno por noche: se cierra allá
+  // Cabañas de la app que cubre este tipo de Booking (el primero es `unit`). Booking vende uno por noche: se cierra allá
   // cuando todos están ocupados, y cada reserva suya ocupa uno libre.
   units: number[];
   importUrl: string | null;

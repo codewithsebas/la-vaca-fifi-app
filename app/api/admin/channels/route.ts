@@ -40,9 +40,9 @@ export const GET = route(async (req: NextRequest) => {
 });
 
 // PUT /api/admin/channels { cabinTypeId, unit, units?, label, importUrl, beds24RoomId? } → enlaza un tipo de alojamiento
-// de Booking con un domo (unit) y, si cubre varios, con los demás de `units` (un grupo: Booking vende uno por noche).
+// de Booking con una cabaña (unit) y, si cubre varias, con las demás de `units` (un grupo: Booking vende una por noche).
 // Por iCal: importUrl (vacío la desenlaza); si cambia, las fechas del anterior se borran y se lee el nuevo de inmediato.
-// Por Beds24 (un solo domo): beds24RoomId (habitación de la cuenta conectada); deja de usar el iCal y hace un repaso
+// Por Beds24 (una sola cabaña): beds24RoomId (habitación de la cuenta conectada); deja de usar el iCal y hace un repaso
 // completo. beds24RoomId null la desenlaza de Beds24 (lo ya creado allá se queda y sigue cerrando esas noches en Booking).
 export const PUT = route(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin();
@@ -67,16 +67,16 @@ export const PUT = route(async (req: NextRequest) => {
   }
   const current = all.find((c) => c.cabin_type_id === b.cabinTypeId && c.unit === unit);
   const taken = importUrl && all.find((c) => c.import_url === importUrl && c.id !== current?.id);
-  if (taken) return invalid({ importUrl: `Ese enlace ya está en otro domo (${taken.label || `unidad ${taken.unit}`}).` });
-  // Domos que cubre este tipo de Booking: la de este calendario y las que se sumen, del mismo tipo y en un solo grupo.
+  if (taken) return invalid({ importUrl: `Ese enlace ya está en otra cabaña (${taken.label || `unidad ${taken.unit}`}).` });
+  // Cabañas que cubre este tipo de Booking: la de este calendario y las que se sumen, del mismo tipo y en un solo grupo.
   const pool = [unit, ...new Set((b.units ?? [unit]).map(Number).filter((u) => u !== unit))];
   if (pool.some((u) => !Number.isInteger(u) || u < 1 || u > units[b.cabinTypeId]!)) return fail(400, "INVALID_UNIT");
   const others = all.filter((c) => c.id !== current?.id && c.cabin_type_id === b.cabinTypeId && [c.unit, ...c.extra_units].some((u) => pool.includes(u)));
   const inOther = others.find((c) => c.import_url || c.beds24_room_id);
-  if (inOther) return invalid({ units: `Alguno de esos domos ya lo cubre ${inOther.label || `otro tipo de Booking.com`}.` });
-  // Calendarios sin enlazar de los domos que se suman al grupo: sobran (el domo queda en este).
+  if (inOther) return invalid({ units: `Alguna de esas cabañas ya la cubre ${inOther.label || `otro tipo de Booking.com`}.` });
+  // Calendarios sin enlazar de las cabañas que se suman al grupo: sobran (la cabaña queda en este).
   const spare = others.filter((c) => c.unit !== unit).map((c) => c.id);
-  if (roomId !== null && pool.length > 1) return invalid({ units: "Con Beds24, cada habitación se enlaza con un solo domo." });
+  if (roomId !== null && pool.length > 1) return invalid({ units: "Con Beds24, cada habitación se enlaza con una sola cabaña." });
   const extra = pool.slice(1);
   const regrouped = !!current && (current.extra_units.length !== extra.length || current.extra_units.some((u) => !extra.includes(u)));
   if (roomId !== null) {
@@ -109,7 +109,7 @@ export const PUT = route(async (req: NextRequest) => {
   // Beds24 se conservan las que trajo el iCal: siguen bloqueando la web hasta que pasen (por si Beds24 no las tiene).
   if (changed && !linking && current) await createServiceClient().from("channel_stays").delete().eq("calendar_id", current.id).throwOnError();
   if (linking) return respond(req, sb, await withBeds24([]));
-  // Con otro enlace se lee de inmediato; con otro grupo también, para acomodar sus fechas en los domos del grupo.
+  // Con otro enlace se lee de inmediato; con otro grupo también, para acomodar sus fechas en las cabañas del grupo.
   const results = (changed || regrouped) && importUrl ? await syncCalendars({ calendarId: saved.id, minAgeMs: 0, notifyErrors: false }) : undefined;
   return respond(req, sb, results);
 });

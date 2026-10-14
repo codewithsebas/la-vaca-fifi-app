@@ -12,7 +12,7 @@ const validation = (fields: Record<string, string>) => fail(422, "VALIDATION_ERR
 
 // POST /api/reservations (cabecera Idempotency-Key) → 201 con las fechas retenidas mientras se paga el abono.
 // Todavía no es una reserva confirmada: se confirma solo cuando la pasarela aprueba el abono (POST /api/payments).
-// La restricción de exclusión de la base de datos impide que dos personas retengan el mismo domo en las mismas noches.
+// La restricción de exclusión de la base de datos impide que dos personas retengan la misma cabaña en las mismas noches.
 export const POST = route(async (req: NextRequest) => {
   const b = await readJson<ReservationInput>(req);
   if (!b) return fail(400, "INVALID_BODY");

@@ -8,7 +8,7 @@ type Site = SiteContent & { c: SiteConfig; cabins: Cabin[]; cabinName: (id: stri
 
 const SiteCtx = createContext<Site | null>(null);
 
-// Contenido editable del sitio y domos activos para los componentes de cliente (los carga el layout raíz en el servidor).
+// Contenido editable del sitio y cabañas activas para los componentes de cliente (los carga el layout raíz en el servidor).
 export function SiteProvider({ content, cabins, children }: { content: SiteContent; cabins: Cabin[]; children: ReactNode }) {
   const value = useMemo(
     () => ({

@@ -15,11 +15,11 @@ import type {
 
 export type MockSettings = { post: "success" | "409" | "422" | "429" | "network" | "slow" };
 
-const DBK = "sg-mock-db-v1";
+const DBK = "vf-mock-db-v1";
 // Otras pestañas escuchan esta clave (evento storage) para simular la disponibilidad en tiempo real.
 export const MOCK_DB_KEY = DBK;
-const SETTINGS_KEY = "sg-mock-settings";
-const AUTH_KEY = "sg-admin";
+const SETTINGS_KEY = "vf-mock-settings";
+const AUTH_KEY = "vf-admin";
 
 type Db = {
   reservations: Reservation[];
@@ -37,7 +37,7 @@ type Db = {
   channelStays?: ChannelStay[];
 };
 
-// Escenarios de prueba para el envío: localStorage.setItem('sg-mock-settings', '{"post":"409"}')
+// Escenarios de prueba para el envío: localStorage.setItem('vf-mock-settings', '{"post":"409"}')
 function mockSettings(): MockSettings {
   try {
     return { post: "success", ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") };
@@ -69,7 +69,7 @@ function seed(): Db {
   const mk = (code: string, status: Reservation["status"], type: string, unit: number, inOff: number, n: number, g: number, name: string, due: number, doc: string, createdDaysAgo: number): Reservation => {
     const ci = addDays(t, inOff);
     const created = new Date(now - createdDaysAgo * 864e5).toISOString();
-    const paid = ["confirmed", "rescheduled", "checked_in", "completed", "cancelled"].includes(status) && code !== "STG-D0106" ? created : null;
+    const paid = ["confirmed", "rescheduled", "checked_in", "completed", "cancelled"].includes(status) && code !== "VF-D0106" ? created : null;
     return {
       code, status, cabinTypeId: type, unit, checkIn: ci, checkOut: addDays(ci, n), adults: g, children: 0,
       pet: { hasPet: false, smallBreedConfirmed: false }, decoration: { requested: false, occasion: "", notes: "" }, estimatedArrival: "16:00",
@@ -81,25 +81,25 @@ function seed(): Db {
     };
   };
   const rs = [
-    mk("STG-D0101", "confirmed", "pareja", 1, 0, 2, 2, "Ana Gómez", 0, "1010101010", 9),
-    mk("STG-D0102", "checked_in", "familiar", 1, -2, 2, 4, "Luis Martínez", 0, "2020202020", 14),
-    mk("STG-D0103", "pending_deposit", "pareja", 1, 3, 2, 2, "Marta Rojas", 18, "3030303030", 1),
-    mk("STG-D0104", "pending_deposit", "familiar", 1, 6, 3, 2, "Jorge Silva", 3.5, "4040404040", 0),
-    mk("STG-D0105", "confirmed", "pareja", 1, 8, 2, 2, "Ana Gómez", 0, "1010101010", 4),
-    mk("STG-D0106", "cancelled", "pareja", 1, 9, 2, 2, "Pablo Ríos", 0, "6060606060", 6),
-    mk("STG-D0107", "completed", "pareja", 1, -6, 2, 2, "Clara Vélez", 0, "7070707070", 25),
-    mk("STG-D0108", "rescheduled", "familiar", 1, 14, 2, 4, "Tomás Arango", 0, "8080808080", 20),
-    mk("STG-D0109", "expired", "pareja", 1, 6, 1, 2, "Irene Cano", -2, "9090909090", 3),
-    mk("STG-D0110", "completed", "familiar", 1, -40, 3, 2, "Ana Gómez", 0, "1010101010", 60),
-    mk("STG-D0111", "completed", "familiar", 1, -25, 2, 4, "Luis Martínez", 0, "2020202020", 45),
+    mk("VF-D0101", "confirmed", "doble", 1, 0, 2, 2, "Ana Gómez", 0, "1010101010", 9),
+    mk("VF-D0102", "checked_in", "familiar", 1, -2, 2, 4, "Luis Martínez", 0, "2020202020", 14),
+    mk("VF-D0103", "pending_deposit", "doble", 1, 3, 2, 2, "Marta Rojas", 18, "3030303030", 1),
+    mk("VF-D0104", "pending_deposit", "familiar", 1, 6, 3, 2, "Jorge Silva", 3.5, "4040404040", 0),
+    mk("VF-D0105", "confirmed", "doble", 1, 8, 2, 2, "Ana Gómez", 0, "1010101010", 4),
+    mk("VF-D0106", "cancelled", "doble", 1, 9, 2, 2, "Pablo Ríos", 0, "6060606060", 6),
+    mk("VF-D0107", "completed", "doble", 1, -6, 2, 2, "Clara Vélez", 0, "7070707070", 25),
+    mk("VF-D0108", "rescheduled", "familiar", 1, 14, 2, 4, "Tomás Arango", 0, "8080808080", 20),
+    mk("VF-D0109", "expired", "doble", 1, 6, 1, 2, "Irene Cano", -2, "9090909090", 3),
+    mk("VF-D0110", "completed", "familiar", 1, -40, 3, 2, "Ana Gómez", 0, "1010101010", 60),
+    mk("VF-D0111", "completed", "familiar", 1, -25, 2, 4, "Luis Martínez", 0, "2020202020", 45),
   ];
   const db: Db = {
     reservations: rs,
-    blocks: [{ id: "b1", cabinTypeId: "familiar", unit: 1, from: addDays(t, 20), to: addDays(t, 22), reason: "Mantenimiento", notes: "Revisión del jacuzzi" }],
+    blocks: [{ id: "b1", cabinTypeId: "familiar", unit: 1, from: addDays(t, 20), to: addDays(t, 22), reason: "Mantenimiento", notes: "Pintura del balcón" }],
     cabins: seedCabins(),
     seasons: [{ id: "s1", cabinTypeId: "familiar", nombre: "Temporada alta de fin de año", from: `${t.slice(0, 4)}-12-15`, to: `${Number(t.slice(0, 4)) + 1}-01-15`, precioPareja: 550000, personaAdicional: 60000, activa: true }],
     clients: {
-      "CC:1010101010": { clientKey: "CC:1010101010", rating: 5, trust: "alta", tags: ["Paga puntual", "Celebra aniversario"], preferences: "Prefiere el Domo Pareja por la vista.", summary: "Huésped frecuente, muy cuidadosa.", updatedAt: new Date().toISOString(), entries: [] },
+      "CC:1010101010": { clientKey: "CC:1010101010", rating: 5, trust: "alta", tags: ["Paga puntual", "Celebra aniversario"], preferences: "Prefiere la Cabaña Familiar con Vista.", summary: "Huésped frecuente, muy cuidadosa.", updatedAt: new Date().toISOString(), entries: [] },
     },
     notifications: [],
     payments: [],
@@ -115,11 +115,11 @@ function seed(): Db {
     if (r.balancePaidAt) db.payments.push(mockPayment(r, "balance", "approved", "manual", r.balancePaidAt, r.quote.balance));
   });
   // Luis Martínez está en estadía con el saldo por pagar (vence en 40 minutos).
-  const stay = rs.find((r) => r.code === "STG-D0102")!;
+  const stay = rs.find((r) => r.code === "VF-D0102")!;
   stay.balanceDueAt = new Date(now + 40 * 6e4).toISOString();
   // Las retenciones de la demo vencen en minutos, como en el sitio real.
   rs.filter((r) => r.status === "pending_deposit").forEach((r, i) => (r.depositDueAt = new Date(now + (25 - i * 10) * 6e4).toISOString()));
-  notify(db, "reservation_confirmed", "Nueva reserva confirmada · Ana Gómez", "Domo Pareja · STG-D0105", "STG-D0105");
+  notify(db, "reservation_confirmed", "Nueva reserva confirmada · Ana Gómez", "Cabaña Doble · VF-D0105", "VF-D0105");
   return db;
 }
 
@@ -157,7 +157,7 @@ function applyPayment(db: Db, p: PaymentRecord): "confirmed" | "balance_paid" | 
   return p.kind === "balance" ? "balance_paid" : "confirmed";
 }
 
-// Booking.com simulado: los dos domos de la demo enlazados y algunas noches vendidas allá.
+// Booking.com simulado: las dos cabañas de la demo enlazadas y algunas noches vendidas allá.
 function seedChannels(d: Db) {
   const t = todayISO();
   const ago = (min: number) => new Date(Date.now() - min * 6e4).toISOString();
@@ -168,8 +168,8 @@ function seedChannels(d: Db) {
   const stay = (id: string, calendarId: string, cabinTypeId: string, unit: number, inOff: number, n: number, removed = false): ChannelStay => ({
     id, calendarId, cabinTypeId, unit, checkIn: addDays(t, inOff), checkOut: addDays(t, inOff + n), summary: "CLOSED - Not available", firstSeenAt: ago(60 * 24), removedAt: removed ? ago(60 * 20) : null,
   });
-  d.channelCalendars ??= [cal("c1", "pareja", 1, "Tienda (cama king)", 1), cal("c2", "familiar", 1, "Tienda (camas king y queen)", 1)];
-  d.channelStays ??= [stay("cs1", "c1", "pareja", 1, 12, 2), stay("cs2", "c2", "familiar", 1, 10, 2), stay("cs3", "c2", "familiar", 1, 17, 2, true)];
+  d.channelCalendars ??= [cal("c1", "doble", 1, "Habitación Doble con baño privado", 1), cal("c2", "familiar", 1, "Habitación Familiar con baño privado", 1)];
+  d.channelStays ??= [stay("cs1", "c1", "doble", 1, 12, 2), stay("cs2", "c2", "familiar", 1, 10, 2), stay("cs3", "c2", "familiar", 1, 17, 2, true)];
   return d as Db & Required<Pick<Db, "channelCalendars" | "channelStays">>;
 }
 const channelsOf = (d: Db) => {
@@ -543,8 +543,8 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       const fields = { nombre: b.nombre.trim(), descripcion: b.descripcion, caracteristicas: b.caracteristicas, badge: b.badge, maxPersonas: b.maxPersonas, units: b.units, precioPareja: b.precioPareja, personaAdicional: b.personaAdicional, activa: b.activa };
       if (method === "PUT") Object.assign(db.cabins.find((c) => c.id === b.id)!, fields);
       else {
-        let id = slugify(b.nombre) || "domo";
-        for (let i = 2; db.cabins.some((c) => c.id === id) || id === "nuevo"; i++) id = `${slugify(b.nombre)}-${i}`;
+        let id = slugify(b.nombre) || "cabana";
+        for (let i = 2; db.cabins.some((c) => c.id === id) || id === "nueva"; i++) id = `${slugify(b.nombre)}-${i}`;
         db.cabins.push({ id, fotos: [], sort: db.cabins.length + 1, ...fields });
       }
     }
@@ -557,7 +557,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     else {
       const b = opts.body as SeasonInput;
       const clash = b.activa && db.seasons.find((s) => s.id !== b.id && s.activa && s.cabinTypeId === b.cabinTypeId && s.from <= b.to && b.from <= s.to);
-      if (clash) return invalid({ dates: `Se cruza con la temporada activa "${clash.nombre}" del mismo domo.` });
+      if (clash) return invalid({ dates: `Se cruza con la temporada activa "${clash.nombre}" de la misma cabaña.` });
       if (method === "PUT") Object.assign(db.seasons.find((s) => s.id === b.id)!, b);
       else db.seasons.push({ ...b, id: `s${Date.now()}` });
     }

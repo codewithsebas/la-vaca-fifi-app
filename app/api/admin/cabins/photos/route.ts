@@ -18,7 +18,7 @@ async function cabinPhotos(sb: Db, id: string) {
   return data?.fotos ?? null;
 }
 
-// POST /api/admin/cabins/photos (multipart: cabinId, file) → agrega una foto a la galería del domo.
+// POST /api/admin/cabins/photos (multipart: cabinId, file) → agrega una foto a la galería de la cabaña.
 export const POST = route(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin();
   if (error) return error;

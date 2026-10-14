@@ -10,11 +10,11 @@ import type { CabinType, ChannelSyncResult, NotificationKind } from "@/lib/types
 import { type Db, isExclusionViolation, isMissingTable, loadCabinTypes, loadOccupancy } from "./db";
 
 // Sincronización de disponibilidad con Booking.com por calendarios iCal (extranet → Sincronizar calendarios).
-// Cada tipo de alojamiento de Booking (una unidad allá) cubre un grupo de domos del mismo tipo en la app (poolOf).
+// Cada tipo de alojamiento de Booking (una unidad allá) cubre un grupo de cabañas del mismo tipo en la app (poolOf).
 //   Booking → app: se lee el enlace de exportación de cada tipo y sus fechas quedan en channel_stays, cada una en un
-//   domo libre del grupo (cuentan como bloqueos en la disponibilidad). Si no queda ninguno libre, la reserva de la web
+//   cabaña libre del grupo (cuentan como bloqueos en la disponibilidad). Si no queda ninguno libre, la reserva de la web
 //   que esté encima se reacomoda a otra unidad libre del mismo tipo o se avisa al equipo de una posible sobreventa.
-//   App → Booking: /api/ical/<token> cierra las noches en que todos los domos del grupo están ocupados; Booking lo
+//   App → Booking: /api/ical/<token> cierra las noches en que todas las cabañas del grupo están ocupadas; Booking lo
 //   importa a su ritmo.
 // Se lee cada 5 minutos (pg_cron → /api/channels/sync), justo antes de asignar una reserva nueva y al consultar
 // disponibilidad si hace rato no se lee. sync_started_at hace de candado: dos lecturas del mismo calendario no se cruzan.
@@ -40,7 +40,7 @@ export function validImportUrl(url: string) {
 
 export const newExportToken = () => randomBytes(24).toString("hex");
 
-export const unitName = (types: CabinType[], typeId: string, unit: number) => `${(types.find((t) => t.id === typeId)?.nombre ?? typeId).replace(/^Domo\s+/i, "")} ${unit}`;
+export const unitName = (types: CabinType[], typeId: string, unit: number) => `${(types.find((t) => t.id === typeId)?.nombre ?? typeId).replace(/^Cabaña\s+/i, "")} ${unit}`;
 
 async function fetchIcs(url: string): Promise<IcsEvent[]> {
   let res: Response;
@@ -82,10 +82,10 @@ async function claim(sb: Db, cal: CalendarRow, minAgeMs: number) {
   return data.length > 0;
 }
 
-// Domos de la app que cubre un tipo de alojamiento de Booking: el primero (`unit`) y los demás del grupo.
+// Cabañas de la app que cubre un tipo de alojamiento de Booking: el primero (`unit`) y los demás del grupo.
 export const poolOf = (cal: Pick<CalendarRow, "unit" | "extra_units">): Pool => [cal.unit, ...cal.extra_units];
 
-// Grupos de domos de un tipo enlazados con Booking, por iCal o por Beds24 (para repartir las reservas de la web).
+// Grupos de cabañas de un tipo enlazados con Booking, por iCal o por Beds24 (para repartir las reservas de la web).
 export async function channelPools(sb: Db, cabinTypeId: string): Promise<Pool[]> {
   const { data, error } = await sb.from("channel_calendars").select("unit, extra_units").eq("cabin_type_id", cabinTypeId).or("import_url.not.is.null,beds24_room_id.not.is.null");
   if (error) {
@@ -96,7 +96,7 @@ export async function channelPools(sb: Db, cabinTypeId: string): Promise<Pool[]>
 }
 
 // Booking vuelve a exportar como cerradas las noches que importó del enlace de la app. Una fecha suya es ese eco si en
-// todas sus noches el enlace ya las cerraba (todos los domos del grupo ocupados por la web, bloqueos o fechas de otros
+// todas sus noches el enlace ya las cerraba (todas las cabañas del grupo ocupadas por la web, bloqueos o fechas de otros
 // tipos de Booking) y Booking lo descargó después del último cambio en ellas. Si no lo había descargado, no puede ser un
 // eco: es una venta de Booking. Solo aplica a los calendarios iCal (Beds24 no devuelve lo que crea la app).
 async function withoutEchoes(sb: Db, cal: CalendarRow, spans: ChannelSpan[]) {
@@ -171,7 +171,7 @@ async function resolveConflicts(sb: Db, cal: CalendarRow, changed: ChannelSpan[]
       sb,
       "channel_conflict",
       `Posible sobreventa con Booking.com · ${c.code}`,
-      `Booking.com ocupó ${where(c.stay)}, donde está la reserva ${c.code}, y no hay otro domo libre. Revisa en el extranet si es una reserva nueva.`,
+      `Booking.com ocupó ${where(c.stay)}, donde está la reserva ${c.code}, y no hay otra cabaña libre. Revisa en el extranet si es una reserva nueva.`,
       c.code,
     );
   }
@@ -207,7 +207,7 @@ export async function applyStays(
   };
   const changed = events.filter((e) => moved(e) || byUid.get(e.uid)!.summary !== e.summary);
 
-  // Cada fecha nueva ocupa un domo del grupo libre esas noches; si no queda ninguna, la primera del grupo (y la reserva
+  // Cada fecha nueva ocupa una cabaña del grupo libre esas noches; si no queda ninguna, la primera del grupo (y la reserva
   // de la web que esté allí se reacomoda o queda como posible sobreventa).
   const unitOf = new Map<string, number>();
   const fresh = changed.filter(moved);
@@ -329,12 +329,12 @@ export async function exportCalendar(token: string, base: string): Promise<strin
   const [{ data: rs }, { data: bs }, { data: ss }, { types }] = await Promise.all([
     sb.from("reservations").select("unit, check_in, check_out").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).in("status", ACTIVE_STATUSES).gt("check_out", since).throwOnError(),
     sb.from("blocks").select("unit, from_date, to_date").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).gte("to_date", since).throwOnError(),
-    // Fechas de otros tipos de Booking que hayan quedado en estos domos (las de este tipo, Booking ya las conoce).
+    // Fechas de otros tipos de Booking que hayan quedado en estas cabañas (las de este tipo, Booking ya las conoce).
     sb.from("channel_stays").select("unit, check_in, check_out").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).neq("calendar_id", cal.id).is("removed_at", null).gt("check_out", since).throwOnError(),
     loadCabinTypes(sb),
     sb.from("channel_calendars").update({ last_fetched_at: fetchedAt }).eq("id", cal.id),
   ]);
-  // Booking vende una por noche de este tipo: se cierra allá cada noche en que ya no queda ningún domo libre en el grupo.
+  // Booking vende una por noche de este tipo: se cierra allá cada noche en que ya no queda ninguna cabaña libre en el grupo.
   const busy = new Map<string, Set<number>>();
   const mark = (unit: number, from: string, to: string) => {
     for (let d = from < since ? since : from; d < to; d = addDays(d, 1)) {

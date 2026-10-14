@@ -21,7 +21,7 @@ function clean(b: CabinInput | null) {
   if (badge.length > 30) errors.badge = "La etiqueta admite hasta 30 caracteres.";
   if (caracteristicas.length > 20 || caracteristicas.some((x) => x.length > 60)) errors.caracteristicas = "Hasta 20 características de máximo 60 caracteres.";
   if (!Number.isInteger(b.maxPersonas) || b.maxPersonas < 1 || b.maxPersonas > 12) errors.maxPersonas = "La capacidad debe estar entre 1 y 12 personas.";
-  if (!Number.isInteger(b.units) || b.units < 0 || b.units > 20) errors.units = "El número de domos debe estar entre 0 y 20.";
+  if (!Number.isInteger(b.units) || b.units < 0 || b.units > 20) errors.units = "El número de cabañas debe estar entre 0 y 20.";
   if (!money(b.precioPareja)) errors.precioPareja = "Escribe una tarifa válida.";
   if (!money(b.personaAdicional)) errors.personaAdicional = "Escribe una tarifa válida.";
   const row = {
@@ -43,7 +43,7 @@ const done = async (sb: Db) => {
   return json((await loadCabinTypes(sb)).types);
 };
 
-// POST /api/admin/cabins → crea un domo (el id sale del nombre y no cambia después).
+// POST /api/admin/cabins → crea una cabaña (el id sale del nombre y no cambia después).
 export const POST = route(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin();
   if (error) return error;
@@ -51,10 +51,10 @@ export const POST = route(async (req: NextRequest) => {
   const v = clean(b);
   if (v.errors) return fail(422, "VALIDATION_ERROR", { fields: v.errors });
   const { rows } = await loadCabinTypes(sb);
-  const base = slugify(b!.id || v.row.nombre) || "domo";
+  const base = slugify(b!.id || v.row.nombre) || "cabana";
   let id = base;
-  // "nuevo" es la ruta del panel para crear un domo (/admin/domos/nuevo): no puede ser un id.
-  for (let i = 2; rows.some((r) => r.id === id) || id === "nuevo"; i++) id = `${base}-${i}`.slice(0, 40);
+  // "nueva" es la ruta del panel para crear una cabaña (/admin/cabanas/nueva): no puede ser un id.
+  for (let i = 2; rows.some((r) => r.id === id) || id === "nueva"; i++) id = `${base}-${i}`.slice(0, 40);
   const sort = rows.reduce((m, r) => Math.max(m, r.sort), 0) + 1;
   await sb.from("cabin_types").insert({ id, sort, ...v.row }).throwOnError();
   return done(sb);

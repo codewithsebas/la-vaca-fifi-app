@@ -14,13 +14,13 @@ export type HoldResult = { row: Tables<"reservations"> } | { error: "DATES_UNAVA
 // Secreto del enlace de pago (/pagar/<token>): 144 bits aleatorios en base64url.
 export const newPayToken = () => randomBytes(18).toString("base64url");
 
-// Solo la unidad pedida (el equipo eligió un domo concreto en el calendario): las demás cuentan como ocupadas.
+// Solo la unidad pedida (el equipo eligió una cabaña concreta en el calendario): las demás cuentan como ocupadas.
 function onlyUnit(occ: Occupancy, units: number, typeId: string, unit: number, ci: string, co: string): Occupancy {
   const others = Array.from({ length: units }, (_, i) => i + 1).filter((u) => u !== unit);
   return { reservations: occ.reservations, blocks: [...occ.blocks, ...others.map((u) => ({ cabinTypeId: typeId, unit: u, from: ci, to: addDays(co, -1) }))] };
 }
 
-// Retiene un domo para una reserva nueva (del sitio o del panel) y la inserta pendiente de abono.
+// Retiene una cabaña para una reserva nueva (del sitio o del panel) y la inserta pendiente de abono.
 // Antes lee los calendarios de Booking del tipo si hace más de 90 s que no se leen (máximo 2,5 s de espera: si Booking
 // tarda, se sigue con la última lectura y esa termina en segundo plano). Si la unidad se vende en Booking por Beds24,
 // primero se retiene allá. La restricción de exclusión resuelve reservas simultáneas: si otra solicitud tomó la unidad,
@@ -41,7 +41,7 @@ export async function holdReservation(sb: Db, row: NewReservation, opts: { units
       cabinTypeId: typeId,
       checkIn: row.check_in,
       checkOut: row.check_out,
-      // Primero las que no se venden en Booking y luego las de los grupos con más domos libres: así cada tipo de
+      // Primero las que no se venden en Booking y luego las de los grupos con más cabañas libres: así cada tipo de
       // Booking conserva una libre el mayor tiempo posible.
       prefer: poolFirst(occ, opts.units, typeId, row.check_in, row.check_out, pools),
       source: "reservation",
@@ -50,7 +50,7 @@ export async function holdReservation(sb: Db, row: NewReservation, opts: { units
       adults: row.adults,
       children: row.children ?? 0,
     });
-    // Sin Beds24 no se vende un domo que también está en Booking: mejor pedir que se intente en un momento.
+    // Sin Beds24 no se vende una cabaña que también está en Booking: mejor pedir que se intente en un momento.
     if (!claim.hold) return { error: claim.channelDown ? "CHANNEL_UNAVAILABLE" : "DATES_UNAVAILABLE" };
     const { data, error } = await sb
       .from("reservations")

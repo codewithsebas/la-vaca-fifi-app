@@ -160,7 +160,7 @@ export function Confirmation() {
         </div>
         <KeyValues
           rows={[
-            { k: "Domo", v: cabinName(r.cabinTypeId) },
+            { k: "Cabaña", v: cabinName(r.cabinTypeId) },
             { k: "Llegada", v: `${fmtDate(r.checkIn, true)} · desde las ${fmtTime(c.checkInStart)}` },
             { k: "Salida", v: `${fmtDate(r.checkOut, true)} · hasta las ${c.checkOut}` },
             { k: "Valor total", v: `${cop(m.total)} · ${plural(n, "noche", "noches")}` },

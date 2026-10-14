@@ -24,7 +24,7 @@ export const mailConfigured = () => !!process.env.RESEND_API_KEY?.trim();
 async function sendWithResend(m: { to: string; subject: string; html: string; text: string; attachments?: Attachment[]; idempotencyKey: string }) {
   const key = process.env.RESEND_API_KEY?.trim();
   if (!key) throw new Error("El envío de correos no está configurado: falta RESEND_API_KEY.");
-  const from = process.env.EMAIL_FROM?.trim() || "Stellarium Glamping <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM?.trim() || "La Vaca Fifí <onboarding@resend.dev>";
   const replyTo = process.env.EMAIL_REPLY_TO?.trim();
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -59,11 +59,11 @@ async function render(ctx: Ctx, row: Row): Promise<{ email: RenderedEmail; attac
     ]);
     const { data: cabin } = await ctx.sb.from("cabin_types").select("nombre").eq("id", r.cabin_type_id).maybeSingle().throwOnError();
     const q = r.quote as Quote;
-    const domo = cabin?.nombre ?? r.cabin_type_id;
+    const cabana = cabin?.nombre ?? r.cabin_type_id;
     const email = reservationConfirmedEmail(c, {
       nombre: r.guest_full_name,
       codigo: r.code,
-      domo,
+      cabana,
       checkIn: r.check_in,
       checkOut: r.check_out,
       adultos: r.adults,
@@ -77,7 +77,7 @@ async function render(ctx: Ctx, row: Row): Promise<{ email: RenderedEmail; attac
       whatsappUrl: wa(c.whatsapp, `Hola, tengo una pregunta sobre mi reserva ${r.code}.`),
       logoUrl,
     });
-    const calendar = ics({ code: r.code, checkIn: r.check_in, checkOut: r.check_out, cabinTypeId: r.cabin_type_id }, c, domo);
+    const calendar = ics({ code: r.code, checkIn: r.check_in, checkOut: r.check_out, cabinTypeId: r.cabin_type_id }, c, cabana);
     return { email, attachments: [{ filename: `reserva-${r.code}.ics`, content: Buffer.from(calendar).toString("base64") }] };
   }
   const d = row.payload as { nombre?: string; asunto?: string; mensaje?: string; codigo?: string | null };

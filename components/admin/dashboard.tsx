@@ -122,7 +122,7 @@ export function Dashboard() {
 
       <Block id="d-today" title="Hoy" hint="Quién llega, quién sale y qué pagos faltan por completar.">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="Ocupación esta noche" value={`${occToday.busy} de ${occToday.total}`} hint={occToday.total ? `${Math.round((occToday.busy / occToday.total) * 100)} % de los domos` : "Sin domos"} icon={<HomeIcon size={15} />} />
+          <StatCard label="Ocupación esta noche" value={`${occToday.busy} de ${occToday.total}`} hint={occToday.total ? `${Math.round((occToday.busy / occToday.total) * 100)} % de las cabañas` : "Sin cabañas"} icon={<HomeIcon size={15} />} />
           <StatCard
             label="Llegadas por recibir"
             value={arr.length}
@@ -187,7 +187,7 @@ export function Dashboard() {
         </div>
       </Block>
 
-      <Block id="d-next" title="Esta semana" hint="Cómo vienen los domos en los próximos 7 días." className="mt-3">
+      <Block id="d-next" title="Esta semana" hint="Cómo vienen las cabañas en los próximos 7 días." className="mt-3">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <OccupancyChart />
           <ListCard
@@ -229,7 +229,7 @@ const PERIODS: { value: Preset; label: string }[] = [
 ];
 
 // Las cifras y gráficas de Finanzas, resumidas: el mismo cálculo, con pocos periodos para elegir. El análisis completo
-// (por domo, rango a medida, pagos uno a uno) sigue en Finanzas, que se abre con el periodo elegido aquí.
+// (por cabaña, rango a medida, pagos uno a uno) sigue en Finanzas, que se abre con el periodo elegido aquí.
 function FinanceBlock() {
   const { data } = useAdmin();
   const period = usePeriod("30");
@@ -265,7 +265,7 @@ function FinanceBlock() {
       <RevenueChart buckets={now.buckets} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <StaysMeter stays={now.stays} />
-        <BarList id="d-cabin" title="Ingresos por domo" subtitle="¿Qué domo genera más?" rows={now.byCabin} total={now.received} />
+        <BarList id="d-cabin" title="Ingresos por cabaña" subtitle="¿Qué cabaña genera más?" rows={now.byCabin} total={now.received} />
         <BarList id="d-type" title="Ingresos por tipo de estadía" subtitle="Pareja, familia (con niños), grupo (3 o más adultos) o individual." rows={now.byType} total={now.received} />
       </div>
     </Block>
@@ -287,7 +287,7 @@ function OccupancyChart() {
 
   return (
     <Card aria-labelledby="d-week" className="flex flex-col gap-5 p-4 sm:p-5">
-      <CardHeader id="d-week" icon={<HomeIcon size={18} />} title="Ocupación de los próximos 7 días" subtitle={`Promedio ${avg} % · ${plural(week[0].total, "domo", "domos")}`} />
+      <CardHeader id="d-week" icon={<HomeIcon size={18} />} title="Ocupación de los próximos 7 días" subtitle={`Promedio ${avg} % · ${plural(week[0].total, "cabaña", "cabañas")}`} />
       {/* Junto a una lista más alta, las columnas crecen con la tarjeta. */}
       <div className="flex flex-1 flex-col pl-9">
         <div className="relative min-h-[168px] flex-1">
@@ -301,10 +301,10 @@ function OccupancyChart() {
               <li
                 key={d.day}
                 role="img"
-                aria-label={`${fmtDate(d.day)}: ${d.pc} % de ocupación, ${d.busy} de ${d.total} domos`}
+                aria-label={`${fmtDate(d.day)}: ${d.pc} % de ocupación, ${d.busy} de ${d.total} cabañas`}
                 {...tip(() => (
                   <span>
-                    <strong>{fmtDate(d.day)}</strong> · {d.pc} % · {d.busy} de {d.total} domos
+                    <strong>{fmtDate(d.day)}</strong> · {d.pc} % · {d.busy} de {d.total} cabañas
                   </span>
                 ))}
                 className="group relative flex h-full flex-col items-center justify-end"

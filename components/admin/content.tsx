@@ -185,11 +185,11 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
                 <Field
                   label="Frases que se alternan con el título resaltado (opcional)"
                   error={err("heroRotating")}
-                  hint={`Una por línea, hasta ${TEXT_LIMITS.rotatingLines}. En la portada cambian solas, letra por letra: «las estrellas» → «la Vía Láctea»… Déjalo vacío para que no cambie.`}
+                  hint={`Una por línea, hasta ${TEXT_LIMITS.rotatingLines}. En la portada cambian solas, letra por letra: «en Murillo, Tolima» → «con vista a la montaña»… Déjalo vacío para que no cambie.`}
                 >
                   {(p) => <textarea {...p} rows={3} maxLength={TEXT_LIMITS.rotating} value={f.t.hero.rotating} onChange={(e) => setT("hero", { rotating: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} placeholder={"la Vía Láctea\nel cielo andino"} />}
                 </Field>
-                <Field label="Etiqueta junto al título" hint="Corta. Ej. «Murillo, Tolima · A 2.950 m de altura».">
+                <Field label="Etiqueta junto al título" hint="Corta. Ej. «A 5 minutos de Murillo · 9,2 en Booking.com».">
                   {(p) => <input {...p} type="text" maxLength={TEXT_LIMITS.badge} value={f.t.hero.badge} onChange={(e) => setT("hero", { badge: e.target.value })} className={adminInput} />}
                 </Field>
                 <Field label="Descripción" hint={`${f.t.hero.description.length}/${TEXT_LIMITS.description}`}>
@@ -202,7 +202,7 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
           </>
         )}
 
-        {id === "experiencias" && <PhotoGroups groups={["Alta montaña bajo las estrellas"]} />}
+        {id === "experiencias" && <PhotoGroups groups={["La finca"]} />}
 
         {id === "colores" && <ThemeEditor theme={f.theme} saved={saved.theme} onChange={setTheme} />}
 

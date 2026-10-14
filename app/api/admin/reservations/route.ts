@@ -12,7 +12,7 @@ import type { ManualReservationInput, ManualReservationResult } from "@/lib/type
 const validation = (fields: Record<string, string>) => fail(422, "VALIDATION_ERROR", { fields });
 
 // POST /api/admin/reservations → 201 { reservation, payUrl }. Reserva tomada por el equipo (WhatsApp, teléfono, en
-// persona): retiene el domo igual que una reserva de la web (mismas reglas de disponibilidad y de Booking) y queda
+// persona): retiene la cabaña igual que una reserva de la web (mismas reglas de disponibilidad y de Booking) y queda
 // pendiente de abono hasta el plazo elegido. El huésped paga por el enlace; si no paga a tiempo, las fechas se liberan.
 export const POST = route(async (req: NextRequest) => {
   const { error } = await requireAdmin();

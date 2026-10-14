@@ -1,6 +1,13 @@
-# Stellarium Glamping
+# La Vaca Fifí
 
-Sitio web y sistema de reservas de Stellarium Glamping (Murillo, Tolima): domos geodésicos con jacuzzi a 2.950 m de altura. Next.js 16 (App Router) + React 19 + Tailwind CSS 4.
+Sitio web y sistema de reservas de La Vaca Fifí (vereda Pajonales, a 5 minutos de Murillo, Tolima): cabañas de colores con baño privado, balcón con vista a la montaña y desayuno americano incluido, y restaurante de finca. Next.js 16 (App Router) + React 19 + Tailwind CSS 4.
+
+## Marca
+
+- Logo: `public/logo-la-vaca-fifi.svg` (vector original) y `public/logo-la-vaca-fifi.png` (768 px, lo usan el sitio, los íconos de la app y los correos). Sello con los colores del letrero de la entrada y la vaca Holstein con su corona de flores. Si cambias el SVG, vuelve a exportar el PNG del mismo tamaño.
+- Nombre: Alegreya SC (versalitas, como el letrero), en `components/brand.tsx`.
+- Paleta: «Letrero» (verde de finca, dorado de las letras, coral de las flores y terracota en los botones), en `lib/theme.ts` y `app/globals.css`. Se cambia desde el panel (Contenido del sitio → Colores).
+- Fotos del cliente en `public/fotos/`: se ven en el sitio mientras no se suba otra desde el panel.
 
 ```bash
 pnpm install
@@ -12,7 +19,7 @@ pnpm build
 
 | Ruta | Qué es |
 | --- | --- |
-| `/` | Portada: presentación, cotizador de reserva, experiencias, domos, servicios, políticas, ubicación y contacto |
+| `/` | Portada: presentación, cotizador de reserva, cabañas, servicios, la finca, ubicación, políticas y contacto |
 | `/reservar` | Reserva en 4 pasos (acepta `?checkIn&checkOut&adults&children&type&pet&deco` desde la portada). El último paso retiene las fechas y abre el pago: abono o total |
 | `/confirmacion?ref=` | Resultado del pago al volver de la pasarela (aprobado, en proceso, rechazado), con la reserva y sus próximos pasos |
 | `/mi-reserva` | Consulta de una reserva con código y correo: estado, lo pagado, saldo, plazos y botón de pago (abono o total; saldo antes de llegar o tras el check-in) |
@@ -28,28 +35,30 @@ pnpm build
 | Ruta | Módulo |
 | --- | --- |
 | `/admin` | Dashboard: llegadas, salidas, pagos por completar (abonos y saldos con su plazo) y ocupación de la semana |
-| `/admin/calendario` | Ocupación por domo (`?vista=dia\|3dias\|semana\|mes&fecha=&domo=`) |
+| `/admin/calendario` | Ocupación por cabaña (`?vista=dia\|3dias\|semana\|mes&fecha=&cabana=`) |
 | `/admin/reservas`, `/admin/reservas/[codigo]` | Lista con filtros y ficha de cada reserva |
 | `/admin/pagos` | Transacciones (iniciadas, en proceso, aprobadas, rechazadas, por reembolsar), pagos recibidos y lo pendiente por cobrar |
 | `/admin/clientes`, `/admin/clientes/[cc-123…]` | Clientes y su ficha con valoración interna |
-| `/admin/bloqueos` | Bloqueos (`?nuevo=1&domo=&unidad=&fecha=` o `?editar=<id>` abren el editor) |
+| `/admin/bloqueos` | Bloqueos (`?nuevo=1&cabana=&unidad=&fecha=` o `?editar=<id>` abren el editor) |
 | `/admin/finanzas` | Análisis de ingresos por periodo |
-| `/admin/domos`, `/admin/domos/nuevo`, `/admin/domos/[id]` | Domos del sitio |
+| `/admin/cabanas`, `/admin/cabanas/nueva`, `/admin/cabanas/[id]` | Cabañas del sitio |
 | `/admin/tarifas` | Tarifa base y temporadas (`?temporada=nueva\|<id>`) |
-| `/admin/contenido/[seccion]` | Contenido del sitio por zona (portada, experiencias, horarios, políticas, contacto, pagos, redes) |
+| `/admin/contenido/[seccion]` | Contenido del sitio por zona (portada, la finca, horarios, políticas, contacto, pagos, redes) |
 | `/admin/notificaciones` | Historial de avisos |
 | `/admin/configuracion` | Sonido, tiempo real, vista del calendario y sesión |
 
 ## Dónde se edita cada cosa
 
 - `lib/config.ts`: datos del negocio (teléfonos, dirección, tarifas, capacidad, horarios, políticas, % de abono, modo de pago del abono).
-- Fotos: se suben desde el panel (Contenido del sitio y la ficha de cada domo) a Supabase Storage. Las de `public/fotos/` son las del diseño: solo se ven en el modo simulado o si Supabase no responde (`DEFAULT_PHOTOS` en `lib/site.ts`).
-- `lib/content.ts`: experiencias y servicios de la portada.
+- Fotos: se suben desde el panel (Contenido del sitio y la ficha de cada cabaña) a Supabase Storage. Mientras un hueco o una cabaña no tenga foto subida, el sitio muestra la del diseño, de `public/fotos/` (`DEFAULT_PHOTOS` en `lib/site.ts` y las fotos de cada cabaña en `lib/config.ts`).
+- `lib/content.ts`: fotos de «La finca» (experiencias) y servicios por defecto de la portada.
 - `lib/emails.ts`: correos (HTML + texto plano). La confirmación de reserva y el mensaje del equipo se envían con Resend (`lib/server/mailer.ts`).
 - `lib/payments.ts`: reglas de pago compartidas (minutos de retención, hora para pagar el saldo, etapas que ve el huésped).
-- `app/globals.css`: tokens de color, tipografía y componentes base (paleta "Noche estrellada"; las demás están en `lib/theme.ts` y se eligen en el panel).
+- `app/globals.css`: tokens de color, tipografía y componentes base (paleta "Letrero"; las demás están en `lib/theme.ts` y se eligen en el panel).
 
 Pendiente de completar en `lib/config.ts` y en la política de privacidad: `{CORREO_RESERVAS}`, `{DATOS_DE_PAGO}`, `{RAZON_SOCIAL}`, `{NIT}` y `{FECHA_DE_VIGENCIA}`.
+
+Por confirmar con el cliente (vienen de Booking.com, Google Maps y otros portales): tarifas por cabaña y por persona adicional, número de cabañas de cada tipo (`units`), política de cambios de fecha y el % de abono. Las reservas se identifican con códigos `VF-XXXXX`.
 
 ## Backend (Next.js + Supabase)
 
@@ -78,11 +87,11 @@ Las rutas `app/api/*` implementan el contrato que usa el front (`lib/api.ts`) so
 
 Estados: la reserva usa los de siempre (`pending_deposit` → `confirmed` → `checked_in` → `completed`); el saldo se deriva de `balance_due_at`, `balance_overdue_at` y `balance_paid_at`; cada intento de pago es un abono (`deposit`), un pago total (`full`) o un saldo (`balance`), y tiene `initiated`, `pending`, `approved`, `declined`, `error` o `expired` (tablas `payments` y `payment_transactions`).
 
-En desarrollo local, el CDN de Wompi rechaza un retorno a `localhost`: se vuelve por `stellarium.localhost` (el navegador lo resuelve a tu equipo) y el resultado se verifica con la llave privada, porque el evento de Wompi no llega a tu máquina. Para recibir eventos en local usa un túnel https y configura su URL en Wompi.
+En desarrollo local, el CDN de Wompi rechaza un retorno a `localhost`: se vuelve por `lavacafifi.localhost` (el navegador lo resuelve a tu equipo) y el resultado se verifica con la llave privada, porque el evento de Wompi no llega a tu máquina. Para recibir eventos en local usa un túnel https y configura su URL en Wompi.
 
 **Correos (Resend).** La confirmación la encola la base de datos (`email_outbox`, una por reserva) y se envía después de responder al huésped: si Resend falla, la reserva sigue confirmada, el error queda en la fila, el panel recibe un aviso y el correo se reintenta con espera creciente (o desde la ficha de la reserva). Sin dominio verificado en Resend, el remitente `onboarding@resend.dev` solo puede enviar al correo de tu cuenta.
 
-**Esquema.** `supabase/migrations/` (tablas `cabin_types`, `reservations`, `reservation_notes`, `blocks`). Tarifas, capacidad máxima y número de domos por tipo (`units`) viven en `cabin_types`; las tarifas se editan en el panel, `units` en el Table Editor de Supabase.
+**Esquema.** `supabase/migrations/` (tablas `cabin_types`, `reservations`, `reservation_notes`, `blocks`). Tarifas, capacidad máxima y número de cabañas por tipo (`units`) viven en `cabin_types`; las tarifas se editan en el panel, `units` en el Table Editor de Supabase.
 
 ### Puesta en marcha
 
@@ -101,4 +110,4 @@ where email = 'tu-correo@ejemplo.com';
 
 ### Modo simulado
 
-Con `NEXT_PUBLIC_USE_MOCK_API=1` la app funciona sin backend (`lib/mock-server.ts`, datos en el `localStorage` del navegador, login de prueba con cualquier correo; los pagos usan la pasarela simulada y los correos se dan por enviados). Para simular errores del envío: `localStorage.setItem('sg-mock-settings', '{"post":"409"}')` (también `422`, `429`, `network`, `slow`).
+Con `NEXT_PUBLIC_USE_MOCK_API=1` la app funciona sin backend (`lib/mock-server.ts`, datos en el `localStorage` del navegador, login de prueba con cualquier correo; los pagos usan la pasarela simulada y los correos se dan por enviados). Para simular errores del envío: `localStorage.setItem('vf-mock-settings', '{"post":"409"}')` (también `422`, `429`, `network`, `slow`).

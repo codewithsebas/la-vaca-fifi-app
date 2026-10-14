@@ -3,7 +3,7 @@ import type { PublicReservation } from "./types";
 // La confirmación lee la última solicitud enviada en esta pestaña.
 export type LastReservation = { res: PublicReservation; email: string; name: string; adults: number; children: number };
 
-const KEY = "sg-last";
+const KEY = "vf-last";
 
 export function saveLastReservation(v: LastReservation) {
   try {
@@ -22,7 +22,7 @@ export function readLastReservation(): LastReservation | null {
 
 // Reservas hechas o consultadas en este dispositivo (las 5 más recientes): «Mi reserva» completa el código y el correo sola.
 type Mine = { code: string; email: string };
-const MINE = "sg-mis-reservas";
+const MINE = "vf-mis-reservas";
 
 function readMine(): Mine[] {
   try {

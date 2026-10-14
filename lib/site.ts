@@ -8,7 +8,7 @@ export type SiteSettings = {
   checkInEnd: string;
   checkOutTime: string;
   phones: string[];
-  whatsapp: string; // con indicativo, solo dígitos: 573155918577
+  whatsapp: string; // con indicativo, solo dígitos: 573142374008
   rnt: string;
 };
 
@@ -42,15 +42,15 @@ export type SiteConfig = Omit<typeof config, "policies"> & { policies: SitePolic
 
 export const defaultTexts: SiteTexts = {
   hero: {
-    title: "Duerme bajo",
-    highlight: "las estrellas",
-    rotating: "la Vía Láctea\nel cielo andino",
-    badge: "Murillo, Tolima · A 2.950 m de altura",
-    description: "Domos geodésicos con jacuzzi privado y desayuno servido en la terraza, a 2.950 metros de altura. Rodeado de montañas y acompañado por las estrellas.",
+    title: "Cabañas de colores",
+    highlight: "en Murillo, Tolima",
+    rotating: "con vista a la montaña\ny sabor de finca",
+    badge: "A 5 minutos de Murillo · 9,2 en Booking.com",
+    description: "Cabañas con baño privado, balcón con vista a la montaña y desayuno americano incluido. Restaurante y café, jardines, fogata y parque para los niños, con atención familiar.",
   },
-  location: { note: "A pocos minutos de Murillo. El Nevado del Ruiz queda a aproximadamente 1 hora en carro." },
+  location: { note: "A 5 minutos de Murillo por la vía Líbano – Murillo, en la vereda Pajonales. El Nevado del Ruiz queda a aproximadamente 1 hora en carro." },
   payment: { instructions: "" },
-  social: { instagram: "https://www.instagram.com/stellariumglamping/", facebook: "https://www.facebook.com/StellariumGlampingMurillo", tiktok: "" },
+  social: { instagram: "https://www.instagram.com/la_vaca_fifi/", facebook: "https://www.facebook.com/profile.php?id=100083189417737", tiktok: "" },
 };
 
 // Límites de cada texto (los aplica la API al guardar).
@@ -76,19 +76,19 @@ export function mergeTexts(raw: unknown): SiteTexts {
 // `hint`: orientación sugerida; `min`: resolución mínima (px) para que la foto se vea nítida en pantallas de alta densidad.
 export type PhotoSlotDef = { id: string; group: string; label: string; alt: string; placeholder: string; aspect: string; hint: string; min: readonly [width: number, height: number] };
 
-// Huecos de imagen del sitio, en el orden en que aparecen en el panel. Las fotos de cada domo se administran en su ficha.
+// Huecos de imagen del sitio, en el orden en que aparecen en el panel. Las fotos de cada cabaña se administran en su ficha.
 export const PHOTO_SLOTS: PhotoSlotDef[] = [
-  { id: "hero-main", group: "Portada · banner grande", label: "Banner grande", alt: "Domo iluminado de noche junto al jacuzzi", placeholder: "Foto real (4:5): domo de noche bajo el cielo estrellado", aspect: "4/5", hint: "Vertical 4:5", min: [1200, 1500] },
-  { id: "hero-thumb-1", group: "Portada · banners pequeños", label: "Banner pequeño 1", alt: "Exterior del domo geodésico", placeholder: "Foto real: exterior del domo", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
-  { id: "hero-thumb-2", group: "Portada · banners pequeños", label: "Banner pequeño 2", alt: "Interior del domo", placeholder: "Foto real: interior del domo", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
-  { id: "hero-thumb-3", group: "Portada · banners pequeños", label: "Banner pequeño 3", alt: "Zona de fogata", placeholder: "Foto real: fogata", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
-  { id: "hero-thumb-4", group: "Portada · banners pequeños", label: "Banner pequeño 4", alt: "Desayuno con vista a las montañas", placeholder: "Foto real: desayuno o jacuzzi", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
-  { id: "exp-jacuzzi", group: "Alta montaña bajo las estrellas", label: "Jacuzzi al aire libre", alt: "Jacuzzi al aire libre", placeholder: "Foto real: jacuzzi en la terraza", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "exp-estrellas", group: "Alta montaña bajo las estrellas", label: "Noches bajo las estrellas", alt: "Noches bajo las estrellas", placeholder: "Foto real: el domo de noche o el cielo estrellado", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "exp-desayuno", group: "Alta montaña bajo las estrellas", label: "Desayuno con vista", alt: "Desayuno con vista a las montañas", placeholder: "Foto real: desayuno en la terraza", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "exp-fogata", group: "Alta montaña bajo las estrellas", label: "Fogata y vino", alt: "Fogata y vino", placeholder: "Foto real: zona de fogata de noche", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "exp-nevado", group: "Alta montaña bajo las estrellas", label: "Nevado del Ruiz", alt: "Nevado del Ruiz", placeholder: "Foto real: el Nevado del Ruiz", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "contact", group: "Contacto", label: "Imagen de contacto", alt: "Stellarium Glamping", placeholder: "Foto real: anfitriones o el glamping", aspect: "4/3", hint: "Horizontal 4:3", min: [1200, 900] },
+  { id: "hero-main", group: "Portada · banner grande", label: "Banner grande", alt: "Corredor de las cabañas de colores de La Vaca Fifí", placeholder: "Foto real (4:5): las cabañas y su corredor", aspect: "4/5", hint: "Vertical 4:5", min: [1200, 1500] },
+  { id: "hero-thumb-1", group: "Portada · banners pequeños", label: "Banner pequeño 1", alt: "Fachada de una cabaña", placeholder: "Foto real: exterior de una cabaña", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
+  { id: "hero-thumb-2", group: "Portada · banners pequeños", label: "Banner pequeño 2", alt: "Habitación de una cabaña", placeholder: "Foto real: interior de una cabaña", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
+  { id: "hero-thumb-3", group: "Portada · banners pequeños", label: "Banner pequeño 3", alt: "Restaurante de La Vaca Fifí", placeholder: "Foto real: el restaurante", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
+  { id: "hero-thumb-4", group: "Portada · banners pequeños", label: "Banner pequeño 4", alt: "Balcón con vista a las montañas", placeholder: "Foto real: balcón o desayuno con vista", aspect: "1/1.1", hint: "Casi cuadrada", min: [600, 660] },
+  { id: "exp-restaurante", group: "La finca", label: "Restaurante y café", alt: "Restaurante y café de finca", placeholder: "Foto real: el restaurante", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
+  { id: "exp-desayuno", group: "La finca", label: "Desayuno con vista", alt: "Desayuno con vista a la montaña", placeholder: "Foto real: desayuno o balcón con vista", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
+  { id: "exp-parque", group: "La finca", label: "Parque infantil", alt: "Parque infantil", placeholder: "Foto real: el parque infantil", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
+  { id: "exp-jardines", group: "La finca", label: "Jardines y flores", alt: "Jardines y flores", placeholder: "Foto real: los jardines", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
+  { id: "exp-finca", group: "La finca", label: "Ambiente de finca", alt: "Ambiente de finca tradicional", placeholder: "Foto real: los caminos y zonas verdes de la finca", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
+  { id: "contact", group: "Contacto", label: "Imagen de contacto", alt: "Entrada de La Vaca Fifí", placeholder: "Foto real: la entrada o los anfitriones", aspect: "4/3", hint: "Horizontal 4:3", min: [1200, 900] },
 ];
 
 export const photoSlot = (id: string) => PHOTO_SLOTS.find((s) => s.id === id);
@@ -112,7 +112,7 @@ export function arrivalOptions(start: string, end: string): [value: string, labe
   return out;
 }
 
-// Foto de domo: lado mayor y mínimo (horizontal 4:3), igual que los huecos del sitio.
+// Foto de cabaña: lado mayor y mínimo (horizontal 4:3), igual que los huecos del sitio.
 export const CABIN_PHOTO = { aspect: "4/3", hint: "Horizontal 4:3", min: [1600, 1200] as const };
 
 export function mergeSite(s: SiteSettings, policies: SitePolicy[], texts: SiteTexts = defaultTexts): SiteConfig {
@@ -134,22 +134,22 @@ export function mergeSite(s: SiteSettings, policies: SitePolicy[], texts: SiteTe
 // Fotos del diseño (public/fotos): se ven en el modo simulado o si Supabase no responde. Con Supabase, cada hueco
 // muestra la foto que se sube desde el panel.
 export const DEFAULT_PHOTOS: Record<string, string> = {
-  "hero-main": "/fotos/domo-noche-jacuzzi.webp",
-  "hero-thumb-1": "/fotos/domo-detalle.webp",
-  "hero-thumb-2": "/fotos/domo-interior-familiar.jpg",
-  "hero-thumb-3": "/fotos/fogata-vino.jpg",
-  "hero-thumb-4": "/fotos/desayuno-vista.jpg",
-  "exp-jacuzzi": "/fotos/domo-jacuzzi-terraza.webp",
-  "exp-estrellas": "/fotos/fogata-vino.jpg",
-  "exp-desayuno": "/fotos/desayuno-terraza.webp",
-  "exp-fogata": "/fotos/vino-noche.webp",
-  "exp-nevado": "/fotos/nevado-del-ruiz.jpg",
-  contact: "/fotos/domo-exterior.webp",
+  "hero-main": "/fotos/cabanas-corredor.jpg",
+  "hero-thumb-1": "/fotos/cabana-fachada-roja.jpg",
+  "hero-thumb-2": "/fotos/habitacion-camarote.jpg",
+  "hero-thumb-3": "/fotos/restaurante-techo-colores.jpg",
+  "hero-thumb-4": "/fotos/balcon-vista-montanas.jpg",
+  "exp-restaurante": "/fotos/restaurante-musica-en-vivo.jpg",
+  "exp-desayuno": "/fotos/balcon-vista-montanas.jpg",
+  "exp-parque": "/fotos/parque-infantil.jpg",
+  "exp-jardines": "/fotos/jardin-flores.jpg",
+  "exp-finca": "/fotos/escaleras-parque.jpg",
+  contact: "/fotos/entrada-letrero.jpg",
 };
 
 // Valores del diseño, para el modo simulado o si Supabase no responde.
 export const defaultContent: SiteContent = {
-  settings: { checkInStart: "15:00", checkInEnd: "19:00", checkOutTime: "12:00", phones: [...config.phones], whatsapp: config.whatsapp, rnt: config.rnt },
+  settings: { checkInStart: "14:00", checkInEnd: "22:00", checkOutTime: "12:00", phones: [...config.phones], whatsapp: config.whatsapp, rnt: config.rnt },
   policies: config.policies.map((p, i) => ({ ...p, id: `default-${i}` })),
   photos: DEFAULT_PHOTOS,
   texts: defaultTexts,

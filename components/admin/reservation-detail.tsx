@@ -127,7 +127,7 @@ export function ReservationDetail({ code }: { code: string }) {
         ci: r.checkIn,
         co: r.checkOut,
         marks: typeMarks(data.reservations, [...data.blocks, ...channelBlocks(data.channelStays)], r.cabinTypeId, units, today, addDays(today, 365), r.code),
-        text: "Elige las nuevas fechas. Se valida la disponibilidad del mismo domo y se recalcula el total con las tarifas vigentes (lo ya pagado se conserva).",
+        text: "Elige las nuevas fechas. Se valida la disponibilidad de la misma cabaña y se recalcula el total con las tarifas vigentes (lo ya pagado se conserva).",
       }),
     );
     actions.push(act("Cancelar reserva", "cancel", { danger: true, text: `${r.code} · ${r.depositPaidAt ? "El abono recibido no es reembolsable según las políticas." : "Las fechas quedarán libres."}` }));
@@ -218,7 +218,7 @@ export function ReservationDetail({ code }: { code: string }) {
 const stayRows = (r: Reservation, cabin: string) => [
   { k: "Llegada", v: fmtDate(r.checkIn, true) },
   { k: "Salida", v: fmtDate(r.checkOut, true) },
-  { k: "Domo", v: cabin },
+  { k: "Cabaña", v: cabin },
   { k: "Huéspedes", v: `${plural(r.adults, "adulto", "adultos")} · ${plural(r.children, "niño", "niños")}` },
   { k: "Llegada estimada", v: r.estimatedArrival || "—" },
   { k: "Check-in registrado", v: r.checkedInAt ? fmtDateTime(r.checkedInAt) : "—" },
@@ -274,7 +274,7 @@ function PayLinkCard({ r }: { r: Reservation }) {
             : res.status === 409
               ? "Esas fechas ya no están libres: la reserva no se puede reactivar."
               : code === "CHANNEL_UNAVAILABLE"
-                ? "No se pudo retener el domo en Booking.com (Beds24 no respondió). Inténtalo en un momento."
+                ? "No se pudo retener la cabaña en Booking.com (Beds24 no respondió). Inténtalo en un momento."
                 : "No se pudo actualizar el enlace. Inténtalo de nuevo.",
         );
         return;

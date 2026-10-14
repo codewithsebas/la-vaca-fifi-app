@@ -5,7 +5,10 @@
 const circle = (cx: number, cy: number, r: number) => `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
 
 export const SERVICE_ICONS = {
-  domo: { label: "Domo", d: "M2 20h20M4 20a8 8 0 0 1 16 0M12 12l-3.5 8M12 12l3.5 8M5.4 15.5h13.2M12 3v4M10 5h4" },
+  cabana: { label: "Cabaña", d: "M2 11 12 4l10 7M5 9v11h14V9M2 20h20M10 20v-5h4v5M7 13h2M15 13h2" },
+  restaurante: { label: "Restaurante", d: "M4 3v7a3 3 0 0 0 6 0V3M7 3v18M17 21V3c-2.5 1-4 3.5-4 7v3h4" },
+  parque: { label: "Parque infantil", d: "M3 21 7 4h10l4 17M10 4v10M14 4v10M8.5 14h7" },
+  flores: { label: "Jardín / flores", d: "M12 22v-9M12 13c-3-1-5-4-3-7 1.5 1 3 2.5 3 4 0-1.5 1.5-3 3-4 2 3 0 6-3 7zM12 18c-2-2.5-5-3-7-2 1 2.5 4 3.5 7 2zM12 18c2-2.5 5-3 7-2-1 2.5-4 3.5-7 2z" },
   estrellas: { label: "Cielo estrellado", d: "M10 3c.5 4 2.5 6 6.5 6.5-4 .5-6 2.5-6.5 6.5-.5-4-2.5-6-6.5-6.5 4-.5 6-2.5 6.5-6.5zM18 14v4M16 16h4M19.5 3v3M18 4.5h3M6 18v3M4.5 19.5h3" },
   chalet: { label: "Casa", d: "M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" },
   aves: { label: "Aves", d: "M16 7h.01M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.3-2.3L2 20M20 7l2 .5-2 .5M10 18v3M14 17.8V21M7 18a6 6 0 0 0 3.8-10.6" },

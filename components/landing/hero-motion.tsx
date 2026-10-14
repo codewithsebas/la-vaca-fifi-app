@@ -63,7 +63,7 @@ function Letters({ text, mode, delay = 0 }: { text: string; mode: "in" | "out" |
   );
 }
 
-// Frases que se alternan (la primera es la del panel: «las estrellas»). Las demás frases también ocupan su lugar,
+// Frases que se alternan (la primera es la del panel: «en Murillo, Tolima»). Las demás frases también ocupan su lugar,
 // invisibles, para que el titular no salte de tamaño al cambiar. Se pausa fuera de pantalla o en otra pestaña.
 // center: cada frase va centrada en el espacio de la más larga (titular centrado).
 export function RotatingWords({ phrases, interval = 3600, delay = 0, center = false }: { phrases: string[]; interval?: number; delay?: number; center?: boolean }) {

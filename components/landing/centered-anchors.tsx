@@ -1,6 +1,6 @@
 "use client";
 
-// Navegación a secciones de la portada (#domos, #reserva…): la sección queda centrada en la pantalla si cabe en ella;
+// Navegación a secciones de la portada (#cabanas, #reserva…): la sección queda centrada en la pantalla si cabe en ella;
 // si es más alta, se muestra desde el inicio de su contenido (sin el margen superior de la sección), con un poco de aire.
 import { useEffect } from "react";
 
