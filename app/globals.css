@@ -1,0 +1,1113 @@
+@import "tailwindcss";
+
+/* Paleta "Noche estrellada" del diseño. `static` porque varios colores (estados) se usan desde JS.
+   Los colores del sitio (fondos, tarjetas, textos, acentos y botón principal) se pueden cambiar desde el panel:
+   lib/theme.ts los vuelve a declarar en :root, en las páginas públicas (components/site-theme.tsx) y en el panel
+   (PanelTheme, components/admin/shell.tsx), que además deriva de ellos su zona de trabajo. */
+@theme static {
+  --color-bg: #1a1f3a;
+  --color-surface: #252b4d;
+  --color-card: #f3eee2;
+  --color-card-muted: #e3dccb;
+  --color-on-dark: #f3eee2;
+  --color-on-dark-muted: color-mix(in srgb, #f3eee2 85%, #1a1f3a);
+  --color-on-light: #1a1f3a;
+  --color-on-light-muted: color-mix(in srgb, #1a1f3a 75%, #e3dccb);
+  --color-accent: #9aa8e0;
+  --color-highlight: #e6b450;
+  --color-cta: #1a1f3a;
+  --color-cta-text: #f3eee2;
+  --color-error: #9b2c1a;
+  --color-footer: color-mix(in srgb, #1a1f3a 72%, #000);
+  /* Profundidad del mismo azul (de claro a oscuro): bg → deep (valles de las secciones) → night (pie de página). */
+  --color-deep: #141830;
+  --color-night: #080a16;
+
+  --color-status-pending: #d9a441;
+  --color-status-confirmed: #7fae84;
+  --color-status-cancelled: #d9937f;
+  --color-status-expired: #bdb6a2;
+  --color-status-rescheduled: #9fb8c4;
+  --color-status-checked-in: #c8d98a;
+  --color-status-completed: #e6dcbe;
+  --color-status-block: #8a8f86;
+  /* Noches ocupadas en Booking.com (calendario del panel). */
+  --color-status-booking: #5b7fc0;
+
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+
+  --shadow-card: 0 22px 44px -20px rgb(0 0 0 / 0.55);
+  --shadow-pop: 0 30px 60px -24px rgb(0 0 0 / 0.6), 0 0 0 1px #e3dccb;
+
+  /* Panel de administración: superficie clara para trabajar con datos; la marca queda en la barra lateral.
+     Del lienzo a las series, los valores salen de la paleta del sitio: son los que da panelVars() (lib/theme.ts) con
+     "Noche estrellada"; con otra paleta, el panel los vuelve a declarar. Los colores de estado (éxito, aviso, error) son fijos. */
+  --color-canvas: #f5f4f0;
+  --color-panel: #ffffff;
+  --color-line: #e4e0d8;
+  --color-line-strong: #cbc6ba;
+  --color-ink: #1a1f3a;
+  --color-ink-muted: #5e606b;
+  --color-ink-subtle: #8b8d95;
+  --color-focus: #5d6ab3;
+  --color-chart: #6a78c2;
+  /* Dos series (abonos y saldos): contraste ≥ 3:1 sobre blanco y separadas también con daltonismo (ΔE ≥ 8). */
+  --color-series-1: #5d6ab3;
+  --color-series-2: #b3830b;
+  --color-success: #2f7d52;
+  --color-success-soft: #e5f1e8;
+  --color-warning: #8a5a00;
+  --color-warning-soft: #fbf1dc;
+  --color-error-soft: #fbeae6;
+  --color-info: #2c5566;
+  --color-info-soft: #e6eef2;
+
+  --shadow-panel: 0 1px 2px color-mix(in srgb, var(--color-ink) 5%, transparent), 0 1px 1px color-mix(in srgb, var(--color-ink) 3%, transparent);
+  --shadow-overlay: 0 24px 48px -12px color-mix(in srgb, var(--color-ink) 30%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-ink) 6%, transparent);
+
+  --animate-pulse-soft: ec-pulse 1.2s ease-in-out infinite;
+  --animate-spin-fast: ec-spin 0.8s linear infinite;
+  --animate-fade-in: ec-fade-in 0.18s ease-out;
+  --animate-pop-in: ec-pop-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-slide-in-right: ec-slide-in-right 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-slide-up: ec-slide-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-slide-in-left: ec-slide-in-left 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-glide: ec-glide 3.6s ease-in-out infinite;
+  --animate-loader-bar: ec-loader-bar 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  --animate-menu-open: ec-menu-open 0.6s cubic-bezier(0.7, 0, 0.2, 1) both;
+  --animate-menu-close: ec-menu-close 0.42s cubic-bezier(0.6, 0, 0.8, 0.3) both;
+  --animate-menu-item: ec-menu-item 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  /* Menú del sitio: se abre como un círculo que crece desde el botón (--menu-x/--menu-y) y sus enlaces suben en cascada. */
+  @keyframes ec-menu-open {
+    from {
+      clip-path: circle(0 at var(--menu-x, calc(100% - 48px)) var(--menu-y, 48px));
+    }
+    to {
+      clip-path: circle(150% at var(--menu-x, calc(100% - 48px)) var(--menu-y, 48px));
+    }
+  }
+  @keyframes ec-menu-close {
+    from {
+      clip-path: circle(150% at var(--menu-x, calc(100% - 48px)) var(--menu-y, 48px));
+    }
+    to {
+      clip-path: circle(0 at var(--menu-x, calc(100% - 48px)) var(--menu-y, 48px));
+    }
+  }
+  /* ── Portada viva ── */
+  --animate-sky-arrive: ec-sky-arrive 2.6s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+  --animate-sky-drift: ec-sky-drift 38s ease-in-out infinite alternate;
+  --animate-shooting-star: ec-shooting-star 9s ease-in infinite;
+  --animate-whale-swim: ec-whale-swim 130s linear infinite;
+  --animate-whale-bob: ec-whale-bob 6.5s ease-in-out infinite alternate;
+  --animate-whale-tail: ec-whale-tail 2.8s ease-in-out infinite alternate;
+  --animate-steam: ec-steam 7s ease-out infinite;
+  --animate-flicker: ec-flicker 0.9s ease-in-out infinite;
+  --animate-glow: ec-glow 5s ease-in-out infinite alternate;
+  /* ── Fauna (components/landing/fauna.tsx): cada animación mueve una sola parte; la duración la ajusta quien la usa ── */
+  --animate-bank: ec-bank 7s ease-in-out infinite alternate;
+  --animate-wing-flex: ec-wing-flex 2.8s ease-in-out infinite alternate;
+  --animate-soar-across: ec-soar-across 80s linear infinite;
+  --animate-orbit-x: ec-orbit-x 9s ease-in-out infinite alternate;
+  --animate-orbit-y: ec-orbit-y 9s ease-in-out infinite alternate;
+  --animate-hover-dart: ec-hover-dart 11s ease-in-out infinite;
+  --animate-hover-bob: ec-hover-bob 0.9s ease-in-out infinite alternate;
+  --animate-hummer-wing: ec-hummer-wing 0.09s linear infinite alternate;
+  --animate-perch-turn: ec-perch-turn 13s step-end infinite;
+  --animate-tail-flick: ec-tail-flick 4.4s ease-out infinite;
+  --animate-crest: ec-crest 7.5s ease-in-out infinite;
+  --animate-hop-along: ec-hop-along 9s ease-in-out infinite;
+  --animate-hop: ec-hop 1.5s ease-out infinite;
+  --animate-tail-fan: ec-tail-fan 0.8s ease-in-out infinite alternate;
+  --animate-leg-swing: ec-leg-swing 0.55s ease-in-out infinite alternate;
+  --animate-body-bob: ec-body-bob 0.55s ease-in-out infinite alternate;
+  --animate-head-nod: ec-head-nod 1.1s ease-in-out infinite alternate;
+  --animate-ear-flick: ec-ear-flick 5.2s ease-out infinite;
+  --animate-trunk: ec-trunk 1.9s ease-in-out infinite alternate;
+  --animate-graze: ec-graze 13s ease-in-out infinite;
+  --animate-walk-across: ec-walk-across 30s linear infinite;
+  --animate-ken-burns: ec-ken-burns 26s ease-in-out infinite alternate;
+  --animate-dash-march: ec-dash-march 2.4s linear infinite;
+  --animate-twinkle: ec-twinkle 2.8s ease-in-out infinite;
+  --animate-nudge: ec-nudge 3.6s ease-in-out infinite;
+  --animate-rise: ec-rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-letter-in: ec-letter-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-letter-out: ec-letter-out 0.4s cubic-bezier(0.6, 0, 0.8, 0.4) both;
+  --animate-paw-step: ec-paw-step 4.6s ease-out infinite both;
+  --animate-star: ec-star 4.5s ease-in-out infinite;
+  --animate-icon-draw: ec-icon-draw 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+  --animate-progress: ec-progress linear both;
+  --animate-fog-drift: ec-fog-drift 46s ease-in-out infinite alternate;
+  --animate-fog-drift-back: ec-fog-drift 64s ease-in-out infinite alternate-reverse;
+  --animate-land-rise: ec-land-rise 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-photo-open: ec-photo-open 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-photo-in-next: ec-photo-in-next 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-photo-in-prev: ec-photo-in-prev 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-photo-out-next: ec-photo-out-next 0.45s cubic-bezier(0.4, 0, 0.6, 1) both;
+  --animate-photo-out-prev: ec-photo-out-prev 0.45s cubic-bezier(0.4, 0, 0.6, 1) both;
+
+  /* Galería de fotos: la foto entra desde el lado hacia el que se avanza y la anterior sale por el otro. */
+  @keyframes ec-photo-open {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+  }
+  @keyframes ec-photo-in-next {
+    from {
+      opacity: 0;
+      transform: translateX(9%) scale(0.96);
+    }
+  }
+  @keyframes ec-photo-in-prev {
+    from {
+      opacity: 0;
+      transform: translateX(-9%) scale(0.96);
+    }
+  }
+  @keyframes ec-photo-out-next {
+    to {
+      opacity: 0;
+      transform: translateX(-9%) scale(0.96);
+    }
+  }
+  @keyframes ec-photo-out-prev {
+    to {
+      opacity: 0;
+      transform: translateX(9%) scale(0.96);
+    }
+  }
+
+  /* Capas de un paisaje que suben a su lugar al cargar (ingreso al panel): la cordillera y, detrás, el nevado. */
+  @keyframes ec-land-rise {
+    from {
+      opacity: 0;
+      transform: translateY(28%);
+    }
+  }
+
+  /* Niebla del horizonte: se corre muy despacio de un lado a otro. */
+  @keyframes ec-fog-drift {
+    from {
+      transform: translateX(-4%);
+    }
+    to {
+      transform: translateX(4%);
+    }
+  }
+
+  /* Capa lejana de un paisaje: mientras cruza la pantalla baja un poco (--parallax), así sube más lento que la página. */
+  @keyframes ec-parallax {
+    from {
+      transform: translateY(calc(var(--parallax, 20px) * -1));
+    }
+    to {
+      transform: translateY(var(--parallax, 20px));
+    }
+  }
+
+  /* La ruta del mapa se dibuja (path con pathLength="1"). */
+  @keyframes ec-route-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Barra de avance (galería de experiencias, preguntas de políticas): su duración la pone quien la usa. */
+  @keyframes ec-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  /* Ícono que se vuelve a dibujar con el trazo (pathLength="1" en el path). */
+  @keyframes ec-icon-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Estrellas del pie de página: titilan con distinto ritmo. */
+  @keyframes ec-star {
+    0%,
+    100% {
+      opacity: 0.85;
+    }
+    50% {
+      opacity: 0.15;
+    }
+  }
+
+  /* La constelación se enciende mientras se asienta en su lugar. */
+  @keyframes ec-sky-arrive {
+    from {
+      opacity: 0;
+      transform: scale(0.84) rotate(-10deg);
+    }
+  }
+  /* El cielo gira muy despacio, como en una noche larga. */
+  @keyframes ec-sky-drift {
+    from {
+      transform: translate(-10px, 6px) rotate(-5deg);
+    }
+    to {
+      transform: translate(14px, -8px) rotate(6deg);
+    }
+  }
+  /* Estrella fugaz: cruza en un instante (--travel, sobre el eje de su contenedor) y descansa el resto del ciclo. */
+  @keyframes ec-shooting-star {
+    0%,
+    80% {
+      opacity: 0;
+      transform: translateX(0) scaleX(0.4);
+    }
+    84% {
+      opacity: 1;
+    }
+    95%,
+    100% {
+      opacity: 0;
+      transform: translateX(var(--travel, 240px)) scaleX(1);
+    }
+  }
+  /* Ballena de estrellas de la portada: cruza el cielo de lado a lado, sube y baja al nadar y mueve la cola. */
+  @keyframes ec-whale-swim {
+    from {
+      transform: translateX(-34vw);
+    }
+    to {
+      transform: translateX(104vw);
+    }
+  }
+  @keyframes ec-whale-bob {
+    from {
+      transform: translateY(-7px) rotate(-2.5deg);
+    }
+    to {
+      transform: translateY(8px) rotate(2deg);
+    }
+  }
+  @keyframes ec-whale-tail {
+    from {
+      transform: rotate(-7deg);
+    }
+    to {
+      transform: rotate(8deg);
+    }
+  }
+  /* Vapor (fumarola del nevado, jacuzzi): sube, se abre y se deshace. */
+  @keyframes ec-steam {
+    0% {
+      opacity: 0;
+      transform: translate(0, 6px) scale(0.8);
+    }
+    30% {
+      opacity: 0.9;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(12px, -24px) scale(1.5);
+    }
+  }
+  /* Llama de la fogata. */
+  @keyframes ec-flicker {
+    0%,
+    100% {
+      transform: scale(1, 1) rotate(-2deg);
+    }
+    35% {
+      transform: scale(0.9, 1.14) rotate(2deg);
+    }
+    70% {
+      transform: scale(1.07, 0.93) rotate(-1deg);
+    }
+  }
+  /* Resplandor del domo encendido: respira. */
+  @keyframes ec-glow {
+    from {
+      opacity: 0.7;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* ── Fauna ── */
+  /* Aves que planean: se inclinan de un lado a otro, suben y bajan apenas, y flexionan las alas. */
+  @keyframes ec-bank {
+    from {
+      transform: translateY(-2px) rotate(-4deg);
+    }
+    to {
+      transform: translateY(3px) rotate(4deg);
+    }
+  }
+  @keyframes ec-wing-flex {
+    from {
+      transform: rotate(1deg);
+    }
+    to {
+      transform: rotate(-4deg);
+    }
+  }
+  /* El cóndor cruza todo el ancho de la pantalla. */
+  @keyframes ec-soar-across {
+    from {
+      transform: translateX(-30vw);
+    }
+    to {
+      transform: translateX(110vw);
+    }
+  }
+  /* Vuelo en círculos sobre una térmica: dos vaivenes desfasados un cuarto de vuelta dibujan una elipse; al pasar por
+     detrás (arriba) el ave se ve más chica. --orbit-x y --orbit-y son los radios. */
+  @keyframes ec-orbit-x {
+    from {
+      transform: translateX(calc(var(--orbit-x, 60px) * -1));
+    }
+    to {
+      transform: translateX(var(--orbit-x, 60px));
+    }
+  }
+  @keyframes ec-orbit-y {
+    from {
+      transform: translateY(calc(var(--orbit-y, 16px) * -1)) scale(0.82);
+    }
+    to {
+      transform: translateY(var(--orbit-y, 16px)) scale(1);
+    }
+  }
+  /* Colibrí: se sostiene frente a una flor, sale disparado a otra y vuelve. */
+  @keyframes ec-hover-dart {
+    0%,
+    34%,
+    100% {
+      transform: translate(0, 0);
+    }
+    40%,
+    62% {
+      transform: translate(-26px, 6px);
+    }
+    68%,
+    86% {
+      transform: translate(-10px, -12px);
+    }
+  }
+  @keyframes ec-hover-bob {
+    from {
+      transform: translateY(-1.5px);
+    }
+    to {
+      transform: translateY(1.5px);
+    }
+  }
+  @keyframes ec-hummer-wing {
+    from {
+      transform: rotate(-40deg);
+    }
+    to {
+      transform: rotate(16deg);
+    }
+  }
+  /* Cotinga: se voltea en su percha de vez en cuando. */
+  @keyframes ec-perch-turn {
+    0%,
+    100% {
+      transform: scaleX(1);
+    }
+    46% {
+      transform: scaleX(-1);
+    }
+    78% {
+      transform: scaleX(1);
+    }
+  }
+  @keyframes ec-tail-flick {
+    0%,
+    70%,
+    100% {
+      transform: rotate(0);
+    }
+    76% {
+      transform: rotate(16deg);
+    }
+    84% {
+      transform: rotate(-4deg);
+    }
+  }
+  /* La cresta roja casi siempre va plegada; se levanta un momento. */
+  @keyframes ec-crest {
+    0%,
+    54%,
+    100% {
+      transform: scale(0.7, 0.25);
+    }
+    62%,
+    82% {
+      transform: scale(1, 1);
+    }
+  }
+  /* Candelita: avanza por la rama a saltos, abre la cola y vuelve. */
+  @keyframes ec-hop-along {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    22%,
+    40% {
+      transform: translateX(12px);
+    }
+    58%,
+    76% {
+      transform: translateX(22px);
+    }
+  }
+  @keyframes ec-hop {
+    0%,
+    60%,
+    100% {
+      transform: translateY(0);
+    }
+    72% {
+      transform: translateY(-4px);
+    }
+    86% {
+      transform: translateY(0);
+    }
+  }
+  @keyframes ec-tail-fan {
+    from {
+      transform: rotate(-14deg) scaleY(1);
+    }
+    to {
+      transform: rotate(8deg) scaleY(1.35);
+    }
+  }
+  /* Mamíferos que caminan: cada pata va y viene desde la cadera o el hombro, el cuerpo sube y baja con cada paso y
+     la cabeza cabecea. */
+  @keyframes ec-leg-swing {
+    from {
+      transform: rotate(-11deg);
+    }
+    to {
+      transform: rotate(11deg);
+    }
+  }
+  @keyframes ec-body-bob {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-1.2px);
+    }
+  }
+  @keyframes ec-head-nod {
+    from {
+      transform: rotate(-2deg);
+    }
+    to {
+      transform: rotate(3deg);
+    }
+  }
+  @keyframes ec-ear-flick {
+    0%,
+    82%,
+    100% {
+      transform: rotate(0);
+    }
+    86% {
+      transform: rotate(-16deg);
+    }
+    91% {
+      transform: rotate(6deg);
+    }
+  }
+  @keyframes ec-trunk {
+    from {
+      transform: rotate(-7deg);
+    }
+    to {
+      transform: rotate(10deg);
+    }
+  }
+  /* Venado: alerta con la cabeza en alto, baja a pastar un buen rato y la vuelve a levantar. */
+  @keyframes ec-graze {
+    0%,
+    26%,
+    100% {
+      transform: rotate(0);
+    }
+    36% {
+      transform: rotate(-64deg);
+    }
+    52% {
+      transform: rotate(-58deg);
+    }
+    64% {
+      transform: rotate(-66deg);
+    }
+    80% {
+      transform: rotate(-60deg);
+    }
+    90% {
+      transform: rotate(0);
+    }
+  }
+  /* Recorrido sobre una loma (--walk, en unidades del paisaje, centrado en el lugar del animal: quieto, con
+     movimiento reducido, queda a mitad de camino): aparece, camina y se desvanece. */
+  @keyframes ec-walk-across {
+    0% {
+      opacity: 0;
+      transform: translateX(calc(var(--walk, 200px) * -0.5));
+    }
+    7%,
+    88% {
+      opacity: 1;
+    }
+    95%,
+    100% {
+      opacity: 0;
+      transform: translateX(calc(var(--walk, 200px) * 0.5));
+    }
+  }
+  @keyframes ec-ken-burns {
+    from {
+      transform: scale(1.06) translate(0, 0);
+    }
+    to {
+      transform: scale(1.14) translate(-1.5%, -1.2%);
+    }
+  }
+  @keyframes ec-dash-march {
+    to {
+      stroke-dashoffset: -20;
+    }
+  }
+  @keyframes ec-twinkle {
+    0%,
+    100% {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(0.55) rotate(45deg);
+      opacity: 0.55;
+    }
+  }
+  @keyframes ec-nudge {
+    0%,
+    70%,
+    100% {
+      transform: translateX(0);
+    }
+    78% {
+      transform: translateX(5px);
+    }
+    86% {
+      transform: translateX(0);
+    }
+    92% {
+      transform: translateX(3px);
+    }
+  }
+  @keyframes ec-rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.4em) rotate(1.5deg);
+    }
+  }
+  @keyframes ec-letter-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5em) rotate(8deg);
+    }
+  }
+  @keyframes ec-letter-out {
+    to {
+      opacity: 0;
+      transform: translateY(-0.45em) rotate(-6deg);
+    }
+  }
+  /* Huella: se marca con un pequeño apretón, se queda y se desvanece; con retrasos escalonados parecen pasos. */
+  @keyframes ec-paw-step {
+    0% {
+      opacity: 0;
+      transform: scale(1.5);
+    }
+    5% {
+      opacity: 1;
+      transform: scale(0.88);
+    }
+    9% {
+      transform: scale(1);
+    }
+    55% {
+      opacity: 1;
+    }
+    80%,
+    100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+  }
+
+  --animate-photo-settle: ec-photo-settle 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* Foto del ingreso al panel: entra un poco ampliada y se asienta. */
+  @keyframes ec-photo-settle {
+    from {
+      opacity: 0;
+      transform: scale(1.08);
+    }
+  }
+  @keyframes ec-menu-item {
+    from {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+  }
+
+  /* Pantalla de carga del panel: el monograma flota y una barra recorre el riel. */
+  @keyframes ec-glide {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  @keyframes ec-loader-bar {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(300%);
+    }
+  }
+  @keyframes ec-slide-in-left {
+    from {
+      transform: translateX(-32px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes ec-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+  @keyframes ec-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes ec-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ec-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+  }
+  @keyframes ec-slide-in-right {
+    from {
+      transform: translateX(32px);
+      opacity: 0;
+    }
+  }
+  @keyframes ec-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+}
+
+@theme inline {
+  --font-display: var(--font-bebas), Impact, sans-serif;
+  --font-body: var(--font-manrope), system-ui, sans-serif;
+  --font-script: var(--font-caveat), cursive;
+  --font-wordmark: var(--font-source-code), ui-monospace, monospace;
+}
+
+/* Márgenes laterales: el contenido se centra en `n` px con un mínimo de 16 px. */
+@utility gutter-* {
+  padding-inline: max(16px, calc((100% - --value(integer) * 1px) / 2));
+}
+
+/* Pantallas con alto suficiente para que una vista ocupe exactamente el alto disponible (calendario del panel). */
+@custom-variant tall (@media (min-height: 600px));
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-on-dark);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  /* El color y el grosor del anillo se ajustan por zona (--ring*); en el sitio, dorado sobre el fondo oscuro. */
+  :focus-visible {
+    outline: var(--ring-width, 3px) solid var(--ring, var(--color-highlight)) !important;
+    outline-offset: var(--ring-offset, 3px);
+  }
+  /* Títulos y secciones que reciben el foco por código (cambio de página, resultado de una consulta) para los lectores
+     de pantalla: no son controles, sin anillo. */
+  :is(h1, h2, section)[tabindex="-1"]:focus-visible {
+    outline: none !important;
+  }
+  /* Ventanas modales: la página de fondo no se desplaza. */
+  html:has(dialog:modal) {
+    overflow: hidden;
+  }
+  /* En el panel la barra de desplazamiento reserva su espacio: abrir un modal no desplaza el contenido. */
+  html:has(.admin-root) {
+    scrollbar-gutter: stable;
+    background: var(--color-canvas);
+  }
+
+  /* Barras de desplazamiento del panel: finas, redondeadas, sin flechas y en sus colores (tinta translúcida sobre el
+     fondo claro; crema translúcido en la barra lateral oscura). Chrome, Edge y Safari usan ::-webkit-scrollbar;
+     Firefox, las propiedades estándar. Van en la capa base: la utilidad no-scrollbar sigue ocultándolas. */
+  html:has(.admin-surface) {
+    --sb-thumb: color-mix(in srgb, var(--color-ink) 24%, transparent);
+    --sb-thumb-hover: color-mix(in srgb, var(--color-ink) 42%, transparent);
+  }
+  .admin-dark {
+    --sb-thumb: color-mix(in srgb, var(--color-on-dark) 22%, transparent);
+    --sb-thumb-hover: color-mix(in srgb, var(--color-on-dark) 42%, transparent);
+  }
+  html:has(.admin-surface)::-webkit-scrollbar,
+  html:has(.admin-surface) *::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+    background: transparent;
+  }
+  html:has(.admin-surface)::-webkit-scrollbar-thumb,
+  html:has(.admin-surface) *::-webkit-scrollbar-thumb {
+    /* El borde transparente deja el pulgar en 6 px, separado del borde de la ventana. */
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--sb-thumb) padding-box;
+  }
+  html:has(.admin-surface)::-webkit-scrollbar-thumb:hover,
+  html:has(.admin-surface) *::-webkit-scrollbar-thumb:hover {
+    background: var(--sb-thumb-hover) padding-box;
+  }
+  html:has(.admin-surface)::-webkit-scrollbar-thumb:active,
+  html:has(.admin-surface) *::-webkit-scrollbar-thumb:active {
+    border-width: 2px;
+    background: var(--sb-thumb-hover) padding-box;
+  }
+  html:has(.admin-surface)::-webkit-scrollbar-button,
+  html:has(.admin-surface) *::-webkit-scrollbar-button {
+    display: none;
+  }
+  html:has(.admin-surface)::-webkit-scrollbar-track,
+  html:has(.admin-surface) *::-webkit-scrollbar-track,
+  html:has(.admin-surface)::-webkit-scrollbar-corner,
+  html:has(.admin-surface) *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    html:has(.admin-surface),
+    html:has(.admin-surface) * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--sb-thumb) transparent;
+    }
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+  svg {
+    flex-shrink: 0;
+  }
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Aparece al entrar en pantalla mientras se hace scroll (animación ligada al scroll del navegador, sin JavaScript).
+     Donde no hay soporte, o con movimiento reducido, el contenido se ve quieto como siempre. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      /* --reveal-after: scroll extra que espera (la segunda tarjeta de una fila llega un instante después, en cascada). */
+      .reveal-on-scroll {
+        animation: ec-rise linear both;
+        animation-timeline: view();
+        animation-range: entry calc(5% + var(--reveal-after, 0px)) entry calc(80% + var(--reveal-after, 0px));
+      }
+      /* Elementos altos (tarjetas de domo): aparecen en un tramo fijo del scroll y no proporcional a su alto, para
+         no quedarse a medio aparecer cuando ya se ven casi enteros. */
+      .reveal-on-scroll.reveal-tall {
+        animation-range: entry var(--reveal-after, 0px) entry calc(280px + var(--reveal-after, 0px));
+      }
+      /* Capas de un paisaje con profundidad: la distancia la da --parallax en la capa. */
+      .parallax-on-scroll {
+        animation: ec-parallax linear both;
+        animation-timeline: view();
+        animation-range: cover;
+      }
+      /* Trazo que se dibuja mientras entra en pantalla (máscara de la ruta del mapa). */
+      .draw-on-scroll {
+        stroke-dasharray: 1;
+        animation: ec-route-draw linear both;
+        animation-timeline: view();
+        animation-range: entry 10% cover 45%;
+      }
+    }
+  }
+  /* Panel elevado sobre el fondo oscuro (servicios, políticas): más claro arriba, con un filo de luz en el borde
+     superior y una sombra larga debajo, para que se lea por encima de la sección y no pegado a ella. */
+  .panel-raised {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--color-surface) 84%, var(--color-accent)), color-mix(in srgb, var(--color-surface) 58%, var(--color-bg)));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--color-card) 18%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, var(--color-on-dark) 9%, transparent),
+      0 44px 70px -40px rgb(0 0 0 / 0.6);
+  }
+  /* Partes de un SVG que giran sobre su propio punto (huellas). */
+  .svg-pivot {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  /* Titulares en Bebas Neue */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-transform: uppercase;
+  }
+  .display-xl {
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: clamp(2.6rem, 5.6cqi, 5.6rem);
+    line-height: 0.92;
+  }
+  .page-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: clamp(2.6rem, 6vw, 4.4rem);
+    line-height: 0.92;
+  }
+
+  /* Letra manuscrita con destello */
+  .kicker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-family: var(--font-script);
+    font-size: 1.6rem;
+    line-height: 1.1;
+    transform: rotate(-3deg);
+  }
+
+  .eyebrow {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Botones: siempre pill, el color lo da la variante */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 999px;
+    font: inherit;
+    font-weight: 800;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+  }
+  .btn-cta {
+    background: var(--color-cta);
+    color: var(--color-cta-text);
+  }
+  .btn-cta:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-cta) 80%, var(--color-accent));
+  }
+  .btn-card {
+    background: var(--color-card);
+    color: var(--color-on-light);
+  }
+  .btn-card:not(:disabled):hover {
+    background: var(--color-card-muted);
+  }
+  .btn-surface {
+    background: var(--color-surface);
+    color: var(--color-on-dark);
+  }
+  .btn-surface:hover {
+    background: color-mix(in srgb, var(--color-surface) 80%, var(--color-on-dark));
+  }
+  .btn-highlight {
+    background: var(--color-highlight);
+    color: var(--color-on-light);
+  }
+  .btn-outline-dark {
+    border: 2px solid var(--color-on-dark);
+    background: transparent;
+    color: var(--color-on-dark);
+  }
+  .btn-outline-light {
+    border: 2px solid var(--color-on-light);
+    background: transparent;
+    color: var(--color-on-light);
+  }
+  .btn-icon {
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    flex: none;
+  }
+
+  /* Campos de formulario sobre tarjeta clara */
+  .field-label {
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .field-input {
+    width: 100%;
+    min-height: 52px;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-card-muted);
+    background: color-mix(in srgb, var(--color-card) 55%, #fff);
+    color: var(--color-on-light);
+    font: inherit;
+  }
+  .field-input[aria-invalid="true"],
+  .field-input[data-invalid="true"] {
+    border-color: var(--color-error);
+  }
+  .field-input::placeholder {
+    color: var(--color-on-light-muted);
+    opacity: 1;
+  }
+  .field-error {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-error);
+  }
+
+  /* Variante compacta del mismo campo, para el panel (densidad de herramienta, fondo blanco). */
+  .field-input.field-compact {
+    min-height: 40px;
+    padding: 7px 12px;
+    border-width: 1px;
+    border-color: var(--color-line-strong);
+    border-radius: 12px;
+    background-color: var(--color-panel);
+    color: var(--color-ink);
+    font-size: 15px;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .field-input.field-compact::placeholder {
+    color: var(--color-ink-subtle);
+  }
+  .field-input.field-compact:hover:not(:disabled) {
+    border-color: var(--color-ink-subtle);
+  }
+  .field-input.field-compact:focus-visible {
+    border-color: var(--color-focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 20%, transparent);
+    outline: none !important;
+  }
+  .field-input.field-compact[aria-invalid="true"],
+  .field-input.field-compact[data-invalid="true"] {
+    border-color: var(--color-error);
+  }
+  .field-input.field-compact[aria-invalid="true"]:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 18%, transparent);
+  }
+  .field-input.field-compact:disabled {
+    background-color: var(--color-canvas);
+    color: var(--color-ink-muted);
+    cursor: not-allowed;
+  }
+  .field-input.field-compact[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .field-input.field-compact[type="number"]::-webkit-inner-spin-button,
+  .field-input.field-compact[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  select.field-input.field-compact {
+    appearance: none;
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235d6b63' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  @media (pointer: coarse) {
+    .field-input.field-compact {
+      min-height: 44px;
+      font-size: 16px; /* evita el zoom automático de iOS */
+    }
+  }
+
+  /* Zona clara del panel: anillo de foco del color de la marca, más fino que en el sitio. */
+  .admin-surface {
+    --ring: var(--color-focus);
+    --ring-width: 2px;
+    --ring-offset: 2px;
+  }
+  .admin-dark {
+    --ring: var(--color-highlight);
+    --ring-width: 2px;
+    --ring-offset: 2px;
+  }
+
+  .skeleton {
+    background: var(--color-card-muted);
+    animation: var(--animate-pulse-soft);
+  }
+  .dotted-top {
+    border-top: 2px dotted var(--color-card-muted);
+  }
+}

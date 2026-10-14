@@ -1,0 +1,20 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { Confirmation } from "@/components/confirmation";
+import { config } from "@/lib/config";
+
+export const metadata: Metadata = {
+  title: "Estado de tu pago",
+  description: `Resultado del pago de tu reserva en ${config.name}.`,
+  robots: { index: false },
+};
+
+export default function ConfirmationPage() {
+  return (
+    <main className="gutter-1000 flex flex-col gap-5 pt-6 pb-[72px]">
+      <Suspense>
+        <Confirmation />
+      </Suspense>
+    </main>
+  );
+}
