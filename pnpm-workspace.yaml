@@ -1,3 +1,7 @@
 allowBuilds:
   sharp: false
   unrs-resolver: false
+# Parches de seguridad en dependencias de ESLint (solo desarrollo). minimatch 3 no tiene versión corregida: lo piden los plugins de eslint-config-next.
+overrides:
+  zod: ^4.6.6
+  minimatch@>=10 <11: ^11.0.1
