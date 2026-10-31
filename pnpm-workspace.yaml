@@ -5,3 +5,5 @@ allowBuilds:
 overrides:
   zod: ^4.6.6
   minimatch@>=10 <11: ^11.0.1
+# node_modules plano (como npm): el servidor standalone que copia Hostinger no resuelve los enlaces de pnpm.
+nodeLinker: hoisted
