@@ -9,7 +9,7 @@ import { LIVE_LABEL, LiveDot, SOUND_GROUPS, chime, unlockAudio, useSound } from 
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
 import { PushSettingsCard } from "@/components/admin/push";
 import { Button, Callout, Card, CardHeader, Field, PageHeader, Switch, buttonClass } from "@/components/admin/ui";
-import { CALENDAR_VIEWS } from "@/components/admin/calendar";
+import { CALENDAR_VIEWS } from "@/components/admin/calendar/shared";
 
 export function SettingsView() {
   const { live, logout, ask } = useAdmin();
