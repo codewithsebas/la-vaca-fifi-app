@@ -8,6 +8,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { CabinType, ChannelSyncResult, NotificationKind } from "@/lib/types";
 import { type Db, isExclusionViolation, isMissingTable, loadCabinTypes, loadOccupancy } from "@/lib/server/db";
+import { env } from "@/lib/server/env";
 
 // Sincronización de disponibilidad con Booking.com por calendarios iCal (extranet → Sincronizar calendarios).
 // Cada tipo de alojamiento de Booking (una unidad allá) cubre un grupo de cabañas del mismo tipo en la app (poolOf).
@@ -32,7 +33,7 @@ export function validImportUrl(url: string) {
   try {
     const u = new URL(url);
     if (u.protocol === "https:") return true;
-    return process.env.NODE_ENV !== "production" && u.protocol === "http:" && ["localhost", "127.0.0.1"].includes(u.hostname);
+    return !env.isProduction && u.protocol === "http:" && ["localhost", "127.0.0.1"].includes(u.hostname);
   } catch {
     return false;
   }

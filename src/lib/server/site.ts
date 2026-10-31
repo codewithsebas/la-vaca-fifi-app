@@ -4,10 +4,11 @@ import { DEFAULT_PHOTOS, defaultContent, mergeSite, mergeTexts, type SiteContent
 import { mergeTheme } from "@/lib/theme";
 import { createServiceClient, hasServiceConfig } from "@/lib/supabase/server";
 import type { Db } from "@/lib/server/db";
+import { env } from "@/lib/server/env";
 
 export const PHOTO_BUCKET = "site-images";
 
-export const photoUrl = (path: string) => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
+export const photoUrl = (path: string) => `${env.supabaseUrl}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
 
 // "https://…/site-images/cabins/x/1.webp" → "cabins/x/1.webp" (solo URLs de este bucket).
 export const photoPath = (url: string) => {

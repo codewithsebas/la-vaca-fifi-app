@@ -3,6 +3,7 @@ import webpush, { WebPushError } from "web-push";
 import { groupOf } from "@/lib/notification-groups";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServiceClient } from "@/lib/supabase/server";
+import { env } from "@/lib/server/env";
 
 // Notificaciones push del equipo. Cada aviso nuevo del panel (admin_notifications) se envía a los dispositivos
 // suscritos que eligieron su grupo. Despacho idempotente: se "reclaman" los avisos marcando pushed_at con un UPDATE,
@@ -28,21 +29,21 @@ export const isPushEndpoint = (endpoint: unknown): endpoint is string => {
   }
 };
 
-const env = () => ({
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? "",
-  privateKey: process.env.VAPID_PRIVATE_KEY?.trim() ?? "",
+const vapidKeys = () => ({
+  publicKey: env.vapidPublicKey ?? "",
+  privateKey: env.vapidPrivateKey ?? "",
   // Contacto para los servicios push (https o mailto:). Apple rechaza los envíos sin uno válido.
-  subject: process.env.VAPID_SUBJECT?.trim() || process.env.NEXT_PUBLIC_SITE_URL?.trim() || "",
+  subject: env.vapidSubject || env.siteUrl || "",
 });
 export const pushConfigured = () => {
-  const e = env();
+  const e = vapidKeys();
   return !!(e.publicKey && e.privateKey && /^(https:|mailto:)/.test(e.subject));
 };
 
 let vapidReady = false;
 function vapid() {
   if (vapidReady) return;
-  const e = env();
+  const e = vapidKeys();
   webpush.setVapidDetails(e.subject, e.publicKey, e.privateKey);
   vapidReady = true;
 }

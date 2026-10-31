@@ -4,6 +4,7 @@ import { syncBeds24 } from "@/lib/server/beds24-sync";
 import { syncCalendars } from "@/lib/server/channels";
 import { fail, json, readJson, route } from "@/lib/server/http";
 import { dispatchPush } from "@/lib/server/push";
+import { env } from "@/lib/server/env";
 
 // El primer repaso con Beds24 puede crear allá varias reservas de la web seguidas.
 export const maxDuration = 60;
@@ -13,7 +14,7 @@ export const maxDuration = 60;
 //   mode 'all' cada 5 minutos: calendarios iCal enlazados y repaso completo con Beds24.
 //   mode 'push' en cuanto cambia una reserva o un bloqueo de una unidad enlazada con Beds24: solo ajusta Beds24.
 export const POST = route(async (req: NextRequest) => {
-  const secret = process.env.CHANNEL_SYNC_SECRET?.trim();
+  const secret = env.channelSyncSecret;
   if (!secret) return fail(503, "NOT_CONFIGURED");
   const given = Buffer.from(
     req.headers

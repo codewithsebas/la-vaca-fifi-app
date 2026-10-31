@@ -1,8 +1,9 @@
 import "server-only";
+import { env } from "@/lib/server/env";
 
 // Verifica el token de Cloudflare Turnstile. Sin TURNSTILE_SECRET_KEY (desarrollo) no se exige.
 export async function verifyTurnstile(token: string | undefined, ip: string | null) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
+  const secret = env.turnstileSecretKey;
   if (!secret) return true;
   if (!token) return false;
   const body = new URLSearchParams({ secret, response: token });

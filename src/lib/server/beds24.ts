@@ -2,6 +2,7 @@ import "server-only";
 import type { Tables } from "@/lib/supabase/database.types";
 import type { Beds24Room } from "@/lib/types";
 import { type Db, isMissingTable } from "@/lib/server/db";
+import { env } from "@/lib/server/env";
 
 // Beds24 (channel manager), API v2: https://beds24.com/api/v2 · https://wiki.beds24.com/index.php/Category:API_V2
 // Booking.com se conecta a Beds24 y recibe de él la disponibilidad al instante; la app crea en Beds24 lo que vende la web.
@@ -10,7 +11,7 @@ import { type Db, isMissingTable } from "@/lib/server/db";
 // de la API (100 cada 5 minutos por cuenta).
 
 // BEDS24_API_URL solo para pruebas contra un Beds24 simulado.
-const BASE = process.env.BEDS24_API_URL?.trim() || "https://beds24.com/api/v2";
+const BASE = env.beds24ApiUrl || "https://beds24.com/api/v2";
 const TIMEOUT_MS = 8000;
 
 export class Beds24Error extends Error {

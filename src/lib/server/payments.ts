@@ -3,6 +3,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { PaymentKind, PaymentProvider, PaymentStatus } from "@/lib/types";
 import type { Tables } from "@/lib/supabase/database.types";
 import type { Db } from "@/lib/server/db";
+import { env } from "@/lib/server/env";
 
 // Pasarela de pagos. Con las llaves de Wompi se usa Wompi (Web Checkout + eventos); sin ellas, en desarrollo,
 // un checkout simulado que pasa por las mismas funciones de la base de datos. En producción el simulador está apagado
@@ -12,24 +13,24 @@ type GatewayStatus = Extract<PaymentStatus, "pending" | "approved" | "declined" 
 type PaymentRow = Tables<"payments">;
 
 const wompiKeys = () => {
-  const publicKey = process.env.WOMPI_PUBLIC_KEY?.trim();
-  const integrity = process.env.WOMPI_INTEGRITY_SECRET?.trim();
+  const publicKey = env.wompiPublicKey;
+  const integrity = env.wompiIntegritySecret;
   if (!publicKey || !integrity) return null;
   return {
     publicKey,
     integrity,
-    events: process.env.WOMPI_EVENTS_SECRET?.trim() ?? "",
+    events: env.wompiEventsSecret ?? "",
     // Solo servidor: Wompi exige la llave privada para consultar una transacción (con la pública responde 404).
-    privateKey: process.env.WOMPI_PRIVATE_KEY?.trim() ?? "",
+    privateKey: env.wompiPrivateKey ?? "",
     api: publicKey.startsWith("pub_prod_") ? "https://production.wompi.co/v1" : "https://sandbox.wompi.co/v1",
   };
 };
 
-export const simulatorAllowed = () => process.env.NODE_ENV !== "production" || process.env.ALLOW_PAYMENT_SIMULATOR === "1";
+export const simulatorAllowed = () => !env.isProduction || env.allowPaymentSimulator;
 
 // Proveedor activo: PAYMENTS_PROVIDER lo fuerza ("wompi" o "simulado"); si no, Wompi con llaves o el simulador en desarrollo.
 export function activeProvider(): Exclude<PaymentProvider, "manual"> | null {
-  const forced = process.env.PAYMENTS_PROVIDER;
+  const forced = env.paymentsProvider;
   if (forced === "wompi") return wompiKeys() ? "wompi" : null;
   if (forced === "simulado") return simulatorAllowed() ? "simulado" : null;
   if (wompiKeys()) return "wompi";
@@ -46,7 +47,7 @@ export function newReference(code: string, kind: PaymentKind) {
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 
 // URL base del sitio para los enlaces que salen de él (retorno de la pasarela, correos).
-export const siteUrl = (requestOrigin: string) => (process.env.NEXT_PUBLIC_SITE_URL?.trim() || requestOrigin).replace(/\/$/, "");
+export const siteUrl = (requestOrigin: string) => (env.siteUrl || requestOrigin).replace(/\/$/, "");
 
 type Payer = { email: string; fullName: string; phone: string; docType: string; docNumber: string };
 

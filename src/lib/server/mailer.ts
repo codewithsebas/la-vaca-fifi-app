@@ -7,6 +7,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import type { EmailRecord, Quote } from "@/lib/types";
 import { type Db, toEmail } from "@/lib/server/db";
 import { loadSiteContent } from "@/lib/server/site";
+import { env } from "@/lib/server/env";
 
 // Bandeja de salida (tabla email_outbox): quien necesita un correo lo encola (la confirmación la encola la base de datos
 // al aprobarse el abono) y este módulo lo envía con Resend. El envío va aparte de la respuesta al huésped: si Resend falla,
@@ -19,13 +20,13 @@ const MAX_ATTEMPTS = 5;
 const BACKOFF_MIN = [2, 10, 30, 120, 480]; // espera antes del siguiente intento automático
 const LEASE_MIN = 10; // un envío que quedó a medias (proceso caído) se vuelve a intentar después de esto
 
-export const mailConfigured = () => !!process.env.RESEND_API_KEY?.trim();
+export const mailConfigured = () => !!env.resendApiKey;
 
 async function sendWithResend(m: { to: string; subject: string; html: string; text: string; attachments?: Attachment[]; idempotencyKey: string }) {
-  const key = process.env.RESEND_API_KEY?.trim();
+  const key = env.resendApiKey;
   if (!key) throw new Error("El envío de correos no está configurado: falta RESEND_API_KEY.");
-  const from = process.env.EMAIL_FROM?.trim() || "La Vaca Fifí <onboarding@resend.dev>";
-  const replyTo = process.env.EMAIL_REPLY_TO?.trim();
+  const from = env.emailFrom || "La Vaca Fifí <onboarding@resend.dev>";
+  const replyTo = env.emailReplyTo;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     // La clave de idempotencia evita un duplicado si la misma solicitud se repite (p. ej. por un corte de red).
