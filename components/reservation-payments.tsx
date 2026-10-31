@@ -41,10 +41,10 @@ export function fmtLeft(ms: number) {
 
 /* ───────────── Abrir un pago ───────────── */
 
-export type PayAccess = { code: string; email: string } | { ref: string } | { token: string; accept?: boolean };
+type PayAccess = { code: string; email: string } | { ref: string } | { token: string; accept?: boolean };
 
 // Abre la pasarela. Si la API responde con un error de negocio (plazo vencido, pago en proceso…), se muestra y se refresca.
-export function usePay(access: PayAccess | null, onStale: () => void) {
+function usePay(access: PayAccess | null, onStale: () => void) {
   const [busy, setBusy] = useState<PaymentKind | null>(null);
   const [error, setError] = useState("");
   const pay = async (kind: PaymentKind) => {

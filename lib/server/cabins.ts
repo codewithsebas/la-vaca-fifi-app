@@ -5,7 +5,7 @@ import type { CabinType } from "@/lib/types";
 import { createServiceClient, hasServiceConfig } from "@/lib/supabase/server";
 import { loadCabinTypes } from "./db";
 
-export const toPublicCabin = (t: CabinType): Cabin => ({
+const toPublicCabin = (t: CabinType): Cabin => ({
   id: t.id,
   name: shortCabinName(t.nombre),
   full: t.nombre,

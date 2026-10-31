@@ -15,7 +15,7 @@ type View = { z: number; cx: number; cy: number }; // acercamiento (1 = la foto 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const px = (z: Size) => `${z.width} × ${z.height} px`;
 // "4/5" → 0.8 (ancho / alto)
-export const ratioOf = (aspect: string) => {
+const ratioOf = (aspect: string) => {
   const [a, b] = aspect.split("/").map(Number);
   return a / b;
 };

@@ -141,7 +141,7 @@ function luminance(hex: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-export function contrast(a: string, b: string) {
+function contrast(a: string, b: string) {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
@@ -240,7 +240,7 @@ function apart(x: string, y: string) {
 // ellas, y el color de foco y de los gráficos, del fondo. Los contrastes se fijan aquí (texto ≥ 9:1, foco 5:1, gráficos
 // ≥ 3:1 sobre blanco y con color suficiente para no verse grises), así que el panel se lee con cualquier paleta, también
 // con una personalizada poco afortunada. Con la paleta del diseño da los valores de app/globals.css.
-export function panelVars(t: SiteTheme): Record<string, string> {
+function panelVars(t: SiteTheme): Record<string, string> {
   const ink = contrast(t.onLight, WHITE) >= 9 ? t.onLight : tone(t.onLight, 11, chromaOf(t.onLight)[0]);
   // Si alguien elige tarjetas oscuras, el panel sigue siendo claro.
   const paper = (c: string) => (luminance(c) >= 0.55 ? c : mix(c, WHITE, 0.88));

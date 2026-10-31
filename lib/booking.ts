@@ -62,7 +62,7 @@ export function normalizePhone(p: string) {
   return digits ? "+" + digits : "";
 }
 
-export const SPECIAL_TOTAL = { min: 10_000, max: 100_000_000 };
+const SPECIAL_TOTAL = { min: 10_000, max: 100_000_000 };
 
 // Reserva tomada por el equipo: los datos del huésped que exige la base de datos (nombre, documento, correo y celular)
 // y el plazo del enlace de pago. No pide casilla de políticas: el huésped las acepta en la página del enlace antes de pagar.
@@ -93,7 +93,7 @@ export function validateManualReservation(b: ManualReservationInput, types: Cabi
 }
 
 // Unidades libres de un tipo la noche `date` (las reservas ocupan [checkIn, checkOut); los bloqueos incluyen `to`).
-export function freeUnits(occ: Occupancy, units: number, typeId: string, date: string, ignoreCode?: string) {
+function freeUnits(occ: Occupancy, units: number, typeId: string, date: string, ignoreCode?: string) {
   const busy = new Set<number>();
   for (const r of occ.reservations)
     if (r.code !== ignoreCode && r.cabinTypeId === typeId && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut) busy.add(r.unit);
@@ -189,7 +189,7 @@ export function clashingReservations<R extends Occupancy["reservations"][number]
 // Noches ocupadas en Booking de una unidad (checkOut exclusivo, como las reservas).
 export type ChannelSpan = { id?: string; cabinTypeId: string; unit: number; checkIn: string; checkOut: string; removedAt?: string | null };
 
-export const CHANNEL_LABEL = "Booking.com";
+const CHANNEL_LABEL = "Booking.com";
 export const CHANNEL_ID = "booking:";
 
 // Las fechas de Booking entran a la disponibilidad como bloqueos (hasta la última noche, incluida): así cuentan en

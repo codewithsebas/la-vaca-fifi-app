@@ -13,7 +13,7 @@ export async function imageSize(file: Blob): Promise<Size> {
 }
 
 const MAX_BYTES = 4.5 * 1024 * 1024; // margen bajo el límite de 5 MB del servidor
-export const MAX_SIDE = 2400;
+const MAX_SIDE = 2400;
 
 // Tamaño final de un recorte de `cropWidth` px de ancho con proporción `ratio` (ancho / alto): nunca se amplía
 // (ampliar solo agranda el archivo, no agrega detalle) y el lado mayor no pasa de MAX_SIDE. Siempre la proporción exacta.

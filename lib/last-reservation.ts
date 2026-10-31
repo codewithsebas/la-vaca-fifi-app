@@ -1,7 +1,7 @@
 import type { PublicReservation } from "./types";
 
 // La confirmación lee la última solicitud enviada en esta pestaña.
-export type LastReservation = { res: PublicReservation; email: string; name: string; adults: number; children: number };
+type LastReservation = { res: PublicReservation; email: string; name: string; adults: number; children: number };
 
 const KEY = "vf-last";
 
@@ -12,7 +12,7 @@ export function saveLastReservation(v: LastReservation) {
   rememberReservation(v.res.code, v.email);
 }
 
-export function readLastReservation(): LastReservation | null {
+function readLastReservation(): LastReservation | null {
   try {
     return JSON.parse(sessionStorage.getItem(KEY) || "null");
   } catch {

@@ -14,7 +14,7 @@ import { photoUrl } from "./site";
 export type Db = SupabaseClient<Database>;
 type ReservationRow = Tables<"reservations">;
 
-export function toCabinType(row: Tables<"cabin_types">): CabinType {
+function toCabinType(row: Tables<"cabin_types">): CabinType {
   return {
     id: row.id,
     nombre: row.nombre,
@@ -41,7 +41,7 @@ export async function loadCabinTypes(sb: Db, { activeOnly = false } = {}) {
   return { rows, types: rows.map(toCabinType), units };
 }
 
-export const toSeason = (s: Tables<"rate_seasons">): RateSeason => ({
+const toSeason = (s: Tables<"rate_seasons">): RateSeason => ({
   id: s.id,
   cabinTypeId: s.cabin_type_id,
   nombre: s.nombre,
@@ -92,7 +92,7 @@ export async function loadOccupancy(sb: Db, firstNight: string, lastNight: strin
 // para que el sitio y el panel sigan funcionando. Cualquier otro error sí se propaga.
 export const isMissingTable = (e: unknown) => ["PGRST205", "42P01"].includes((e as { code?: string } | null)?.code ?? "");
 
-export const toChannelStay = (s: Tables<"channel_stays">): ChannelStay => ({
+const toChannelStay = (s: Tables<"channel_stays">): ChannelStay => ({
   id: s.id,
   calendarId: s.calendar_id,
   cabinTypeId: s.cabin_type_id,
@@ -105,7 +105,7 @@ export const toChannelStay = (s: Tables<"channel_stays">): ChannelStay => ({
 });
 
 // `base`: dirección pública del sitio (siteUrl), para el enlace que Booking importa.
-export const toChannelCalendar = (c: Tables<"channel_calendars">, base: string): ChannelCalendar => ({
+const toChannelCalendar = (c: Tables<"channel_calendars">, base: string): ChannelCalendar => ({
   id: c.id,
   channel: "booking",
   label: c.label,
@@ -148,7 +148,7 @@ export async function loadChannels(sb: Db, base: string): Promise<{ calendars: C
 }
 
 // Fechas de Booking vigentes (sin removed_at) que tocan alguna noche entre firstNight y lastNight.
-export async function loadChannelStays(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<ChannelStay[]> {
+async function loadChannelStays(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<ChannelStay[]> {
   let q = sb.from("channel_stays").select("*").is("removed_at", null).lte("check_in", lastNight).gt("check_out", firstNight);
   if (cabinTypeId) q = q.eq("cabin_type_id", cabinTypeId);
   const { data, error } = await q;
@@ -198,7 +198,7 @@ export const toEmail = (e: Tables<"email_outbox">): EmailRecord => ({
 });
 
 // Intentos de pago de una reserva para el huésped (los 8 más recientes; los manuales también cuentan como pagos).
-export async function loadPublicPayments(sb: Db, code: string) {
+async function loadPublicPayments(sb: Db, code: string) {
   const { data } = await sb.from("payments").select("*").eq("reservation_code", code).order("created_at", { ascending: false }).limit(8).throwOnError();
   return data.map(toPublicPayment);
 }

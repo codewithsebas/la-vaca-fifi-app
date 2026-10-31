@@ -20,7 +20,7 @@ export const HOLD_OPTIONS: { value: number; label: string }[] = [
 ];
 export const DEFAULT_HOLD = 1440;
 // Plazo mínimo útil: start_payment no abre un pago a menos de 1 minuto del vencimiento.
-export const MIN_HOLD_MS = 10 * 6e4;
+const MIN_HOLD_MS = 10 * 6e4;
 
 // Fecha límite para pagar por el enlace: ahora + el plazo elegido, pero nunca después del día de llegada (23:59, hora de
 // Colombia): las fechas no se retienen más allá de la estadía. `capped`: el plazo se acortó por eso.
@@ -108,7 +108,7 @@ export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: "info"
   expired: { label: "Sin completar", tone: "neutral" },
 };
 
-export const METHOD: Record<string, string> = { CARD: "Tarjeta", PSE: "PSE", NEQUI: "Nequi", BANCOLOMBIA_TRANSFER: "Botón Bancolombia", BANCOLOMBIA_QR: "QR Bancolombia", DAVIPLATA: "Daviplata", SIMULADO: "Simulado", MANUAL: "Registrado por el equipo" };
+const METHOD: Record<string, string> = { CARD: "Tarjeta", PSE: "PSE", NEQUI: "Nequi", BANCOLOMBIA_TRANSFER: "Botón Bancolombia", BANCOLOMBIA_QR: "QR Bancolombia", DAVIPLATA: "Daviplata", SIMULADO: "Simulado", MANUAL: "Registrado por el equipo" };
 export const methodLabel = (m: string) => METHOD[m] ?? m;
 
 export const kindLabel = (k: PaymentKind) => (k === "deposit" ? "Abono" : k === "full" ? "Pago total" : "Saldo");

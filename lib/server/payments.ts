@@ -88,7 +88,7 @@ export function checkoutUrl(p: PaymentRow, payer: Payer, base: string) {
 
 const WOMPI_STATUS: Record<string, GatewayStatus> = { PENDING: "pending", APPROVED: "approved", DECLINED: "declined", VOIDED: "declined", ERROR: "error" };
 
-export type GatewayTx = { id: string; reference: string; status: GatewayStatus; amountInCents: number; currency: string; method: string; detail: string };
+type GatewayTx = { id: string; reference: string; status: GatewayStatus; amountInCents: number; currency: string; method: string; detail: string };
 
 function toTx(t: Record<string, unknown> | undefined): GatewayTx | null {
   if (!t || typeof t.id !== "string" || typeof t.reference !== "string") return null;
@@ -132,7 +132,7 @@ export function parseWompiEvent(body: unknown, headerChecksum: string | null): G
   return toTx(e.data.transaction as Record<string, unknown> | undefined);
 }
 
-export type SettleResult = { code: string; kind: PaymentKind; status: PaymentStatus; changed: boolean; outcome?: string | null };
+type SettleResult = { code: string; kind: PaymentKind; status: PaymentStatus; changed: boolean; outcome?: string | null };
 
 // Registra el resultado de una transacción. Antes valida que el monto y la moneda sean los del intento:
 // si no coinciden, el pago se marca con error (nunca confirma una reserva por un valor distinto).

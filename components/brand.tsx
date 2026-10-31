@@ -10,7 +10,7 @@ export function Logo({ size, eager = false, className = "" }: { size: number; ea
 }
 
 // «La Vaca Fifí» en la letra de los títulos (Lilita One, redonda y gruesa como las letras del letrero).
-export function Wordmark({ className = "" }: { className?: string }) {
+function Wordmark({ className = "" }: { className?: string }) {
   return <span className={`font-wordmark whitespace-nowrap ${className}`}>La Vaca Fifí</span>;
 }
 

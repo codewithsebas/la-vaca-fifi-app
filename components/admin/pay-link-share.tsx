@@ -18,7 +18,7 @@ export const payUrlOf = (token: string) => ((process.env.NEXT_PUBLIC_SITE_URL ??
 export const fmtDeadline = (iso: string) => `${fmtDate(dateOf(iso))}, ${fmtClock(iso)}`;
 
 // Mensaje para el huésped: la reserva, cuánto pagar y hasta cuándo.
-export function payMessage(r: Reservation, url: string, cabin: string) {
+function payMessage(r: Reservation, url: string, cabin: string) {
   const nights = nightsBetween(r.checkIn, r.checkOut);
   const guests = r.adults + r.children;
   return [

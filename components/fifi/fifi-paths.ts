@@ -4,7 +4,7 @@
 // lengua roja relamiéndose; al lado, la taza de café con sus granos. Un solo origen para el personaje de la página
 // (components/fifi/fifi.tsx), el logo y los íconos (scripts/fifi-logo.ts).
 
-export const FIFI_INK = "#221a16";
+const FIFI_INK = "#221a16";
 
 export const FIFI = {
   earRight: "M246 104C266 74 306 58 338 64C332 94 300 116 258 124Z",

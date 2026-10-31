@@ -83,7 +83,7 @@ async function claim(sb: Db, cal: CalendarRow, minAgeMs: number) {
 }
 
 // Cabañas de la app que cubre un tipo de alojamiento de Booking: el primero (`unit`) y los demás del grupo.
-export const poolOf = (cal: Pick<CalendarRow, "unit" | "extra_units">): Pool => [cal.unit, ...cal.extra_units];
+const poolOf = (cal: Pick<CalendarRow, "unit" | "extra_units">): Pool => [cal.unit, ...cal.extra_units];
 
 // Grupos de cabañas de un tipo enlazados con Booking, por iCal o por Beds24 (para repartir las reservas de la web).
 export async function channelPools(sb: Db, cabinTypeId: string): Promise<Pool[]> {

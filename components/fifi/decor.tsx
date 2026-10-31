@@ -13,7 +13,7 @@ const random = (seed: number) => {
 };
 
 // Mancha de vaca: un contorno cerrado y blando que pasa por `n` puntos alrededor de (cx, cy).
-export function spot(cx: number, cy: number, r: number, seed: number, n = 7): string {
+function spot(cx: number, cy: number, r: number, seed: number, n = 7): string {
   const rnd = random(seed);
   const pts = Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2 + (rnd() - 0.5) * 0.5;
@@ -80,7 +80,7 @@ const PETALS = ["#ff6fae", "#3d6fe0", "#ffc83d", "#ff8a2b", "#e8344a", "#9b5de5"
 const CENTERS: Record<string, string> = { "#ff6fae": "#ffd23f", "#3d6fe0": "#ffffff", "#ffc83d": "#e8344a", "#ff8a2b": "#ffd23f", "#e8344a": "#ffd23f", "#9b5de5": "#ffd23f", "#ffffff": "#ff8a2b" };
 
 // Una flor de cinco pétalos centrada en (x, y).
-export function FlowerShape({ x, y, r, color, turn = 0 }: { x: number; y: number; r: number; color: string; turn?: number }) {
+function FlowerShape({ x, y, r, color, turn = 0 }: { x: number; y: number; r: number; color: string; turn?: number }) {
   return (
     <g transform={`translate(${r1(x)} ${r1(y)}) rotate(${r1(turn)})`}>
       {[0, 72, 144, 216, 288].map((a) => (

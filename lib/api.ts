@@ -15,7 +15,7 @@ type RequestOpts = {
   headers?: Record<string, string>;
 };
 
-export type NetworkError = { type: "network"; message: string };
+type NetworkError = { type: "network"; message: string };
 
 const endpoint = (path: string) => new URL(config.apiBaseUrl.trim().replace(/\/$/, "") + path, window.location.origin);
 
@@ -78,7 +78,7 @@ const formOf = (fields: Record<string, string | Blob>, fileName?: string) => {
 };
 
 // Clave de idempotencia por intento de reserva (sobrevive a reintentos y recargas de la pestaña).
-export function idemKey() {
+function idemKey() {
   let k = sessionStorage.getItem("vf-idem");
   if (!k) {
     k = crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2);

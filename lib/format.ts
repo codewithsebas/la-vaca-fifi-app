@@ -33,7 +33,7 @@ export const parseISO = (s: string) => {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d));
 };
-export const toISO = (d: Date) => d.toISOString().slice(0, 10);
+const toISO = (d: Date) => d.toISOString().slice(0, 10);
 export const addDays = (s: string, n: number) => {
   const d = parseISO(s);
   d.setUTCDate(d.getUTCDate() + n);
@@ -81,7 +81,7 @@ export const waTo = (phone: string, text?: string) => `https://wa.me/${String(ph
 export const tel = (p: string) => "tel:+57" + p.replace(/\D/g, "");
 export const mask = (doc: string) => (doc ? "****" + String(doc).slice(-4) : "");
 export const dirHref = () => `https://www.google.com/maps/dir/?api=1&destination=${config.lat},${config.lng}`;
-export const cabinName = (id: string) => config.cabins[id as CabinTypeId]?.full ?? id;
+const cabinName = (id: string) => config.cabins[id as CabinTypeId]?.full ?? id;
 export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export const STATUS: Record<ReservationStatus, { label: string; bg: string }> = {

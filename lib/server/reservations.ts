@@ -8,8 +8,8 @@ import { claimUnit } from "./beds24-sync";
 import { atMost, channelPools, syncSoon } from "./channels";
 import { loadOccupancy, type Db } from "./db";
 
-export type NewReservation = Omit<TablesInsert<"reservations">, "code" | "unit">;
-export type HoldResult = { row: Tables<"reservations"> } | { error: "DATES_UNAVAILABLE" | "CHANNEL_UNAVAILABLE" | "IDEMPOTENCY_CONFLICT" };
+type NewReservation = Omit<TablesInsert<"reservations">, "code" | "unit">;
+type HoldResult = { row: Tables<"reservations"> } | { error: "DATES_UNAVAILABLE" | "CHANNEL_UNAVAILABLE" | "IDEMPOTENCY_CONFLICT" };
 
 // Secreto del enlace de pago (/pagar/<token>): 144 bits aleatorios en base64url.
 export const newPayToken = () => randomBytes(18).toString("base64url");

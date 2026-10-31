@@ -13,7 +13,7 @@ import type {
   ManualReservationInput, ReservationInput, SeasonInput, SiteInput,
 } from "./types";
 
-export type MockSettings = { post: "success" | "409" | "422" | "429" | "network" | "slow" };
+type MockSettings = { post: "success" | "409" | "422" | "429" | "network" | "slow" };
 
 const DBK = "vf-mock-db-v1";
 // Otras pestañas escuchan esta clave (evento storage) para simular la disponibilidad en tiempo real.
@@ -232,7 +232,7 @@ const occ = (db: Db) => ({
   blocks: [...db.blocks, ...channelBlocks(channelsOf(db).stays)],
 });
 
-export type MockRequest = { query?: Record<string, string | number | undefined>; body?: unknown; headers?: Record<string, string> };
+type MockRequest = { query?: Record<string, string | number | undefined>; body?: unknown; headers?: Record<string, string> };
 
 export async function mockRequest(method: string, path: string, opts: MockRequest): Promise<ApiResult<unknown>> {
   const st = mockSettings();

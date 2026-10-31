@@ -4,7 +4,7 @@ import { MS, addDays, dateOf, nightsBetween, parseISO } from "./format";
 import type { Block, CabinType, ClientProfile, Reservation, ReservationStatus } from "./types";
 
 // Reservas que se concretaron (el abono se pagó).
-export const SECURED: ReservationStatus[] = ["confirmed", "rescheduled", "checked_in", "completed"];
+const SECURED: ReservationStatus[] = ["confirmed", "rescheduled", "checked_in", "completed"];
 
 /* ───────────── Dinero de una reserva ───────────── */
 
@@ -19,7 +19,7 @@ export function paymentsOf(r: Reservation): Payment[] {
   return out;
 }
 
-export const receivedOf = (r: Reservation) => paymentsOf(r).reduce((s, p) => s + p.amount, 0);
+const receivedOf = (r: Reservation) => paymentsOf(r).reduce((s, p) => s + p.amount, 0);
 
 // Valor de la reserva para el negocio: el total si se concretó; si se canceló con abono, el abono (no es reembolsable).
 export const valueOf = (r: Reservation) => (SECURED.includes(r.status) ? r.quote.total : r.status === "cancelled" && r.depositPaidAt ? r.quote.deposit : 0);
@@ -115,14 +115,14 @@ export function buildClients(reservations: Reservation[], profiles: Record<strin
 
 export type Range = { from: string; to: string }; // días incluidos
 
-export const daysIn = (r: Range) => nightsBetween(r.from, r.to) + 1;
+const daysIn = (r: Range) => nightsBetween(r.from, r.to) + 1;
 export const previousRange = (r: Range): Range => ({ from: addDays(r.from, -daysIn(r)), to: addDays(r.from, -1) });
 const inRange = (d: string, r: Range) => d >= r.from && d <= r.to;
 
-export type Bucket = { key: string; label: string; from: string; to: string; deposit: number; balance: number };
+type Bucket = { key: string; label: string; from: string; to: string; deposit: number; balance: number };
 
 // Días si el rango es corto, semanas (desde el lunes) hasta ~6 meses, meses en adelante.
-export function bucketsFor(r: Range): Bucket[] {
+function bucketsFor(r: Range): Bucket[] {
   const n = daysIn(r);
   const out: Bucket[] = [];
   const mk = (from: string, to: string, label: string) => out.push({ key: from, label, from, to, deposit: 0, balance: 0 });
@@ -149,8 +149,8 @@ const overlapNights = (ci: string, coExclusive: string, r: Range) => {
   return b > a ? nightsBetween(a, b) : 0;
 };
 
-export type GuestType = "Pareja" | "Familia" | "Grupo" | "Individual";
-export const guestType = (r: Reservation): GuestType => (r.children > 0 ? "Familia" : r.adults >= 3 ? "Grupo" : r.adults === 1 ? "Individual" : "Pareja");
+type GuestType = "Pareja" | "Familia" | "Grupo" | "Individual";
+const guestType = (r: Reservation): GuestType => (r.children > 0 ? "Familia" : r.adults >= 3 ? "Grupo" : r.adults === 1 ? "Individual" : "Pareja");
 
 // channelStays: noches ocupadas en Booking.com (cuentan como ocupadas en la ocupación; sus ingresos no pasan por la app).
 export function finance(reservations: Reservation[], blocks: Block[], cabins: CabinType[], range: Range, cabinId = "", channelStays: ChannelSpan[] = []) {

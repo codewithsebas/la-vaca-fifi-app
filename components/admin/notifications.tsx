@@ -82,7 +82,7 @@ export const LIVE_LABEL: Record<LiveStatus, string> = {
 /* ───────────── Sonido ───────────── */
 
 // Los mismos grupos que eligen qué notificaciones push recibe cada dispositivo (lib/notification-groups.ts).
-export type SoundGroup = NotificationGroup;
+type SoundGroup = NotificationGroup;
 export const SOUND_GROUPS = NOTIFICATION_GROUPS;
 
 let audio: AudioContext | null = null;

@@ -18,7 +18,7 @@ import { PREF, usePref } from "./prefs";
 import { paths } from "./routes";
 import { Button, EmptyState, IconButton, Segmented, Skeleton, buttonClass } from "./ui";
 
-export type CalView = "dia" | "3dias" | "semana" | "mes";
+type CalView = "dia" | "3dias" | "semana" | "mes";
 
 export const CALENDAR_VIEWS: { value: CalView; label: string }[] = [
   { value: "dia", label: "Día" },

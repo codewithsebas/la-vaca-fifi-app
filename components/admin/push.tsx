@@ -14,7 +14,7 @@ import { Button, Callout, Card, CardHeader, Switch } from "./ui";
 // El navegador crea la suscripción (con la llave pública VAPID) y el servidor la guarda con los grupos elegidos.
 // lib/server/push.ts envía cada aviso nuevo del panel; public/sw.js lo muestra aunque el panel esté cerrado.
 
-export type PushState =
+type PushState =
   | { s: "loading" }
   | { s: "mock" } // modo simulado: sin servidor
   | { s: "unsupported" } // navegador sin Web Push
@@ -52,7 +52,7 @@ async function detect(): Promise<PushState> {
   return again?.status === 200 && isDevice(again.data) ? { s: "on", endpoint: sub.endpoint, device: again.data } : { s: "off" };
 }
 
-export function usePush() {
+function usePush() {
   const [state, setState] = useState<PushState>({ s: "loading" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

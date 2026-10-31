@@ -6,7 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type R
 import { CheckIcon, ChevronDownIcon, SearchIcon } from "@/components/icons";
 import { Popover, type Tone } from "./floating";
 
-export type ComboOption = {
+type ComboOption = {
   value: string;
   label: string;
   description?: string;

@@ -17,7 +17,7 @@ const DARK =
   ".em-body{background:#120D0A!important}.em-card{background:#241A14!important}.em-text{color:#FFF8EB!important}.em-muted{color:#CFC6BD!important}.em-box{background:#33261D!important}.em-line{border-color:#4A382B!important}.em-code{color:#FFD23F!important}.em-ok{background:#33261D!important;color:#DDF0FA!important}";
 
 // Todo dato del huésped o del equipo se escapa antes de entrar al HTML.
-export const esc = (s: string | number) =>
+const esc = (s: string | number) =>
   String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 
 const h1 = (t: string) => `<h1 class="em-text em-h1" style="margin:0 0 12px;font-family:${DISPLAY};font-size:32px;line-height:36px;font-weight:400;color:${X.ink}">${t}</h1>`;
@@ -58,7 +58,7 @@ const codeBox = (code: string, status: string) =>
     status ? `<p style="margin:8px 0 0"><span style="display:inline-block;padding:4px 12px;border-radius:999px;background:${X.hl};font-family:${FONT};font-size:12px;font-weight:bold;color:${X.ink}">${status}</span></p>` : ""
   }</td></tr></table>`;
 
-export function emailLayout(c: Cfg, { title, preheader, body }: { title: string; preheader: string; body: string }) {
+function emailLayout(c: Cfg, { title, preheader, body }: { title: string; preheader: string; body: string }) {
   const phones = c.phones.join(" · ");
   const darkRules = (prefix: string) =>
     DARK.split("}")
@@ -96,7 +96,7 @@ const finish = (c: Cfg, logoUrl: string, e: Omit<RenderedEmail, "html"> & { body
 
 /* ───────────── Reserva confirmada (automático, al aprobarse el abono) ───────────── */
 
-export type ConfirmedEmailData = {
+type ConfirmedEmailData = {
   nombre: string;
   codigo: string;
   cabana: string;
@@ -168,7 +168,7 @@ export function reservationConfirmedEmail(c: Cfg, d: ConfirmedEmailData): Render
 
 /* ───────────── Mensaje del equipo (desde la ficha del cliente) ───────────── */
 
-export type TeamMessageData = { nombre: string; asunto: string; mensaje: string; codigo?: string | null; whatsappUrl: string; logoUrl: string };
+type TeamMessageData = { nombre: string; asunto: string; mensaje: string; codigo?: string | null; whatsappUrl: string; logoUrl: string };
 
 export function teamMessageEmail(c: Cfg, d: TeamMessageData): RenderedEmail {
   const first = d.nombre.trim().split(/\s+/)[0] || d.nombre;
@@ -190,7 +190,7 @@ export function teamMessageEmail(c: Cfg, d: TeamMessageData): RenderedEmail {
 
 /* ───────────── Vista previa (/correos) ───────────── */
 
-export type EmailTemplate = { name: string; to: string; subject: string; preheader: string; vars: string; html: string; text: string; sent: "auto" | "panel" | null };
+type EmailTemplate = { name: string; to: string; subject: string; preheader: string; vars: string; html: string; text: string; sent: "auto" | "panel" | null };
 
 const SAMPLE = { checkIn: "2026-10-03", checkOut: "2026-10-04" };
 

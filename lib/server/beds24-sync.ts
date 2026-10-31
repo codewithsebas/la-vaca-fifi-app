@@ -20,7 +20,7 @@ import { type Db, isMissingTable, loadCabinTypes } from "./db";
 type CalendarRow = Tables<"channel_calendars">;
 type LinkRow = Tables<"channel_bookings">;
 type Client = NonNullable<Beds24Client>;
-export type Mapped = CalendarRow & { beds24_room_id: number };
+type Mapped = CalendarRow & { beds24_room_id: number };
 type Source = "reservation" | "block";
 type Want = { source: Source; sourceId: string; cal: Mapped; checkIn: string; checkOut: string; label: string; adults?: number; children?: number };
 
@@ -54,7 +54,7 @@ const quietly = (what: string, p: PromiseLike<unknown>): Promise<void> =>
     (e) => console.error(`Beds24 (${what}):`, e),
   );
 
-export async function mappedRooms(sb: Db): Promise<Mapped[]> {
+async function mappedRooms(sb: Db): Promise<Mapped[]> {
   const { data, error } = await sb.from("channel_calendars").select("*").not("beds24_room_id", "is", null);
   if (error) {
     if (isMissingTable(error)) return [];
@@ -321,7 +321,7 @@ export async function beds24Webhook(payload: unknown): Promise<ChannelSyncResult
 
 /* ───────────── Repaso ───────────── */
 
-export type Beds24Sync = { ok: true; results: ChannelSyncResult[]; conflicts: string[] } | { ok: false; error: string };
+type Beds24Sync = { ok: true; results: ChannelSyncResult[]; conflicts: string[] } | { ok: false; error: string };
 
 // 'push': ajustar Beds24 tras un cambio en la app. 'all' (cron y «Sincronizar ahora»): además releer las reservas
 // vigentes de Beds24 (primero, para conocer lo de Booking antes de crear nada). null: Beds24 no está en uso.

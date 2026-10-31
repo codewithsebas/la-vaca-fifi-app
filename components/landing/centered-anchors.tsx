@@ -7,7 +7,7 @@ import { useEffect } from "react";
 
 const AIR = 24;
 
-export function scrollToSection(el: HTMLElement, smooth = true) {
+function scrollToSection(el: HTMLElement, smooth = true) {
   const r = el.getBoundingClientRect();
   const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-offset")) || 0;
   const vh = window.innerHeight - bar;

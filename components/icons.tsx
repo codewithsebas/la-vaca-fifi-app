@@ -52,7 +52,6 @@ export const MenuIcon = (p: IconProps) => <Stroke size={20} stroke={2.4} {...p}>
 export const CloseIcon = (p: IconProps) => <Stroke size={20} stroke={2.4} {...p}><path d="M18 6L6 18M6 6l12 12" /></Stroke>;
 export const MinusIcon = (p: IconProps) => <Stroke size={16} stroke={2.6} {...p}><path d="M5 12h14" /></Stroke>;
 export const PlusIcon = (p: IconProps) => <Stroke size={16} stroke={2.6} {...p}><path d="M5 12h14M12 5v14" /></Stroke>;
-export const MountainIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M8 3l4 8 5-5 5 15H2L8 3z M4.1 15.1c2.6-1.6 5.2-1.4 7.9.4 2.7 1.9 5.5 2 8.2.2" /></Stroke>;
 export const LoginIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></Stroke>;
 export const LogoutIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></Stroke>;
 export const ArrowUpIcon = (p: IconProps) => <Stroke stroke={2.4} {...p}><path d="M12 19V5M6 11l6-6 6 6" /></Stroke>;
@@ -96,12 +95,6 @@ export const EyeIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M2 1
 export const EyeOffIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M9.9 4.2A10 10 0 0 1 12 4c6.4 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.6 8 10 8a9.7 9.7 0 0 0 5.4-1.6M14.1 14.1a3 3 0 1 1-4.2-4.2M2 2l20 20" /></Stroke>;
 export const NoteIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Stroke>;
 
-export const StarIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="fill-highlight stroke-on-light" strokeWidth={1.4}>
-    <path d="M12 2l3 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.3 5.8 20.6l1.4-6.8L2.1 9.1 9 8.3z" />
-  </svg>
-);
-
 // Silueta de Fifí (trazos de components/fifi/fifi-paths.ts, encuadre MARK_FIFI_VIEWBOX) para el ícono de las
 // notificaciones de Android, que solo usa la forma (lib/app-icon.tsx). Cada trazo se rellena con evenodd: los ojos y
 // la fosa nasal quedan calados. El logo de la marca es la imagen de components/brand.tsx.
@@ -128,34 +121,6 @@ export const PawIcon = ({ size = 18, className }: IconProps) => (
   </svg>
 );
 
-// Huellas que cruzan la página. Con movimiento permitido se marcan una tras otra, como si el animal fuera pasando,
-// y las más viejas se desvanecen primero (cada huella repite la pisada con su propio retraso).
-type Paw = [x: number, y: number, rot: number];
-const PAW_A: Paw[] = [[10, 36, 75], [62, 14, 80], [118, 38, 85], [174, 16, 90], [230, 40, 95], [286, 18, 100], [342, 36, 105]];
-const PAW_B: Paw[] = [[10, 16, 100], [66, 38, 95], [122, 16, 90], [178, 40, 85], [234, 18, 80], [290, 38, 75]];
-
-export const PawTrail = ({ variant, className }: { variant: "a" | "b"; className?: string }) => (
-  <svg viewBox="0 0 420 64" width={420} height={64} aria-hidden="true" className={`block h-auto max-w-[70%] fill-accent/60 ${className ?? ""}`}>
-    {(variant === "a" ? PAW_A : PAW_B).map(([x, y, rot], i) => (
-      <g key={x} transform={`rotate(${rot} ${x + 8} ${y + 8}) translate(${x} ${y}) scale(${16 / 24})`}>
-        <g className="svg-pivot motion-safe:animate-paw-step" style={{ animationDelay: `${i * 480}ms` }}>
-          <ellipse cx="12" cy="16" rx="5.2" ry="4.4" />
-          <ellipse cx="5.6" cy="9.6" rx="2.1" ry="2.7" />
-          <ellipse cx="9.8" cy="5.4" rx="2.1" ry="2.7" />
-          <ellipse cx="14.4" cy="5.4" rx="2.1" ry="2.7" />
-          <ellipse cx="18.6" cy="9.6" rx="2.1" ry="2.7" />
-        </g>
-      </g>
-    ))}
-  </svg>
-);
-
-// Trazo punteado decorativo.
-export const DottedPath = ({ d, width, height, className }: { d: string; width: number; height: number; className?: string }) => (
-  <svg aria-hidden="true" width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={`pointer-events-none absolute ${className ?? ""}`}>
-    <path d={d} fill="none" strokeWidth={2} strokeDasharray="1 9" strokeLinecap="round" />
-  </svg>
-);
 export const BellIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" /></Stroke>;
 export const SendIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></Stroke>;
 export const SlidersIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></Stroke>;
@@ -170,7 +135,6 @@ export const PauseIcon = (p: IconProps) => <Stroke stroke={2} {...p}><rect x="6"
 export const PlayIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M6 4l14 8-14 8z" /></Stroke>;
 export const TrendIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6" /></Stroke>;
 export const MoonIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" /></Stroke>;
-export const LayersIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="m12 2 10 5-10 5L2 7zM2 17l10 5 10-5M2 12l10 5 10-5" /></Stroke>;
 export const StarOutlineIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M12 2l3 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.3 5.8 20.6l1.4-6.8L2.1 9.1 9 8.3z" /></Stroke>;
 export const GiftIcon = (p: IconProps) => <Stroke stroke={2} {...p}><path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></Stroke>;
 export const LinkIcon = (p: IconProps) => (

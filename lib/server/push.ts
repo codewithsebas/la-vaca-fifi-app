@@ -10,7 +10,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 type Sub = Tables<"push_subscriptions">;
 type Note = Tables<"admin_notifications">;
-export type PushPayload = { title: string; body: string; url: string; tag: string };
+type PushPayload = { title: string; body: string; url: string; tag: string };
 
 const RECENT_MS = 2 * 3600e3; // un aviso con más de 2 horas ya no se envía (por si el despacho estuvo caído)
 const TTL = 6 * 3600; // segundos que el servicio push guarda el mensaje si el dispositivo está apagado

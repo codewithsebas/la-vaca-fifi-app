@@ -5,7 +5,6 @@
 import { isISO } from "./format";
 import { useBroadcastSync, type SyncStatus } from "./live-sync";
 
-export type { SyncStatus } from "./live-sync";
 export type AvailabilityChange = { cabinTypeId: string | null; from: string | null; to: string | null };
 // null = resincronizar todo (al reconectar, al volver a la pestaña o cuando el aviso no trae rango).
 export type AvailabilityChanges = AvailabilityChange[] | null;
