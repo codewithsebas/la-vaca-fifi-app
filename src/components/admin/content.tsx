@@ -23,9 +23,9 @@ import {
   WalletIcon,
   WarningIcon,
 } from "@/components/ui/icons";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { config, isMockApi } from "@/lib/config";
-import { resizeImage, type Crop } from "@/lib/image-resize";
+import { resizeImage, type Crop } from "@/lib/client/image-resize";
 import { PHOTO_SLOTS, TEXT_LIMITS, fifiPhrases, fmtTime, type PhotoSlotDef, type SitePolicy, type SiteSettings, type SiteTexts } from "@/lib/site";
 import { themeIssues, type SiteTheme } from "@/lib/theme";
 import { Combobox } from "@/components/ui/combobox";

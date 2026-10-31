@@ -7,7 +7,7 @@ import { Brand, BrandName, Logo } from "@/components/brand/logo";
 import { useSite } from "@/components/site/site-provider";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { Constellation, ShootingStar } from "@/components/brand/night-sky";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { adminInput } from "@/components/admin/shared";
 import { Button, Callout, Field } from "@/components/admin/ui";

@@ -6,10 +6,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { cop, dirHref, download, fmtDate, ics, nightsBetween, plural, wa } from "@/lib/format";
-import { rememberReservation, rememberedReservation } from "@/lib/last-reservation";
-import { useReservationSync } from "@/lib/live-sync";
+import { rememberReservation, rememberedReservation } from "@/lib/client/last-reservation";
+import { useReservationSync } from "@/lib/client/live-sync";
 import { moneyOf } from "@/lib/payments";
 import { fmtTime } from "@/lib/site";
 import type { PaymentState } from "@/lib/types";

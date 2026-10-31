@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, EyeIcon, EyeOffIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { ServiceCard } from "@/components/site/service-card";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { SERVICE_ICONS, SERVICE_ICON_KEYS, serviceIconPath } from "@/lib/service-icons";
 import { SERVICE_LIMITS, type SiteService } from "@/lib/site";

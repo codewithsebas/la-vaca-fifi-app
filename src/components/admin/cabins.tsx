@@ -20,10 +20,10 @@ import {
   UploadIcon,
   UsersIcon,
 } from "@/components/ui/icons";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { cop, plural } from "@/lib/format";
-import { imageSize, resizeImage } from "@/lib/image-resize";
+import { imageSize, resizeImage } from "@/lib/client/image-resize";
 import { CABIN_PHOTO } from "@/lib/site";
 import type { CabinInput, CabinType } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";

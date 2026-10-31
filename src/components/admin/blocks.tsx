@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { BanIcon, CalendarIcon, CheckIcon, ClockIcon, MoonIcon, PencilIcon, PlusIcon, TrashIcon, WarningIcon } from "@/components/ui/icons";
 import { BLOCK_REASONS, channelBlocks, clashingReservations } from "@/lib/booking";
 import { unitMarks } from "@/lib/admin-metrics";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { addDays, fmtDate, isISO, nightsBetween, plural } from "@/lib/format";
 import type { Block, BlockInput } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";

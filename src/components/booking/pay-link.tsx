@@ -4,9 +4,9 @@
 // tiempo que le queda y paga el abono o el total sin escribir código ni correo. El estado sale siempre del servidor y la
 // página escucha el canal en tiempo real de la reserva (un pago aprobado, un plazo ampliado por el equipo…).
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { cop, fmtFullDate, nightsBetween, plural, wa } from "@/lib/format";
-import { useReservationSync } from "@/lib/live-sync";
+import { useReservationSync } from "@/lib/client/live-sync";
 import type { PublicReservation } from "@/lib/types";
 import { WhatsAppIcon } from "@/components/ui/icons";
 import { PaymentHistory, PaymentStage } from "@/components/booking/reservation-payments";

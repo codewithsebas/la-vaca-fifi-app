@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { CloseIcon, MailIcon } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
-import { api, type ApiError } from "@/lib/api";
+import { api, type ApiError } from "@/lib/client/api";
 import { fmtDate, timeAgo } from "@/lib/format";
 import type { EmailRecord, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";

@@ -3,7 +3,7 @@
 // Disponibilidad en tiempo real para el sitio público (canal público "availability", ver live-sync.ts).
 // La base de datos publica un aviso cuando cambia la ocupación: { cabinTypeId, from, to } (noches afectadas, sin datos personales).
 import { isISO } from "@/lib/format";
-import { useBroadcastSync, type SyncStatus } from "@/lib/live-sync";
+import { useBroadcastSync, type SyncStatus } from "@/lib/client/live-sync";
 
 export type AvailabilityChange = { cabinTypeId: string | null; from: string | null; to: string | null };
 // null = resincronizar todo (al reconectar, al volver a la pestaña o cuando el aviso no trae rango).

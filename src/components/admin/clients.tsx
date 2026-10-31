@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/status-pill";
 import { type ClientSummary, buildClients, valueOf } from "@/lib/admin-metrics";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { config } from "@/lib/config";
 import { cop, dateOf, fmtDate, fmtDateTime, mask, nightsBetween, plural, waTo } from "@/lib/format";
 import type { ClientProfile, ClientProfileInput, Severity, Trust } from "@/lib/types";

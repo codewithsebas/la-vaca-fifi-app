@@ -1,7 +1,7 @@
 "use client";
 
 import { BellIcon, CalendarIcon, ExternalLinkIcon, LogoutIcon, RefreshIcon, VolumeIcon } from "@/components/ui/icons";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { useAdmin } from "@/components/admin/context";
 import { Combobox } from "@/components/ui/combobox";

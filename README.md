@@ -62,7 +62,7 @@ Por confirmar con el cliente (vienen de Booking.com, Google Maps y otros portale
 
 ## Backend (Next.js + Supabase)
 
-Las rutas `app/api/*` implementan el contrato que usa el front (`lib/api.ts`) sobre Postgres en Supabase.
+Las rutas `app/api/*` implementan el contrato que usa el front (`lib/client/api.ts`) sobre Postgres en Supabase.
 
 | Ruta                                                                                                           | Acceso                                              |
 | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
@@ -76,7 +76,7 @@ Las rutas `app/api/*` implementan el contrato que usa el front (`lib/api.ts`) so
 
 **Seguridad.** Las rutas públicas usan la clave secreta solo en el servidor y validan todo (fechas, capacidad, campos, antispam). El panel usa la sesión del administrador, así que RLS limita el acceso. El rol `anon` no tiene permisos sobre ninguna tabla. La restricción `reservations_no_overlap` (exclusión GiST) impide en la base de datos que una unidad tenga dos reservas activas cruzadas, incluso con solicitudes simultáneas.
 
-**Tiempo real.** El panel escucha `postgres_changes` con la sesión del administrador (RLS). El sitio público no puede leer reservas, así que la disponibilidad se sincroniza con un aviso: un trigger (`broadcast_availability`) publica en el canal público de Realtime `availability` la cabaña y las noches afectadas (sin datos personales) cada vez que cambia la ocupación, y el navegador vuelve a consultar la API (`lib/availability-sync.ts`). «Mi reserva» funciona igual: cada reserva tiene una clave aleatoria (`live_key`) que solo devuelve la consulta con código y correo, y el trigger `broadcast_reservation_change` publica un aviso vacío en `reserva:<clave>` cuando cambia el estado, las fechas, los valores o un comprobante (`lib/live-sync.ts`). El aviso solo dispara una nueva consulta; la API sigue validando. Un job de `pg_cron` (`plazos-de-pago`, cada minuto) vence las retenciones sin abono y registra los saldos vencidos. El panel también escucha `payments` y `email_outbox`; «Mi reserva» y la página del pago reciben el aviso cuando cambia un pago.
+**Tiempo real.** El panel escucha `postgres_changes` con la sesión del administrador (RLS). El sitio público no puede leer reservas, así que la disponibilidad se sincroniza con un aviso: un trigger (`broadcast_availability`) publica en el canal público de Realtime `availability` la cabaña y las noches afectadas (sin datos personales) cada vez que cambia la ocupación, y el navegador vuelve a consultar la API (`lib/client/availability-sync.ts`). «Mi reserva» funciona igual: cada reserva tiene una clave aleatoria (`live_key`) que solo devuelve la consulta con código y correo, y el trigger `broadcast_reservation_change` publica un aviso vacío en `reserva:<clave>` cuando cambia el estado, las fechas, los valores o un comprobante (`lib/client/live-sync.ts`). El aviso solo dispara una nueva consulta; la API sigue validando. Un job de `pg_cron` (`plazos-de-pago`, cada minuto) vence las retenciones sin abono y registra los saldos vencidos. El panel también escucha `payments` y `email_outbox`; «Mi reserva» y la página del pago reciben el aviso cuando cambia un pago.
 
 **Pagos (Wompi).** Una reserva solo se confirma con el abono aprobado:
 
@@ -110,4 +110,4 @@ where email = 'tu-correo@ejemplo.com';
 
 ### Modo simulado
 
-Con `NEXT_PUBLIC_USE_MOCK_API=1` la app funciona sin backend (`lib/mock-server.ts`, datos en el `localStorage` del navegador, login de prueba con cualquier correo; los pagos usan la pasarela simulada y los correos se dan por enviados). Para simular errores del envío: `localStorage.setItem('vf-mock-settings', '{"post":"409"}')` (también `422`, `429`, `network`, `slow`).
+Con `NEXT_PUBLIC_USE_MOCK_API=1` la app funciona sin backend (`lib/mock/mock-server.ts`, datos en el `localStorage` del navegador, login de prueba con cualquier correo; los pagos usan la pasarela simulada y los correos se dan por enviados). Para simular errores del envío: `localStorage.setItem('vf-mock-settings', '{"post":"409"}')` (también `422`, `429`, `network`, `slow`).

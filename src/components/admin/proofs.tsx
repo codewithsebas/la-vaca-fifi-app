@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckIcon, CloseIcon, DownloadIcon, ExternalLinkIcon, EyeIcon, FileTextIcon, ImageIcon, ShieldIcon } from "@/components/ui/icons";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { cop, download, timeAgo } from "@/lib/format";
 import type { PaymentProof, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";

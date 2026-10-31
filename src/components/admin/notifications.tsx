@@ -21,7 +21,7 @@ import {
   WalletIcon,
   WarningIcon,
 } from "@/components/ui/icons";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";
 import { addDays, countdown, dateOf, fmtClock, fmtFullDate, plural, timeAgo } from "@/lib/format";

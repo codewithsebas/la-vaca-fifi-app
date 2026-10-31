@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/icons";
 import { KeyValues, StatusPill } from "@/components/ui/status-pill";
 import { balanceDue, buildClients, typeMarks } from "@/lib/admin-metrics";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { channelBlocks } from "@/lib/booking";
 import { config } from "@/lib/config";
 import { addDays, cop, countdown, dateOf, fmtClock, fmtDate, fmtDateTime, nightsBetween, plural, timeAgo, waTo } from "@/lib/format";

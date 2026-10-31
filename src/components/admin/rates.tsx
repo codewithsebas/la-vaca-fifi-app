@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { CalendarIcon, CheckIcon, HomeIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
 import { computeQuote, nightlyRate } from "@/lib/booking";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { config } from "@/lib/config";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import type { CabinType, RateSeason, SeasonInput } from "@/lib/types";

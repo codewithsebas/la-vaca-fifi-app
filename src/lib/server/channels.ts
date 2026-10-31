@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { ACTIVE_STATUSES, CHANNEL_ID, planChannelMoves, poolFirst, unitFree, type ChannelSpan, type Pool, type Units } from "@/lib/booking";
 import { config } from "@/lib/config";
 import { addDays, fmtDate, nightsBetween, sleep, todayISO } from "@/lib/format";
-import { buildIcs, parseIcs, type IcsEvent } from "@/lib/ical";
+import { buildIcs, parseIcs, type IcsEvent } from "@/lib/server/ical";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { CabinType, ChannelSyncResult, NotificationKind } from "@/lib/types";

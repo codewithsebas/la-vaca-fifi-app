@@ -4,7 +4,7 @@
 // Los plazos vienen del servidor (depositDueAt, balanceDueAt) y la cuenta regresiva usa su hora (serverNow);
 // cuando un plazo llega a cero se vuelve a consultar la API, que es la que decide.
 import { useEffect, useRef, useState } from "react";
-import { api, type ApiError } from "@/lib/api";
+import { api, type ApiError } from "@/lib/client/api";
 import { cop, dateOf, fmtClock, fmtDate, fmtDateTime, todayISO, wa } from "@/lib/format";
 import {
   BALANCE_MINUTES,

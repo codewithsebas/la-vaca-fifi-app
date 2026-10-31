@@ -4,7 +4,7 @@
 // y devuelve un enlace de pago con plazo para enviarle al huésped. Si no paga a tiempo, las fechas se liberan solas.
 import { useMemo, useState } from "react";
 import { CalendarIcon, CheckIcon, HomeIcon, UsersIcon, WalletIcon, WarningIcon } from "@/components/ui/icons";
-import { api, type ApiError, type ValidationError } from "@/lib/api";
+import { api, type ApiError, type ValidationError } from "@/lib/client/api";
 import { channelBlocks, computeQuote, findUnit, normalizePhone, unitFree, withTotal } from "@/lib/booking";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import { DEFAULT_HOLD, HOLD_OPTIONS, manualDueAt } from "@/lib/payments";

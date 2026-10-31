@@ -2,10 +2,10 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { cop, fmtDate, hoursUntilCheckIn, nightsBetween, plural, statusOf, wa } from "@/lib/format";
-import { forgetReservation, rememberReservation, rememberedReservation } from "@/lib/last-reservation";
-import { useReservationSync, type SyncStatus } from "@/lib/live-sync";
+import { forgetReservation, rememberReservation, rememberedReservation } from "@/lib/client/last-reservation";
+import { useReservationSync, type SyncStatus } from "@/lib/client/live-sync";
 import { moneyOf, stageOf } from "@/lib/payments";
 import type { PublicReservation } from "@/lib/types";
 import { PaymentHistory, PaymentStage } from "@/components/booking/reservation-payments";

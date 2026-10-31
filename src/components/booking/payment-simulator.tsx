@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, type ApiError } from "@/lib/api";
+import { api, type ApiError } from "@/lib/client/api";
 import { cop, fmtClock } from "@/lib/format";
 import { kindLabel } from "@/lib/payments";
 import type { PaymentState } from "@/lib/types";

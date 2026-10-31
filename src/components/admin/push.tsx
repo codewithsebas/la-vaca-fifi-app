@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { BellIcon, CheckIcon, SendIcon } from "@/components/ui/icons";
-import { api, type PushDevice } from "@/lib/api";
+import { api, type PushDevice } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { GROUP_IDS, NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";
 import { timeAgo } from "@/lib/format";

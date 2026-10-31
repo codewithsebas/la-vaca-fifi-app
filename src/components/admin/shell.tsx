@@ -8,7 +8,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type React
 import { Brand } from "@/components/brand/logo";
 import { ExternalLinkIcon, InfoIcon, LogoutIcon, MenuIcon, RefreshIcon, WarningIcon, CloseIcon } from "@/components/ui/icons";
 import { useSite } from "@/components/site/site-provider";
-import { api } from "@/lib/api";
+import { api } from "@/lib/client/api";
 import { config } from "@/lib/config";
 import { todayISO } from "@/lib/format";
 import { panelCss, type SiteTheme } from "@/lib/theme";

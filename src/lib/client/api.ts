@@ -1,6 +1,6 @@
 // Cliente único de la API (navegador). Habla con las rutas /api de Next.js o, en modo simulado, con lib/mock-server.
 import { config, isMockApi, type CabinTypeId } from "@/lib/config";
-import { mockRequest } from "@/lib/mock-server";
+import { mockRequest } from "@/lib/mock/mock-server";
 import { sleep } from "@/lib/format";
 import type {
   AdminAction,

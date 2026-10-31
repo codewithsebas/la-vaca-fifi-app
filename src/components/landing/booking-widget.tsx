@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { api } from "@/lib/api";
-import { touches, useAvailabilitySync } from "@/lib/availability-sync";
+import { api } from "@/lib/client/api";
+import { touches, useAvailabilitySync } from "@/lib/client/availability-sync";
 import { config, type Cabin, type CabinTypeId } from "@/lib/config";
 import { addDays, cop, fmtDate, monthStart, nightsBetween, plural, todayISO } from "@/lib/format";
 import type { Availability } from "@/lib/types";

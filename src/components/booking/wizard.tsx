@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { api, resetIdem, type ApiError, type ValidationError } from "@/lib/api";
-import { touches, useAvailabilitySync, type AvailabilityChanges } from "@/lib/availability-sync";
+import { api, resetIdem, type ApiError, type ValidationError } from "@/lib/client/api";
+import { touches, useAvailabilitySync, type AvailabilityChanges } from "@/lib/client/availability-sync";
 import { config, isMockApi, type CabinTypeId } from "@/lib/config";
 import { addDays, cop, fmtDate, fmtLong, isISO, monthStart, nightsBetween, plural, todayISO, wa } from "@/lib/format";
-import { saveLastReservation } from "@/lib/last-reservation";
+import { saveLastReservation } from "@/lib/client/last-reservation";
 import { HOLD_MINUTES } from "@/lib/payments";
 import type { Availability, CabinType, DocType, FieldErrors, PaymentStart, PublicReservation, ReservationInput } from "@/lib/types";
 import { GiftIcon, MinusIcon, PawIcon, PlusIcon, WhatsAppIcon } from "@/components/ui/icons";
