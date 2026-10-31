@@ -33,7 +33,7 @@ import type {
 } from "@/lib/types";
 import { addDays, todayISO } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/server";
-import { photoUrl } from "./site";
+import { photoUrl } from "@/lib/server/site";
 
 // Las consultas usan .throwOnError(): un fallo de la base de datos rechaza la promesa (→ 500 en route()).
 export type Db = SupabaseClient<Database>;

@@ -4,7 +4,7 @@
 // `tone`: "panel" (densidad de herramienta, superficie blanca) o "site" (campo del formulario de reserva, tarjeta crema).
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, SearchIcon } from "@/components/icons";
-import { Popover, type Tone } from "./floating";
+import { Popover, type Tone } from "@/components/ui/floating";
 
 type ComboOption = {
   value: string;

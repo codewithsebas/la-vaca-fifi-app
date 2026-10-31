@@ -1,6 +1,6 @@
-import type { CabinTypeId } from "./config";
-import type { SiteContent, SitePolicy, SiteSettings, SiteTexts } from "./site";
-import type { SiteTheme } from "./theme";
+import type { CabinTypeId } from "@/lib/config";
+import type { SiteContent, SitePolicy, SiteSettings, SiteTexts } from "@/lib/site";
+import type { SiteTheme } from "@/lib/theme";
 
 // Contrato de la API pública y de los endpoints del panel.
 

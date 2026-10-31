@@ -9,8 +9,8 @@ import { EyeIcon, EyeOffIcon } from "@/components/icons";
 import { Constellation, ShootingStar } from "@/components/landing/night-sky";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
-import { adminInput } from "./shared";
-import { Button, Callout, Field } from "./ui";
+import { adminInput } from "@/components/admin/shared";
+import { Button, Callout, Field } from "@/components/admin/ui";
 
 /* ───────────── Paisaje: el Nevado del Ruiz ───────────── */
 

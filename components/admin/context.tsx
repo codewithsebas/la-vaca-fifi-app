@@ -3,8 +3,8 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useState } from "react";
 import type { AdminData, CabinType } from "@/lib/types";
-import type { LiveStatus } from "./notifications";
-import type { Ask } from "./shared";
+import type { LiveStatus } from "@/components/admin/notifications";
+import type { Ask } from "@/components/admin/shared";
 
 export type Toast = (text: string, kind?: "ok" | "error", action?: { label: string; onClick: () => void }) => void;
 

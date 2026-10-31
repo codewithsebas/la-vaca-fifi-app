@@ -19,8 +19,8 @@ import {
   type ThemeIssue,
   type ThemeKey,
 } from "@/lib/theme";
-import { adminInput } from "./shared";
-import { Badge, Button, Callout, Card, CardHeader, Segmented, Spinner } from "./ui";
+import { adminInput } from "@/components/admin/shared";
+import { Badge, Button, Callout, Card, CardHeader, Segmented, Spinner } from "@/components/admin/ui";
 
 // Estilo en línea con la paleta: aplica los colores solo dentro del contenedor (vistas previas del panel).
 export const themeStyle = (t: SiteTheme) => themeVars(t) as CSSProperties;

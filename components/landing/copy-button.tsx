@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon } from "../icons";
+import { CheckIcon } from "@/components/icons";
 
 // Copia un texto (la dirección) y lo confirma con un ✓ por unos segundos.
 export function CopyButton({ text, label, className = "" }: { text: string; label: string; className?: string }) {

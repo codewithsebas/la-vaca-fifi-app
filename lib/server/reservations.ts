@@ -4,9 +4,9 @@ import { after } from "next/server";
 import { newReservationCode, poolFirst, type Occupancy } from "@/lib/booking";
 import { addDays } from "@/lib/format";
 import type { Tables, TablesInsert } from "@/lib/supabase/database.types";
-import { claimUnit } from "./beds24-sync";
-import { atMost, channelPools, syncSoon } from "./channels";
-import { loadOccupancy, type Db } from "./db";
+import { claimUnit } from "@/lib/server/beds24-sync";
+import { atMost, channelPools, syncSoon } from "@/lib/server/channels";
+import { loadOccupancy, type Db } from "@/lib/server/db";
 
 type NewReservation = Omit<TablesInsert<"reservations">, "code" | "unit">;
 type HoldResult = { row: Tables<"reservations"> } | { error: "DATES_UNAVAILABLE" | "CHANNEL_UNAVAILABLE" | "IDEMPOTENCY_CONFLICT" };

@@ -13,13 +13,13 @@ import { config } from "@/lib/config";
 import { todayISO } from "@/lib/format";
 import { panelCss, type SiteTheme } from "@/lib/theme";
 import type { AdminData } from "@/lib/types";
-import { AdminProvider, type AdminCtx } from "./context";
-import { DateRangePicker } from "./date-picker";
+import { AdminProvider, type AdminCtx } from "@/components/admin/context";
+import { DateRangePicker } from "@/components/admin/date-picker";
 import { TipProvider } from "@/components/ui/floating";
-import { Login, PanelLoader } from "./login";
-import { LiveDot, NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "./notifications";
-import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "./routes";
-import { type Ask, type ConfirmCfg, adminInput } from "./shared";
+import { Login, PanelLoader } from "@/components/admin/login";
+import { LiveDot, NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "@/components/admin/notifications";
+import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "@/components/admin/routes";
+import { type Ask, type ConfirmCfg, adminInput } from "@/components/admin/shared";
 import {
   Breadcrumbs,
   Button,
@@ -34,7 +34,7 @@ import {
   Toasts,
   type Crumb,
   type ToastMsg,
-} from "./ui";
+} from "@/components/admin/ui";
 
 /* ───────────── Colores ───────────── */
 

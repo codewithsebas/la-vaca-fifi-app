@@ -16,12 +16,12 @@ import {
   validateReservation,
   webFirst,
   withTotal,
-} from "./booking";
-import { config } from "./config";
-import { addDays, sleep, todayISO } from "./format";
-import { BALANCE_MINUTES, HOLD_OPTIONS, manualDueAt, payPath } from "./payments";
-import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "./site";
-import { mergeTheme } from "./theme";
+} from "@/lib/booking";
+import { config } from "@/lib/config";
+import { addDays, sleep, todayISO } from "@/lib/format";
+import { BALANCE_MINUTES, HOLD_OPTIONS, manualDueAt, payPath } from "@/lib/payments";
+import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "@/lib/site";
+import { mergeTheme } from "@/lib/theme";
 import type {
   AdminNotification,
   ApiResult,
@@ -46,7 +46,7 @@ import type {
   ReservationInput,
   SeasonInput,
   SiteInput,
-} from "./types";
+} from "@/lib/types";
 
 type MockSettings = { post: "success" | "409" | "422" | "429" | "network" | "slow" };
 

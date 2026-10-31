@@ -1,6 +1,6 @@
-import { config, type CabinTypeId } from "./config";
-import type { SiteConfig } from "./site";
-import type { Reservation, ReservationStatus } from "./types";
+import { config, type CabinTypeId } from "@/lib/config";
+import type { SiteConfig } from "@/lib/site";
+import type { Reservation, ReservationStatus } from "@/lib/types";
 
 // Fechas de calendario como cadenas ISO (AAAA-MM-DD), siempre en hora de Colombia.
 const TZ = "America/Bogota";

@@ -1,6 +1,6 @@
 // Contenido de la página de inicio. Las fotos de cada experiencia se suben desde el panel (hueco exp-<id>); la del
 // restaurante (exp-restaurante) va en su propia sección.
-import type { ServiceIcon } from "./service-icons";
+import type { ServiceIcon } from "@/lib/service-icons";
 
 export const EXPERIENCES = [
   { id: "desayuno", label: "Desayuno con vista a la montaña" },

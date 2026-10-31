@@ -1,8 +1,8 @@
 // Reglas de reserva compartidas por el servidor (Supabase) y el modo simulado.
-import { config, type CabinTypeId } from "./config";
-import { HOLD_MINUTES, HOLD_OPTIONS } from "./payments";
-import { addDays, isISO, nightsBetween } from "./format";
-import type { Availability, Block, CabinType, FieldErrors, ManualReservationInput, Quote, RateSeason, ReservationInput, ReservationStatus } from "./types";
+import { config, type CabinTypeId } from "@/lib/config";
+import { HOLD_MINUTES, HOLD_OPTIONS } from "@/lib/payments";
+import { addDays, isISO, nightsBetween } from "@/lib/format";
+import type { Availability, Block, CabinType, FieldErrors, ManualReservationInput, Quote, RateSeason, ReservationInput, ReservationStatus } from "@/lib/types";
 
 export const ACTIVE_STATUSES: ReservationStatus[] = ["pending_deposit", "confirmed", "rescheduled", "checked_in"];
 

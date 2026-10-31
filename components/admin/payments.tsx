@@ -10,12 +10,12 @@ import { cop, countdown, download, fmtDate, plural, timeAgo } from "@/lib/format
 import { PAYMENT_STATUS, kindLabel, methodLabel } from "@/lib/payments";
 import type { PaymentRecord, Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
-import { useAdmin, useParam } from "./context";
-import { PeriodFilter, usePeriod } from "./period";
-import { ProofCard } from "./proofs";
-import { MODULES, paths } from "./routes";
-import { csv } from "./shared";
-import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Segmented, StatCard, Tabs } from "./ui";
+import { useAdmin, useParam } from "@/components/admin/context";
+import { PeriodFilter, usePeriod } from "@/components/admin/period";
+import { ProofCard } from "@/components/admin/proofs";
+import { MODULES, paths } from "@/components/admin/routes";
+import { csv } from "@/components/admin/shared";
+import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Segmented, StatCard, Tabs } from "@/components/admin/ui";
 
 type Tab = "transacciones" | "comprobantes" | "recibidos" | "por-cobrar";
 type TxFilter = "todas" | "en-curso" | "aprobadas" | "rechazadas" | "reembolsar" | "sin-completar";

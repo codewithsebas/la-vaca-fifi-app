@@ -1,9 +1,9 @@
 // Correos transaccionales: HTML de 600 px con tablas, estilos inline y colores hex (funciona en Gmail, Outlook y Apple Mail).
 // Los que se envían de verdad (confirmación de reserva y mensaje del equipo) se generan con funciones que reciben los datos;
 // el resto son plantillas de referencia con variables {{var}} que todavía no se envían.
-import { cop, fmtDate, nightsBetween, plural } from "./format";
-import { BALANCE_MINUTES } from "./payments";
-import { fmtTime, type SiteConfig } from "./site";
+import { cop, fmtDate, nightsBetween, plural } from "@/lib/format";
+import { BALANCE_MINUTES } from "@/lib/payments";
+import { fmtTime, type SiteConfig } from "@/lib/site";
 
 type Cfg = SiteConfig;
 

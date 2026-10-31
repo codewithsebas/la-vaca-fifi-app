@@ -13,10 +13,10 @@ import { useReservationSync } from "@/lib/live-sync";
 import { moneyOf } from "@/lib/payments";
 import { fmtTime } from "@/lib/site";
 import type { PaymentState } from "@/lib/types";
-import { CalendarIcon, PinIcon, WhatsAppIcon } from "./icons";
-import { PaymentHistory, PaymentStage } from "./reservation-payments";
-import { useSite } from "./site-provider";
-import { KeyValues, StatusPill } from "./status-pill";
+import { CalendarIcon, PinIcon, WhatsAppIcon } from "@/components/icons";
+import { PaymentHistory, PaymentStage } from "@/components/reservation-payments";
+import { useSite } from "@/components/site-provider";
+import { KeyValues, StatusPill } from "@/components/status-pill";
 
 const REF = /^[A-Z0-9-]{8,60}$/;
 

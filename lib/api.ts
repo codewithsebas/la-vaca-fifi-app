@@ -1,7 +1,7 @@
 // Cliente único de la API (navegador). Habla con las rutas /api de Next.js o, en modo simulado, con lib/mock-server.
-import { config, isMockApi, type CabinTypeId } from "./config";
-import { mockRequest } from "./mock-server";
-import { sleep } from "./format";
+import { config, isMockApi, type CabinTypeId } from "@/lib/config";
+import { mockRequest } from "@/lib/mock-server";
+import { sleep } from "@/lib/format";
 import type {
   AdminAction,
   AdminData,
@@ -36,9 +36,9 @@ import type {
   ReservationInput,
   SeasonInput,
   SiteInput,
-} from "./types";
-import type { NotificationGroup } from "./notification-groups";
-import type { SiteContent, SiteService } from "./site";
+} from "@/lib/types";
+import type { NotificationGroup } from "@/lib/notification-groups";
+import type { SiteContent, SiteService } from "@/lib/site";
 
 type RequestOpts = {
   query?: Record<string, string | number | undefined>;

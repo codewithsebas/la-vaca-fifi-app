@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSite } from "../site-provider";
+import { useSite } from "@/components/site-provider";
 import { tel, wa } from "@/lib/format";
-import { Brand } from "../brand";
-import { CloseIcon, MenuIcon, PhoneIcon, WhatsAppIcon } from "../icons";
+import { Brand } from "@/components/brand";
+import { CloseIcon, MenuIcon, PhoneIcon, WhatsAppIcon } from "@/components/icons";
 
 const SECTIONS = [
   ["cabanas", "Cabañas"],

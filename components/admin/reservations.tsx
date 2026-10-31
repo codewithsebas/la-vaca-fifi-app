@@ -8,12 +8,12 @@ import { paymentState } from "@/lib/admin-metrics";
 import { STATUS, isISO, plural } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
-import { useAdmin, useParam } from "./context";
-import { DateRangePicker } from "./date-picker";
-import { NewReservationDialog } from "./new-reservation";
-import { MODULES, paths } from "./routes";
-import { adminInput, norm, rowOf } from "./shared";
-import { Badge, Button, Card, EmptyState, Field, PageHeader, Segmented } from "./ui";
+import { useAdmin, useParam } from "@/components/admin/context";
+import { DateRangePicker } from "@/components/admin/date-picker";
+import { NewReservationDialog } from "@/components/admin/new-reservation";
+import { MODULES, paths } from "@/components/admin/routes";
+import { adminInput, norm, rowOf } from "@/components/admin/shared";
+import { Badge, Button, Card, EmptyState, Field, PageHeader, Segmented } from "@/components/admin/ui";
 
 type Quick = "todas" | "pendientes" | "comprobantes" | "proximas" | "en-estadia";
 type Sort = "llegada-desc" | "llegada-asc" | "creada-desc" | "valor-desc";

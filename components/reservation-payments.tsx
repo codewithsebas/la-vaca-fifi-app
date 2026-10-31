@@ -19,9 +19,9 @@ import {
   type Stage,
 } from "@/lib/payments";
 import type { PaymentKind, PaymentStart, PublicPayment, PublicReservation } from "@/lib/types";
-import { CheckIcon, ClockIcon, WhatsAppIcon } from "./icons";
-import { useSite } from "./site-provider";
-import { CheckOption } from "./ui/choice";
+import { CheckIcon, ClockIcon, WhatsAppIcon } from "@/components/icons";
+import { useSite } from "@/components/site-provider";
+import { CheckOption } from "@/components/ui/choice";
 
 /* ───────────── Hora del servidor ───────────── */
 

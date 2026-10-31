@@ -3,7 +3,7 @@ import { cache } from "react";
 import { fallbackCabins, shortCabinName, type Cabin } from "@/lib/config";
 import type { CabinType } from "@/lib/types";
 import { createServiceClient, hasServiceConfig } from "@/lib/supabase/server";
-import { loadCabinTypes } from "./db";
+import { loadCabinTypes } from "@/lib/server/db";
 
 const toPublicCabin = (t: CabinType): Cabin => ({
   id: t.id,

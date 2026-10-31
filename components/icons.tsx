@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { FIFI } from "./fifi/fifi-paths";
+import { FIFI } from "@/components/fifi/fifi-paths";
 
 type IconProps = { size?: number; stroke?: number; className?: string; style?: CSSProperties };
 

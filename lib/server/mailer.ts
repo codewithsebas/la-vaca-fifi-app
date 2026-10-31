@@ -5,8 +5,8 @@ import { mergeSite, type SiteConfig } from "@/lib/site";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { EmailRecord, Quote } from "@/lib/types";
-import { type Db, toEmail } from "./db";
-import { loadSiteContent } from "./site";
+import { type Db, toEmail } from "@/lib/server/db";
+import { loadSiteContent } from "@/lib/server/site";
 
 // Bandeja de salida (tabla email_outbox): quien necesita un correo lo encola (la confirmación la encola la base de datos
 // al aprobarse el abono) y este módulo lo envía con Resend. El envío va aparte de la respuesta al huésped: si Resend falla,

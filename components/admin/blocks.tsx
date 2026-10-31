@@ -9,11 +9,25 @@ import { api } from "@/lib/api";
 import { addDays, fmtDate, isISO, nightsBetween, plural } from "@/lib/format";
 import type { Block, BlockInput } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
-import { useAdmin, useParam, useSetParams } from "./context";
-import { MODULES } from "./routes";
-import { DateRangePicker } from "./date-picker";
-import { adminInput } from "./shared";
-import { Badge, Button, Callout, Card, EmptyState, Field, FieldError, IconButton, Modal, PageHeader, Segmented, StatCard, type Tone } from "./ui";
+import { useAdmin, useParam, useSetParams } from "@/components/admin/context";
+import { MODULES } from "@/components/admin/routes";
+import { DateRangePicker } from "@/components/admin/date-picker";
+import { adminInput } from "@/components/admin/shared";
+import {
+  Badge,
+  Button,
+  Callout,
+  Card,
+  EmptyState,
+  Field,
+  FieldError,
+  IconButton,
+  Modal,
+  PageHeader,
+  Segmented,
+  StatCard,
+  type Tone,
+} from "@/components/admin/ui";
 
 type Filter = "vigentes" | "finalizados" | "todos";
 type Draft = { id?: string; type: string; unit: string; from: string | null; to: string | null; reason: string; notes: string };

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "@/components/icons";
 import { MONTHS, WD_MIN, addDays, fmtDate, monthStart, nightsBetween, parseISO, plural, todayISO } from "@/lib/format";
 import { Popover } from "@/components/ui/floating";
-import { adminInput } from "./shared";
+import { adminInput } from "@/components/admin/shared";
 
 // Marcas por día: "busy" = ocupado, "blocked" = bloqueado, "partial" = queda poca disponibilidad.
 export type DayMark = "busy" | "blocked" | "partial";

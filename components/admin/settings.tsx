@@ -3,13 +3,13 @@
 import { BellIcon, CalendarIcon, ExternalLinkIcon, LogoutIcon, RefreshIcon, VolumeIcon } from "@/components/icons";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
-import { useAdmin } from "./context";
+import { useAdmin } from "@/components/admin/context";
 import { Combobox } from "@/components/ui/combobox";
-import { LIVE_LABEL, LiveDot, SOUND_GROUPS, chime, unlockAudio, useSound } from "./notifications";
-import { PREF, usePref, writePref } from "./prefs";
-import { PushSettingsCard } from "./push";
-import { Button, Callout, Card, CardHeader, Field, PageHeader, Switch, buttonClass } from "./ui";
-import { CALENDAR_VIEWS } from "./calendar";
+import { LIVE_LABEL, LiveDot, SOUND_GROUPS, chime, unlockAudio, useSound } from "@/components/admin/notifications";
+import { PREF, usePref, writePref } from "@/components/admin/prefs";
+import { PushSettingsCard } from "@/components/admin/push";
+import { Button, Callout, Card, CardHeader, Field, PageHeader, Switch, buttonClass } from "@/components/admin/ui";
+import { CALENDAR_VIEWS } from "@/components/admin/calendar";
 
 export function SettingsView() {
   const { live, logout, ask } = useAdmin();

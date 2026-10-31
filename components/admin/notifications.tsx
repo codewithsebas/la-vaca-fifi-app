@@ -26,12 +26,12 @@ import { isMockApi } from "@/lib/config";
 import { NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";
 import { addDays, countdown, dateOf, fmtClock, fmtFullDate, plural, timeAgo } from "@/lib/format";
 import type { AdminNotification, NotificationKind } from "@/lib/types";
-import { useAdmin, useParam } from "./context";
+import { useAdmin, useParam } from "@/components/admin/context";
 import { Popover } from "@/components/ui/floating";
-import { PREF, readPref, usePref, writePref } from "./prefs";
-import { PushPrompt } from "./push";
-import { paths } from "./routes";
-import { Button, Card, CardHeader, EmptyState, IconButton, PageHeader, Segmented, buttonClass } from "./ui";
+import { PREF, readPref, usePref, writePref } from "@/components/admin/prefs";
+import { PushPrompt } from "@/components/admin/push";
+import { paths } from "@/components/admin/routes";
+import { Button, Card, CardHeader, EmptyState, IconButton, PageHeader, Segmented, buttonClass } from "@/components/admin/ui";
 
 /* ───────────── Tiempo real (Supabase Realtime) ───────────── */
 

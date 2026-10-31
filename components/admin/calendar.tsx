@@ -39,13 +39,13 @@ import { pendingOf } from "@/lib/admin-metrics";
 import { fmtTime } from "@/lib/site";
 import type { Block, CabinType, Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
-import { useAdmin, useParam } from "./context";
-import { DatePicker } from "./date-picker";
+import { useAdmin, useParam } from "@/components/admin/context";
+import { DatePicker } from "@/components/admin/date-picker";
 import { Popover, useTip } from "@/components/ui/floating";
-import { NewReservationDialog, type NewReservationDraft } from "./new-reservation";
-import { PREF, usePref } from "./prefs";
-import { paths } from "./routes";
-import { Button, EmptyState, IconButton, Segmented, Skeleton, buttonClass } from "./ui";
+import { NewReservationDialog, type NewReservationDraft } from "@/components/admin/new-reservation";
+import { PREF, usePref } from "@/components/admin/prefs";
+import { paths } from "@/components/admin/routes";
+import { Button, EmptyState, IconButton, Segmented, Skeleton, buttonClass } from "@/components/admin/ui";
 
 type CalView = "dia" | "3dias" | "semana" | "mes";
 

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { config } from "@/lib/config";
 import { wa } from "@/lib/format";
 import { getSite } from "@/lib/server/site";
-import { Brand } from "./brand";
-import { WhatsAppIcon } from "./icons";
+import { Brand } from "@/components/brand";
+import { WhatsAppIcon } from "@/components/icons";
 
 // Encabezado de las páginas internas (reservar, mi reserva, políticas…): la misma barra color leche con filo de tinta
 // de la portada, con la marca y los accesos principales.

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { CheckIcon, MinusIcon, PlusIcon, RefreshIcon, UploadIcon, WarningIcon } from "@/components/icons";
 import { cropOutput, imageSize, type Crop } from "@/lib/image-resize";
-import { Button, Callout, IconButton, Modal, Spinner } from "./ui";
+import { Button, Callout, IconButton, Modal, Spinner } from "@/components/admin/ui";
 
 // Recorte antes de subir: el marco tiene la proporción exacta del espacio del sitio; quien sube la foto
 // la arrastra para encuadrarla y acerca con el control, la rueda del mouse o pellizcando en el celular.

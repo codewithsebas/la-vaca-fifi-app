@@ -26,12 +26,12 @@ import { config } from "@/lib/config";
 import { addDays, cop, countdown, dateOf, fmtClock, fmtDate, fmtDateTime, nightsBetween, plural, timeAgo, waTo } from "@/lib/format";
 import { BALANCE_MINUTES, DEFAULT_HOLD, HOLD_OPTIONS, PAYMENT_STATUS, kindLabel, manualDueAt, methodLabel } from "@/lib/payments";
 import type { EmailRecord, PaymentRecord, Reservation } from "@/lib/types";
-import { useAdmin } from "./context";
-import { ProofCard } from "./proofs";
-import { PayLinkShare, fmtDeadline, payUrlOf } from "./pay-link-share";
-import { paths } from "./routes";
-import { TRUST, type ConfirmCfg, adminInput } from "./shared";
-import { Badge, Button, Card, CardHeader, EmptyState, Field, FieldError, PageHeader, Segmented, Stars, buttonClass } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { ProofCard } from "@/components/admin/proofs";
+import { PayLinkShare, fmtDeadline, payUrlOf } from "@/components/admin/pay-link-share";
+import { paths } from "@/components/admin/routes";
+import { TRUST, type ConfirmCfg, adminInput } from "@/components/admin/shared";
+import { Badge, Button, Card, CardHeader, EmptyState, Field, FieldError, PageHeader, Segmented, Stars, buttonClass } from "@/components/admin/ui";
 
 const OCC: Record<string, string> = { aniversario: "Aniversario", cumpleanos: "Cumpleaños", propuesta: "Propuesta", otra: "Otra" };
 

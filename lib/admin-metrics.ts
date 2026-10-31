@@ -1,7 +1,7 @@
 // Cálculos del panel (clientes y finanzas) sobre los datos ya cargados. Funciones puras: sin red ni estado.
-import { ACTIVE_STATUSES, type ChannelSpan } from "./booking";
-import { MS, addDays, dateOf, nightsBetween, parseISO } from "./format";
-import type { Block, CabinType, ClientProfile, Reservation, ReservationStatus } from "./types";
+import { ACTIVE_STATUSES, type ChannelSpan } from "@/lib/booking";
+import { MS, addDays, dateOf, nightsBetween, parseISO } from "@/lib/format";
+import type { Block, CabinType, ClientProfile, Reservation, ReservationStatus } from "@/lib/types";
 
 // Reservas que se concretaron (el abono se pagó).
 const SECURED: ReservationStatus[] = ["confirmed", "rescheduled", "checked_in", "completed"];

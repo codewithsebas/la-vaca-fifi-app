@@ -8,9 +8,9 @@ import { CheckIcon, CloseIcon, DownloadIcon, ExternalLinkIcon, EyeIcon, FileText
 import { api } from "@/lib/api";
 import { cop, download, timeAgo } from "@/lib/format";
 import type { PaymentProof, Reservation } from "@/lib/types";
-import { useAdmin } from "./context";
-import { paths } from "./routes";
-import { Badge, Button, Callout, IconButton, Modal, Spinner, buttonClass, type Tone } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { paths } from "@/components/admin/routes";
+import { Badge, Button, Callout, IconButton, Modal, Spinner, buttonClass, type Tone } from "@/components/admin/ui";
 
 const kb = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 

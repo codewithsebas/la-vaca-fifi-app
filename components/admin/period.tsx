@@ -3,9 +3,9 @@
 // Filtro de periodo compartido por Finanzas y Pagos: hoy, 7 días … 1 año o un rango personalizado. Se guarda en la URL.
 import { type Range } from "@/lib/admin-metrics";
 import { addDays, fmtDate, isISO, nightsBetween, plural } from "@/lib/format";
-import { useAdmin, useParam } from "./context";
-import { DateRangePicker } from "./date-picker";
-import { Segmented } from "./ui";
+import { useAdmin, useParam } from "@/components/admin/context";
+import { DateRangePicker } from "@/components/admin/date-picker";
+import { Segmented } from "@/components/admin/ui";
 
 export type Preset = "1" | "7" | "14" | "30" | "60" | "90" | "180" | "365" | "personalizado";
 

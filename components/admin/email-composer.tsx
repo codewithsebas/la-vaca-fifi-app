@@ -9,9 +9,9 @@ import { Combobox } from "@/components/ui/combobox";
 import { api, type ApiError } from "@/lib/api";
 import { fmtDate, timeAgo } from "@/lib/format";
 import type { EmailRecord, Reservation } from "@/lib/types";
-import { useAdmin } from "./context";
-import { adminInput } from "./shared";
-import { Badge, Button, Callout, Field, IconButton, Modal } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { adminInput } from "@/components/admin/shared";
+import { Badge, Button, Callout, Field, IconButton, Modal } from "@/components/admin/ui";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // UUID v4 (crypto.randomUUID solo existe en contextos seguros: https o localhost).

@@ -11,12 +11,12 @@ import { DEFAULT_HOLD, HOLD_OPTIONS, manualDueAt } from "@/lib/payments";
 import type { DocType, ManualReservationInput, ManualReservationResult, Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { typeMarks, unitMarks } from "@/lib/admin-metrics";
-import { useAdmin } from "./context";
-import { DateRangePicker } from "./date-picker";
-import { PayLinkShare, fmtDeadline } from "./pay-link-share";
-import { paths } from "./routes";
-import { adminInput } from "./shared";
-import { Button, Callout, Field, FieldError, Modal, MoneyInput, Segmented, Stepper, Switch } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { DateRangePicker } from "@/components/admin/date-picker";
+import { PayLinkShare, fmtDeadline } from "@/components/admin/pay-link-share";
+import { paths } from "@/components/admin/routes";
+import { adminInput } from "@/components/admin/shared";
+import { Button, Callout, Field, FieldError, Modal, MoneyInput, Segmented, Stepper, Switch } from "@/components/admin/ui";
 
 // Lo que llega ya elegido (desde el calendario: una cabaña y unas fechas).
 export type NewReservationDraft = { cabinTypeId?: string; unit?: number | null; checkIn?: string | null; checkOut?: string | null };

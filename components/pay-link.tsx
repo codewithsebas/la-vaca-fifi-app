@@ -8,10 +8,10 @@ import { api } from "@/lib/api";
 import { cop, fmtFullDate, nightsBetween, plural, wa } from "@/lib/format";
 import { useReservationSync } from "@/lib/live-sync";
 import type { PublicReservation } from "@/lib/types";
-import { WhatsAppIcon } from "./icons";
-import { PaymentHistory, PaymentStage } from "./reservation-payments";
-import { useSite } from "./site-provider";
-import { KeyValues, StatusPill } from "./status-pill";
+import { WhatsAppIcon } from "@/components/icons";
+import { PaymentHistory, PaymentStage } from "@/components/reservation-payments";
+import { useSite } from "@/components/site-provider";
+import { KeyValues, StatusPill } from "@/components/status-pill";
 
 type State = (PublicReservation & { termsAccepted?: boolean }) | null | "missing" | "error";
 

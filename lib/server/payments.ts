@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { PaymentKind, PaymentProvider, PaymentStatus } from "@/lib/types";
 import type { Tables } from "@/lib/supabase/database.types";
-import type { Db } from "./db";
+import type { Db } from "@/lib/server/db";
 
 // Pasarela de pagos. Con las llaves de Wompi se usa Wompi (Web Checkout + eventos); sin ellas, en desarrollo,
 // un checkout simulado que pasa por las mismas funciones de la base de datos. En producción el simulador está apagado

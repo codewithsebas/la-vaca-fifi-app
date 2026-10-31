@@ -1,4 +1,4 @@
-import type { PublicReservation } from "./types";
+import type { PublicReservation } from "@/lib/types";
 
 // La confirmación lee la última solicitud enviada en esta pestaña.
 type LastReservation = { res: PublicReservation; email: string; name: string; adults: number; children: number };

@@ -7,10 +7,10 @@ import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { SERVICE_ICONS, SERVICE_ICON_KEYS, serviceIconPath } from "@/lib/service-icons";
 import { SERVICE_LIMITS, type SiteService } from "@/lib/site";
-import { useAdmin } from "./context";
-import { adminInput } from "./shared";
-import { themeStyle } from "./theme";
-import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, IconButton, Modal, Switch } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { adminInput } from "@/components/admin/shared";
+import { themeStyle } from "@/components/admin/theme";
+import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, IconButton, Modal, Switch } from "@/components/admin/ui";
 
 // Servicios de «Servicios incluidos»: crear, editar, mostrar u ocultar, ordenar y eliminar. Cada cambio se publica
 // de inmediato en el sitio (no usa la barra de guardado).

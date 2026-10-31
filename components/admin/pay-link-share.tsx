@@ -7,9 +7,9 @@ import { config } from "@/lib/config";
 import { cop, countdown, dateOf, fmtClock, fmtDate, nightsBetween, plural, waTo } from "@/lib/format";
 import { payPath } from "@/lib/payments";
 import type { Reservation } from "@/lib/types";
-import { useAdmin } from "./context";
-import { adminInput } from "./shared";
-import { Button, buttonClass } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { adminInput } from "@/components/admin/shared";
+import { Button, buttonClass } from "@/components/admin/ui";
 
 // URL pública del enlace (el dominio del sitio; en desarrollo, el de esta pestaña).
 export const payUrlOf = (token: string) => ((process.env.NEXT_PUBLIC_SITE_URL ?? "").trim() || window.location.origin).replace(/\/$/, "") + payPath(token);

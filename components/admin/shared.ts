@@ -1,7 +1,7 @@
 import { cop, fmtDate, mask, nightsBetween, plural } from "@/lib/format";
 import type { ApiResult, Reservation } from "@/lib/types";
-import type { DayMark } from "./date-picker";
-import type { Tone } from "./ui";
+import type { DayMark } from "@/components/admin/date-picker";
+import type { Tone } from "@/components/admin/ui";
 
 // Confirmación previa a una acción. Puede pedir fechas nuevas, una nota o una casilla, que llegan a run().
 export type ConfirmCfg = {

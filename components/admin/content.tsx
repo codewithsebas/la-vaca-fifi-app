@@ -30,13 +30,13 @@ import { PHOTO_SLOTS, TEXT_LIMITS, fifiPhrases, fmtTime, type PhotoSlotDef, type
 import { themeIssues, type SiteTheme } from "@/lib/theme";
 import { Combobox } from "@/components/ui/combobox";
 import { Fifi } from "@/components/fifi/fifi";
-import { useAdmin } from "./context";
-import { CONTENT_GROUPS, CONTENT_SECTIONS, MODULES, isContentSection, paths, type ContentSectionId } from "./routes";
-import { PhotoCropper } from "./photo-cropper";
-import { ServicesManager } from "./services";
-import { ThemeEditor, themeStyle } from "./theme";
-import { adminInput } from "./shared";
-import { Button, Callout, Card, CardHeader, Field, FieldError, GroupedNavTabs, IconButton, PageHeader, SaveBar, Spinner } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { CONTENT_GROUPS, CONTENT_SECTIONS, MODULES, isContentSection, paths, type ContentSectionId } from "@/components/admin/routes";
+import { PhotoCropper } from "@/components/admin/photo-cropper";
+import { ServicesManager } from "@/components/admin/services";
+import { ThemeEditor, themeStyle } from "@/components/admin/theme";
+import { adminInput } from "@/components/admin/shared";
+import { Button, Callout, Card, CardHeader, Field, FieldError, GroupedNavTabs, IconButton, PageHeader, SaveBar, Spinner } from "@/components/admin/ui";
 
 /* ───────────── Una ruta por zona del sitio, un solo formulario ───────────── */
 

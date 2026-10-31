@@ -21,14 +21,14 @@ import { balanceDue, delta, finance, pendingOf, previousRange } from "@/lib/admi
 import { ACTIVE_STATUSES, channelBlocks } from "@/lib/booking";
 import { addDays, cop, countdown, fmtDate, fmtFullDate, plural } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
-import { useAdmin } from "./context";
+import { useAdmin } from "@/components/admin/context";
 import { useTip } from "@/components/ui/floating";
-import { BarList, RevenueChart, StaysMeter } from "./finance";
-import { NewReservationDialog } from "./new-reservation";
-import { usePeriod, type Preset } from "./period";
-import { MODULES, paths } from "./routes";
-import { ARRIVING, DEPARTING, rowOf } from "./shared";
-import { Badge, Button, Card, CardHeader, CountBadge, EmptyState, PageHeader, Segmented, StatCard, buttonClass } from "./ui";
+import { BarList, RevenueChart, StaysMeter } from "@/components/admin/finance";
+import { NewReservationDialog } from "@/components/admin/new-reservation";
+import { usePeriod, type Preset } from "@/components/admin/period";
+import { MODULES, paths } from "@/components/admin/routes";
+import { ARRIVING, DEPARTING, rowOf } from "@/components/admin/shared";
+import { Badge, Button, Card, CardHeader, CountBadge, EmptyState, PageHeader, Segmented, StatCard, buttonClass } from "@/components/admin/ui";
 
 // Bloque del dashboard, con su título: lo de hoy, lo que viene y las cifras del negocio.
 function Block({

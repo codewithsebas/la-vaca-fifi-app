@@ -24,10 +24,10 @@ import { config } from "@/lib/config";
 import { cop, dateOf, fmtDate, fmtDateTime, mask, nightsBetween, plural, waTo } from "@/lib/format";
 import type { ClientProfile, ClientProfileInput, Severity, Trust } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
-import { useAdmin, useParam } from "./context";
-import { EmailComposer, hasEmail } from "./email-composer";
-import { MODULES, paths } from "./routes";
-import { TRUST, adminInput, norm } from "./shared";
+import { useAdmin, useParam } from "@/components/admin/context";
+import { EmailComposer, hasEmail } from "@/components/admin/email-composer";
+import { MODULES, paths } from "@/components/admin/routes";
+import { TRUST, adminInput, norm } from "@/components/admin/shared";
 import {
   Badge,
   Button,
@@ -44,7 +44,7 @@ import {
   Stars,
   buttonClass,
   type Tone,
-} from "./ui";
+} from "@/components/admin/ui";
 
 type Filter = "todos" | "nuevos" | "recurrentes" | "frecuentes" | "alertas";
 type Sort = "actividad" | "reservas" | "valor" | "nombre" | "nuevos";

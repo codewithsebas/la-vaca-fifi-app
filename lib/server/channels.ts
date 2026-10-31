@@ -7,7 +7,7 @@ import { buildIcs, parseIcs, type IcsEvent } from "@/lib/ical";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { CabinType, ChannelSyncResult, NotificationKind } from "@/lib/types";
-import { type Db, isExclusionViolation, isMissingTable, loadCabinTypes, loadOccupancy } from "./db";
+import { type Db, isExclusionViolation, isMissingTable, loadCabinTypes, loadOccupancy } from "@/lib/server/db";
 
 // Sincronización de disponibilidad con Booking.com por calendarios iCal (extranet → Sincronizar calendarios).
 // Cada tipo de alojamiento de Booking (una unidad allá) cubre un grupo de cabañas del mismo tipo en la app (poolOf).

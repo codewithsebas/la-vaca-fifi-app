@@ -9,10 +9,10 @@ import { config } from "@/lib/config";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import type { CabinType, RateSeason, SeasonInput } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
-import { useAdmin, useParam, useSetParams } from "./context";
-import { MODULES } from "./routes";
-import { DateRangePicker } from "./date-picker";
-import { adminInput } from "./shared";
+import { useAdmin, useParam, useSetParams } from "@/components/admin/context";
+import { MODULES } from "@/components/admin/routes";
+import { DateRangePicker } from "@/components/admin/date-picker";
+import { adminInput } from "@/components/admin/shared";
 import {
   Badge,
   Button,
@@ -30,7 +30,7 @@ import {
   Stepper,
   Switch,
   type Tone,
-} from "./ui";
+} from "@/components/admin/ui";
 
 const pct = (v: number, base: number) => (base ? Math.round(((v - base) / base) * 100) : 0);
 const diff = (v: number, base: number) => {

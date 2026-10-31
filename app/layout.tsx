@@ -5,7 +5,7 @@ import { SiteProvider } from "@/components/site-provider";
 import { config } from "@/lib/config";
 import { getSiteCabins } from "@/lib/server/cabins";
 import { getSiteContent } from "@/lib/server/site";
-import "./globals.css";
+import "@/app/globals.css";
 
 // Las letras de Fifí: Lilita One para títulos y nombre (redonda y gruesa, como las letras del letrero) y Nunito para
 // el texto (redondeada y fácil de leer).

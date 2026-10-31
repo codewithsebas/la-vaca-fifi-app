@@ -1,6 +1,6 @@
 import "server-only";
 import { createSessionClient, MissingSupabaseConfig } from "@/lib/supabase/server";
-import type { Db } from "./db";
+import type { Db } from "@/lib/server/db";
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 export const fail = (status: number, error: string, extra?: object) => json({ error, ...extra }, status);

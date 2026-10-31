@@ -1,4 +1,4 @@
-import type { NotificationKind } from "./types";
+import type { NotificationKind } from "@/lib/types";
 
 // Grupos de avisos del panel. Los usan el sonido (por navegador) y las notificaciones push (por dispositivo).
 export type NotificationGroup = "reservas" | "pagos" | "cambios";

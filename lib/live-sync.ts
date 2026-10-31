@@ -5,8 +5,8 @@
 // Un canal público también admite mensajes de cualquiera, así que el contenido se valida y la frecuencia se limita.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
-import { isMockApi } from "./config";
-import { MOCK_DB_KEY } from "./mock-server";
+import { isMockApi } from "@/lib/config";
+import { MOCK_DB_KEY } from "@/lib/mock-server";
 
 export type SyncStatus = "connecting" | "live" | "offline" | "off";
 

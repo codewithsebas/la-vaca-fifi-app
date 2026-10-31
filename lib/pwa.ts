@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { config } from "./config";
+import { config } from "@/lib/config";
 
 // Dos apps instalables: el sitio de reservas (huéspedes) y el panel (equipo), cada una con su manifiesto e ícono.
 // Van como Route Handlers enlazados desde `metadata.manifest`: un app/manifest.ts tendría prioridad sobre el del panel.

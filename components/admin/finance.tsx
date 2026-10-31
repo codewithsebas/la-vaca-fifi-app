@@ -6,11 +6,11 @@ import { CalendarIcon, ClockIcon, HomeIcon, ReceiptIcon, TrendIcon, UsersIcon, W
 import { delta, finance, pendingOf, previousRange } from "@/lib/admin-metrics";
 import { cop, fmtDate, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";
-import { useAdmin, useParam } from "./context";
+import { useAdmin, useParam } from "@/components/admin/context";
 import { useTip } from "@/components/ui/floating";
-import { PeriodFilter, usePeriod } from "./period";
-import { MODULES, paths } from "./routes";
-import { Card, CardHeader, EmptyState, PageHeader, StatCard, buttonClass } from "./ui";
+import { PeriodFilter, usePeriod } from "@/components/admin/period";
+import { MODULES, paths } from "@/components/admin/routes";
+import { Card, CardHeader, EmptyState, PageHeader, StatCard, buttonClass } from "@/components/admin/ui";
 
 // "$1.250.000" → "$1,3 M" para ejes y etiquetas compactas.
 const short = (n: number) =>

@@ -5,9 +5,9 @@ import { addDays, fmtDate, todayISO } from "@/lib/format";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { CabinType, ChannelSyncResult, NotificationKind } from "@/lib/types";
-import { type Beds24Booking, type Beds24Client, Beds24Error, beds24Client, loadCredentials, OCCUPYING } from "./beds24";
-import { applyStays, notify, type StayEvent, unitName } from "./channels";
-import { type Db, isMissingTable, loadCabinTypes } from "./db";
+import { type Beds24Booking, type Beds24Client, Beds24Error, beds24Client, loadCredentials, OCCUPYING } from "@/lib/server/beds24";
+import { applyStays, notify, type StayEvent, unitName } from "@/lib/server/channels";
+import { type Db, isMissingTable, loadCabinTypes } from "@/lib/server/db";
 
 // Booking.com en tiempo real por Beds24, en ambos sentidos:
 //   Web → Beds24: antes de guardar una reserva o un bloqueo en una unidad enlazada, la app lo crea en Beds24 con

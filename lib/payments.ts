@@ -1,6 +1,6 @@
 // Reglas de pago compartidas por el sitio, el panel y el servidor (funciones puras).
 // La fuente de verdad son la base de datos y la API: aquí solo se interpreta lo que ya respondieron.
-import type { PaymentKind, PaymentStatus, PublicPayment, PublicReservation, Quote } from "./types";
+import type { PaymentKind, PaymentStatus, PublicPayment, PublicReservation, Quote } from "@/lib/types";
 
 // Minutos que se retienen las fechas mientras se paga el abono (fecha límite de la retención y de la ventana de pago).
 export const HOLD_MINUTES = 30;

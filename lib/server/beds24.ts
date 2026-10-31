@@ -1,7 +1,7 @@
 import "server-only";
 import type { Tables } from "@/lib/supabase/database.types";
 import type { Beds24Room } from "@/lib/types";
-import { type Db, isMissingTable } from "./db";
+import { type Db, isMissingTable } from "@/lib/server/db";
 
 // Beds24 (channel manager), API v2: https://beds24.com/api/v2 · https://wiki.beds24.com/index.php/Category:API_V2
 // Booking.com se conecta a Beds24 y recibe de él la disponibilidad al instante; la app crea en Beds24 lo que vende la web.

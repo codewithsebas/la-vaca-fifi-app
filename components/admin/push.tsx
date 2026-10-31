@@ -6,8 +6,8 @@ import { api, type PushDevice } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { GROUP_IDS, NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";
 import { timeAgo } from "@/lib/format";
-import { useAdmin } from "./context";
-import { Button, Callout, Card, CardHeader, Switch } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { Button, Callout, Card, CardHeader, Switch } from "@/components/admin/ui";
 
 /* ───────────── Notificaciones push de este dispositivo ───────────── */
 

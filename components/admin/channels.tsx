@@ -8,10 +8,10 @@ import { api, type Channels } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { addDays, fmtDate, nightsBetween, plural, timeAgo } from "@/lib/format";
 import type { Beds24Room, Beds24Status, ChannelCalendar, ChannelSyncResult } from "@/lib/types";
-import { useAdmin } from "./context";
-import { MODULES, paths } from "./routes";
-import { adminInput } from "./shared";
-import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, Modal, PageHeader, StatCard, type Tone } from "./ui";
+import { useAdmin } from "@/components/admin/context";
+import { MODULES, paths } from "@/components/admin/routes";
+import { adminInput } from "@/components/admin/shared";
+import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, Modal, PageHeader, StatCard, type Tone } from "@/components/admin/ui";
 
 // Booking.com: cada unidad de la app se enlaza con un tipo de alojamiento de Booking, de una de dos formas:
 //   · Por Beds24 (channel manager), en tiempo real: cada venta de la web se reserva primero en Beds24, que la rechaza si

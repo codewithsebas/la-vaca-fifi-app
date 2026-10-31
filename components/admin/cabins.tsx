@@ -26,11 +26,11 @@ import { cop, plural } from "@/lib/format";
 import { imageSize, resizeImage } from "@/lib/image-resize";
 import { CABIN_PHOTO } from "@/lib/site";
 import type { CabinInput, CabinType } from "@/lib/types";
-import { useAdmin } from "./context";
-import { MODULES, paths } from "./routes";
+import { useAdmin } from "@/components/admin/context";
+import { MODULES, paths } from "@/components/admin/routes";
 import { useTip } from "@/components/ui/floating";
-import { adminInput } from "./shared";
-import { themeStyle } from "./theme";
+import { adminInput } from "@/components/admin/shared";
+import { themeStyle } from "@/components/admin/theme";
 import {
   Badge,
   Button,
@@ -47,7 +47,7 @@ import {
   Stepper,
   Switch,
   buttonClass,
-} from "./ui";
+} from "@/components/admin/ui";
 
 const SUGGESTED = [
   "Cama doble",

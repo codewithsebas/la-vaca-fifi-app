@@ -1,7 +1,7 @@
 // Contenido editable del sitio (horarios, contacto, políticas, imágenes). Lo usan servidor y navegador.
-import { config, type Policy } from "./config";
-import { DEFAULT_SERVICES } from "./content";
-import { DEFAULT_THEME, type SiteTheme } from "./theme";
+import { config, type Policy } from "@/lib/config";
+import { DEFAULT_SERVICES } from "@/lib/content";
+import { DEFAULT_THEME, type SiteTheme } from "@/lib/theme";
 
 export type SiteSettings = {
   checkInStart: string; // "HH:MM"
