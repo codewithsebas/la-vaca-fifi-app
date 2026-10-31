@@ -1,6 +1,6 @@
-// Cliente único de la API (navegador). Habla con las rutas /api de Next.js o, en modo simulado, con lib/mock-server.
+// Cliente único de la API (navegador). Habla con las rutas /api de Next.js o, en modo simulado, con lib/mock/mock-server
+// (import dinámico: el simulador no entra en el JavaScript de producción).
 import { config, isMockApi, type CabinTypeId } from "@/lib/config";
-import { mockRequest } from "@/lib/mock/mock-server";
 import { sleep } from "@/lib/format";
 import type {
   AdminAction,
@@ -48,10 +48,12 @@ type RequestOpts = {
 
 type NetworkError = { type: "network"; message: string };
 
+const mock = async (...args: Parameters<typeof import("@/lib/mock/mock-server").mockRequest>) => (await import("@/lib/mock/mock-server")).mockRequest(...args);
+
 const endpoint = (path: string) => new URL(config.apiBaseUrl.trim().replace(/\/$/, "") + path, window.location.origin);
 
 async function request<T>(method: string, path: string, opts: RequestOpts = {}): Promise<ApiResult<T>> {
-  if (isMockApi) return mockRequest(method, path, opts) as Promise<ApiResult<T>>;
+  if (isMockApi) return mock(method, path, opts) as Promise<ApiResult<T>>;
   const url = endpoint(path);
   if (opts.query)
     Object.entries(opts.query).forEach(([k, v]) => {
@@ -90,7 +92,7 @@ async function request<T>(method: string, path: string, opts: RequestOpts = {}):
 
 // Subida multipart (fotos, comprobantes). Sin reintentos automáticos.
 async function upload<T>(path: string, form: FormData): Promise<ApiResult<T>> {
-  if (isMockApi) return mockRequest("POST", path, { body: form }) as Promise<ApiResult<T>>;
+  if (isMockApi) return mock("POST", path, { body: form }) as Promise<ApiResult<T>>;
   const res = await fetch(endpoint(path), { method: "POST", body: form, credentials: "same-origin" });
   let data: T | null = null;
   try {

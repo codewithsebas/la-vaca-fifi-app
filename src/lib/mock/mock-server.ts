@@ -18,6 +18,7 @@ import {
   withTotal,
 } from "@/lib/booking";
 import { config } from "@/lib/config";
+import { MOCK_DB_KEY } from "@/lib/mock/keys";
 import { addDays, sleep, todayISO } from "@/lib/format";
 import { BALANCE_MINUTES, HOLD_OPTIONS, manualDueAt, payPath } from "@/lib/payments";
 import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "@/lib/site";
@@ -50,9 +51,8 @@ import type {
 
 type MockSettings = { post: "success" | "409" | "422" | "429" | "network" | "slow" };
 
-const DBK = "vf-mock-db-v1";
 // Otras pestañas escuchan esta clave (evento storage) para simular la disponibilidad en tiempo real.
-export const MOCK_DB_KEY = DBK;
+const DBK = MOCK_DB_KEY;
 const SETTINGS_KEY = "vf-mock-settings";
 const AUTH_KEY = "vf-admin";
 

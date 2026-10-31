@@ -6,7 +6,7 @@
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 import { isMockApi } from "@/lib/config";
-import { MOCK_DB_KEY } from "@/lib/mock/mock-server";
+import { MOCK_DB_KEY } from "@/lib/mock/keys";
 
 export type SyncStatus = "connecting" | "live" | "offline" | "off";
 
