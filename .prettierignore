@@ -3,6 +3,6 @@ node_modules
 pnpm-lock.yaml
 public
 supabase/migrations
-lib/supabase/database.types.ts
+src/lib/supabase/database.types.ts
 supabase/.temp
 .claude
