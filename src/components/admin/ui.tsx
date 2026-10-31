@@ -3,7 +3,7 @@
 // Piezas reutilizables del panel. Se apoyan en las clases base del sitio (.btn, .field-input) para no duplicarlas.
 import Link from "next/link";
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
-import { AlertIcon, CheckIcon, CloseIcon, InfoIcon, WarningIcon } from "@/components/icons";
+import { AlertIcon, CheckIcon, CloseIcon, InfoIcon, WarningIcon } from "@/components/ui/icons";
 
 /* ───────────── Botones ───────────── */
 

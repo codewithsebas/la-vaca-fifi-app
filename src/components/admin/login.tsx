@@ -3,10 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Fragment, useState, type CSSProperties, type FormEvent } from "react";
-import { Brand, BrandName, Logo } from "@/components/brand";
-import { useSite } from "@/components/site-provider";
-import { EyeIcon, EyeOffIcon } from "@/components/icons";
-import { Constellation, ShootingStar } from "@/components/landing/night-sky";
+import { Brand, BrandName, Logo } from "@/components/brand/logo";
+import { useSite } from "@/components/site/site-provider";
+import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
+import { Constellation, ShootingStar } from "@/components/brand/night-sky";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { adminInput } from "@/components/admin/shared";

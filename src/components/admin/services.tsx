@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, EyeIcon, EyeOffIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
-import { ServiceCard } from "@/components/service-card";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, EyeIcon, EyeOffIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
+import { ServiceCard } from "@/components/site/service-card";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { SERVICE_ICONS, SERVICE_ICON_KEYS, serviceIconPath } from "@/lib/service-icons";

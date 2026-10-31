@@ -7,10 +7,10 @@ import { touches, useAvailabilitySync } from "@/lib/availability-sync";
 import { config, type Cabin, type CabinTypeId } from "@/lib/config";
 import { addDays, cop, fmtDate, monthStart, nightsBetween, plural, todayISO } from "@/lib/format";
 import type { Availability } from "@/lib/types";
-import { RangeCalendar } from "@/components/range-calendar";
+import { RangeCalendar } from "@/components/booking/range-calendar";
 import { SwitchTrack } from "@/components/ui/choice";
-import { useSite } from "@/components/site-provider";
-import { ArrowRightIcon, CalendarIcon, HomeIcon, MinusIcon, PlusIcon, UsersIcon } from "@/components/icons";
+import { useSite } from "@/components/site/site-provider";
+import { ArrowRightIcon, CalendarIcon, HomeIcon, MinusIcon, PlusIcon, UsersIcon } from "@/components/ui/icons";
 
 type Popover = "dates" | "type" | "guests" | null;
 

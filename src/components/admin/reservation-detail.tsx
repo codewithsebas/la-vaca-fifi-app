@@ -17,8 +17,8 @@ import {
   UsersIcon,
   WalletIcon,
   WhatsAppIcon,
-} from "@/components/icons";
-import { KeyValues, StatusPill } from "@/components/status-pill";
+} from "@/components/ui/icons";
+import { KeyValues, StatusPill } from "@/components/ui/status-pill";
 import { balanceDue, buildClients, typeMarks } from "@/lib/admin-metrics";
 import { api } from "@/lib/api";
 import { channelBlocks } from "@/lib/booking";

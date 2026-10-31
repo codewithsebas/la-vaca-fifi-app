@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronRightIcon, CloseIcon, FileTextIcon, PlusIcon, SearchIcon } from "@/components/icons";
-import { StatusPill } from "@/components/status-pill";
+import { ChevronRightIcon, CloseIcon, FileTextIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
+import { StatusPill } from "@/components/ui/status-pill";
 import { paymentState } from "@/lib/admin-metrics";
 import { STATUS, isISO, plural } from "@/lib/format";
 import type { Reservation } from "@/lib/types";

@@ -1,6 +1,6 @@
 "use client";
 
-import { BellIcon, CalendarIcon, ExternalLinkIcon, LogoutIcon, RefreshIcon, VolumeIcon } from "@/components/icons";
+import { BellIcon, CalendarIcon, ExternalLinkIcon, LogoutIcon, RefreshIcon, VolumeIcon } from "@/components/ui/icons";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { useAdmin } from "@/components/admin/context";

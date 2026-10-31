@@ -8,9 +8,9 @@ import { forgetReservation, rememberReservation, rememberedReservation } from "@
 import { useReservationSync, type SyncStatus } from "@/lib/live-sync";
 import { moneyOf, stageOf } from "@/lib/payments";
 import type { PublicReservation } from "@/lib/types";
-import { PaymentHistory, PaymentStage } from "@/components/reservation-payments";
-import { useSite } from "@/components/site-provider";
-import { KeyValues, StatusPill } from "@/components/status-pill";
+import { PaymentHistory, PaymentStage } from "@/components/booking/reservation-payments";
+import { useSite } from "@/components/site/site-provider";
+import { KeyValues, StatusPill } from "@/components/ui/status-pill";
 
 const noop = () => () => {};
 // Reserva guardada en este dispositivo para el código del enlace (o la última, sin código), como "CÓDIGO correo".

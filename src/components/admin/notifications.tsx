@@ -20,7 +20,7 @@ import {
   VolumeOffIcon,
   WalletIcon,
   WarningIcon,
-} from "@/components/icons";
+} from "@/components/ui/icons";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";

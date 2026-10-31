@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { CalendarIcon, ClockIcon, HomeIcon, ReceiptIcon, TrendIcon, UsersIcon, WalletIcon } from "@/components/icons";
+import { CalendarIcon, ClockIcon, HomeIcon, ReceiptIcon, TrendIcon, UsersIcon, WalletIcon } from "@/components/ui/icons";
 import { delta, finance, pendingOf, previousRange } from "@/lib/admin-metrics";
 import { cop, fmtDate, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";

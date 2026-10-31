@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EmailPreview } from "@/components/email-preview";
+import { EmailPreview } from "@/components/dev/email-preview";
 
 export const metadata: Metadata = {
   title: "Plantillas de correo",

@@ -3,7 +3,7 @@
 // Selector con búsqueda (patrón combobox + listbox de WAI-ARIA). Sustituye a los <select> nativos del panel y del sitio.
 // `tone`: "panel" (densidad de herramienta, superficie blanca) o "site" (campo del formulario de reserva, tarjeta crema).
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { CheckIcon, ChevronDownIcon, SearchIcon } from "@/components/icons";
+import { CheckIcon, ChevronDownIcon, SearchIcon } from "@/components/ui/icons";
 import { Popover, type Tone } from "@/components/ui/floating";
 
 type ComboOption = {

@@ -10,13 +10,13 @@ import { addDays, cop, fmtDate, fmtLong, isISO, monthStart, nightsBetween, plura
 import { saveLastReservation } from "@/lib/last-reservation";
 import { HOLD_MINUTES } from "@/lib/payments";
 import type { Availability, CabinType, DocType, FieldErrors, PaymentStart, PublicReservation, ReservationInput } from "@/lib/types";
-import { GiftIcon, MinusIcon, PawIcon, PlusIcon, WhatsAppIcon } from "@/components/icons";
-import { PhotoSlot } from "@/components/photo-slot";
-import { RangeCalendar } from "@/components/range-calendar";
+import { GiftIcon, MinusIcon, PawIcon, PlusIcon, WhatsAppIcon } from "@/components/ui/icons";
+import { PhotoSlot } from "@/components/site/photo-slot";
+import { RangeCalendar } from "@/components/booking/range-calendar";
 import { CheckOption, ToggleCard } from "@/components/ui/choice";
 import { Combobox } from "@/components/ui/combobox";
-import { PlanChoice, payLabel, type Plan } from "@/components/reservation-payments";
-import { useSite } from "@/components/site-provider";
+import { PlanChoice, payLabel, type Plan } from "@/components/booking/reservation-payments";
+import { useSite } from "@/components/site/site-provider";
 import { arrivalOptions } from "@/lib/site";
 
 const STEPS = ["Fechas y huéspedes", "Cabaña", "Tus datos", "Revisar y pagar"];

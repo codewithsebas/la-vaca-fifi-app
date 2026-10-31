@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Lilita_One, Nunito } from "next/font/google";
-import { ServiceWorker } from "@/components/service-worker";
-import { SiteProvider } from "@/components/site-provider";
+import { ServiceWorker } from "@/components/site/service-worker";
+import { SiteProvider } from "@/components/site/site-provider";
 import { config } from "@/lib/config";
 import { getSiteCabins } from "@/lib/server/cabins";
 import { getSiteContent } from "@/lib/server/site";

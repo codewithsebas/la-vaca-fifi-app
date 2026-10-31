@@ -15,7 +15,7 @@ import {
   TagIcon,
   TrendIcon,
   UsersIcon,
-} from "@/components/icons";
+} from "@/components/ui/icons";
 
 export type ModuleId =
   | "dashboard"

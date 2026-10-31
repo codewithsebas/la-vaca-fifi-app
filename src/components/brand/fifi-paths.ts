@@ -2,7 +2,7 @@
 // mancha negra sobre la frente que baja por el ojo derecho, ojos verdes (el izquierdo con pestañas), cuernos beige,
 // oreja izquierda rosada con el arete amarillo de «MURILLO», oreja derecha gris, hocico beige con una fosa grande y la
 // lengua roja relamiéndose; al lado, la taza de café con sus granos. Un solo origen para el personaje de la página
-// (components/fifi/fifi.tsx), el logo y los íconos (scripts/fifi-logo.ts).
+// (components/brand/fifi.tsx), el logo y los íconos (scripts/fifi-logo.ts).
 
 const FIFI_INK = "#221a16";
 

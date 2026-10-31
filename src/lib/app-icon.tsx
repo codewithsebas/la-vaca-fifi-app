@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { MARK_FIFI, MARK_FIFI_VIEWBOX } from "@/components/icons";
+import { MARK_FIFI, MARK_FIFI_VIEWBOX } from "@/components/ui/icons";
 
 // Íconos de la app (pestaña, pantalla de inicio, PWA) y logo de los correos: el logo, Fifí en su sello azul.
 // "site": el logo (sitio de reservas). "panel": el logo más pequeño sobre la tinta de Fifí, para distinguir la app del

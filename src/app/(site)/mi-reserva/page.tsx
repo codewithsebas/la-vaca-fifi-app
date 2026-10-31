@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { LookupForm } from "@/components/lookup-form";
+import { LookupForm } from "@/components/booking/lookup-form";
 import { config } from "@/lib/config";
 
 export const metadata: Metadata = {

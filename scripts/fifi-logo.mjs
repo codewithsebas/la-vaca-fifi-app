@@ -1,9 +1,9 @@
-// Genera el logo y el favicon de La Vaca Fifí a partir de los trazos del personaje (src/components/fifi/fifi-paths.ts):
+// Genera el logo y el favicon de La Vaca Fifí a partir de los trazos del personaje (src/components/brand/fifi-paths.ts):
 //   node --experimental-strip-types scripts/fifi-logo.mjs
 // Escribe public/logo-la-vaca-fifi.svg (sello de 512 px) y public/favicon-la-vaca-fifi.svg (la cara más grande, para
 // 16-48 px). Los PNG del sitio (public/logo-la-vaca-fifi.png, 768 px) y app/favicon.ico se exportan desde estos SVG.
 import { writeFile } from "node:fs/promises";
-import { FIFI, FIFI_COLORS as C, FIFI_EYES } from "../src/components/fifi/fifi-paths.ts";
+import { FIFI, FIFI_COLORS as C, FIFI_EYES } from "../src/components/brand/fifi-paths.ts";
 
 const SKY = "#2fa8e0";
 const HILLS = "M-20 330C70 296 150 326 236 308C322 290 410 318 532 294V540H-20Z";

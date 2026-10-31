@@ -5,7 +5,7 @@
    «on-dark» es la tinta (texto sobre el fondo, contornos y sombras de las calcomanías). `static` porque varios colores
    (estados) se usan desde JS.
    Los colores del sitio (fondos, tarjetas, textos, acentos y botón principal) se pueden cambiar desde el panel:
-   lib/theme.ts los vuelve a declarar en :root, en las páginas públicas (components/site-theme.tsx) y en el panel
+   lib/theme.ts los vuelve a declarar en :root, en las páginas públicas (components/site/site-theme.tsx) y en el panel
    (PanelTheme, components/admin/shell.tsx), que además deriva de ellos su zona de trabajo. */
 @theme static {
   --color-bg: #fff8eb;
@@ -83,7 +83,7 @@
   --animate-sky-arrive: ec-sky-arrive 2.6s cubic-bezier(0.16, 0.84, 0.3, 1) both;
   --animate-sky-drift: ec-sky-drift 38s ease-in-out infinite alternate;
   --animate-shooting-star: ec-shooting-star 9s ease-in infinite;
-  /* ── Fifí (components/fifi): parpadea, se relame, se le mece el arete y saltan los granos de café ── */
+  /* ── Fifí (components/brand/fifi.tsx): parpadea, se relame, se le mece el arete y saltan los granos de café ── */
   --animate-fifi-blink: ec-fifi-blink 5.5s ease-in-out infinite;
   --animate-fifi-lick: ec-fifi-lick 3.2s ease-in-out infinite;
   --animate-fifi-tag: ec-fifi-tag 2.6s ease-in-out infinite alternate;

@@ -1,6 +1,6 @@
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { SiteTheme, siteViewport } from "@/components/site-theme";
+import { SiteFooter } from "@/components/site/footer";
+import { SiteHeader } from "@/components/site/header";
+import { SiteTheme, siteViewport } from "@/components/site/site-theme";
 
 export function generateViewport() {
   return siteViewport();

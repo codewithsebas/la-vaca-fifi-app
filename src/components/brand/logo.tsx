@@ -3,7 +3,7 @@ import logo from "@/public/logo-la-vaca-fifi.png";
 
 // Logo: Fifí, la vaca del letrero del restaurante, relamiéndose dentro de un sello azul de borde oscuro. Decorativo:
 // junto a él siempre va el nombre, o el enlace que lo envuelve lo nombra. El vector es public/logo-la-vaca-fifi.svg
-// (lo genera scripts/fifi-logo.ts con los trazos de components/fifi/fifi-paths.ts).
+// (lo genera scripts/fifi-logo.ts con los trazos de components/brand/fifi-paths.ts).
 // eager: visible al cargar (encabezado), sin esperar a que entre en pantalla.
 export function Logo({ size, eager = false, className = "" }: { size: number; eager?: boolean; className?: string }) {
   return <Image src={logo} alt="" width={size} height={size} loading={eager ? "eager" : undefined} className={`flex-none rounded-full ${className}`} />;

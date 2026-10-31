@@ -16,8 +16,8 @@ import {
   UsersIcon,
   WarningIcon,
   WhatsAppIcon,
-} from "@/components/icons";
-import { StatusPill } from "@/components/status-pill";
+} from "@/components/ui/icons";
+import { StatusPill } from "@/components/ui/status-pill";
 import { type ClientSummary, buildClients, valueOf } from "@/lib/admin-metrics";
 import { api } from "@/lib/api";
 import { config } from "@/lib/config";

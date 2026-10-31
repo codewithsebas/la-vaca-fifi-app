@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PayLink } from "@/components/pay-link";
+import { PayLink } from "@/components/booking/pay-link";
 import { config } from "@/lib/config";
 
 export const metadata: Metadata = {

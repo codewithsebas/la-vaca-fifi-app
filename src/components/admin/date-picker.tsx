@@ -2,7 +2,7 @@
 
 // Selectores de fecha del panel (una fecha o un rango), con el mismo lenguaje visual del calendario principal.
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "@/components/icons";
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "@/components/ui/icons";
 import { MONTHS, WD_MIN, addDays, fmtDate, monthStart, nightsBetween, parseISO, plural, todayISO } from "@/lib/format";
 import { Popover } from "@/components/ui/floating";
 import { adminInput } from "@/components/admin/shared";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BellIcon, CheckIcon, SendIcon } from "@/components/icons";
+import { BellIcon, CheckIcon, SendIcon } from "@/components/ui/icons";
 import { api, type PushDevice } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { GROUP_IDS, NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";

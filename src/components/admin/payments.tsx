@@ -4,7 +4,7 @@
 // El análisis (tendencias, comparaciones, distribución) vive en Finanzas.
 import Link from "next/link";
 import { useState } from "react";
-import { AlertIcon, ClockIcon, DownloadIcon, FileTextIcon, HomeIcon, TrendIcon, WalletIcon } from "@/components/icons";
+import { AlertIcon, ClockIcon, DownloadIcon, FileTextIcon, HomeIcon, TrendIcon, WalletIcon } from "@/components/ui/icons";
 import { balanceDue, finance, pendingOf, paymentsOf, type Payment } from "@/lib/admin-metrics";
 import { cop, countdown, download, fmtDate, plural, timeAgo } from "@/lib/format";
 import { PAYMENT_STATUS, kindLabel, methodLabel } from "@/lib/payments";

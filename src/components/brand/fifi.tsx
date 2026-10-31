@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { FIFI, FIFI_BEANS, FIFI_COLORS as C, FIFI_EYES, FIFI_VIEWBOX } from "@/components/fifi/fifi-paths";
+import { FIFI, FIFI_BEANS, FIFI_COLORS as C, FIFI_EYES, FIFI_VIEWBOX } from "@/components/brand/fifi-paths";
 
 // Fifí, la vaca del letrero del restaurante, dibujada en trazo de caricatura (contorno oscuro y colores planos). Con
 // `cup`, la taza de café humeante a su lado. Se mueve sola: parpadea, se relame, el arete se mece y los granos saltan;

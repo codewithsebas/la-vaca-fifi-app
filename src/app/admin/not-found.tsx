@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Card, EmptyState, PageHeader, buttonClass } from "@/components/admin/ui";
-import { SearchIcon } from "@/components/icons";
+import { SearchIcon } from "@/components/ui/icons";
 
 // Rutas del panel que no existen (o un detalle con un identificador inválido): se muestra dentro del panel.
 export default function AdminNotFound() {

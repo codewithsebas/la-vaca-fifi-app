@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { FIFI } from "@/components/fifi/fifi-paths";
+import { FIFI } from "@/components/brand/fifi-paths";
 
 type IconProps = { size?: number; stroke?: number; className?: string; style?: CSSProperties };
 
@@ -242,9 +242,9 @@ export const NoteIcon = (p: IconProps) => (
   </Stroke>
 );
 
-// Silueta de Fifí (trazos de components/fifi/fifi-paths.ts, encuadre MARK_FIFI_VIEWBOX) para el ícono de las
+// Silueta de Fifí (trazos de components/brand/fifi-paths.ts, encuadre MARK_FIFI_VIEWBOX) para el ícono de las
 // notificaciones de Android, que solo usa la forma (lib/app-icon.tsx). Cada trazo se rellena con evenodd: los ojos y
-// la fosa nasal quedan calados. El logo de la marca es la imagen de components/brand.tsx.
+// la fosa nasal quedan calados. El logo de la marca es la imagen de components/brand/logo.tsx.
 export const MARK_FIFI_VIEWBOX = "14 14 330 282";
 export const MARK_FIFI = [
   FIFI.hornLeft,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { CheckIcon, MinusIcon, PlusIcon, RefreshIcon, UploadIcon, WarningIcon } from "@/components/icons";
+import { CheckIcon, MinusIcon, PlusIcon, RefreshIcon, UploadIcon, WarningIcon } from "@/components/ui/icons";
 import { cropOutput, imageSize, type Crop } from "@/lib/image-resize";
 import { Button, Callout, IconButton, Modal, Spinner } from "@/components/admin/ui";
 

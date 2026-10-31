@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AlertIcon, CalendarIcon, CheckIcon, ClockIcon, ExternalLinkIcon, PencilIcon, RefreshIcon } from "@/components/icons";
+import { AlertIcon, CalendarIcon, CheckIcon, ClockIcon, ExternalLinkIcon, PencilIcon, RefreshIcon } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
 import { api, type Channels } from "@/lib/api";
 import { isMockApi } from "@/lib/config";

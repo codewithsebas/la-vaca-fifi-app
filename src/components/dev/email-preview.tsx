@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSite } from "@/components/site-provider";
+import { useSite } from "@/components/site/site-provider";
 import { emailTemplates } from "@/lib/emails";
 
 type Opt = { label: string; on: boolean; pick: () => void };

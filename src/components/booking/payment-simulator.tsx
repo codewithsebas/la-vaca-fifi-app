@@ -9,7 +9,7 @@ import { api, type ApiError } from "@/lib/api";
 import { cop, fmtClock } from "@/lib/format";
 import { kindLabel } from "@/lib/payments";
 import type { PaymentState } from "@/lib/types";
-import { fmtLeft, useServerNow } from "@/components/reservation-payments";
+import { fmtLeft, useServerNow } from "@/components/booking/reservation-payments";
 
 type Outcome = "approve" | "decline" | "pending" | "error";
 

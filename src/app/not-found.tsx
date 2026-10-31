@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Lick } from "@/components/fifi/decor";
-import { Fifi } from "@/components/fifi/fifi";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { SiteTheme } from "@/components/site-theme";
+import { Lick } from "@/components/brand/decor";
+import { Fifi } from "@/components/brand/fifi";
+import { SiteFooter } from "@/components/site/footer";
+import { SiteHeader } from "@/components/site/header";
+import { SiteTheme } from "@/components/site/site-theme";
 
 export const metadata: Metadata = {
   title: "Página no encontrada",

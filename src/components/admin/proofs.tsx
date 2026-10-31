@@ -4,7 +4,7 @@
 // Se usan en la ficha de la reserva y en el módulo de Pagos (misma lógica, mismo aspecto).
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CheckIcon, CloseIcon, DownloadIcon, ExternalLinkIcon, EyeIcon, FileTextIcon, ImageIcon, ShieldIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon, DownloadIcon, ExternalLinkIcon, EyeIcon, FileTextIcon, ImageIcon, ShieldIcon } from "@/components/ui/icons";
 import { api } from "@/lib/api";
 import { cop, download, timeAgo } from "@/lib/format";
 import type { PaymentProof, Reservation } from "@/lib/types";

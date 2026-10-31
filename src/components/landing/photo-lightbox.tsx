@@ -7,8 +7,8 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { config } from "@/lib/config";
-import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "@/components/icons";
-import { Bean } from "@/components/fifi/decor";
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "@/components/ui/icons";
+import { Bean } from "@/components/brand/decor";
 
 const TITLE = `Galería de ${config.name}`;
 const CLOSE_MS = 320;

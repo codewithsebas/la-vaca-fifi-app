@@ -22,14 +22,14 @@ import {
   UploadIcon,
   WalletIcon,
   WarningIcon,
-} from "@/components/icons";
+} from "@/components/ui/icons";
 import { api } from "@/lib/api";
 import { config, isMockApi } from "@/lib/config";
 import { resizeImage, type Crop } from "@/lib/image-resize";
 import { PHOTO_SLOTS, TEXT_LIMITS, fifiPhrases, fmtTime, type PhotoSlotDef, type SitePolicy, type SiteSettings, type SiteTexts } from "@/lib/site";
 import { themeIssues, type SiteTheme } from "@/lib/theme";
 import { Combobox } from "@/components/ui/combobox";
-import { Fifi } from "@/components/fifi/fifi";
+import { Fifi } from "@/components/brand/fifi";
 import { useAdmin } from "@/components/admin/context";
 import { CONTENT_GROUPS, CONTENT_SECTIONS, MODULES, isContentSection, paths, type ContentSectionId } from "@/components/admin/routes";
 import { PhotoCropper } from "@/components/admin/photo-cropper";

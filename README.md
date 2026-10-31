@@ -5,7 +5,7 @@ Sitio web y sistema de reservas de La Vaca Fifí (vereda Pajonales, a 5 minutos 
 ## Marca
 
 - Logo: `public/logo-la-vaca-fifi.svg` (vector original) y `public/logo-la-vaca-fifi.png` (768 px, lo usan el sitio, los íconos de la app y los correos). Sello con los colores del letrero de la entrada y la vaca Holstein con su corona de flores. Si cambias el SVG, vuelve a exportar el PNG del mismo tamaño.
-- Nombre: Alegreya SC (versalitas, como el letrero), en `components/brand.tsx`.
+- Nombre: Alegreya SC (versalitas, como el letrero), en `components/brand/logo.tsx`.
 - Paleta: «Letrero» (verde de finca, dorado de las letras, coral de las flores y terracota en los botones), en `lib/theme.ts` y `app/globals.css`. Se cambia desde el panel (Contenido del sitio → Colores).
 - Fotos del cliente en `public/fotos/`: se ven en el sitio mientras no se suba otra desde el panel.
 

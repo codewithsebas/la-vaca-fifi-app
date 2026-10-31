@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { dirHref, tel, wa } from "@/lib/format";
 import { getSite } from "@/lib/server/site";
-import { BrandName, Logo } from "@/components/brand";
-import { CowHide, SpotEdge } from "@/components/fifi/decor";
-import { Fifi } from "@/components/fifi/fifi";
-import { ArrowUpIcon, CalendarIcon, PhoneIcon, PinIcon, WhatsAppIcon } from "@/components/icons";
+import { BrandName, Logo } from "@/components/brand/logo";
+import { CowHide, SpotEdge } from "@/components/brand/decor";
+import { Fifi } from "@/components/brand/fifi";
+import { ArrowUpIcon, CalendarIcon, PhoneIcon, PinIcon, WhatsAppIcon } from "@/components/ui/icons";
 
 // Pie de página: la tinta de las manchas de Fifí. Arriba, el borde ondulado del amarillo del arete; Fifí asoma por el
 // filo; luego la marca con sus redes, la dirección y los horarios, los teléfonos y los enlaces de reservas; abajo, el

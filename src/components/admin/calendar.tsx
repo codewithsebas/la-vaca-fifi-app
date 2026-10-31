@@ -14,8 +14,8 @@ import {
   PlusIcon,
   RefreshIcon,
   WalletIcon,
-} from "@/components/icons";
-import { StatusPill } from "@/components/status-pill";
+} from "@/components/ui/icons";
+import { StatusPill } from "@/components/ui/status-pill";
 import { ACTIVE_STATUSES, channelBlocks, computeQuote, isChannelBlock, nightlyRate } from "@/lib/booking";
 import {
   MONTHS,

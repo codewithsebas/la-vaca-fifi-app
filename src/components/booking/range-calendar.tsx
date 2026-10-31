@@ -1,7 +1,7 @@
 "use client";
 
 import { MONTHS, addDays, parseISO } from "@/lib/format";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 
 type Props = {
   view: string; // primer día del mes visible (AAAA-MM-01)

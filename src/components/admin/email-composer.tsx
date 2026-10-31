@@ -4,7 +4,7 @@
 // lo envía con Resend y deja el resultado en la bandeja de correos. Cada intento lleva un identificador propio:
 // reintentar después de un fallo nunca envía el mismo mensaje dos veces.
 import { useEffect, useState } from "react";
-import { CloseIcon, MailIcon } from "@/components/icons";
+import { CloseIcon, MailIcon } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
 import { api, type ApiError } from "@/lib/api";
 import { fmtDate, timeAgo } from "@/lib/format";

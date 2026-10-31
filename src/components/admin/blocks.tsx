@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BanIcon, CalendarIcon, CheckIcon, ClockIcon, MoonIcon, PencilIcon, PlusIcon, TrashIcon, WarningIcon } from "@/components/icons";
+import { BanIcon, CalendarIcon, CheckIcon, ClockIcon, MoonIcon, PencilIcon, PlusIcon, TrashIcon, WarningIcon } from "@/components/ui/icons";
 import { BLOCK_REASONS, channelBlocks, clashingReservations } from "@/lib/booking";
 import { unitMarks } from "@/lib/admin-metrics";
 import { api } from "@/lib/api";

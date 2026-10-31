@@ -19,7 +19,7 @@ import {
   TrashIcon,
   UploadIcon,
   UsersIcon,
-} from "@/components/icons";
+} from "@/components/ui/icons";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { cop, plural } from "@/lib/format";

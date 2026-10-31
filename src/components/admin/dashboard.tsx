@@ -15,8 +15,8 @@ import {
   TrendIcon,
   UsersIcon,
   WalletIcon,
-} from "@/components/icons";
-import { StatusPill } from "@/components/status-pill";
+} from "@/components/ui/icons";
+import { StatusPill } from "@/components/ui/status-pill";
 import { balanceDue, delta, finance, pendingOf, previousRange } from "@/lib/admin-metrics";
 import { ACTIVE_STATUSES, channelBlocks } from "@/lib/booking";
 import { addDays, cop, countdown, fmtDate, fmtFullDate, plural } from "@/lib/format";

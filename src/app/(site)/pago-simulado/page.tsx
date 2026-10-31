@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PaymentSimulator } from "@/components/payment-simulator";
+import { PaymentSimulator } from "@/components/booking/payment-simulator";
 
 export const metadata: Metadata = {
   title: "Pasarela de pagos simulada",

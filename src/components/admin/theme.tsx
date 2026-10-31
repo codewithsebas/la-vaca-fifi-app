@@ -2,7 +2,7 @@
 
 // Contenido del sitio → Colores: paletas listas, ajuste color por color, aviso de contraste y vista previa en vivo.
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
-import { CheckIcon, EyeIcon, MonitorIcon, PaletteIcon, RefreshIcon, SmartphoneIcon, WarningIcon } from "@/components/icons";
+import { CheckIcon, EyeIcon, MonitorIcon, PaletteIcon, RefreshIcon, SmartphoneIcon, WarningIcon } from "@/components/ui/icons";
 import {
   DEFAULT_THEME,
   THEME_GROUPS,

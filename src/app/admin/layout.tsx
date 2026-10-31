@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/shell";
-import { siteViewport } from "@/components/site-theme";
+import { siteViewport } from "@/components/site/site-theme";
 import { config } from "@/lib/config";
 
 export const metadata: Metadata = {

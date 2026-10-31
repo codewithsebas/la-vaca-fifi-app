@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Confirmation } from "@/components/confirmation";
+import { Confirmation } from "@/components/booking/confirmation";
 import { config } from "@/lib/config";
 
 export const metadata: Metadata = {

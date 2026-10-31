@@ -5,9 +5,9 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Brand } from "@/components/brand";
-import { ExternalLinkIcon, InfoIcon, LogoutIcon, MenuIcon, RefreshIcon, WarningIcon, CloseIcon } from "@/components/icons";
-import { useSite } from "@/components/site-provider";
+import { Brand } from "@/components/brand/logo";
+import { ExternalLinkIcon, InfoIcon, LogoutIcon, MenuIcon, RefreshIcon, WarningIcon, CloseIcon } from "@/components/ui/icons";
+import { useSite } from "@/components/site/site-provider";
 import { api } from "@/lib/api";
 import { config } from "@/lib/config";
 import { todayISO } from "@/lib/format";

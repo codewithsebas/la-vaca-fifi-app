@@ -2,7 +2,7 @@
 
 // Enlace de pago de una reserva pendiente: copiarlo o enviarlo por WhatsApp con un mensaje listo, y cuánto le queda.
 import { useState } from "react";
-import { CheckIcon, ClockIcon, ExternalLinkIcon, WhatsAppIcon } from "@/components/icons";
+import { CheckIcon, ClockIcon, ExternalLinkIcon, WhatsAppIcon } from "@/components/ui/icons";
 import { config } from "@/lib/config";
 import { cop, countdown, dateOf, fmtClock, fmtDate, nightsBetween, plural, waTo } from "@/lib/format";
 import { payPath } from "@/lib/payments";
