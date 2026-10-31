@@ -61,7 +61,15 @@ export const fmtFullDate = (s: string) => {
 // Hora del día en Colombia: "3:45 p. m."
 export const fmtClock = (iso: string) => new Intl.DateTimeFormat("es-CO", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 export const fmtDateTime = (iso: string) =>
-  new Intl.DateTimeFormat("es-CO", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+  new Intl.DateTimeFormat("es-CO", {
+    timeZone: TZ,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
 
 // Horas que faltan para el inicio del check-in (hora de Colombia, UTC-5).
 export const hoursUntilCheckIn = (s: string, checkInStart: string) => (Date.parse(`${s}T${checkInStart}:00-05:00`) - Date.now()) / 36e5;
@@ -77,7 +85,8 @@ export const countdown = (iso: string) => {
 };
 
 export const wa = (whatsapp: string, text?: string) => `https://wa.me/${whatsapp}${text ? "?text=" + encodeURIComponent(text) : ""}`;
-export const waTo = (phone: string, text?: string) => `https://wa.me/${String(phone || "").replace(/\D/g, "")}${text ? "?text=" + encodeURIComponent(text) : ""}`;
+export const waTo = (phone: string, text?: string) =>
+  `https://wa.me/${String(phone || "").replace(/\D/g, "")}${text ? "?text=" + encodeURIComponent(text) : ""}`;
 export const tel = (p: string) => "tel:+57" + p.replace(/\D/g, "");
 export const mask = (doc: string) => (doc ? "****" + String(doc).slice(-4) : "");
 export const dirHref = () => `https://www.google.com/maps/dir/?api=1&destination=${config.lat},${config.lng}`;
@@ -98,7 +107,12 @@ export const statusOf = (s: string) => STATUS[s as ReservationStatus] ?? { label
 export const ics = (r: Pick<Reservation, "code" | "checkIn" | "checkOut" | "cabinTypeId">, c: SiteConfig, cabin = cabinName(r.cabinTypeId)) => {
   const d = (s: string) => s.replace(/-/g, "");
   return [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//La Vaca Fifi//Reservas//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//La Vaca Fifi//Reservas//ES",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
     `UID:${r.code}@lavacafifi`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
     `DTSTART;VALUE=DATE:${d(r.checkIn)}`,
@@ -107,7 +121,8 @@ export const ics = (r: Pick<Reservation, "code" | "checkIn" | "checkOut" | "cabi
     `LOCATION:${config.address}`,
     `GEO:${config.lat};${config.lng}`,
     `DESCRIPTION:Código ${r.code}. Check-in ${c.checkIn}. Check-out ${c.checkOut}. Presenta tu documento de identidad físico. WhatsApp +${c.whatsapp}`,
-    "END:VEVENT", "END:VCALENDAR",
+    "END:VEVENT",
+    "END:VCALENDAR",
   ].join("\r\n");
 };
 

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function MyReservationPage() {
   return (
-    <main className="gutter-1000 flex flex-col gap-5 pt-6 pb-[72px]">
+    <main className="flex flex-col gap-5 gutter-1000 pt-6 pb-[72px]">
       <h1 className="page-title">
         <span>Consulta</span> <span className="text-accent">tu reserva</span>
       </h1>

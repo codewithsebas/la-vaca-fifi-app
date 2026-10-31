@@ -17,11 +17,17 @@ export const PUT = route(async (req: NextRequest) => {
   for (const t of types) {
     const r = b[t.id];
     if (!r) continue;
-    if (!money(r.precioPareja) || !money(r.personaAdicional) || !Number.isInteger(r.maxPersonas) || r.maxPersonas < 1 || r.maxPersonas > 12) return fail(400, "INVALID_RATES");
+    if (!money(r.precioPareja) || !money(r.personaAdicional) || !Number.isInteger(r.maxPersonas) || r.maxPersonas < 1 || r.maxPersonas > 12)
+      return fail(400, "INVALID_RATES");
   }
   for (const t of types) {
     const r = b[t.id];
-    if (r) await sb.from("cabin_types").update({ precio_pareja: r.precioPareja, persona_adicional: r.personaAdicional, max_personas: r.maxPersonas }).eq("id", t.id).throwOnError();
+    if (r)
+      await sb
+        .from("cabin_types")
+        .update({ precio_pareja: r.precioPareja, persona_adicional: r.personaAdicional, max_personas: r.maxPersonas })
+        .eq("id", t.id)
+        .throwOnError();
   }
   revalidatePath("/", "layout");
   return json((await loadCabinTypes(sb)).types);

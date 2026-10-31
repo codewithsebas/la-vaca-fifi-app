@@ -20,11 +20,7 @@ export const siteManifest: MetadataRoute.Manifest = {
   background_color: BG,
   theme_color: BG,
   categories: ["travel"],
-  icons: [
-    png("/icons/icon-192.png", 192),
-    png("/icons/icon-512.png", 512),
-    png("/icons/maskable-512.png", 512, "maskable"),
-  ],
+  icons: [png("/icons/icon-192.png", 192), png("/icons/icon-512.png", 512), png("/icons/maskable-512.png", 512, "maskable")],
   shortcuts: [
     { name: "Reservar", short_name: "Reservar", url: "/reservar", icons: [png("/icons/icon-192.png", 192)] },
     { name: "Consultar mi reserva", short_name: "Mi reserva", url: "/mi-reserva", icons: [png("/icons/icon-192.png", 192)] },

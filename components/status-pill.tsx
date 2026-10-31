@@ -29,7 +29,7 @@ export function KeyValues({ rows, variant = "card" }: { rows: Row[]; variant?: "
     <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3 rounded-md bg-card-muted p-4">
       {rows.map((x) => (
         <div key={x.k}>
-          <dt className="text-[.72rem] font-extrabold uppercase tracking-[.06em]">{x.k}</dt>
+          <dt className="text-[.72rem] font-extrabold tracking-[.06em] uppercase">{x.k}</dt>
           <dd className="mt-0.5 font-bold">{x.v}</dd>
         </div>
       ))}

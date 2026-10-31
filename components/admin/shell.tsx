@@ -20,7 +20,21 @@ import { Login, PanelLoader } from "./login";
 import { LiveDot, NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "./notifications";
 import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "./routes";
 import { type Ask, type ConfirmCfg, adminInput } from "./shared";
-import { Breadcrumbs, Button, Callout, CountBadge, ErrorState, Field, FieldError, IconButton, Modal, PageSkeleton, Toasts, type Crumb, type ToastMsg } from "./ui";
+import {
+  Breadcrumbs,
+  Button,
+  Callout,
+  CountBadge,
+  ErrorState,
+  Field,
+  FieldError,
+  IconButton,
+  Modal,
+  PageSkeleton,
+  Toasts,
+  type Crumb,
+  type ToastMsg,
+} from "./ui";
 
 /* ───────────── Colores ───────────── */
 
@@ -53,7 +67,11 @@ function Gated({ children }: { children: ReactNode }) {
     () =>
       api.admin
         .data()
-        .then((r) => setGate(r.status === 200 && r.data ? { status: "app", data: r.data } : r.status === 401 || r.status === 403 ? { status: "login" } : { status: "error" }))
+        .then((r) =>
+          setGate(
+            r.status === 200 && r.data ? { status: "app", data: r.data } : r.status === 401 || r.status === 403 ? { status: "login" } : { status: "error" },
+          ),
+        )
         .catch(() => setGate({ status: "error" })),
     [],
   );
@@ -73,7 +91,11 @@ function Gated({ children }: { children: ReactNode }) {
     return (
       <div className="admin-surface grid min-h-dvh place-items-center bg-canvas px-4">
         <div className="w-full max-w-[460px]">
-          <ErrorState title="No pudimos abrir el panel" text="Revisa tu conexión a internet. Si el problema sigue, el servidor puede estar en mantenimiento." onRetry={recheck} />
+          <ErrorState
+            title="No pudimos abrir el panel"
+            text="Revisa tu conexión a internet. Si el problema sigue, el servidor puede estar en mantenimiento."
+            onRetry={recheck}
+          />
         </div>
       </div>
     );
@@ -88,7 +110,17 @@ function Gated({ children }: { children: ReactNode }) {
 
 type ConfirmState = ConfirmCfg & { error: string; busy: boolean };
 
-function ConfirmDialog({ cf, onChange, onCancel, onOk }: { cf: ConfirmState; onChange: (p: Partial<ConfirmCfg>) => void; onCancel: () => void; onOk: () => void }) {
+function ConfirmDialog({
+  cf,
+  onChange,
+  onCancel,
+  onOk,
+}: {
+  cf: ConfirmState;
+  onChange: (p: Partial<ConfirmCfg>) => void;
+  onCancel: () => void;
+  onOk: () => void;
+}) {
   const noteMissing = !!cf.noteRequired && !cf.note?.trim();
   return (
     <Modal
@@ -101,7 +133,10 @@ function ConfirmDialog({ cf, onChange, onCancel, onOk }: { cf: ConfirmState; onC
     >
       <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex gap-3.5">
-          <span aria-hidden="true" className={`grid size-10 flex-none place-items-center rounded-full ${cf.danger ? "bg-error-soft text-error" : "bg-canvas text-ink"}`}>
+          <span
+            aria-hidden="true"
+            className={`grid size-10 flex-none place-items-center rounded-full ${cf.danger ? "bg-error-soft text-error" : "bg-canvas text-ink"}`}
+          >
             {cf.danger ? <WarningIcon size={19} /> : <InfoIcon size={19} />}
           </span>
           <div className="min-w-0 pt-1.5">
@@ -142,12 +177,27 @@ function ConfirmDialog({ cf, onChange, onCancel, onOk }: { cf: ConfirmState; onC
         )}
         {cf.noteLabel && (
           <Field label={cf.noteLabel} hint={cf.noteHint}>
-            {(p) => <textarea {...p} id="cf-first" rows={3} maxLength={500} value={cf.note ?? ""} onChange={(e) => onChange({ note: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} />}
+            {(p) => (
+              <textarea
+                {...p}
+                id="cf-first"
+                rows={3}
+                maxLength={500}
+                value={cf.note ?? ""}
+                onChange={(e) => onChange({ note: e.target.value })}
+                className={`${adminInput} resize-y leading-relaxed`}
+              />
+            )}
           </Field>
         )}
         {cf.optionLabel && (
           <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-line px-3.5 py-3 text-[14px] text-ink transition-colors hover:bg-canvas">
-            <input type="checkbox" checked={!!cf.option} onChange={(e) => onChange({ option: e.target.checked })} className="mt-0.5 size-4 flex-none accent-[var(--color-cta)]" />
+            <input
+              type="checkbox"
+              checked={!!cf.option}
+              onChange={(e) => onChange({ option: e.target.checked })}
+              className="mt-0.5 size-4 flex-none accent-[var(--color-cta)]"
+            />
             {cf.optionLabel}
           </label>
         )}
@@ -155,7 +205,13 @@ function ConfirmDialog({ cf, onChange, onCancel, onOk }: { cf: ConfirmState; onC
       </div>
       <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
         <Button onClick={onCancel}>Volver</Button>
-        <Button id="cf-ok" variant={cf.danger ? "danger" : "primary"} loading={cf.busy} disabled={noteMissing || (cf.reschedule && !(cf.ci && cf.co))} onClick={onOk}>
+        <Button
+          id="cf-ok"
+          variant={cf.danger ? "danger" : "primary"}
+          loading={cf.busy}
+          disabled={noteMissing || (cf.reschedule && !(cf.ci && cf.co))}
+          onClick={onOk}
+        >
           {cf.busy ? "Procesando…" : cf.okLabel}
         </Button>
       </div>
@@ -167,7 +223,8 @@ function ConfirmDialog({ cf, onChange, onCancel, onOk }: { cf: ConfirmState; onC
 
 type Badges = Partial<Record<ModuleId, { n: number; label: string }>>;
 
-const navItem = "group relative flex min-h-9 w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-[14px] leading-tight font-semibold transition-colors pointer-coarse:min-h-11";
+const navItem =
+  "group relative flex min-h-9 w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-[14px] leading-tight font-semibold transition-colors pointer-coarse:min-h-11";
 
 // Menú de módulos por grupos: el mismo en la barra lateral (escritorio) y en el cajón (móvil y tableta).
 function NavList({ current, badges, onNavigate }: { current: ModuleId | null; badges: Badges; onNavigate?: () => void }) {
@@ -181,7 +238,13 @@ function NavList({ current, badges, onNavigate }: { current: ModuleId | null; ba
             const active = current === id;
             const b = badges[id];
             return (
-              <Link key={id} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={`${navItem} ${active ? "bg-white/10 text-on-dark" : "text-on-dark/72 hover:bg-white/6 hover:text-on-dark"}`}>
+              <Link
+                key={id}
+                href={href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                className={`${navItem} ${active ? "bg-white/10 text-on-dark" : "text-on-dark/72 hover:bg-white/6 hover:text-on-dark"}`}
+              >
                 {active && <span aria-hidden="true" className="absolute top-2 bottom-2 left-0 w-[3px] rounded-r-full bg-highlight" />}
                 <Icon size={18} className={active ? "text-highlight" : "text-on-dark/55 transition-colors group-hover:text-on-dark/85"} />
                 <span className="flex-1">{label}</span>
@@ -462,7 +525,11 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
             <div className="admin-surface sticky top-0 z-20 hidden h-14 flex-none items-center justify-between gap-4 border-b border-line bg-canvas/85 px-8 backdrop-blur lg:flex">
               <Breadcrumbs items={crumbs} />
               <div className="flex items-center gap-3">
-                <Link href={paths.configuracion} className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-[12.5px] font-medium text-ink-muted transition-colors hover:text-ink" title={live === "live" ? "Las reservas y pagos nuevos llegan sin recargar" : undefined}>
+                <Link
+                  href={paths.configuracion}
+                  className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-[12.5px] font-medium text-ink-muted transition-colors hover:text-ink"
+                  title={live === "live" ? "Las reservas y pagos nuevos llegan sin recargar" : undefined}
+                >
                   <LiveDot status={live} />
                   {live === "live" ? "En vivo" : live === "connecting" ? "Conectando…" : live === "offline" ? "Sin tiempo real" : "Modo simulado"}
                 </Link>
@@ -471,7 +538,9 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
             </div>
 
             {/* Con una barra de guardado (fija al pie), el final de la página deja libre su alto para no quedar tapado. */}
-            <main className={`admin-surface mx-auto flex w-full max-w-[1400px] min-w-0 flex-1 flex-col gap-5 px-4 pt-4 pb-8 lg:px-8 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)] lg:pt-6 ${fullHeight ? "tall:min-h-0 tall:pb-5" : ""}`}>
+            <main
+              className={`admin-surface mx-auto flex w-full max-w-[1400px] min-w-0 flex-1 flex-col gap-5 px-4 pt-4 pb-8 lg:px-8 lg:pt-6 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)] ${fullHeight ? "tall:min-h-0 tall:pb-5" : ""}`}
+            >
               <Breadcrumbs items={crumbs} className="lg:hidden" />
               {loadError && (
                 <Callout tone="warning" role="alert">
@@ -490,7 +559,13 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
           </div>
 
           {menu && (
-            <Modal onClose={() => setMenu(false)} labelledBy="mn-title" dismissOnBackdrop initialFocus="#mn-close" className="m-0 mr-auto h-dvh max-h-none w-[min(300px,86vw)] p-0 motion-safe:open:animate-slide-in-left lg:hidden">
+            <Modal
+              onClose={() => setMenu(false)}
+              labelledBy="mn-title"
+              dismissOnBackdrop
+              initialFocus="#mn-close"
+              className="m-0 mr-auto h-dvh max-h-none w-[min(300px,86vw)] p-0 motion-safe:open:animate-slide-in-left lg:hidden"
+            >
               <div className="admin-dark flex h-full flex-col bg-bg text-on-dark">
                 <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-4">
                   <span className="flex items-center gap-2.5">

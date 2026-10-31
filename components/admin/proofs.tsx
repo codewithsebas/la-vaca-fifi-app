@@ -149,7 +149,13 @@ function ProofViewer({ p, onClose }: { p: PaymentProof; onClose: () => void }) {
   };
 
   return (
-    <Modal onClose={onClose} labelledBy="pv-title" dismissOnBackdrop initialFocus="#pv-close" className="m-auto flex h-[min(860px,calc(100dvh-32px))] w-[calc(100%-32px)] max-w-[900px] flex-col rounded-2xl p-0 motion-safe:open:animate-pop-in">
+    <Modal
+      onClose={onClose}
+      labelledBy="pv-title"
+      dismissOnBackdrop
+      initialFocus="#pv-close"
+      className="m-auto flex h-[min(860px,calc(100dvh-32px))] w-[calc(100%-32px)] max-w-[900px] flex-col rounded-2xl p-0 motion-safe:open:animate-pop-in"
+    >
       <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
         <div className="min-w-0">
           <h2 id="pv-title" className="truncate text-[15px] font-bold text-ink">

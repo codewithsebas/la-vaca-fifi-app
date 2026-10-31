@@ -15,7 +15,12 @@ export const maxDuration = 60;
 export const POST = route(async (req: NextRequest) => {
   const secret = process.env.CHANNEL_SYNC_SECRET?.trim();
   if (!secret) return fail(503, "NOT_CONFIGURED");
-  const given = Buffer.from(req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ?? "");
+  const given = Buffer.from(
+    req.headers
+      .get("authorization")
+      ?.replace(/^Bearer\s+/i, "")
+      .trim() ?? "",
+  );
   const expected = Buffer.from(secret);
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) return fail(401, "UNAUTHORIZED");
 

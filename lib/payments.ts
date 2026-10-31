@@ -73,7 +73,10 @@ export type Stage =
   | "completed"
   | "cancelled";
 
-type StageInput = Pick<PublicReservation, "status" | "depositDueAt" | "balancePaidAt" | "balanceDueAt" | "balanceOverdueAt" | "quote" | "paid" | "depositPaidAt" | "payments">;
+type StageInput = Pick<
+  PublicReservation,
+  "status" | "depositDueAt" | "balancePaidAt" | "balanceDueAt" | "balanceOverdueAt" | "quote" | "paid" | "depositPaidAt" | "payments"
+>;
 
 // `now`: hora del servidor ajustada (ver useServerClock). Un plazo que ya pasó en el reloj se muestra vencido mientras llega la confirmación del servidor.
 export function stageOf(r: StageInput, now = Date.now()): Stage {
@@ -108,7 +111,16 @@ export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: "info"
   expired: { label: "Sin completar", tone: "neutral" },
 };
 
-const METHOD: Record<string, string> = { CARD: "Tarjeta", PSE: "PSE", NEQUI: "Nequi", BANCOLOMBIA_TRANSFER: "Botón Bancolombia", BANCOLOMBIA_QR: "QR Bancolombia", DAVIPLATA: "Daviplata", SIMULADO: "Simulado", MANUAL: "Registrado por el equipo" };
+const METHOD: Record<string, string> = {
+  CARD: "Tarjeta",
+  PSE: "PSE",
+  NEQUI: "Nequi",
+  BANCOLOMBIA_TRANSFER: "Botón Bancolombia",
+  BANCOLOMBIA_QR: "QR Bancolombia",
+  DAVIPLATA: "Daviplata",
+  SIMULADO: "Simulado",
+  MANUAL: "Registrado por el equipo",
+};
 export const methodLabel = (m: string) => METHOD[m] ?? m;
 
 export const kindLabel = (k: PaymentKind) => (k === "deposit" ? "Abono" : k === "full" ? "Pago total" : "Saldo");

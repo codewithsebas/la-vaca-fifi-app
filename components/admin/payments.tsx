@@ -58,13 +58,42 @@ export function PaymentsView() {
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {refunds.length ? (
-          <StatCard label="Pagos por reembolsar" value={refunds.length} hint={cop(refunds.reduce((s, p) => s + p.amount, 0))} icon={<AlertIcon size={15} />} tone="danger" />
+          <StatCard
+            label="Pagos por reembolsar"
+            value={refunds.length}
+            hint={cop(refunds.reduce((s, p) => s + p.amount, 0))}
+            icon={<AlertIcon size={15} />}
+            tone="danger"
+          />
         ) : (
-          <StatCard label="Pagos en curso" value={open.length} hint={open.length ? "en la pasarela o en el banco" : "Ninguno ahora"} icon={<WalletIcon size={15} />} tone={open.length ? "info" : undefined} />
+          <StatCard
+            label="Pagos en curso"
+            value={open.length}
+            hint={open.length ? "en la pasarela o en el banco" : "Ninguno ahora"}
+            icon={<WalletIcon size={15} />}
+            tone={open.length ? "info" : undefined}
+          />
         )}
-        <StatCard label="Abonos pendientes" value={cop(deposits.reduce((s, r) => s + pendingOf(r).deposit, 0))} hint={plural(deposits.length, "retención sin abono", "retenciones sin abono")} icon={<ClockIcon size={15} />} tone={deposits.length ? "warning" : undefined} />
-        <StatCard label="Saldos por cobrar" value={cop(balances.reduce((s, r) => s + pendingOf(r).balance, 0))} hint={`${plural(balances.length, "estadía", "estadías")} · se pagan tras el check-in`} icon={<WalletIcon size={15} />} />
-        <StatCard label="Recibido este mes" value={cop(month.received)} hint={plural(month.payments.length, "pago", "pagos")} icon={<TrendIcon size={15} />} tone="success" />
+        <StatCard
+          label="Abonos pendientes"
+          value={cop(deposits.reduce((s, r) => s + pendingOf(r).deposit, 0))}
+          hint={plural(deposits.length, "retención sin abono", "retenciones sin abono")}
+          icon={<ClockIcon size={15} />}
+          tone={deposits.length ? "warning" : undefined}
+        />
+        <StatCard
+          label="Saldos por cobrar"
+          value={cop(balances.reduce((s, r) => s + pendingOf(r).balance, 0))}
+          hint={`${plural(balances.length, "estadía", "estadías")} · se pagan tras el check-in`}
+          icon={<WalletIcon size={15} />}
+        />
+        <StatCard
+          label="Recibido este mes"
+          value={cop(month.received)}
+          hint={plural(month.payments.length, "pago", "pagos")}
+          icon={<TrendIcon size={15} />}
+          tone="success"
+        />
       </div>
 
       <Tabs
@@ -75,7 +104,9 @@ export function PaymentsView() {
           { value: "transacciones", label: "Transacciones", icon: <WalletIcon size={15} />, count: open.length + refunds.length },
           { value: "recibidos", label: "Pagos recibidos", icon: <TrendIcon size={15} /> },
           { value: "por-cobrar", label: "Por cobrar", icon: <ClockIcon size={15} /> },
-          ...(data.proofs.length ? [{ value: "comprobantes" as const, label: "Comprobantes", icon: <FileTextIcon size={15} />, count: pendingProofs.length }] : []),
+          ...(data.proofs.length
+            ? [{ value: "comprobantes" as const, label: "Comprobantes", icon: <FileTextIcon size={15} />, count: pendingProofs.length }]
+            : []),
         ]}
       />
 
@@ -116,7 +147,12 @@ function TransactionsTab() {
         ]}
       />
       <Card aria-labelledby="pg-tx" className="flex flex-col gap-3 p-4 sm:p-5">
-        <CardHeader id="pg-tx" icon={<WalletIcon size={18} />} title={plural(list.length, "transacción", "transacciones")} subtitle="La reserva se confirma solo con el abono aprobado. Se actualiza en tiempo real." />
+        <CardHeader
+          id="pg-tx"
+          icon={<WalletIcon size={18} />}
+          title={plural(list.length, "transacción", "transacciones")}
+          subtitle="La reserva se confirma solo con el abono aprobado. Se actualiza en tiempo real."
+        />
         {list.length ? (
           <ul className="-mx-2 flex flex-col">
             {list.slice(0, limit).map((p) => {
@@ -124,7 +160,10 @@ function TransactionsTab() {
               const st = PAYMENT_STATUS[p.status];
               return (
                 <li key={p.id}>
-                  <Link href={paths.reserva(p.reservationCode)} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas">
+                  <Link
+                    href={paths.reserva(p.reservationCode)}
+                    className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas"
+                  >
                     <span className="min-w-[200px] flex-1">
                       <span className="block truncate text-[13.5px] font-semibold text-ink">
                         {r?.guest.fullName ?? p.reservationCode} <span className="font-medium text-ink-muted">· {p.reservationCode}</span>
@@ -146,7 +185,12 @@ function TransactionsTab() {
             })}
           </ul>
         ) : (
-          <EmptyState compact icon={<WalletIcon size={18} />} title="No hay transacciones en este filtro" text={filter === "todas" ? "Cuando un huésped pague el abono o el saldo, aparecerá aquí." : undefined} />
+          <EmptyState
+            compact
+            icon={<WalletIcon size={18} />}
+            title="No hay transacciones en este filtro"
+            text={filter === "todas" ? "Cuando un huésped pague el abono o el saldo, aparecerá aquí." : undefined}
+          />
         )}
         {list.length > limit && (
           <Button size="sm" variant="ghost" className="self-center" onClick={() => setLimit(limit + 50)}>
@@ -216,7 +260,17 @@ function ReceivedTab() {
   const exportCsv = () =>
     download(
       `pagos-${period.range.from}-a-${period.range.to}.csv`,
-      csv([["Fecha", "Reserva", "Huésped", "Cabaña", "Concepto", "Valor"], ...rows.map((p) => [p.date, p.r.code, p.r.guest.fullName, cabin(p.r.cabinTypeId)?.nombre ?? p.r.cabinTypeId, p.kind === "deposit" ? "Abono" : "Saldo", p.amount])]),
+      csv([
+        ["Fecha", "Reserva", "Huésped", "Cabaña", "Concepto", "Valor"],
+        ...rows.map((p) => [
+          p.date,
+          p.r.code,
+          p.r.guest.fullName,
+          cabin(p.r.cabinTypeId)?.nombre ?? p.r.cabinTypeId,
+          p.kind === "deposit" ? "Abono" : "Saldo",
+          p.amount,
+        ]),
+      ]),
       "text/csv;charset=utf-8",
     );
 
@@ -225,7 +279,12 @@ function ReceivedTab() {
       <div className="flex flex-wrap items-end gap-3">
         <PeriodFilter period={period} />
         <div className="w-full sm:w-[220px]">
-          <Combobox value={cabinId} onChange={setCabinId} options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]} icon={<HomeIcon size={15} className="text-ink-muted" />} />
+          <Combobox
+            value={cabinId}
+            onChange={setCabinId}
+            options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]}
+            icon={<HomeIcon size={15} className="text-ink-muted" />}
+          />
         </div>
       </div>
       <Card aria-labelledby="pg-rec" className="flex flex-col gap-3 p-4 sm:p-5">
@@ -242,7 +301,11 @@ function ReceivedTab() {
             ) : undefined
           }
         />
-        {rows.length ? <PaymentsTable rows={rows} /> : <EmptyState compact icon={<WalletIcon size={18} />} title="No se recibieron pagos en este periodo" text="Prueba con un periodo más largo." />}
+        {rows.length ? (
+          <PaymentsTable rows={rows} />
+        ) : (
+          <EmptyState compact icon={<WalletIcon size={18} />} title="No se recibieron pagos en este periodo" text="Prueba con un periodo más largo." />
+        )}
       </Card>
     </>
   );
@@ -302,7 +365,9 @@ function PaymentsTable({ rows }: { rows: Payment[] }) {
 function DueTab({ rows }: { rows: Reservation[] }) {
   const { now } = useAdmin();
   const [kind, setKind] = useParam<Due>("tipo", "todo");
-  const list = rows.filter((r) => kind === "todo" || (kind === "abonos" ? pendingOf(r).deposit > 0 : pendingOf(r).balance > 0)).sort((a, b) => (a.checkIn < b.checkIn ? -1 : 1));
+  const list = rows
+    .filter((r) => kind === "todo" || (kind === "abonos" ? pendingOf(r).deposit > 0 : pendingOf(r).balance > 0))
+    .sort((a, b) => (a.checkIn < b.checkIn ? -1 : 1));
   const total = list.reduce((s, r) => s + (kind === "abonos" ? pendingOf(r).deposit : kind === "saldos" ? pendingOf(r).balance : pendingOf(r).total), 0);
   const [limit, setLimit] = useState(25);
 
@@ -319,7 +384,12 @@ function DueTab({ rows }: { rows: Reservation[] }) {
         ]}
       />
       <Card aria-labelledby="pg-due" className="flex flex-col gap-3 p-4 sm:p-5">
-        <CardHeader id="pg-due" icon={<ClockIcon size={18} />} title={`${cop(total)} por cobrar`} subtitle="Abonos de fechas retenidas y saldos de estadías confirmadas o en curso, ordenados por fecha de llegada." />
+        <CardHeader
+          id="pg-due"
+          icon={<ClockIcon size={18} />}
+          title={`${cop(total)} por cobrar`}
+          subtitle="Abonos de fechas retenidas y saldos de estadías confirmadas o en curso, ordenados por fecha de llegada."
+        />
         {list.length ? (
           <ul className="-mx-2 flex flex-col">
             {list.slice(0, limit).map((r) => {
@@ -327,16 +397,27 @@ function DueTab({ rows }: { rows: Reservation[] }) {
               const bd = balanceDue(r, now);
               return (
                 <li key={r.code}>
-                  <Link href={paths.reserva(r.code)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas">
+                  <Link
+                    href={paths.reserva(r.code)}
+                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas"
+                  >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13.5px] font-semibold text-ink">{r.guest.fullName}</span>
                       <span className="block truncate text-[12px] text-ink-muted">
                         {r.code} · llega {fmtDate(r.checkIn)}
-                        {p.deposit ? ` · retención vence en ${countdown(r.depositDueAt)}` : bd ? (bd.overdue ? " · saldo vencido sin pagar" : ` · saldo vence en ${countdown(bd.dueAt!)}`) : " · saldo tras el check-in"}
+                        {p.deposit
+                          ? ` · retención vence en ${countdown(r.depositDueAt)}`
+                          : bd
+                            ? bd.overdue
+                              ? " · saldo vencido sin pagar"
+                              : ` · saldo vence en ${countdown(bd.dueAt!)}`
+                            : " · saldo tras el check-in"}
                       </span>
                     </span>
                     <span className="text-right">
-                      <span className="block text-[13.5px] font-semibold text-ink tabular-nums">{cop(kind === "abonos" ? p.deposit : kind === "saldos" ? p.balance : p.total)}</span>
+                      <span className="block text-[13.5px] font-semibold text-ink tabular-nums">
+                        {cop(kind === "abonos" ? p.deposit : kind === "saldos" ? p.balance : p.total)}
+                      </span>
                       <span className="block text-[11.5px] text-ink-muted">{p.deposit ? `Abono ${cop(p.deposit)}` : "Saldo"}</span>
                     </span>
                   </Link>

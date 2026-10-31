@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function ConfirmationPage() {
   return (
-    <main className="gutter-1000 flex flex-col gap-5 pt-6 pb-[72px]">
+    <main className="flex flex-col gap-5 gutter-1000 pt-6 pb-[72px]">
       <Suspense>
         <Confirmation />
       </Suspense>

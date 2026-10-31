@@ -31,7 +31,17 @@ export const buttonClass = (variant: Variant = "secondary", size: Size = "md", e
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; loading?: boolean; icon?: ReactNode };
 
 // En carga no se usa `disabled` (el botón perdería el foco): se marca aria-disabled y se ignoran los clics.
-export function Button({ variant = "secondary", size = "md", loading = false, icon, className = "", children, onClick, type = "button", ...rest }: ButtonProps) {
+export function Button({
+  variant = "secondary",
+  size = "md",
+  loading = false,
+  icon,
+  className = "",
+  children,
+  onClick,
+  type = "button",
+  ...rest
+}: ButtonProps) {
   return (
     <button
       type={type}
@@ -48,13 +58,21 @@ export function Button({ variant = "secondary", size = "md", loading = false, ic
 }
 
 // Botón solo con icono: siempre con nombre accesible.
-export function IconButton({ label, variant = "ghost", size = "md", className = "", children, type = "button", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; variant?: Variant; size?: Size }) {
+export function IconButton({
+  label,
+  variant = "ghost",
+  size = "md",
+  className = "",
+  children,
+  type = "button",
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; variant?: Variant; size?: Size }) {
   return (
     <button
       type={type}
       aria-label={label}
       title={label}
-      className={`btn-icon ${VARIANT[variant]} ${ICON_SIZE[size]} transition-[background-color,color,box-shadow,transform] duration-150 motion-safe:active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`btn-icon ${VARIANT[variant]} ${ICON_SIZE[size]} transition-[background-color,color,box-shadow,transform] duration-150 disabled:cursor-not-allowed disabled:opacity-40 motion-safe:active:not-disabled:scale-95 ${className}`}
       {...rest}
     >
       {children}
@@ -63,7 +81,13 @@ export function IconButton({ label, variant = "ghost", size = "md", className = 
 }
 
 export function Spinner({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return <span aria-hidden="true" className={`inline-block flex-none animate-spin-fast rounded-full border-2 border-current border-r-transparent ${className}`} style={{ width: size, height: size }} />;
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-block flex-none animate-spin-fast rounded-full border-2 border-current border-r-transparent ${className}`}
+      style={{ width: size, height: size }}
+    />
+  );
 }
 
 /* ───────────── Formularios ───────────── */
@@ -71,7 +95,19 @@ export function Spinner({ size = 16, className = "" }: { size?: number; classNam
 type FieldProps = { id: string; "aria-describedby"?: string; "aria-invalid"?: true };
 
 // Etiqueta + control + ayuda + error, enlazados por id. El control se recibe como función.
-export function Field({ label, hint, error, className = "", children }: { label: ReactNode; hint?: ReactNode; error?: string; className?: string; children: (p: FieldProps) => ReactNode }) {
+export function Field({
+  label,
+  hint,
+  error,
+  className = "",
+  children,
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  error?: string;
+  className?: string;
+  children: (p: FieldProps) => ReactNode;
+}) {
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   const errId = error ? `${id}-err` : undefined;
@@ -112,7 +148,21 @@ export function Card({ className = "", children, ...rest }: HTMLAttributes<HTMLE
 }
 
 // Cabecera de tarjeta: icono opcional, título, subtítulo y acciones a la derecha.
-export function CardHeader({ id, title, subtitle, icon, actions, className = "" }: { id?: string; title: ReactNode; subtitle?: ReactNode; icon?: ReactNode; actions?: ReactNode; className?: string }) {
+export function CardHeader({
+  id,
+  title,
+  subtitle,
+  icon,
+  actions,
+  className = "",
+}: {
+  id?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
+  icon?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
   return (
     <div className={`flex flex-wrap items-start justify-between gap-x-4 gap-y-2 ${className}`}>
       <div className={`flex min-w-0 gap-3 ${subtitle ? "items-start" : "items-center"}`}>
@@ -133,9 +183,23 @@ export function CardHeader({ id, title, subtitle, icon, actions, className = "" 
   );
 }
 
-export function EmptyState({ icon, title, text, action, compact = false }: { icon: ReactNode; title: string; text?: ReactNode; action?: ReactNode; compact?: boolean }) {
+export function EmptyState({
+  icon,
+  title,
+  text,
+  action,
+  compact = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  text?: ReactNode;
+  action?: ReactNode;
+  compact?: boolean;
+}) {
   return (
-    <div className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong text-center ${compact ? "px-4 py-6" : "px-6 py-12"}`}>
+    <div
+      className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong text-center ${compact ? "px-4 py-6" : "px-6 py-12"}`}
+    >
       <span aria-hidden="true" className="mb-1 grid size-10 place-items-center rounded-full bg-canvas text-ink-muted">
         {icon}
       </span>
@@ -147,7 +211,17 @@ export function EmptyState({ icon, title, text, action, compact = false }: { ico
 }
 
 // Fallo al mostrar una página o al cargar datos: explica qué pasó y ofrece reintentar.
-export function ErrorState({ title = "Algo salió mal", text = "No pudimos mostrar esta sección. Tus datos no se perdieron.", onRetry, action }: { title?: string; text?: ReactNode; onRetry?: () => void; action?: ReactNode }) {
+export function ErrorState({
+  title = "Algo salió mal",
+  text = "No pudimos mostrar esta sección. Tus datos no se perdieron.",
+  onRetry,
+  action,
+}: {
+  title?: string;
+  text?: ReactNode;
+  onRetry?: () => void;
+  action?: ReactNode;
+}) {
   return (
     <div role="alert" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-error/25 bg-error-soft/40 px-6 py-12 text-center">
       <span aria-hidden="true" className="mb-1 grid size-10 place-items-center rounded-full bg-error-soft text-error">
@@ -194,7 +268,17 @@ const CALLOUT = {
   success: { cls: "bg-success-soft text-success", icon: <CheckIcon size={17} /> },
 };
 
-export function Callout({ tone = "info", children, className = "", role }: { tone?: keyof typeof CALLOUT; children: ReactNode; className?: string; role?: "alert" | "status" }) {
+export function Callout({
+  tone = "info",
+  children,
+  className = "",
+  role,
+}: {
+  tone?: keyof typeof CALLOUT;
+  children: ReactNode;
+  className?: string;
+  role?: "alert" | "status";
+}) {
   return (
     <div role={role} className={`flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-[13.5px] leading-snug ${CALLOUT[tone].cls} ${className}`}>
       <span aria-hidden="true" className="mt-px flex-none">
@@ -209,7 +293,9 @@ export function Callout({ tone = "info", children, className = "", role }: { ton
 // `label`: texto solo para lectores de pantalla que sigue al número ("2 pendientes de abono").
 export function CountBadge({ n, tone = "muted", label }: { n: number; tone?: "muted" | "attention"; label?: string }) {
   return (
-    <span className={`inline-grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11.5px] font-bold tabular-nums ${tone === "attention" ? "bg-highlight text-on-light" : "bg-ink/7 text-ink-muted"}`}>
+    <span
+      className={`inline-grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11.5px] font-bold tabular-nums ${tone === "attention" ? "bg-highlight text-on-light" : "bg-ink/7 text-ink-muted"}`}
+    >
       <span>
         {n}
         {label && <span className="sr-only"> {label}</span>}
@@ -239,7 +325,11 @@ export function SaveBar({ dirty, onDiscard, onSave, saveLabel }: { dirty: boolea
   }, []);
   return (
     // lg:left-[248px]: ancho de la barra lateral del panel (shell.tsx).
-    <div ref={bar} data-savebar className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/92 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-panel/80 lg:left-[248px]">
+    <div
+      ref={bar}
+      data-savebar
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/92 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-panel/80 lg:left-[248px]"
+    >
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8">
         <p aria-live="polite" className="flex items-center gap-2 text-[13.5px] font-medium text-ink-muted">
           <span aria-hidden="true" className={`size-2 rounded-full transition-colors ${dirty ? "bg-highlight" : "bg-line-strong"}`} />
@@ -312,14 +402,20 @@ export type ToastMsg = { id: number; text: string; kind: "ok" | "error"; action?
 
 export function Toasts({ toast, onDismiss }: { toast: ToastMsg | null; onDismiss: () => void }) {
   return (
-    <div aria-live="polite" className="admin-surface pointer-events-none fixed inset-x-0 bottom-4 z-90 flex justify-center px-4 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:justify-end [html:has([data-savebar])_&]:bottom-[calc(var(--savebar-h,64px)+16px)] sm:[html:has([data-savebar])_&]:bottom-[calc(var(--savebar-h,64px)+24px)]">
+    <div
+      aria-live="polite"
+      className="admin-surface pointer-events-none fixed inset-x-0 bottom-4 z-90 flex justify-center px-4 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:justify-end [html:has([data-savebar])_&]:bottom-[calc(var(--savebar-h,64px)+16px)] sm:[html:has([data-savebar])_&]:bottom-[calc(var(--savebar-h,64px)+24px)]"
+    >
       {toast && (
         <div
           key={toast.id}
           role={toast.kind === "error" ? "alert" : "status"}
           className="pointer-events-auto flex max-w-[420px] items-center gap-3 rounded-xl bg-ink py-2.5 pr-2 pl-3.5 text-[14px] font-medium text-white shadow-overlay motion-safe:animate-slide-up"
         >
-          <span aria-hidden="true" className={`grid size-6 flex-none place-items-center rounded-full ${toast.kind === "error" ? "bg-status-cancelled text-on-light" : "bg-accent text-on-light"}`}>
+          <span
+            aria-hidden="true"
+            className={`grid size-6 flex-none place-items-center rounded-full ${toast.kind === "error" ? "bg-status-cancelled text-on-light" : "bg-accent text-on-light"}`}
+          >
             {toast.kind === "error" ? <AlertIcon size={15} /> : <CheckIcon size={14} />}
           </span>
           <span className="min-w-0 flex-1">{toast.text}</span>
@@ -330,12 +426,17 @@ export function Toasts({ toast, onDismiss }: { toast: ToastMsg | null; onDismiss
                 toast.action!.onClick();
                 onDismiss();
               }}
-              className="rounded-lg px-2.5 py-1 text-[13px] font-bold text-highlight transition-colors hover:bg-white/10 [--ring:var(--color-highlight)]"
+              className="rounded-lg px-2.5 py-1 text-[13px] font-bold text-highlight transition-colors [--ring:var(--color-highlight)] hover:bg-white/10"
             >
               {toast.action.label}
             </button>
           )}
-          <button type="button" onClick={onDismiss} aria-label="Cerrar aviso" className="btn-icon size-8 text-white/70 transition-colors hover:bg-white/10 hover:text-white [--ring:var(--color-highlight)]">
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Cerrar aviso"
+            className="btn-icon size-8 text-white/70 transition-colors [--ring:var(--color-highlight)] hover:bg-white/10 hover:text-white"
+          >
             <CloseIcon size={16} />
           </button>
         </div>
@@ -387,7 +488,11 @@ export function PageHeader({ title, description, actions, children }: { title: s
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
-        <h1 id="ad-title" tabIndex={-1} className="text-[clamp(1.45rem,2.2vw,1.8rem)] leading-tight font-extrabold tracking-[-0.015em] text-ink focus:outline-none">
+        <h1
+          id="ad-title"
+          tabIndex={-1}
+          className="text-[clamp(1.45rem,2.2vw,1.8rem)] leading-tight font-extrabold tracking-[-0.015em] text-ink focus:outline-none"
+        >
           {title}
         </h1>
         {description && <p className="mt-1 max-w-[70ch] text-[14px] text-ink-muted">{description}</p>}
@@ -454,7 +559,7 @@ export function Segmented<T extends string>({
 // Pestañas de sub-secciones (subrayado). Se desplazan en horizontal en móvil.
 export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: Opt<T>[]; value: T; onChange: (v: T) => void; label: string }) {
   return (
-    <div role="tablist" aria-label={label} className="no-scrollbar -mx-4 flex gap-1 overflow-x-auto border-b border-line px-4 lg:mx-0 lg:px-0">
+    <div role="tablist" aria-label={label} className="-mx-4 no-scrollbar flex gap-1 overflow-x-auto border-b border-line px-4 lg:mx-0 lg:px-0">
       {tabs.map((t) => {
         const on = t.value === value;
         return (
@@ -480,7 +585,15 @@ export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs:
 // Secciones de un módulo agrupadas por tema: cada grupo, con su rótulo, es un bloque de pestañas (rutas). En pantallas
 // anchas los grupos van uno al lado del otro y bajan de línea si no caben; en el celular, en una fila que se desplaza
 // con la pestaña actual a la vista.
-export function GroupedNavTabs({ groups, current, label }: { groups: { label: string; tabs: { href: string; id: string; label: ReactNode; icon?: ReactNode; count?: number }[] }[]; current: string; label: string }) {
+export function GroupedNavTabs({
+  groups,
+  current,
+  label,
+}: {
+  groups: { label: string; tabs: { href: string; id: string; label: ReactNode; icon?: ReactNode; count?: number }[] }[];
+  current: string;
+  label: string;
+}) {
   const uid = useId();
   const nav = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -491,7 +604,7 @@ export function GroupedNavTabs({ groups, current, label }: { groups: { label: st
     el.scrollLeft += b.left - a.left - (a.width - b.width) / 2;
   }, [current]);
   return (
-    <nav ref={nav} aria-label={label} className="no-scrollbar -mx-4 flex gap-x-4 gap-y-3 overflow-x-auto px-4 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0">
+    <nav ref={nav} aria-label={label} className="-mx-4 no-scrollbar flex gap-x-4 gap-y-3 overflow-x-auto px-4 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0">
       {groups.map((g, i) => (
         <div key={g.label} role="group" aria-labelledby={`${uid}-${i}`} className="flex flex-none flex-col gap-1.5">
           <p id={`${uid}-${i}`} className="px-1 text-[11px] font-bold tracking-[.08em] text-ink-muted uppercase">
@@ -509,7 +622,9 @@ export function GroupedNavTabs({ groups, current, label }: { groups: { label: st
                 >
                   {t.icon}
                   {t.label}
-                  {t.count !== undefined && t.count > 0 && <span className="rounded-full bg-highlight px-1.5 text-[11px] text-on-light tabular-nums">{t.count}</span>}
+                  {t.count !== undefined && t.count > 0 && (
+                    <span className="rounded-full bg-highlight px-1.5 text-[11px] text-on-light tabular-nums">{t.count}</span>
+                  )}
                 </Link>
               );
             })}
@@ -520,7 +635,19 @@ export function GroupedNavTabs({ groups, current, label }: { groups: { label: st
   );
 }
 
-export function Switch({ checked, onChange, label, description, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; description?: ReactNode; disabled?: boolean }) {
+export function Switch({
+  checked,
+  onChange,
+  label,
+  description,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: ReactNode;
+  description?: ReactNode;
+  disabled?: boolean;
+}) {
   const id = useId();
   return (
     <div className="flex items-start justify-between gap-4">
@@ -539,13 +666,18 @@ export function Switch({ checked, onChange, label, description, disabled }: { ch
         onClick={() => onChange(!checked)}
         className={`relative h-6 w-11 flex-none rounded-full transition-colors duration-150 disabled:opacity-50 ${checked ? "bg-success" : "bg-line-strong"}`}
       >
-        <span aria-hidden="true" className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-panel transition-transform duration-150 ${checked ? "translate-x-5" : ""}`} />
+        <span
+          aria-hidden="true"
+          className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-panel transition-transform duration-150 ${checked ? "translate-x-5" : ""}`}
+        />
       </button>
     </div>
   );
 }
 
-export const Skeleton = ({ className = "" }: { className?: string }) => <span aria-hidden="true" className={`block animate-pulse-soft rounded-xl bg-line/70 ${className}`} />;
+export const Skeleton = ({ className = "" }: { className?: string }) => (
+  <span aria-hidden="true" className={`block animate-pulse-soft rounded-xl bg-line/70 ${className}`} />
+);
 
 const TONE = {
   neutral: "bg-ink/6 text-ink",
@@ -558,7 +690,9 @@ export type Tone = keyof typeof TONE;
 
 export function Badge({ tone = "neutral", children, icon, className = "" }: { tone?: Tone; children: ReactNode; icon?: ReactNode; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] leading-[1.5] font-semibold whitespace-nowrap ${TONE[tone]} ${className}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] leading-[1.5] font-semibold whitespace-nowrap ${TONE[tone]} ${className}`}
+    >
       {icon}
       {children}
     </span>
@@ -566,7 +700,21 @@ export function Badge({ tone = "neutral", children, icon, className = "" }: { to
 }
 
 // Indicador clave: valor grande, etiqueta y, si aplica, variación contra el periodo anterior.
-export function StatCard({ label, value, hint, delta, icon, tone }: { label: string; value: ReactNode; hint?: ReactNode; delta?: number | null; icon?: ReactNode; tone?: Tone }) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  delta,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  delta?: number | null;
+  icon?: ReactNode;
+  tone?: Tone;
+}) {
   const up = (delta ?? 0) >= 0;
   return (
     <div className="flex min-w-0 flex-col gap-1.5 rounded-2xl border border-line bg-panel p-4 shadow-panel">
@@ -627,7 +775,13 @@ export function Stars({ value, onChange, size = 16 }: { value: number | null; on
           }}
           className="rounded-md p-0.5 transition-transform duration-150 motion-safe:hover:scale-110"
         >
-          <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={`transition-colors ${n <= v ? "fill-highlight" : "fill-line-strong"}`}>
+          <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className={`transition-colors ${n <= v ? "fill-highlight" : "fill-line-strong"}`}
+          >
             <path d={STAR} />
           </svg>
         </button>
@@ -673,7 +827,13 @@ export function MoneyInput({ id, value, onChange, invalid, describedBy, classNam
 export function Stepper({ id, value, onChange, min = 0, max = 99, unit, describedBy }: NumProps & { min?: number; max?: number; unit?: string }) {
   return (
     <div className="flex h-10 items-center rounded-xl border border-line-strong bg-panel transition-[border-color,box-shadow] focus-within:border-focus focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus)_20%,transparent)] pointer-coarse:h-11">
-      <button type="button" aria-label="Restar" disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))} className="btn-icon size-9 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink disabled:opacity-35">
+      <button
+        type="button"
+        aria-label="Restar"
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+        className="btn-icon size-9 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink disabled:opacity-35"
+      >
         −
       </button>
       <input
@@ -689,7 +849,13 @@ export function Stepper({ id, value, onChange, min = 0, max = 99, unit, describe
         className="h-full w-12 min-w-0 flex-1 bg-transparent text-center text-[15px] font-semibold text-ink tabular-nums outline-none"
       />
       {unit && <span className="pr-1 text-[12.5px] text-ink-muted">{unit}</span>}
-      <button type="button" aria-label="Sumar" disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} className="btn-icon size-9 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink disabled:opacity-35">
+      <button
+        type="button"
+        aria-label="Sumar"
+        disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}
+        className="btn-icon size-9 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink disabled:opacity-35"
+      >
         +
       </button>
     </div>

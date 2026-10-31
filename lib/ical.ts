@@ -40,7 +40,11 @@ function property(line: string) {
   if (colon < 0) return null;
   const head = line.slice(0, colon);
   const semi = head.indexOf(";");
-  return { name: (semi < 0 ? head : head.slice(0, semi)).toUpperCase(), params: semi < 0 ? "" : head.slice(semi + 1).toUpperCase(), value: line.slice(colon + 1) };
+  return {
+    name: (semi < 0 ? head : head.slice(0, semi)).toUpperCase(),
+    params: semi < 0 ? "" : head.slice(semi + 1).toUpperCase(),
+    value: line.slice(colon + 1),
+  };
 }
 
 // Eventos de un calendario: fechas de entrada y salida (exclusiva). Sin DTEND, una noche. Los cancelados no cuentan.
@@ -89,7 +93,11 @@ function fold(line: string) {
   return parts.join("\r\n ");
 }
 
-const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+const stamp = (d: Date) =>
+  d
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
 const compact = (iso: string) => iso.replace(/-/g, "");
 
 // Calendario para importar en otra plataforma: un evento de día completo por estadía o cierre (sin datos personales).

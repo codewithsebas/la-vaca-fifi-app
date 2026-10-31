@@ -73,7 +73,22 @@ function Highlight({ text, q }: { text: string; q: string }) {
   );
 }
 
-export function Combobox({ id, value, onChange, options, placeholder = "Seleccionar", searchPlaceholder = "Buscar…", searchable, loading, emptyText = "No hay opciones", invalid, describedBy, className = "", icon, tone = "panel" }: Props) {
+export function Combobox({
+  id,
+  value,
+  onChange,
+  options,
+  placeholder = "Seleccionar",
+  searchPlaceholder = "Buscar…",
+  searchable,
+  loading,
+  emptyText = "No hay opciones",
+  invalid,
+  describedBy,
+  className = "",
+  icon,
+  tone = "panel",
+}: Props) {
   const st = STYLE[tone];
   const uid = useId();
   const listId = `${uid}-list`;
@@ -93,7 +108,12 @@ export function Combobox({ id, value, onChange, options, placeholder = "Seleccio
 
   const openList = () => {
     setQ("");
-    setActive(Math.max(0, options.findIndex((o) => o.value === value)));
+    setActive(
+      Math.max(
+        0,
+        options.findIndex((o) => o.value === value),
+      ),
+    );
     setOpen(true);
   };
   const choose = (o: ComboOption | undefined) => {
@@ -203,7 +223,10 @@ export function Combobox({ id, value, onChange, options, placeholder = "Seleccio
           >
             {loading ? (
               <li role="presentation" className={`flex items-center gap-2 px-3 py-3 text-[13px] ${st.muted}`}>
-                <span aria-hidden="true" className="inline-block size-3.5 flex-none animate-spin-fast rounded-full border-2 border-current border-r-transparent" />
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-3.5 flex-none animate-spin-fast rounded-full border-2 border-current border-r-transparent"
+                />
                 Cargando opciones…
               </li>
             ) : !options.length ? (

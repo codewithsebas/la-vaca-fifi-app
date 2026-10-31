@@ -106,7 +106,11 @@ export function Confirmation() {
   const hero =
     p.status === "approved"
       ? p.needsRefund
-        ? { tone: "bad", title: "Recibimos tu pago, pero no pudimos aplicarlo", text: "Las fechas ya no estaban disponibles o el pago estaba duplicado. Nuestro equipo te contactará para devolverte el dinero." }
+        ? {
+            tone: "bad",
+            title: "Recibimos tu pago, pero no pudimos aplicarlo",
+            text: "Las fechas ya no estaban disponibles o el pago estaba duplicado. Nuestro equipo te contactará para devolverte el dinero.",
+          }
         : confirmed
           ? {
               tone: "ok",
@@ -114,14 +118,37 @@ export function Confirmation() {
               text: `Tu pago fue aprobado${p.kind === "full" ? " y no tienes saldo pendiente" : ""}. Te enviamos la confirmación por correo${r.guestFirstName ? `, ${r.guestFirstName}` : ""}.`,
             }
           : balancePaid
-            ? { tone: "ok", title: "¡Pago del saldo recibido!", text: r.status === "checked_in" ? "Tu estadía quedó completamente pagada." : "Tu estadía quedó completamente pagada: no tienes que pagar nada al llegar." }
+            ? {
+                tone: "ok",
+                title: "¡Pago del saldo recibido!",
+                text:
+                  r.status === "checked_in"
+                    ? "Tu estadía quedó completamente pagada."
+                    : "Tu estadía quedó completamente pagada: no tienes que pagar nada al llegar.",
+              }
             : { tone: "ok", title: "Pago aprobado", text: "Tu pago fue aprobado." }
       : p.status === "pending" || p.status === "initiated"
-        ? { tone: "wait", title: "Estamos confirmando tu pago", text: p.status === "pending" ? "El banco está procesando la transacción. Esta página se actualiza sola apenas llegue la respuesta." : "Esperando la respuesta de la pasarela de pagos. Si no completaste el pago, puedes hacerlo abajo." }
+        ? {
+            tone: "wait",
+            title: "Estamos confirmando tu pago",
+            text:
+              p.status === "pending"
+                ? "El banco está procesando la transacción. Esta página se actualiza sola apenas llegue la respuesta."
+                : "Esperando la respuesta de la pasarela de pagos. Si no completaste el pago, puedes hacerlo abajo.",
+          }
         : p.status === "expired"
           ? { tone: "wait", title: "Este pago no se completó", text: "La ventana de pago se cerró sin una transacción aprobada." }
-          : { tone: "bad", title: "Tu pago no fue aprobado", text: `${p.detail ? p.detail.replace(/\.?$/, ". ") : ""}${deposit ? "Tu reserva todavía no está confirmada." : "Tu saldo sigue pendiente."}` };
-  const heroBg = hero.tone === "ok" ? "bg-card" : hero.tone === "bad" ? "bg-[color-mix(in_srgb,var(--color-status-cancelled)_30%,var(--color-card))]" : "bg-[color-mix(in_srgb,var(--color-highlight)_24%,var(--color-card))]";
+          : {
+              tone: "bad",
+              title: "Tu pago no fue aprobado",
+              text: `${p.detail ? p.detail.replace(/\.?$/, ". ") : ""}${deposit ? "Tu reserva todavía no está confirmada." : "Tu saldo sigue pendiente."}`,
+            };
+  const heroBg =
+    hero.tone === "ok"
+      ? "bg-card"
+      : hero.tone === "bad"
+        ? "bg-[color-mix(in_srgb,var(--color-status-cancelled)_30%,var(--color-card))]"
+        : "bg-[color-mix(in_srgb,var(--color-highlight)_24%,var(--color-card))]";
   const saved = rememberedReservation(r.code);
 
   return (
@@ -173,7 +200,11 @@ export function Confirmation() {
 
       {(confirmed || r.status === "confirmed" || r.status === "rescheduled") && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-2.5">
-          <button type="button" onClick={() => download(`reserva-${r.code}.ics`, ics(r, c, cabinName(r.cabinTypeId)), "text/calendar")} className="btn btn-card min-h-14">
+          <button
+            type="button"
+            onClick={() => download(`reserva-${r.code}.ics`, ics(r, c, cabinName(r.cabinTypeId)), "text/calendar")}
+            className="btn btn-card min-h-14"
+          >
             <CalendarIcon variant="plus" />
             Agregar al calendario
           </button>
@@ -181,7 +212,12 @@ export function Confirmation() {
             <PinIcon />
             Cómo llegar
           </a>
-          <a href={wa(c.whatsapp, `Hola, tengo una pregunta sobre mi reserva ${r.code}.`)} target="_blank" rel="noopener" className="btn btn-outline-dark min-h-14">
+          <a
+            href={wa(c.whatsapp, `Hola, tengo una pregunta sobre mi reserva ${r.code}.`)}
+            target="_blank"
+            rel="noopener"
+            className="btn btn-outline-dark min-h-14"
+          >
             <WhatsAppIcon />
             Escribir por WhatsApp
           </a>

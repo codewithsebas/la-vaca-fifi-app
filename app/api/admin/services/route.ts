@@ -15,7 +15,13 @@ type Fields = Omit<SiteService, "id">;
 const text = (v: unknown) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "");
 
 function parse(b: Input): { fields: Fields } | { errors: Record<string, string> } {
-  const fields: Fields = { title: text(b.title), description: text(b.description), icon: String(b.icon ?? ""), note: text(b.note), visible: b.visible !== false };
+  const fields: Fields = {
+    title: text(b.title),
+    description: text(b.description),
+    icon: String(b.icon ?? ""),
+    note: text(b.note),
+    visible: b.visible !== false,
+  };
   const errors: Record<string, string> = {};
   if (!fields.title || fields.title.length > SERVICE_LIMITS.title) errors.title = `Escribe el nombre del servicio (máximo ${SERVICE_LIMITS.title} caracteres).`;
   if (fields.description.length > SERVICE_LIMITS.description) errors.description = `La descripción admite hasta ${SERVICE_LIMITS.description} caracteres.`;
@@ -44,7 +50,10 @@ export const POST = route(async (req: NextRequest) => {
   if ("errors" in p) return fail(422, "VALIDATION_ERROR", { fields: p.errors });
   const { data: last } = await sb.from("site_services").select("sort").order("sort", { ascending: false }).limit(SERVICE_LIMITS.max).throwOnError();
   if (last.length >= SERVICE_LIMITS.max) return fail(422, "VALIDATION_ERROR", { fields: { title: `Puedes tener hasta ${SERVICE_LIMITS.max} servicios.` } });
-  await sb.from("site_services").insert({ ...p.fields, sort: (last[0]?.sort ?? 0) + 1 }).throwOnError();
+  await sb
+    .from("site_services")
+    .insert({ ...p.fields, sort: (last[0]?.sort ?? 0) + 1 })
+    .throwOnError();
   return done(sb);
 });
 
@@ -68,7 +77,15 @@ export const PATCH = route(async (req: NextRequest) => {
   const b = await readJson<Input>(req);
   const order = Array.isArray(b?.order) ? b.order.filter((id): id is string => typeof id === "string" && UUID.test(id)) : [];
   if (!order.length || order.length > SERVICE_LIMITS.max) return fail(400, "INVALID_ORDER");
-  await Promise.all(order.map((id, i) => sb.from("site_services").update({ sort: i + 1 }).eq("id", id).throwOnError()));
+  await Promise.all(
+    order.map((id, i) =>
+      sb
+        .from("site_services")
+        .update({ sort: i + 1 })
+        .eq("id", id)
+        .throwOnError(),
+    ),
+  );
   return done(sb);
 });
 

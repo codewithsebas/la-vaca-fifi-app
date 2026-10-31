@@ -171,7 +171,13 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
   const zoomPct = Math.round(view.z * 100);
 
   return (
-    <Modal onClose={onCancel} labelledBy="crop-title" describedBy="crop-help" initialFocus="#crop-frame" className="m-auto w-[calc(100%-32px)] max-w-[600px] rounded-2xl p-0 motion-safe:open:animate-pop-in">
+    <Modal
+      onClose={onCancel}
+      labelledBy="crop-title"
+      describedBy="crop-help"
+      initialFocus="#crop-frame"
+      className="m-auto w-[calc(100%-32px)] max-w-[600px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+    >
       <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div>
           <h2 id="crop-title" className="text-[17px] font-bold text-ink">
@@ -217,7 +223,10 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
               </div>
             )}
             {/* Tercios: ayudan a encuadrar; se marcan más mientras se arrastra. */}
-            <div aria-hidden="true" className={`pointer-events-none absolute inset-0 transition-opacity duration-150 ${dragging ? "opacity-100" : "opacity-45"}`}>
+            <div
+              aria-hidden="true"
+              className={`pointer-events-none absolute inset-0 transition-opacity duration-150 ${dragging ? "opacity-100" : "opacity-45"}`}
+            >
               {["left-1/3", "left-2/3"].map((c) => (
                 <span key={c} className={`absolute inset-y-0 ${c} w-px bg-white/70 shadow-[0_0_2px_rgb(0_0_0/0.5)]`} />
               ))}
@@ -253,7 +262,13 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
               <PlusIcon size={15} />
             </IconButton>
             <span className="w-12 text-right text-[12.5px] font-semibold text-ink-muted tabular-nums">{zoomPct} %</span>
-            <IconButton label="Centrar y quitar el zoom" size="sm" variant="ghost" disabled={!img} onClick={() => img && setView({ z: 1, cx: img.width / 2, cy: img.height / 2 })}>
+            <IconButton
+              label="Centrar y quitar el zoom"
+              size="sm"
+              variant="ghost"
+              disabled={!img}
+              onClick={() => img && setView({ z: 1, cx: img.width / 2, cy: img.height / 2 })}
+            >
               <RefreshIcon size={15} />
             </IconButton>
           </div>
@@ -266,7 +281,8 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
         )}
         {low && out && (
           <Callout tone="warning" role="status">
-            {view.z > 1 ? "Con este zoom" : "Esta foto"} el recorte queda de <strong>{px(out)}</strong> y este espacio necesita al menos <strong>{px({ width: min[0], height: min[1] })}</strong>: en el sitio se verá borrosa.{" "}
+            {view.z > 1 ? "Con este zoom" : "Esta foto"} el recorte queda de <strong>{px(out)}</strong> y este espacio necesita al menos{" "}
+            <strong>{px({ width: min[0], height: min[1] })}</strong>: en el sitio se verá borrosa.{" "}
             {view.z > 1 ? "Aleja el zoom o usa una foto más grande." : "Usa el archivo original o una foto más grande."}
           </Callout>
         )}
@@ -276,7 +292,12 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
           Elegir otra foto
         </Button>
         <Button onClick={onCancel}>Cancelar</Button>
-        <Button variant="primary" disabled={!region || !out} icon={low ? <WarningIcon size={14} /> : <CheckIcon size={14} />} onClick={() => region && out && onConfirm({ x: region.x, y: region.y, width: region.width, height: region.height }, out)}>
+        <Button
+          variant="primary"
+          disabled={!region || !out}
+          icon={low ? <WarningIcon size={14} /> : <CheckIcon size={14} />}
+          onClick={() => region && out && onConfirm({ x: region.x, y: region.y, width: region.width, height: region.height }, out)}
+        >
           {low ? "Subir de todas formas" : "Recortar y publicar"}
         </Button>
       </div>

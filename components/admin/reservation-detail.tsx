@@ -3,7 +3,21 @@
 // Página de una reserva (/admin/reservas/[codigo]): acciones, pagos, correos, comprobantes, notas, cliente y datos de la estadía.
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { AlertIcon, CheckIcon, ClockIcon, FileTextIcon, LinkIcon, ListIcon, LockIcon, MailIcon, NoteIcon, RefreshIcon, UsersIcon, WalletIcon, WhatsAppIcon } from "@/components/icons";
+import {
+  AlertIcon,
+  CheckIcon,
+  ClockIcon,
+  FileTextIcon,
+  LinkIcon,
+  ListIcon,
+  LockIcon,
+  MailIcon,
+  NoteIcon,
+  RefreshIcon,
+  UsersIcon,
+  WalletIcon,
+  WhatsAppIcon,
+} from "@/components/icons";
 import { KeyValues, StatusPill } from "@/components/status-pill";
 import { balanceDue, buildClients, typeMarks } from "@/lib/admin-metrics";
 import { api } from "@/lib/api";
@@ -73,7 +87,8 @@ export function ReservationDetail({ code }: { code: string }) {
             if (!cf.ci || !cf.co || cf.co <= cf.ci) return Promise.resolve({ status: 400, data: null });
             return api.admin.action({ code: r.code, action, checkIn: cf.ci, checkOut: cf.co });
           }
-          if (action === "confirm" || action === "balance") return api.admin.action({ code: r.code, action, note: cf.note ?? "", full: action === "confirm" && !!cf.option });
+          if (action === "confirm" || action === "balance")
+            return api.admin.action({ code: r.code, action, note: cf.note ?? "", full: action === "confirm" && !!cf.option });
           return api.admin.action({ code: r.code, action });
         },
         ...opts,
@@ -114,7 +129,9 @@ export function ReservationDetail({ code }: { code: string }) {
         act("Registrar pago del saldo", "balance", {
           primary: true,
           text: `Registra el saldo de ${cop(due.amount)} recibido en recepción (efectivo o transferencia). Después podrás hacer el check-out.`,
-          details: processing ? [{ k: "Atención", v: "Hay un pago en línea del saldo en proceso: si también se aprueba, quedará marcado para reembolso." }] : undefined,
+          details: processing
+            ? [{ k: "Atención", v: "Hay un pago en línea del saldo en proceso: si también se aprueba, quedará marcado para reembolso." }]
+            : undefined,
           ...manualNote,
         }),
       );
@@ -130,7 +147,12 @@ export function ReservationDetail({ code }: { code: string }) {
         text: "Elige las nuevas fechas. Se valida la disponibilidad de la misma cabaña y se recalcula el total con las tarifas vigentes (lo ya pagado se conserva).",
       }),
     );
-    actions.push(act("Cancelar reserva", "cancel", { danger: true, text: `${r.code} · ${r.depositPaidAt ? "El abono recibido no es reembolsable según las políticas." : "Las fechas quedarán libres."}` }));
+    actions.push(
+      act("Cancelar reserva", "cancel", {
+        danger: true,
+        text: `${r.code} · ${r.depositPaidAt ? "El abono recibido no es reembolsable según las políticas." : "Las fechas quedarán libres."}`,
+      }),
+    );
   }
 
   const client = buildClients(
@@ -147,11 +169,22 @@ export function ReservationDetail({ code }: { code: string }) {
         actions={
           <>
             {actions.map((a) => (
-              <Button key={a.label} variant={a.primary ? "primary" : a.danger ? "danger-ghost" : "secondary"} onClick={a.run} disabled={!!a.disabled} title={a.disabled}>
+              <Button
+                key={a.label}
+                variant={a.primary ? "primary" : a.danger ? "danger-ghost" : "secondary"}
+                onClick={a.run}
+                disabled={!!a.disabled}
+                title={a.disabled}
+              >
                 {a.label}
               </Button>
             ))}
-            <a href={waTo(r.guest.phone, `Hola ${r.guest.fullName.split(" ")[0]}, te escribimos de ${config.name} por tu reserva ${r.code}.`)} target="_blank" rel="noopener" className={buttonClass("secondary")}>
+            <a
+              href={waTo(r.guest.phone, `Hola ${r.guest.fullName.split(" ")[0]}, te escribimos de ${config.name} por tu reserva ${r.code}.`)}
+              target="_blank"
+              rel="noopener"
+              className={buttonClass("secondary")}
+            >
               <WhatsAppIcon size={16} />
               WhatsApp
             </a>
@@ -166,8 +199,14 @@ export function ReservationDetail({ code }: { code: string }) {
               Comprobante por revisar
             </Badge>
           )}
-          {r.status === "pending_deposit" && (processing ? <Badge tone="warning">Pago del abono en proceso</Badge> : <Badge tone="warning">{`Retención vence en ${countdown(r.depositDueAt)}`}</Badge>)}
-          {due && (due.overdue ? <Badge tone="danger">Saldo vencido sin pagar</Badge> : <Badge tone="warning">{`Saldo vence en ${countdown(due.dueAt!)}`}</Badge>)}
+          {r.status === "pending_deposit" &&
+            (processing ? (
+              <Badge tone="warning">Pago del abono en proceso</Badge>
+            ) : (
+              <Badge tone="warning">{`Retención vence en ${countdown(r.depositDueAt)}`}</Badge>
+            ))}
+          {due &&
+            (due.overdue ? <Badge tone="danger">Saldo vencido sin pagar</Badge> : <Badge tone="warning">{`Saldo vence en ${countdown(due.dueAt!)}`}</Badge>)}
           {refunds.length > 0 && (
             <Badge tone="danger" icon={<AlertIcon size={12} />}>
               {plural(refunds.length, "pago por reembolsar", "pagos por reembolsar")}
@@ -223,7 +262,11 @@ const stayRows = (r: Reservation, cabin: string) => [
   { k: "Llegada estimada", v: r.estimatedArrival || "—" },
   { k: "Check-in registrado", v: r.checkedInAt ? fmtDateTime(r.checkedInAt) : "—" },
   { k: "Mascota", v: r.pet?.hasPet ? "Sí" : "No" },
-  { k: "Decoración", v: r.decoration?.requested ? `${OCC[r.decoration.occasion] || "Sí"}${r.decoration.notes ? " · " + r.decoration.notes : ""}` : "No", wide: true },
+  {
+    k: "Decoración",
+    v: r.decoration?.requested ? `${OCC[r.decoration.occasion] || "Sí"}${r.decoration.notes ? " · " + r.decoration.notes : ""}` : "No",
+    wide: true,
+  },
   { k: "Solicitudes", v: r.specialRequests || "—", wide: true },
 ];
 
@@ -292,8 +335,19 @@ function PayLinkCard({ r }: { r: Reservation }) {
 
   const picker = (
     <div className="flex flex-col gap-2 rounded-xl bg-canvas p-3">
-      <Segmented label="Plazo para pagar" size="sm" value={String(hold)} onChange={(v) => setHold(Number(v))} options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} className="flex-wrap" />
-      <p className="text-[12.5px] text-ink-muted">{due.tooShort ? "Ya no queda tiempo antes de la llegada." : `Vencerá el ${fmtDeadline(due.dueAt)}${due.capped ? " (no puede pasar del día de llegada)" : ""}`}</p>
+      <Segmented
+        label="Plazo para pagar"
+        size="sm"
+        value={String(hold)}
+        onChange={(v) => setHold(Number(v))}
+        options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
+        className="flex-wrap"
+      />
+      <p className="text-[12.5px] text-ink-muted">
+        {due.tooShort
+          ? "Ya no queda tiempo antes de la llegada."
+          : `Vencerá el ${fmtDeadline(due.dueAt)}${due.capped ? " (no puede pasar del día de llegada)" : ""}`}
+      </p>
       <div className="flex flex-wrap gap-2">
         <Button variant="primary" size="sm" loading={busy} disabled={due.tooShort} onClick={apply}>
           {r.status === "expired" ? "Reactivar y crear enlace" : url ? "Aplicar nuevo plazo" : "Crear enlace de pago"}
@@ -362,7 +416,16 @@ function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentReco
   const balanceAmount = Math.max(0, q.total - depositAmount);
   return (
     <Card aria-labelledby="dt-pay" className="p-4 sm:p-5">
-      <CardHeader id="dt-pay" icon={<WalletIcon size={18} />} title="Pago" actions={<p className="text-[13px] text-ink-muted">Total <strong className="text-[16px] text-ink tabular-nums">{cop(q.total)}</strong></p>} />
+      <CardHeader
+        id="dt-pay"
+        icon={<WalletIcon size={18} />}
+        title="Pago"
+        actions={
+          <p className="text-[13px] text-ink-muted">
+            Total <strong className="text-[16px] text-ink tabular-nums">{cop(q.total)}</strong>
+          </p>
+        }
+      />
       <div className="mt-4 flex items-center gap-2">
         <span aria-hidden="true" className="h-2 flex-1 overflow-hidden rounded-full bg-ink/8">
           <span className="block h-full rounded-full bg-success transition-[width] duration-500" style={{ width: `${pct}%` }} />
@@ -405,7 +468,9 @@ function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentReco
           r.balancePaidAt ? "ok" : due?.overdue ? "bad" : due || r.status === "confirmed" || r.status === "rescheduled" ? "wait" : "muted",
         )}
       </div>
-      {q.seasonNights ? <p className="mt-1 text-[12px] text-ink-muted">{`Incluye ${plural(q.seasonNights, "noche", "noches")} con tarifa de temporada.`}</p> : null}
+      {q.seasonNights ? (
+        <p className="mt-1 text-[12px] text-ink-muted">{`Incluye ${plural(q.seasonNights, "noche", "noches")} con tarifa de temporada.`}</p>
+      ) : null}
       <PaymentAttempts payments={payments} />
     </Card>
   );
@@ -435,7 +500,11 @@ function PaymentAttempts({ payments }: { payments: PaymentRecord[] }) {
                   {p.provider === "manual" ? "Registrado por el equipo" : p.provider === "wompi" ? "Wompi" : "Pasarela simulada"}
                   {p.method && p.provider !== "manual" ? ` · ${methodLabel(p.method)}` : ""} · {timeAgo(p.approvedAt ?? p.createdAt, now)} · {p.reference}
                 </span>
-                {p.detail && !(p.provider === "manual" && p.detail === "Registrado por el equipo") && <span className={`block text-[12px] ${p.needsRefund || p.status === "declined" || p.status === "error" ? "text-error" : "text-ink-muted"}`}>{p.detail}</span>}
+                {p.detail && !(p.provider === "manual" && p.detail === "Registrado por el equipo") && (
+                  <span className={`block text-[12px] ${p.needsRefund || p.status === "declined" || p.status === "error" ? "text-error" : "text-ink-muted"}`}>
+                    {p.detail}
+                  </span>
+                )}
               </span>
             </li>
           );
@@ -484,7 +553,10 @@ function EmailsCard({ emails }: { emails: EmailRecord[] }) {
         {emails.map((e) => {
           const st = EMAIL_STATUS[e.status];
           return (
-            <li key={e.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${e.status === "failed" ? "border-error/30 bg-error-soft/40" : "border-line"}`}>
+            <li
+              key={e.id}
+              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${e.status === "failed" ? "border-error/30 bg-error-soft/40" : "border-line"}`}
+            >
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-1.5 text-[13.5px] font-semibold text-ink">
                   {e.kind === "reservation_confirmed" ? "Confirmación de reserva" : e.subject || "Mensaje del equipo"}
@@ -541,7 +613,9 @@ function Notes({ r }: { r: Reservation }) {
       ) : (
         <p className="text-[13px] text-ink-muted">Aún no hay notas para esta reserva.</p>
       )}
-      <Field label="Nueva nota">{(p) => <textarea {...p} rows={3} value={note} onChange={(e) => setNote(e.target.value)} className={`${adminInput} resize-y leading-relaxed`} />}</Field>
+      <Field label="Nueva nota">
+        {(p) => <textarea {...p} rows={3} value={note} onChange={(e) => setNote(e.target.value)} className={`${adminInput} resize-y leading-relaxed`} />}
+      </Field>
       <Button variant="primary" size="sm" disabled={!note.trim()} onClick={addNote} className="self-start">
         Agregar nota
       </Button>

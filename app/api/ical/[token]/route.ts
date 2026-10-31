@@ -10,5 +10,7 @@ export const GET = route(async (req: NextRequest, { params }: { params: Promise<
   const ics = await exportCalendar(token.replace(/\.ics$/i, ""), siteUrl(req.nextUrl.origin));
   const headers = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" };
   if (!ics) return new Response("Calendario no encontrado.", { status: 404, headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" } });
-  return new Response(ics, { headers: { ...headers, "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": 'inline; filename="disponibilidad.ics"' } });
+  return new Response(ics, {
+    headers: { ...headers, "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": 'inline; filename="disponibilidad.ics"' },
+  });
 });

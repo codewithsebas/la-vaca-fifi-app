@@ -3,7 +3,20 @@
 // Capas flotantes (popover nativo en la capa superior): menús, selectores y tooltips. Las usan el panel y el sitio.
 // Al vivir en la top layer no los recorta ningún contenedor con scroll y, dentro de un <dialog> modal, siguen siendo interactivos.
 import { usePathname } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 type Placement = "bottom-start" | "bottom-end" | "top";
 
@@ -16,25 +29,25 @@ type FloatOpts = { placement?: Placement; offset?: number; matchWidth?: boolean;
 function track(anchor: HTMLElement | null, f: HTMLElement | null, { placement = "bottom-start", offset = 6, matchWidth = false, sheet = true }: FloatOpts) {
   if (!anchor || !f) return;
   const update = () => {
-      const a = anchor.getBoundingClientRect();
-      if (sheet && innerWidth < MOBILE) {
-        f.dataset.sheet = "";
-        f.style.left = f.style.top = f.style.minWidth = "";
-        return;
-      }
-      delete f.dataset.sheet;
-      if (matchWidth) f.style.minWidth = `${a.width}px`;
-      const fw = f.offsetWidth;
-      const fh = f.offsetHeight;
-      let left = placement === "bottom-end" ? a.right - fw : placement === "top" ? a.left + a.width / 2 - fw / 2 : a.left;
-      left = Math.min(Math.max(8, left), innerWidth - fw - 8);
-      const below = a.bottom + offset;
-      const above = a.top - offset - fh;
-      let top = placement === "top" ? above : below;
-      if (placement === "top" && top < 8) top = below;
-      if (placement !== "top" && below + fh > innerHeight - 8 && above > 8) top = above;
-      f.style.left = `${Math.round(left)}px`;
-      f.style.top = `${Math.round(Math.max(8, top))}px`;
+    const a = anchor.getBoundingClientRect();
+    if (sheet && innerWidth < MOBILE) {
+      f.dataset.sheet = "";
+      f.style.left = f.style.top = f.style.minWidth = "";
+      return;
+    }
+    delete f.dataset.sheet;
+    if (matchWidth) f.style.minWidth = `${a.width}px`;
+    const fw = f.offsetWidth;
+    const fh = f.offsetHeight;
+    let left = placement === "bottom-end" ? a.right - fw : placement === "top" ? a.left + a.width / 2 - fw / 2 : a.left;
+    left = Math.min(Math.max(8, left), innerWidth - fw - 8);
+    const below = a.bottom + offset;
+    const above = a.top - offset - fh;
+    let top = placement === "top" ? above : below;
+    if (placement === "top" && top < 8) top = below;
+    if (placement !== "top" && below + fh > innerHeight - 8 && above > 8) top = above;
+    f.style.left = `${Math.round(left)}px`;
+    f.style.top = `${Math.round(Math.max(8, top))}px`;
   };
   update();
   const ro = new ResizeObserver(update);

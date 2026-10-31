@@ -40,7 +40,8 @@ export function validImportUrl(url: string) {
 
 export const newExportToken = () => randomBytes(24).toString("hex");
 
-export const unitName = (types: CabinType[], typeId: string, unit: number) => `${(types.find((t) => t.id === typeId)?.nombre ?? typeId).replace(/^Cabaña\s+/i, "")} ${unit}`;
+export const unitName = (types: CabinType[], typeId: string, unit: number) =>
+  `${(types.find((t) => t.id === typeId)?.nombre ?? typeId).replace(/^Cabaña\s+/i, "")} ${unit}`;
 
 async function fetchIcs(url: string): Promise<IcsEvent[]> {
   let res: Response;
@@ -54,7 +55,12 @@ async function fetchIcs(url: string): Promise<IcsEvent[]> {
   } catch (e) {
     throw new Error((e as Error)?.name === "TimeoutError" ? "Booking no respondió a tiempo." : "No se pudo conectar con el enlace del calendario.");
   }
-  if (!res.ok) throw new Error(res.status === 404 || res.status === 410 ? "El enlace ya no existe (404): cópialo de nuevo desde el extranet." : `El enlace respondió con un error (${res.status}).`);
+  if (!res.ok)
+    throw new Error(
+      res.status === 404 || res.status === 410
+        ? "El enlace ya no existe (404): cópialo de nuevo desde el extranet."
+        : `El enlace respondió con un error (${res.status}).`,
+    );
   if (Number(res.headers.get("content-length") || 0) > MAX_BYTES) throw new Error("El calendario es demasiado grande.");
   const text = await res.text();
   if (text.length > MAX_BYTES) throw new Error("El calendario es demasiado grande.");
@@ -66,7 +72,10 @@ async function fetchIcs(url: string): Promise<IcsEvent[]> {
 }
 
 export async function notify(sb: Db, kind: NotificationKind, title: string, body: string, code: string | null) {
-  await sb.from("admin_notifications").insert({ kind, title: title.slice(0, 200), body: body.slice(0, 500), reservation_code: code }).throwOnError();
+  await sb
+    .from("admin_notifications")
+    .insert({ kind, title: title.slice(0, 200), body: body.slice(0, 500), reservation_code: code })
+    .throwOnError();
 }
 
 // Toma el calendario si nadie lo leyó (o intentó leer) en los últimos `minAgeMs`. Devuelve false si otro lo tiene.
@@ -87,7 +96,11 @@ const poolOf = (cal: Pick<CalendarRow, "unit" | "extra_units">): Pool => [cal.un
 
 // Grupos de cabañas de un tipo enlazados con Booking, por iCal o por Beds24 (para repartir las reservas de la web).
 export async function channelPools(sb: Db, cabinTypeId: string): Promise<Pool[]> {
-  const { data, error } = await sb.from("channel_calendars").select("unit, extra_units").eq("cabin_type_id", cabinTypeId).or("import_url.not.is.null,beds24_room_id.not.is.null");
+  const { data, error } = await sb
+    .from("channel_calendars")
+    .select("unit, extra_units")
+    .eq("cabin_type_id", cabinTypeId)
+    .or("import_url.not.is.null,beds24_room_id.not.is.null");
   if (error) {
     if (isMissingTable(error)) return [];
     throw error;
@@ -106,9 +119,33 @@ async function withoutEchoes(sb: Db, cal: CalendarRow, spans: ChannelSpan[]) {
   const first = spans.reduce((m, s) => (s.checkIn < m ? s.checkIn : m), spans[0].checkIn);
   const last = spans.reduce((m, s) => (s.checkOut > m ? s.checkOut : m), spans[0].checkOut);
   const [{ data: rs }, { data: bs }, { data: ss }] = await Promise.all([
-    sb.from("reservations").select("unit, check_in, check_out, updated_at").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).in("status", ACTIVE_STATUSES).lt("check_in", last).gt("check_out", first).throwOnError(),
-    sb.from("blocks").select("unit, from_date, to_date, updated_at").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).lt("from_date", last).gte("to_date", first).throwOnError(),
-    sb.from("channel_stays").select("unit, check_in, check_out, first_seen_at").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).neq("calendar_id", cal.id).is("removed_at", null).lt("check_in", last).gt("check_out", first).throwOnError(),
+    sb
+      .from("reservations")
+      .select("unit, check_in, check_out, updated_at")
+      .eq("cabin_type_id", cal.cabin_type_id)
+      .in("unit", pool)
+      .in("status", ACTIVE_STATUSES)
+      .lt("check_in", last)
+      .gt("check_out", first)
+      .throwOnError(),
+    sb
+      .from("blocks")
+      .select("unit, from_date, to_date, updated_at")
+      .eq("cabin_type_id", cal.cabin_type_id)
+      .in("unit", pool)
+      .lt("from_date", last)
+      .gte("to_date", first)
+      .throwOnError(),
+    sb
+      .from("channel_stays")
+      .select("unit, check_in, check_out, first_seen_at")
+      .eq("cabin_type_id", cal.cabin_type_id)
+      .in("unit", pool)
+      .neq("calendar_id", cal.id)
+      .is("removed_at", null)
+      .lt("check_in", last)
+      .gt("check_out", first)
+      .throwOnError(),
   ]);
   const items = [
     ...rs.map((r) => ({ unit: r.unit, from: r.check_in, to: r.check_out, at: r.updated_at })),
@@ -149,7 +186,13 @@ async function resolveConflicts(sb: Db, cal: CalendarRow, changed: ChannelSpan[]
 
   for (const m of plan.moves) {
     const stay = live.find((s) => occ.reservations.some((r) => r.code === m.code && s.checkIn < r.checkOut && r.checkIn < s.checkOut))!;
-    const { data, error } = await sb.from("reservations").update({ unit: m.to }).eq("code", m.code).eq("unit", m.from).in("status", ACTIVE_STATUSES).select("code");
+    const { data, error } = await sb
+      .from("reservations")
+      .update({ unit: m.to })
+      .eq("code", m.code)
+      .eq("unit", m.from)
+      .in("status", ACTIVE_STATUSES)
+      .select("code");
     if (error && !isExclusionViolation(error)) throw error;
     if (error || !data?.length) {
       // Otra reserva tomó esa unidad mientras tanto (o la reserva cambió): queda como posible sobreventa.
@@ -203,7 +246,14 @@ export async function applyStays(
   // `moved`: fechas nuevas, que cambiaron de noches o que quedaron fuera del grupo (las únicas que pueden chocar con la web).
   const moved = (e: StayEvent) => {
     const prev = byUid.get(e.uid);
-    return !prev || !!prev.removed_at || prev.check_in !== e.checkIn || prev.check_out !== e.checkOut || !pool.includes(prev.unit) || prev.cabin_type_id !== cal.cabin_type_id;
+    return (
+      !prev ||
+      !!prev.removed_at ||
+      prev.check_in !== e.checkIn ||
+      prev.check_out !== e.checkOut ||
+      !pool.includes(prev.unit) ||
+      prev.cabin_type_id !== cal.cabin_type_id
+    );
   };
   const changed = events.filter((e) => moved(e) || byUid.get(e.uid)!.summary !== e.summary);
 
@@ -215,7 +265,12 @@ export async function applyStays(
     const first = fresh.reduce((m, e) => (e.checkIn < m ? e.checkIn : m), fresh[0].checkIn);
     const last = fresh.reduce((m, e) => (e.checkOut > m ? e.checkOut : m), fresh[0].checkOut);
     const occ = await loadOccupancy(sb, first, addDays(last, -1), cal.cabin_type_id);
-    const own = new Set(fresh.map((e) => byUid.get(e.uid)?.id).filter(Boolean).map((id) => `${CHANNEL_ID}${id}`));
+    const own = new Set(
+      fresh
+        .map((e) => byUid.get(e.uid)?.id)
+        .filter(Boolean)
+        .map((id) => `${CHANNEL_ID}${id}`),
+    );
     occ.blocks = occ.blocks.filter((b) => !own.has((b as { id?: string }).id ?? ""));
     for (const e of fresh) {
       const prev = byUid.get(e.uid)?.unit;
@@ -245,7 +300,9 @@ export async function applyStays(
 
   // Lo que se canceló en Booking y aún no termina deja de ocupar. Lo pasado se conserva (historial de ocupación).
   const uids = new Set(events.map((e) => e.uid));
-  const gone = existing.filter((s) => !s.removed_at && s.check_out > today && (o.full ? !uids.has(s.external_uid) : !!o.gone?.includes(s.external_uid))).map((s) => s.id);
+  const gone = existing
+    .filter((s) => !s.removed_at && s.check_out > today && (o.full ? !uids.has(s.external_uid) : !!o.gone?.includes(s.external_uid)))
+    .map((s) => s.id);
   if (gone.length) await sb.from("channel_stays").update({ removed_at: new Date().toISOString() }).in("id", gone).throwOnError();
 
   o.result.added += changed.length;
@@ -264,7 +321,11 @@ async function syncCalendar(sb: Db, cal: CalendarRow, units: Units, types: Cabin
     );
     result.events = events.length;
     await applyStays(sb, cal, events, { full: true, units, types, result });
-    await sb.from("channel_calendars").update({ last_synced_at: new Date().toISOString(), last_status: "ok", last_error: "", last_event_count: events.length }).eq("id", cal.id).throwOnError();
+    await sb
+      .from("channel_calendars")
+      .update({ last_synced_at: new Date().toISOString(), last_status: "ok", last_error: "", last_event_count: events.length })
+      .eq("id", cal.id)
+      .throwOnError();
   } catch (e) {
     const message = (e instanceof Error ? e.message : String(e)).slice(0, 500);
     console.error(`Calendario de Booking ${cal.id}:`, e);
@@ -272,15 +333,24 @@ async function syncCalendar(sb: Db, cal: CalendarRow, units: Units, types: Cabin
     await sb.from("channel_calendars").update({ last_status: "error", last_error: message }).eq("id", cal.id);
     // Se avisa una vez, cuando un calendario que funcionaba deja de leerse (los errores al enlazarlo se ven en el panel).
     if (notifyErrors && cal.last_status === "ok")
-      await notify(sb, "channel_sync_failed", `No se pudo leer Booking.com · ${cal.label || unitName(types, cal.cabin_type_id, cal.unit)}`, `${message} Mientras tanto, las fechas de Booking quedan como en la última lectura.`, null).catch(
-        () => {},
-      );
+      await notify(
+        sb,
+        "channel_sync_failed",
+        `No se pudo leer Booking.com · ${cal.label || unitName(types, cal.cabin_type_id, cal.unit)}`,
+        `${message} Mientras tanto, las fechas de Booking quedan como en la última lectura.`,
+        null,
+      ).catch(() => {});
   }
   return result;
 }
 
 // Lee los calendarios enlazados que no se leyeron en los últimos `minAgeMs` (todos, los de un tipo o uno).
-export async function syncCalendars(opts: { minAgeMs: number; notifyErrors: boolean; cabinTypeId?: string; calendarId?: string }): Promise<ChannelSyncResult[]> {
+export async function syncCalendars(opts: {
+  minAgeMs: number;
+  notifyErrors: boolean;
+  cabinTypeId?: string;
+  calendarId?: string;
+}): Promise<ChannelSyncResult[]> {
   const sb = createServiceClient();
   let q = sb.from("channel_calendars").select("*").not("import_url", "is", null).is("beds24_room_id", null);
   if (opts.cabinTypeId) q = q.eq("cabin_type_id", opts.cabinTypeId);
@@ -305,7 +375,7 @@ export function syncSoon(opts: { cabinTypeId?: string; minAgeMs: number }) {
     return [] as ChannelSyncResult[];
   });
 }
-export const atMost = <T,>(p: Promise<T>, ms: number) => Promise.race([p, sleep(ms).then(() => null)]);
+export const atMost = <T>(p: Promise<T>, ms: number) => Promise.race([p, sleep(ms).then(() => null)]);
 
 /* ───────────── Calendario que importa Booking ───────────── */
 
@@ -327,10 +397,25 @@ export async function exportCalendar(token: string, base: string): Promise<strin
   const fetchedAt = new Date().toISOString();
   const pool = poolOf(cal);
   const [{ data: rs }, { data: bs }, { data: ss }, { types }] = await Promise.all([
-    sb.from("reservations").select("unit, check_in, check_out").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).in("status", ACTIVE_STATUSES).gt("check_out", since).throwOnError(),
+    sb
+      .from("reservations")
+      .select("unit, check_in, check_out")
+      .eq("cabin_type_id", cal.cabin_type_id)
+      .in("unit", pool)
+      .in("status", ACTIVE_STATUSES)
+      .gt("check_out", since)
+      .throwOnError(),
     sb.from("blocks").select("unit, from_date, to_date").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).gte("to_date", since).throwOnError(),
     // Fechas de otros tipos de Booking que hayan quedado en estas cabañas (las de este tipo, Booking ya las conoce).
-    sb.from("channel_stays").select("unit, check_in, check_out").eq("cabin_type_id", cal.cabin_type_id).in("unit", pool).neq("calendar_id", cal.id).is("removed_at", null).gt("check_out", since).throwOnError(),
+    sb
+      .from("channel_stays")
+      .select("unit, check_in, check_out")
+      .eq("cabin_type_id", cal.cabin_type_id)
+      .in("unit", pool)
+      .neq("calendar_id", cal.id)
+      .is("removed_at", null)
+      .gt("check_out", since)
+      .throwOnError(),
     loadCabinTypes(sb),
     sb.from("channel_calendars").update({ last_fetched_at: fetchedAt }).eq("id", cal.id),
   ]);
@@ -345,7 +430,10 @@ export async function exportCalendar(token: string, base: string): Promise<strin
   for (const r of rs) mark(r.unit, r.check_in, r.check_out);
   for (const b of bs) mark(b.unit, b.from_date, addDays(b.to_date, 1));
   for (const s of ss) mark(s.unit, s.check_in, s.check_out);
-  const closed = [...busy].filter(([, units]) => units.size >= pool.length).map(([night]) => night).sort();
+  const closed = [...busy]
+    .filter(([, units]) => units.size >= pool.length)
+    .map(([night]) => night)
+    .sort();
   const host = new URL(base).host;
   const events: IcsEvent[] = [];
   for (const night of closed) {

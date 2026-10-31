@@ -41,7 +41,14 @@ export function computeQuote(t: Priced, checkIn: string, checkOut: string, guest
   const total = base + extraAmount;
   const deposit = Math.round((total * config.depositPct) / 100);
   return {
-    base, extraGuests, extraAmount, total, deposit, balance: total - deposit, nights, seasonNights,
+    base,
+    extraGuests,
+    extraAmount,
+    total,
+    deposit,
+    balance: total - deposit,
+    nights,
+    seasonNights,
     pricePerNight: nights ? Math.round(base / nights) : t.precioPareja,
     extraPerNight: nights && extraGuests ? Math.round(extraAmount / (nights * extraGuests)) : t.personaAdicional,
   };
@@ -58,7 +65,13 @@ export function withTotal(q: Quote, total: number): Quote {
 export function normalizePhone(p: string) {
   const digits = String(p || "").replace(/\D/g, "");
   if (/^3\d{9}$/.test(digits)) return "+57" + digits;
-  if (String(p || "").trim().startsWith("+") || /^57\d{10}$/.test(digits)) return "+" + digits;
+  if (
+    String(p || "")
+      .trim()
+      .startsWith("+") ||
+    /^57\d{10}$/.test(digits)
+  )
+    return "+" + digits;
   return digits ? "+" + digits : "";
 }
 
@@ -82,7 +95,8 @@ export function validateManualReservation(b: ManualReservationInput, types: Cabi
   if (!g.fullName || g.fullName.trim().length < 3 || g.fullName.length > 120) f["guest.fullName"] = "Escribe el nombre completo.";
   if (!["CC", "CE", "Pasaporte", "PPT"].includes(g.docType)) f["guest.docType"] = "Elige el tipo de documento.";
   if (!g.docNumber || !/^[A-Za-z0-9]{5,15}$/.test(g.docNumber.trim())) f["guest.docNumber"] = "Escribe el número de documento (sin puntos).";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((g.email || "").trim()) || g.email.length > 160) f["guest.email"] = "Escribe un correo válido: ahí le llega la confirmación.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((g.email || "").trim()) || g.email.length > 160)
+    f["guest.email"] = "Escribe un correo válido: ahí le llega la confirmación.";
   if (!/^\+\d{8,15}$/.test(normalizePhone(g.phone))) f["guest.phone"] = "Escribe el celular (WhatsApp) con indicativo si no es de Colombia.";
   if ((g.city ?? "").length > 80) f["guest.city"] = "La ciudad es demasiado larga.";
   if (b.estimatedArrival && !/^\d{2}:\d{2}$/.test(b.estimatedArrival)) f.estimatedArrival = "Hora de llegada no válida.";
@@ -125,7 +139,15 @@ export function unavailableDates(occ: Occupancy, units: number, typeId: string, 
   return out;
 }
 
-export function availability(occ: Occupancy, types: CabinType[], units: Units, ci: string, co: string, guests: number, seasons: RateSeason[] = []): Availability {
+export function availability(
+  occ: Occupancy,
+  types: CabinType[],
+  units: Units,
+  ci: string,
+  co: string,
+  guests: number,
+  seasons: RateSeason[] = [],
+): Availability {
   const nights = nightsBetween(ci, co);
   return {
     nights,
@@ -134,7 +156,13 @@ export function availability(occ: Occupancy, types: CabinType[], units: Units, c
       for (let d = ci; d < co; d = addDays(d, 1)) left = Math.min(left, freeUnits(occ, units[t.id] ?? 0, t.id, d).length);
       if (!isFinite(left)) left = 0;
       const fits = guests <= t.maxPersonas;
-      return { cabinTypeId: t.id, available: left > 0 && fits, unitsLeft: left, reason: !fits ? "capacity" : left > 0 ? null : "dates", quote: computeQuote(t, ci, co, guests, seasons) };
+      return {
+        cabinTypeId: t.id,
+        available: left > 0 && fits,
+        unitsLeft: left,
+        reason: !fits ? "capacity" : left > 0 ? null : "dates",
+        quote: computeQuote(t, ci, co, guests, seasons),
+      };
     }),
   };
 }
@@ -160,7 +188,8 @@ export function validateReservation(b: ReservationInput, types: CabinType[], tod
   if (!g.city || g.city.length > 80) f["guest.city"] = "Escribe tu ciudad de procedencia.";
   if (!/^\d{2}:\d{2}$/.test(b.estimatedArrival || "")) f.estimatedArrival = "Elige la hora estimada de llegada.";
   if (b.pet?.hasPet && !b.pet.smallBreedConfirmed) f["pet.smallBreedConfirmed"] = "Confirma que te haces responsable de tu mascota.";
-  if (b.decoration?.requested && !["aniversario", "cumpleanos", "propuesta", "otra"].includes(b.decoration.occasion)) f["decoration.occasion"] = "Elige la ocasión.";
+  if (b.decoration?.requested && !["aniversario", "cumpleanos", "propuesta", "otra"].includes(b.decoration.occasion))
+    f["decoration.occasion"] = "Elige la ocasión.";
   if ((b.decoration?.notes ?? "").length > 500 || (b.specialRequests ?? "").length > 1000) f.specialRequests = "El texto es demasiado largo.";
   if (!b.consents?.policies) f["consents.policies"] = "Debes aceptar las políticas de reserva.";
   if (!b.consents?.dataProcessing) f["consents.dataProcessing"] = "Debes autorizar el tratamiento de datos.";
@@ -197,7 +226,15 @@ export const CHANNEL_ID = "booking:";
 export function channelBlocks(stays: ChannelSpan[]): Block[] {
   return stays
     .filter((s) => !s.removedAt)
-    .map((s, i) => ({ id: CHANNEL_ID + (s.id ?? i), cabinTypeId: s.cabinTypeId, unit: s.unit, from: s.checkIn, to: addDays(s.checkOut, -1), reason: CHANNEL_LABEL, notes: "" }));
+    .map((s, i) => ({
+      id: CHANNEL_ID + (s.id ?? i),
+      cabinTypeId: s.cabinTypeId,
+      unit: s.unit,
+      from: s.checkIn,
+      to: addDays(s.checkOut, -1),
+      reason: CHANNEL_LABEL,
+      notes: "",
+    }));
 }
 export const isChannelBlock = (b: Pick<Block, "id">) => b.id.startsWith(CHANNEL_ID);
 
@@ -237,7 +274,13 @@ export function poolFirst(occ: Occupancy, units: number, typeId: string, ci: str
 // o cambiadas de esta sincronización, sin los ecos; `occ` ya las incluye como bloqueos). Si otra unidad del mismo tipo
 // está libre todas sus noches, se reacomoda allí (moves); si no, o si el huésped ya está alojado, es una posible
 // sobreventa (conflicts). `prefer`: orden en que se prueban las unidades para esas noches.
-export function planChannelMoves(occ: Occupancy, stays: ChannelSpan[], units: Units, today: string, prefer: (typeId: string, ci: string, co: string, occ: Occupancy, code: string) => number[] = () => []) {
+export function planChannelMoves(
+  occ: Occupancy,
+  stays: ChannelSpan[],
+  units: Units,
+  today: string,
+  prefer: (typeId: string, ci: string, co: string, occ: Occupancy, code: string) => number[] = () => [],
+) {
   const work: Occupancy = { reservations: occ.reservations.map((r) => ({ ...r })), blocks: occ.blocks };
   const moves: { code: string; cabinTypeId: string; from: number; to: number }[] = [];
   const conflicts: { code: string; stay: ChannelSpan }[] = [];
@@ -245,7 +288,10 @@ export function planChannelMoves(occ: Occupancy, stays: ChannelSpan[], units: Un
     if (!ACTIVE_STATUSES.includes(r.status) || r.checkOut <= today) continue;
     const stay = stays.find((s) => !s.removedAt && s.cabinTypeId === r.cabinTypeId && s.unit === r.unit && s.checkIn < r.checkOut && r.checkIn < s.checkOut);
     if (!stay) continue;
-    const to = r.status === "checked_in" ? 0 : findUnit(work, units[r.cabinTypeId] ?? 0, r.cabinTypeId, r.checkIn, r.checkOut, r.code, prefer(r.cabinTypeId, r.checkIn, r.checkOut, work, r.code));
+    const to =
+      r.status === "checked_in"
+        ? 0
+        : findUnit(work, units[r.cabinTypeId] ?? 0, r.cabinTypeId, r.checkIn, r.checkOut, r.code, prefer(r.cabinTypeId, r.checkIn, r.checkOut, work, r.code));
     if (to && to !== r.unit) {
       moves.push({ code: r.code, cabinTypeId: r.cabinTypeId, from: r.unit, to });
       r.unit = to;

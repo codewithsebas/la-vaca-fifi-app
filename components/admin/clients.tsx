@@ -2,7 +2,21 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { AlertIcon, ChevronRightIcon, LockIcon, MailIcon, NoteIcon, PhoneIcon, SearchIcon, ShieldIcon, TrashIcon, TrendIcon, UsersIcon, WarningIcon, WhatsAppIcon } from "@/components/icons";
+import {
+  AlertIcon,
+  ChevronRightIcon,
+  LockIcon,
+  MailIcon,
+  NoteIcon,
+  PhoneIcon,
+  SearchIcon,
+  ShieldIcon,
+  TrashIcon,
+  TrendIcon,
+  UsersIcon,
+  WarningIcon,
+  WhatsAppIcon,
+} from "@/components/icons";
 import { StatusPill } from "@/components/status-pill";
 import { type ClientSummary, buildClients, valueOf } from "@/lib/admin-metrics";
 import { api } from "@/lib/api";
@@ -14,7 +28,23 @@ import { useAdmin, useParam } from "./context";
 import { EmailComposer, hasEmail } from "./email-composer";
 import { MODULES, paths } from "./routes";
 import { TRUST, adminInput, norm } from "./shared";
-import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, FieldError, IconButton, PageHeader, Segmented, StatCard, Stars, buttonClass, type Tone } from "./ui";
+import {
+  Badge,
+  Button,
+  Callout,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  FieldError,
+  IconButton,
+  PageHeader,
+  Segmented,
+  StatCard,
+  Stars,
+  buttonClass,
+  type Tone,
+} from "./ui";
 
 type Filter = "todos" | "nuevos" | "recurrentes" | "frecuentes" | "alertas";
 type Sort = "actividad" | "reservas" | "valor" | "nombre" | "nuevos";
@@ -54,7 +84,19 @@ export function ClientList() {
   const list = clients
     .filter((c) => test[filter](c) && (!nq || [c.name, c.email, c.phone, c.docNumber, c.city].some((v) => norm(v || "").includes(nq))))
     .sort((a, b) =>
-      sort === "reservas" ? b.stays - a.stays || b.value - a.value : sort === "valor" ? b.value - a.value : sort === "nombre" ? a.name.localeCompare(b.name, "es") : sort === "nuevos" ? (a.firstAt < b.firstAt ? 1 : -1) : lastActivity(a) < lastActivity(b) ? 1 : -1,
+      sort === "reservas"
+        ? b.stays - a.stays || b.value - a.value
+        : sort === "valor"
+          ? b.value - a.value
+          : sort === "nombre"
+            ? a.name.localeCompare(b.name, "es")
+            : sort === "nuevos"
+              ? a.firstAt < b.firstAt
+                ? 1
+                : -1
+              : lastActivity(a) < lastActivity(b)
+                ? 1
+                : -1,
     );
 
   const total = clients.length;
@@ -64,12 +106,32 @@ export function ClientList() {
 
   return (
     <>
-      <PageHeader title={MODULES.clientes.label} description="Cada cliente se identifica por su documento. Su historial y la valoración interna del equipo están en su ficha." />
+      <PageHeader
+        title={MODULES.clientes.label}
+        description="Cada cliente se identifica por su documento. Su historial y la valoración interna del equipo están en su ficha."
+      />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Clientes" value={total} hint={`${clients.filter((c) => c.isNew).length} nuevos en 30 días`} icon={<UsersIcon size={15} />} />
-        <StatCard label="Recurrentes" value={recurring} hint={total ? `${Math.round((recurring / total) * 100)} % volvió al menos una vez` : "—"} icon={<TrendIcon size={15} />} tone="success" />
-        <StatCard label="Valor generado" value={cop(value)} hint={total ? `${cop(Math.round(value / total))} por cliente` : "—"} icon={<TrendIcon size={15} />} />
-        <StatCard label="Con alertas" value={clients.filter(test.alertas).length} hint="confianza baja o incidencias" icon={<WarningIcon size={15} />} tone={clients.some(test.alertas) ? "warning" : undefined} />
+        <StatCard
+          label="Recurrentes"
+          value={recurring}
+          hint={total ? `${Math.round((recurring / total) * 100)} % volvió al menos una vez` : "—"}
+          icon={<TrendIcon size={15} />}
+          tone="success"
+        />
+        <StatCard
+          label="Valor generado"
+          value={cop(value)}
+          hint={total ? `${cop(Math.round(value / total))} por cliente` : "—"}
+          icon={<TrendIcon size={15} />}
+        />
+        <StatCard
+          label="Con alertas"
+          value={clients.filter(test.alertas).length}
+          hint="confianza baja o incidencias"
+          icon={<WarningIcon size={15} />}
+          tone={clients.some(test.alertas) ? "warning" : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -94,7 +156,14 @@ export function ClientList() {
               {(p) => (
                 <div className="relative">
                   <SearchIcon size={17} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle" />
-                  <input {...p} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre, correo, celular, documento o ciudad" className={`${adminInput} pl-9`} />
+                  <input
+                    {...p}
+                    type="search"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Nombre, correo, celular, documento o ciudad"
+                    className={`${adminInput} pl-9`}
+                  />
                 </div>
               )}
             </Field>
@@ -124,13 +193,20 @@ export function ClientList() {
               <ul className="divide-y divide-line">
                 {list.slice(0, limit).map((c) => (
                   <li key={c.key}>
-                    <Link href={paths.cliente(c.key)} className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-canvas/70 md:grid-cols-[minmax(0,1.6fr)_90px_120px_minmax(0,1.1fr)_auto]">
+                    <Link
+                      href={paths.cliente(c.key)}
+                      className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-canvas/70 md:grid-cols-[minmax(0,1.6fr)_90px_120px_minmax(0,1.1fr)_auto]"
+                    >
                       <span className="min-w-0">
                         <span className="flex flex-wrap items-center gap-1.5 font-semibold text-ink">
                           {c.name}
                           {c.isNew && <Badge tone="info">Nuevo</Badge>}
                           {c.isRecurring && <Badge tone="success">Recurrente</Badge>}
-                          {(c.flagged || c.incidents > 0) && <Badge tone="danger" icon={<AlertIcon size={11} />}>Alerta</Badge>}
+                          {(c.flagged || c.incidents > 0) && (
+                            <Badge tone="danger" icon={<AlertIcon size={11} />}>
+                              Alerta
+                            </Badge>
+                          )}
                         </span>
                         <span className="block truncate text-[12.5px] text-ink-muted">
                           {c.email} · {c.city}
@@ -157,7 +233,11 @@ export function ClientList() {
             </Card>
           ) : (
             <Card className="p-4">
-              <EmptyState icon={<UsersIcon size={18} />} title={clients.length ? "No hay clientes con ese filtro" : "Aún no hay clientes"} text={clients.length ? "Prueba con otra búsqueda o filtro." : "Cada persona que reserve aparecerá aquí con su historial."} />
+              <EmptyState
+                icon={<UsersIcon size={18} />}
+                title={clients.length ? "No hay clientes con ese filtro" : "Aún no hay clientes"}
+                text={clients.length ? "Prueba con otra búsqueda o filtro." : "Cada persona que reserve aparecerá aquí con su historial."}
+              />
             </Card>
           )}
           {list.length > limit && (
@@ -173,7 +253,10 @@ export function ClientList() {
             <ul className="-mx-2 flex flex-col">
               {latest.map((r) => (
                 <li key={r.code}>
-                  <Link href={paths.reserva(r.code)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-canvas">
+                  <Link
+                    href={paths.reserva(r.code)}
+                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-canvas"
+                  >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13.5px] font-semibold text-ink">{r.guest.fullName}</span>
                       <span className="block truncate text-[12px] text-ink-muted">
@@ -197,8 +280,21 @@ export function ClientList() {
 /* ───────────── Ficha ───────────── */
 
 const TRUST_OPTIONS: Trust[] = ["alta", "media", "baja", "no_recomendado", "sin_evaluar"];
-const TAGS = ["Paga puntual", "Huésped ejemplar", "Viene con mascota", "Celebra aniversario", "Viaja en familia", "Llega tarde", "Pide decoración", "Requiere seguimiento"];
-const SEVERITY: Record<Severity, { label: string; tone: Tone }> = { leve: { label: "Leve", tone: "warning" }, moderada: { label: "Moderada", tone: "warning" }, grave: { label: "Grave", tone: "danger" } };
+const TAGS = [
+  "Paga puntual",
+  "Huésped ejemplar",
+  "Viene con mascota",
+  "Celebra aniversario",
+  "Viaja en familia",
+  "Llega tarde",
+  "Pide decoración",
+  "Requiere seguimiento",
+];
+const SEVERITY: Record<Severity, { label: string; tone: Tone }> = {
+  leve: { label: "Leve", tone: "warning" },
+  moderada: { label: "Moderada", tone: "warning" },
+  grave: { label: "Grave", tone: "danger" },
+};
 
 export function ClientDetail({ clientKey }: { clientKey: string }) {
   const { today, cabinLabel } = useAdmin();
@@ -209,7 +305,16 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
       <>
         <PageHeader title="Cliente no encontrado" />
         <Card className="p-4">
-          <EmptyState icon={<UsersIcon size={18} />} title="No encontramos este cliente" text="Puede que el enlace esté incompleto o que sus reservas ya no existan." action={<Link href={paths.clientes()} className={buttonClass("primary")}>Ir a Clientes</Link>} />
+          <EmptyState
+            icon={<UsersIcon size={18} />}
+            title="No encontramos este cliente"
+            text="Puede que el enlace esté incompleto o que sus reservas ya no existan."
+            action={
+              <Link href={paths.clientes()} className={buttonClass("primary")}>
+                Ir a Clientes
+              </Link>
+            }
+          />
         </Card>
       </>
     );
@@ -231,7 +336,12 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
         }
         actions={
           <>
-            <a href={waTo(c.phone, `Hola ${c.name.split(" ")[0]}, te escribimos de ${config.name}.`)} target="_blank" rel="noopener" className={buttonClass("secondary")}>
+            <a
+              href={waTo(c.phone, `Hola ${c.name.split(" ")[0]}, te escribimos de ${config.name}.`)}
+              target="_blank"
+              rel="noopener"
+              className={buttonClass("secondary")}
+            >
               <WhatsAppIcon size={15} />
               WhatsApp
             </a>
@@ -255,8 +365,14 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
 
       {(c.flagged || c.incidents > 0) && (
         <Callout tone="error" role="alert">
-          <strong>Atención:</strong> {c.profile?.trust === "no_recomendado" ? "el equipo marcó a este cliente como no recomendado. " : c.profile?.trust === "baja" ? "confianza baja. " : ""}
-          {c.incidents > 0 ? `${plural(c.incidents, "incidencia registrada", "incidencias registradas")}. ` : ""}Revisa la valoración interna antes de confirmar nuevas reservas.
+          <strong>Atención:</strong>{" "}
+          {c.profile?.trust === "no_recomendado"
+            ? "el equipo marcó a este cliente como no recomendado. "
+            : c.profile?.trust === "baja"
+              ? "confianza baja. "
+              : ""}
+          {c.incidents > 0 ? `${plural(c.incidents, "incidencia registrada", "incidencias registradas")}. ` : ""}Revisa la valoración interna antes de confirmar
+          nuevas reservas.
         </Callout>
       )}
 
@@ -267,24 +383,44 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
         <StatCard
           label={upcoming ? "Próxima llegada" : "Última estadía"}
           value={upcoming ? fmtDate(upcoming.checkIn) : c.lastStay ? fmtDate(c.lastStay) : "—"}
-          hint={upcoming ? `en ${plural(nightsBetween(today, upcoming.checkIn), "día", "días")}` : firstStay ? `Primera: ${fmtDate(firstStay.checkIn, true)}` : undefined}
+          hint={
+            upcoming
+              ? `en ${plural(nightsBetween(today, upcoming.checkIn), "día", "días")}`
+              : firstStay
+                ? `Primera: ${fmtDate(firstStay.checkIn, true)}`
+                : undefined
+          }
         />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <Card aria-labelledby="cl-hist" className="flex flex-col gap-3 p-4 sm:p-5">
-          <CardHeader id="cl-hist" title="Historial de reservas" subtitle={`${plural(c.reservations.length, "reserva", "reservas")} · de la más reciente a la más antigua`} />
+          <CardHeader
+            id="cl-hist"
+            title="Historial de reservas"
+            subtitle={`${plural(c.reservations.length, "reserva", "reservas")} · de la más reciente a la más antigua`}
+          />
           <ol className="relative flex flex-col gap-2 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-px before:bg-line">
             {c.reservations.map((r) => (
               <li key={r.code} className="relative pl-8">
-                <span aria-hidden="true" className="absolute top-4 left-1.5 size-3 rounded-full border-2 border-panel ring-1 ring-line-strong" style={{ background: `var(--color-status-${r.status === "pending_deposit" ? "pending" : r.status === "checked_in" ? "checked-in" : r.status})` }} />
-                <Link href={paths.reserva(r.code)} className="group flex w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line px-3.5 py-3 text-left transition-colors hover:bg-canvas">
+                <span
+                  aria-hidden="true"
+                  className="absolute top-4 left-1.5 size-3 rounded-full border-2 border-panel ring-1 ring-line-strong"
+                  style={{
+                    background: `var(--color-status-${r.status === "pending_deposit" ? "pending" : r.status === "checked_in" ? "checked-in" : r.status})`,
+                  }}
+                />
+                <Link
+                  href={paths.reserva(r.code)}
+                  className="group flex w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line px-3.5 py-3 text-left transition-colors hover:bg-canvas"
+                >
                   <span className="min-w-[180px] flex-1">
                     <span className="block text-[14px] font-semibold text-ink">
                       {fmtDate(r.checkIn, true)} → {fmtDate(r.checkOut)}
                     </span>
                     <span className="block text-[12.5px] text-ink-muted">
-                      {r.code} · {cabinLabel(r.cabinTypeId, r.unit)} · {plural(nightsBetween(r.checkIn, r.checkOut), "noche", "noches")} · {plural(r.adults + r.children, "huésped", "huéspedes")}
+                      {r.code} · {cabinLabel(r.cabinTypeId, r.unit)} · {plural(nightsBetween(r.checkIn, r.checkOut), "noche", "noches")} ·{" "}
+                      {plural(r.adults + r.children, "huésped", "huéspedes")}
                     </span>
                   </span>
                   <span className="text-right">
@@ -318,11 +454,22 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
 function InternalReview({ c }: { c: ClientSummary }) {
   const { setData, toast, onAuthError, ask } = useAdmin();
   const p = c.profile;
-  const base: ClientProfileInput = { rating: p?.rating ?? null, trust: p?.trust ?? "sin_evaluar", tags: p?.tags ?? [], preferences: p?.preferences ?? "", summary: p?.summary ?? "" };
+  const base: ClientProfileInput = {
+    rating: p?.rating ?? null,
+    trust: p?.trust ?? "sin_evaluar",
+    tags: p?.tags ?? [],
+    preferences: p?.preferences ?? "",
+    summary: p?.summary ?? "",
+  };
   const [v, setV] = useState<ClientProfileInput>(base);
   const [busy, setBusy] = useState(false);
   const [tag, setTag] = useState("");
-  const [entry, setEntry] = useState<{ kind: "note" | "incident"; severity: Severity; text: string; code: string }>({ kind: "note", severity: "leve", text: "", code: "" });
+  const [entry, setEntry] = useState<{ kind: "note" | "incident"; severity: Severity; text: string; code: string }>({
+    kind: "note",
+    severity: "leve",
+    text: "",
+    code: "",
+  });
   const [entryBusy, setEntryBusy] = useState(false);
   const [error, setError] = useState("");
   const dirty = JSON.stringify(v) !== JSON.stringify(base);
@@ -351,7 +498,13 @@ function InternalReview({ c }: { c: ClientSummary }) {
     if (!text || entryBusy) return;
     setEntryBusy(true);
     try {
-      const r = await api.admin.addClientEntry({ clientKey: c.key, kind: entry.kind, severity: entry.kind === "incident" ? entry.severity : null, text, reservationCode: entry.code || null });
+      const r = await api.admin.addClientEntry({
+        clientKey: c.key,
+        kind: entry.kind,
+        severity: entry.kind === "incident" ? entry.severity : null,
+        text,
+        reservationCode: entry.code || null,
+      });
       if (r.status === 401 || r.status === 403) return onAuthError();
       if (r.status !== 200 || !r.data) throw 0;
       store(r.data);
@@ -395,7 +548,8 @@ function InternalReview({ c }: { c: ClientSummary }) {
         </Badge>
       </div>
       <p className="rounded-xl bg-canvas px-3.5 py-2.5 text-[12.5px] text-ink-muted">
-        Solo la ve el equipo en este panel. <strong className="text-ink">Nunca se muestra al cliente</strong> ni aparece en el sitio, en sus correos o en «Consultar mi reserva». No tiene relación con reseñas públicas.
+        Solo la ve el equipo en este panel. <strong className="text-ink">Nunca se muestra al cliente</strong> ni aparece en el sitio, en sus correos o en
+        «Consultar mi reserva». No tiene relación con reseñas públicas.
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
@@ -435,7 +589,12 @@ function InternalReview({ c }: { c: ClientSummary }) {
             {v.tags.map((t) => (
               <li key={t} className="inline-flex items-center gap-1 rounded-full bg-canvas py-0.5 pr-0.5 pl-2.5 text-[12.5px] font-semibold text-ink">
                 {t}
-                <button type="button" aria-label={`Quitar ${t}`} onClick={() => set({ tags: v.tags.filter((x) => x !== t) })} className="btn-icon size-6 text-ink-muted hover:bg-ink/8 hover:text-ink">
+                <button
+                  type="button"
+                  aria-label={`Quitar ${t}`}
+                  onClick={() => set({ tags: v.tags.filter((x) => x !== t) })}
+                  className="btn-icon size-6 text-ink-muted hover:bg-ink/8 hover:text-ink"
+                >
                   ×
                 </button>
               </li>
@@ -444,7 +603,12 @@ function InternalReview({ c }: { c: ClientSummary }) {
         )}
         <div className="flex flex-wrap gap-1.5">
           {TAGS.filter((t) => !v.tags.includes(t)).map((t) => (
-            <button key={t} type="button" onClick={() => addTag(t)} className="rounded-full border border-dashed border-line-strong px-2.5 py-0.5 text-[12px] text-ink-muted transition-colors hover:border-ink hover:text-ink">
+            <button
+              key={t}
+              type="button"
+              onClick={() => addTag(t)}
+              className="rounded-full border border-dashed border-line-strong px-2.5 py-0.5 text-[12px] text-ink-muted transition-colors hover:border-ink hover:text-ink"
+            >
               + {t}
             </button>
           ))}
@@ -467,10 +631,28 @@ function InternalReview({ c }: { c: ClientSummary }) {
       </div>
 
       <Field label="Preferencias" hint="Útil para su próxima visita: cabaña favorita, horarios, alergias, ocasiones especiales.">
-        {(fp) => <textarea {...fp} rows={2} maxLength={2000} value={v.preferences} onChange={(e) => set({ preferences: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} />}
+        {(fp) => (
+          <textarea
+            {...fp}
+            rows={2}
+            maxLength={2000}
+            value={v.preferences}
+            onChange={(e) => set({ preferences: e.target.value })}
+            className={`${adminInput} resize-y leading-relaxed`}
+          />
+        )}
       </Field>
       <Field label="Observaciones generales">
-        {(fp) => <textarea {...fp} rows={3} maxLength={2000} value={v.summary} onChange={(e) => set({ summary: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} />}
+        {(fp) => (
+          <textarea
+            {...fp}
+            rows={3}
+            maxLength={2000}
+            value={v.summary}
+            onChange={(e) => set({ summary: e.target.value })}
+            className={`${adminInput} resize-y leading-relaxed`}
+          />
+        )}
       </Field>
       {error && <FieldError>{error}</FieldError>}
       <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
@@ -527,7 +709,10 @@ function InternalReview({ c }: { c: ClientSummary }) {
               <Combobox
                 value={entry.code}
                 onChange={(code) => setEntry({ ...entry, code })}
-                options={[{ value: "", label: "Sin reserva asociada" }, ...c.reservations.map((r) => ({ value: r.code, label: r.code, description: `${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}` }))]}
+                options={[
+                  { value: "", label: "Sin reserva asociada" },
+                  ...c.reservations.map((r) => ({ value: r.code, label: r.code, description: `${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}` })),
+                ]}
                 className="h-8 min-h-8 text-[13px]"
               />
             </div>

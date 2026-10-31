@@ -34,9 +34,24 @@ export function Lick({ children, className = "" }: { children: ReactNode; classN
   return (
     <span className={`relative inline-block whitespace-nowrap ${className}`}>
       <span className="relative z-1">{children}</span>
-      <svg aria-hidden="true" viewBox="0 0 300 40" preserveAspectRatio="none" className="absolute -bottom-[.16em] left-[-3%] z-0 h-[.44em] w-[106%] overflow-visible">
-        <path d="M6 20C40 6 92 28 142 18C192 8 244 24 294 12C300 20 294 32 280 32C232 34 190 27 142 33C92 39 40 35 12 32C3 30 1 25 6 20Z" className="fill-cta" />
-        <path d="M30 20C64 12 100 24 140 18" fill="none" strokeWidth={4} strokeLinecap="round" vectorEffect="non-scaling-stroke" className="stroke-[color-mix(in_srgb,var(--color-cta)_45%,white)]" />
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 300 40"
+        preserveAspectRatio="none"
+        className="absolute -bottom-[.16em] left-[-3%] z-0 h-[.44em] w-[106%] overflow-visible"
+      >
+        <path
+          d="M6 20C40 6 92 28 142 18C192 8 244 24 294 12C300 20 294 32 280 32C232 34 190 27 142 33C92 39 40 35 12 32C3 30 1 25 6 20Z"
+          className="fill-cta"
+        />
+        <path
+          d="M30 20C64 12 100 24 140 18"
+          fill="none"
+          strokeWidth={4}
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+          className="stroke-[color-mix(in_srgb,var(--color-cta)_45%,white)]"
+        />
       </svg>
     </span>
   );
@@ -64,8 +79,22 @@ export function WoodBoard({ children, className = "" }: { children: ReactNode; c
   return (
     <span className={`relative inline-flex -rotate-2 items-center justify-center px-[1.1em] py-[.45em] ${className}`}>
       <svg aria-hidden="true" viewBox="0 0 400 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible">
-        <path d="M10 8C110 2 290 4 392 10C398 40 398 62 390 92C290 98 110 98 8 92C2 62 2 38 10 8Z" fill="#e39b54" stroke="var(--color-on-dark)" strokeWidth={4} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-        <path d="M24 30C90 24 150 36 210 30S330 22 378 30M30 56C120 50 200 62 280 54S350 50 372 58M40 78C100 74 170 82 240 78" fill="none" stroke="#b86e2c" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+        <path
+          d="M10 8C110 2 290 4 392 10C398 40 398 62 390 92C290 98 110 98 8 92C2 62 2 38 10 8Z"
+          fill="#e39b54"
+          stroke="var(--color-on-dark)"
+          strokeWidth={4}
+          vectorEffect="non-scaling-stroke"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M24 30C90 24 150 36 210 30S330 22 378 30M30 56C120 50 200 62 280 54S350 50 372 58M40 78C100 74 170 82 240 78"
+          fill="none"
+          stroke="#b86e2c"
+          strokeWidth={2}
+          vectorEffect="non-scaling-stroke"
+          strokeLinecap="round"
+        />
         <circle cx={18} cy={50} r={3.5} fill="#7a4a22" />
         <circle cx={382} cy={50} r={3.5} fill="#7a4a22" />
       </svg>
@@ -77,7 +106,15 @@ export function WoodBoard({ children, className = "" }: { children: ReactNode; c
 /* ───────────── Flores del borde del letrero ───────────── */
 
 const PETALS = ["#ff6fae", "#3d6fe0", "#ffc83d", "#ff8a2b", "#e8344a", "#9b5de5", "#ffffff"];
-const CENTERS: Record<string, string> = { "#ff6fae": "#ffd23f", "#3d6fe0": "#ffffff", "#ffc83d": "#e8344a", "#ff8a2b": "#ffd23f", "#e8344a": "#ffd23f", "#9b5de5": "#ffd23f", "#ffffff": "#ff8a2b" };
+const CENTERS: Record<string, string> = {
+  "#ff6fae": "#ffd23f",
+  "#3d6fe0": "#ffffff",
+  "#ffc83d": "#e8344a",
+  "#ff8a2b": "#ffd23f",
+  "#e8344a": "#ffd23f",
+  "#9b5de5": "#ffd23f",
+  "#ffffff": "#ff8a2b",
+};
 
 // Una flor de cinco pétalos centrada en (x, y).
 function FlowerShape({ x, y, r, color, turn = 0 }: { x: number; y: number; r: number; color: string; turn?: number }) {
@@ -146,7 +183,12 @@ const GARDENS = { full: garden(1200, 17), left: garden(600, 23, true) };
 export function FlowerBorder({ side = "full", className = "" }: { side?: keyof typeof GARDENS; className?: string }) {
   const g = GARDENS[side];
   return (
-    <svg aria-hidden="true" viewBox={`0 0 ${g.w} 130`} preserveAspectRatio={side === "full" ? "xMidYMax slice" : "xMinYMax meet"} className={`block ${className}`}>
+    <svg
+      aria-hidden="true"
+      viewBox={`0 0 ${g.w} 130`}
+      preserveAspectRatio={side === "full" ? "xMidYMax slice" : "xMinYMax meet"}
+      className={`block ${className}`}
+    >
       <path d={g.stems} fill="none" stroke="#2f7d2e" strokeWidth={3.5} strokeLinecap="round" />
       <g stroke="var(--color-on-dark)" strokeWidth={2} strokeLinejoin="round">
         {g.leaves.map((l, i) => (
@@ -184,9 +226,19 @@ export function Tag({ children, tone = "tag", className = "" }: { children: Reac
     <span className={`inline-flex items-stretch drop-shadow-[2px_2px_0_var(--color-on-dark)] ${className}`}>
       <svg aria-hidden="true" viewBox="0 0 18 40" preserveAspectRatio="none" className="w-[18px] flex-none self-stretch">
         <path d="M18.5 1.25H17L1.6 20L17 38.75H18.5Z" fill={fill} />
-        <path d="M18.5 1.25H17L1.6 20L17 38.75H18.5" fill="none" stroke="var(--color-on-dark)" strokeWidth={2.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path
+          d="M18.5 1.25H17L1.6 20L17 38.75H18.5"
+          fill="none"
+          stroke="var(--color-on-dark)"
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
       </svg>
-      <span className={`relative -ml-px flex items-center gap-2 rounded-r-[10px] border-y-[2.5px] border-r-[2.5px] border-on-dark py-1 pr-3.5 pl-2 leading-tight font-extrabold ${text}`} style={{ background: fill }}>
+      <span
+        className={`relative -ml-px flex items-center gap-2 rounded-r-[10px] border-y-[2.5px] border-r-[2.5px] border-on-dark py-1 pr-3.5 pl-2 leading-tight font-extrabold ${text}`}
+        style={{ background: fill }}
+      >
         <span aria-hidden="true" className="absolute top-1/2 -left-[9px] size-[7px] -translate-y-1/2 rounded-full bg-bg ring-2 ring-on-dark" />
         {children}
       </span>
@@ -218,7 +270,10 @@ export function CowHide({ id, className = "", style }: { id: string; className?:
 export function SpotEdge({ className = "" }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 1200 60" preserveAspectRatio="none" className={`block w-full ${className}`}>
-      <path d="M0 0H1200V30C1140 52 1080 18 1010 34C940 50 880 58 810 40C740 22 690 50 610 46C530 42 490 18 410 30C330 42 290 58 210 44C130 30 70 50 0 36Z" fill="currentColor" />
+      <path
+        d="M0 0H1200V30C1140 52 1080 18 1010 34C940 50 880 58 810 40C740 22 690 50 610 46C530 42 490 18 410 30C330 42 290 58 210 44C130 30 70 50 0 36Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -229,7 +284,13 @@ export function Pin({ size = 44, className = "" }: { size?: number; className?: 
   return (
     <svg aria-hidden="true" width={size} height={size * 1.25} viewBox="0 0 40 50" className={`flex-none overflow-visible ${className}`}>
       <ellipse cx={20} cy={47} rx={9} ry={2.6} fill="var(--color-on-dark)" opacity={0.25} />
-      <path d="M20 46C20 46 4 30 4 18A16 16 0 0 1 36 18C36 30 20 46 20 46Z" className="fill-cta" stroke="var(--color-on-dark)" strokeWidth={2.6} strokeLinejoin="round" />
+      <path
+        d="M20 46C20 46 4 30 4 18A16 16 0 0 1 36 18C36 30 20 46 20 46Z"
+        className="fill-cta"
+        stroke="var(--color-on-dark)"
+        strokeWidth={2.6}
+        strokeLinejoin="round"
+      />
       <circle cx={20} cy={18} r={6.5} fill="#ffffff" stroke="var(--color-on-dark)" strokeWidth={2.2} />
     </svg>
   );

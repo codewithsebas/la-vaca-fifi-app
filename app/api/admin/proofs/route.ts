@@ -40,7 +40,11 @@ export const POST = route(async (req: NextRequest) => {
   if (approve && b.confirmReservation) {
     const { data: r } = await sb.from("reservations").select("status, deposit_paid_at").eq("code", proof.reservation_code).single().throwOnError();
     if ((r.status === "pending_deposit" || r.status === "expired") && !r.deposit_paid_at) {
-      const { error: payErr } = await sb.rpc("register_manual_payment", { p_code: proof.reservation_code, p_kind: "deposit", p_note: "Comprobante de pago aprobado" });
+      const { error: payErr } = await sb.rpc("register_manual_payment", {
+        p_code: proof.reservation_code,
+        p_kind: "deposit",
+        p_note: "Comprobante de pago aprobado",
+      });
       if (payErr) {
         // Una retención vencida pudo perder sus fechas: otra reserva activa ya las ocupa.
         const known = businessError(payErr);

@@ -6,7 +6,18 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type ApiError } from "@/lib/api";
 import { cop, dateOf, fmtClock, fmtDate, fmtDateTime, todayISO, wa } from "@/lib/format";
-import { BALANCE_MINUTES, PAYMENT_STATUS, START_ERRORS, kindLabel, latestConfirming, latestPayment, methodLabel, moneyOf, stageOf, type Stage } from "@/lib/payments";
+import {
+  BALANCE_MINUTES,
+  PAYMENT_STATUS,
+  START_ERRORS,
+  kindLabel,
+  latestConfirming,
+  latestPayment,
+  methodLabel,
+  moneyOf,
+  stageOf,
+  type Stage,
+} from "@/lib/payments";
 import type { PaymentKind, PaymentStart, PublicPayment, PublicReservation } from "@/lib/types";
 import { CheckIcon, ClockIcon, WhatsAppIcon } from "./icons";
 import { useSite } from "./site-provider";
@@ -122,11 +133,30 @@ function Declined({ p }: { p: PublicPayment | null }) {
   );
 }
 
-export const payLabel = (kind: PaymentKind, amount: number) => (kind === "deposit" ? `Pagar abono de ${cop(amount)}` : kind === "full" ? `Pagar el total: ${cop(amount)}` : `Pagar saldo de ${cop(amount)}`);
+export const payLabel = (kind: PaymentKind, amount: number) =>
+  kind === "deposit" ? `Pagar abono de ${cop(amount)}` : kind === "full" ? `Pagar el total: ${cop(amount)}` : `Pagar saldo de ${cop(amount)}`;
 
-function PayButton({ kind, amount, busy, onPay, blocked }: { kind: PaymentKind; amount: number; busy: PaymentKind | null; onPay: (k: PaymentKind) => void; blocked?: boolean }) {
+function PayButton({
+  kind,
+  amount,
+  busy,
+  onPay,
+  blocked,
+}: {
+  kind: PaymentKind;
+  amount: number;
+  busy: PaymentKind | null;
+  onPay: (k: PaymentKind) => void;
+  blocked?: boolean;
+}) {
   return (
-    <button type="button" onClick={() => onPay(kind)} disabled={!!busy || blocked} aria-busy={busy === kind} className="btn btn-highlight min-h-14 self-start px-7 text-[1.02rem] disabled:opacity-60">
+    <button
+      type="button"
+      onClick={() => onPay(kind)}
+      disabled={!!busy || blocked}
+      aria-busy={busy === kind}
+      className="btn btn-highlight min-h-14 self-start px-7 text-[1.02rem] disabled:opacity-60"
+    >
       {busy === kind && <Spinner />}
       {busy === kind ? "Abriendo el pago…" : payLabel(kind, amount)}
     </button>
@@ -137,9 +167,30 @@ export type Plan = Extract<PaymentKind, "deposit" | "full">;
 
 // ¿Cuánto pagar para confirmar? El abono (y el saldo después) o el total de una vez.
 // `wide`: las dos opciones lado a lado (pantallas anchas); si no, una debajo de la otra.
-export function PlanChoice({ value, onChange, deposit, total, pct, disabled, wide }: { value: Plan; onChange: (p: Plan) => void; deposit: number; total: number; pct: number; disabled?: boolean; wide?: boolean }) {
+export function PlanChoice({
+  value,
+  onChange,
+  deposit,
+  total,
+  pct,
+  disabled,
+  wide,
+}: {
+  value: Plan;
+  onChange: (p: Plan) => void;
+  deposit: number;
+  total: number;
+  pct: number;
+  disabled?: boolean;
+  wide?: boolean;
+}) {
   const options: { id: Plan; title: string; amount: number; note: string }[] = [
-    { id: "deposit", title: `Abono del ${pct} %`, amount: deposit, note: `Confirma tu reserva. El saldo de ${cop(total - deposit)} lo pagas en línea antes de llegar o en la hora siguiente al check-in.` },
+    {
+      id: "deposit",
+      title: `Abono del ${pct} %`,
+      amount: deposit,
+      note: `Confirma tu reserva. El saldo de ${cop(total - deposit)} lo pagas en línea antes de llegar o en la hora siguiente al check-in.`,
+    },
     { id: "full", title: "Pago total", amount: total, note: "Confirma tu reserva y deja la estadía pagada: no pagas nada al llegar." },
   ];
   return (
@@ -180,7 +231,17 @@ export function PlanChoice({ value, onChange, deposit, total, pct, disabled, wid
  * `onRefresh`: volver a consultar la API (al vencer un plazo o cuando la API rechaza un pago por estado).
  */
 // `terms`: casilla de políticas antes de pagar (enlace de pago de una reserva tomada por el equipo, que el huésped aún no aceptó).
-export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReservation; access: PayAccess | null; onRefresh: () => void; terms?: { accepted: boolean; onChange: (v: boolean) => void } }) {
+export function PaymentStage({
+  r,
+  access,
+  onRefresh,
+  terms,
+}: {
+  r: PublicReservation;
+  access: PayAccess | null;
+  onRefresh: () => void;
+  terms?: { accepted: boolean; onChange: (v: boolean) => void };
+}) {
   const { c } = useSite();
   const stage0 = stageOf(r);
   const live = stage0 === "awaiting_deposit" || stage0 === "balance_due";
@@ -221,7 +282,11 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
             {/* Las retenciones de la web duran minutos; las del enlace que envía el equipo, hasta 48 horas: si no es hoy, también el día. */}
             Tus fechas quedan apartadas hasta {dateOf(r.depositDueAt) === todayISO() ? "las " : `el ${fmtDate(dateOf(r.depositDueAt))} a las `}
             <strong>{fmtClock(r.depositDueAt)}</strong>{" "}
-            <span className="inline-flex items-center gap-1 rounded-full bg-card px-2.5 py-0.5 text-[.88rem] font-extrabold tabular-nums" role="timer" aria-live="off">
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-card px-2.5 py-0.5 text-[.88rem] font-extrabold tabular-nums"
+              role="timer"
+              aria-live="off"
+            >
               <ClockIcon size={14} />
               {fmtLeft(Date.parse(r.depositDueAt) - now)}
             </span>
@@ -247,7 +312,12 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
               <PayButton kind={plan} amount={plan === "full" ? m.total : m.deposit} busy={busy} onPay={pay} blocked={!!terms && !terms.accepted} />
             </>
           ) : (
-            <Amounts rows={[{ k: "Valor total", v: m.total }, { k: `Abono para confirmar (${c.depositPct} %)`, v: m.deposit, strong: true }]} />
+            <Amounts
+              rows={[
+                { k: "Valor total", v: m.total },
+                { k: `Abono para confirmar (${c.depositPct} %)`, v: m.deposit, strong: true },
+              ]}
+            />
           )}
           {errorBox}
           <p className="text-[.85rem]">Pagas en la pasarela segura de Wompi: tarjeta, PSE, Nequi o Bancolombia. Lo pagado para confirmar no es reembolsable.</p>
@@ -258,7 +328,8 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
         <Panel t="wait" eyebrow="Pago en proceso" title="Estamos confirmando tu pago">
           <p className="flex items-center gap-2.5 font-semibold" role="status">
             <Spinner />
-            El banco está procesando {confirming?.kind === "full" ? "el pago total" : "el abono"} de {cop(confirming?.amount ?? m.deposit)}. Esta página se actualiza sola; no pagues de nuevo.
+            El banco está procesando {confirming?.kind === "full" ? "el pago total" : "el abono"} de {cop(confirming?.amount ?? m.deposit)}. Esta página se
+            actualiza sola; no pagues de nuevo.
           </p>
           <p className="text-[.88rem]">Tus fechas siguen apartadas mientras llega la respuesta.</p>
         </Panel>
@@ -266,8 +337,12 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
     case "hold_expired":
       return (
         <Panel t="bad" eyebrow="Reserva no confirmada" title="El tiempo para pagar terminó">
-          <p className="font-semibold">No recibimos un pago aprobado a tiempo y las fechas se liberaron. Puedes hacer una nueva reserva si siguen disponibles.</p>
-          {confirming?.status === "approved" && confirming.needsRefund && <p className="font-bold">Tu pago llegó cuando las fechas ya no estaban disponibles. Nuestro equipo te contactará para devolverte el dinero.</p>}
+          <p className="font-semibold">
+            No recibimos un pago aprobado a tiempo y las fechas se liberaron. Puedes hacer una nueva reserva si siguen disponibles.
+          </p>
+          {confirming?.status === "approved" && confirming.needsRefund && (
+            <p className="font-bold">Tu pago llegó cuando las fechas ya no estaban disponibles. Nuestro equipo te contactará para devolverte el dinero.</p>
+          )}
           <div className="flex flex-wrap gap-2.5">
             <a href="/reservar" className="btn btn-cta min-h-12 self-start px-6">
               Reservar de nuevo
@@ -280,7 +355,13 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
       if (!m.due)
         return (
           <Panel t="ok" eyebrow="Pago completo" title="Tu reserva está confirmada y pagada">
-            <Amounts rows={[{ k: "Valor total", v: m.total }, { k: "Pagado", v: m.paid, ok: true }, { k: "Saldo", v: 0, strong: true }]} />
+            <Amounts
+              rows={[
+                { k: "Valor total", v: m.total },
+                { k: "Pagado", v: m.paid, ok: true },
+                { k: "Saldo", v: 0, strong: true },
+              ]}
+            />
             <p className="text-[.9rem] font-semibold">
               No tienes nada pendiente por pagar. Check-in de {c.checkIn.replace(/\.$/, "")}. Presenta tu documento de identidad físico al llegar.
             </p>
@@ -292,15 +373,18 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
             rows={[
               { k: "Valor total", v: m.total },
               { k: "Pagado", v: m.paid, ok: true },
-              { k: "Saldo pendiente", v: m.due, strong: true, note: `Puedes pagarlo ahora o en línea después del check-in (tendrás ${BALANCE_MINUTES / 60} hora).` },
+              {
+                k: "Saldo pendiente",
+                v: m.due,
+                strong: true,
+                note: `Puedes pagarlo ahora o en línea después del check-in (tendrás ${BALANCE_MINUTES / 60} hora).`,
+              },
             ]}
           />
           <Declined p={balance} />
           {access && <PayButton kind="balance" amount={m.due} busy={busy} onPay={pay} />}
           {errorBox}
-          <p className="text-[.9rem] font-semibold">
-            Check-in de {c.checkIn.replace(/\.$/, "")}. Presenta tu documento de identidad físico al llegar.
-          </p>
+          <p className="text-[.9rem] font-semibold">Check-in de {c.checkIn.replace(/\.$/, "")}. Presenta tu documento de identidad físico al llegar.</p>
         </Panel>
       );
     case "balance_due":
@@ -312,7 +396,13 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
             <span className="display text-[2.4rem] leading-none tabular-nums">{fmtLeft(Date.parse(r.balanceDueAt!) - now)}</span>
             <span className="text-[.9rem] font-semibold">para pagar · hasta las {fmtClock(r.balanceDueAt!)}</span>
           </div>
-          <Amounts rows={[{ k: "Valor total", v: m.total }, { k: "Ya pagado", v: m.paid, ok: true }, { k: "Saldo restante", v: m.due, strong: true }]} />
+          <Amounts
+            rows={[
+              { k: "Valor total", v: m.total },
+              { k: "Ya pagado", v: m.paid, ok: true },
+              { k: "Saldo restante", v: m.due, strong: true },
+            ]}
+          />
           <Declined p={balance} />
           {access && <PayButton kind="balance" amount={m.due} busy={busy} onPay={pay} />}
           {errorBox}
@@ -325,31 +415,55 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
             <Spinner />
             El banco está procesando el pago de {cop(balance?.amount ?? m.due)}. Esta página se actualiza sola; no pagues de nuevo.
           </p>
-          <Amounts rows={[{ k: "Valor total", v: m.total }, { k: "Ya pagado", v: m.paid, ok: true }, { k: "Saldo en proceso", v: m.due, strong: true }]} />
+          <Amounts
+            rows={[
+              { k: "Valor total", v: m.total },
+              { k: "Ya pagado", v: m.paid, ok: true },
+              { k: "Saldo en proceso", v: m.due, strong: true },
+            ]}
+          />
         </Panel>
       );
     case "balance_overdue":
       return (
         <Panel t="bad" eyebrow="Saldo pendiente" title="Venció el plazo para pagar el saldo en línea">
           <p className="font-semibold">
-            La hora para pagar en línea terminó{r.balanceDueAt ? ` a las ${fmtClock(r.balanceDueAt).replace(/\.$/, "")}` : ""}. Para completar el servicio, paga {cop(m.due)} en recepción
+            La hora para pagar en línea terminó{r.balanceDueAt ? ` a las ${fmtClock(r.balanceDueAt).replace(/\.$/, "")}` : ""}. Para completar el servicio, paga{" "}
+            {cop(m.due)} en recepción
             {c.datosPagoAbono && !c.datosPagoAbono.includes("{") ? ` o por transferencia: ${c.datosPagoAbono}` : ""}.
           </p>
-          <Amounts rows={[{ k: "Valor total", v: m.total }, { k: "Ya pagado", v: m.paid, ok: true }, { k: "Saldo pendiente", v: m.due, strong: true }]} />
+          <Amounts
+            rows={[
+              { k: "Valor total", v: m.total },
+              { k: "Ya pagado", v: m.paid, ok: true },
+              { k: "Saldo pendiente", v: m.due, strong: true },
+            ]}
+          />
           {whatsapp(`Hola, necesito pagar el saldo de mi reserva ${r.code}.`)}
         </Panel>
       );
     case "paid_in_full":
       return (
         <Panel t="ok" eyebrow="Pago completo" title="¡Todo listo! Tu estadía está pagada">
-          <Amounts rows={[{ k: "Valor total", v: m.total }, { k: "Pagado", v: m.paid, ok: true }, { k: "Saldo", v: 0, strong: true }]} />
+          <Amounts
+            rows={[
+              { k: "Valor total", v: m.total },
+              { k: "Pagado", v: m.paid, ok: true },
+              { k: "Saldo", v: 0, strong: true },
+            ]}
+          />
           <p className="font-semibold">Disfruta tu estadía. El check-out es hasta las {c.checkOut}.</p>
         </Panel>
       );
     case "completed":
       return (
         <Panel t="ok" eyebrow="Estadía finalizada" title="¡Gracias por visitarnos!">
-          <Amounts rows={[{ k: "Valor total", v: m.total }, { k: "Pagado", v: m.paid, ok: true }]} />
+          <Amounts
+            rows={[
+              { k: "Valor total", v: m.total },
+              { k: "Pagado", v: m.paid, ok: true },
+            ]}
+          />
         </Panel>
       );
     default:
@@ -364,7 +478,13 @@ export function PaymentStage({ r, access, onRefresh, terms }: { r: PublicReserva
 
 /* ───────────── Historial ───────────── */
 
-const dot: Record<string, string> = { success: "bg-accent", danger: "bg-error", warning: "bg-highlight", info: "bg-[var(--color-status-rescheduled)]", neutral: "bg-card-muted" };
+const dot: Record<string, string> = {
+  success: "bg-accent",
+  danger: "bg-error",
+  warning: "bg-highlight",
+  info: "bg-[var(--color-status-rescheduled)]",
+  neutral: "bg-card-muted",
+};
 
 // Intentos de pago (el huésped ve si un pago quedó rechazado, en proceso o aprobado, y por qué medio).
 export function PaymentHistory({ payments }: { payments?: PublicPayment[] }) {
@@ -379,7 +499,10 @@ export function PaymentHistory({ payments }: { payments?: PublicPayment[] }) {
         {list.map((p, i) => {
           const st = PAYMENT_STATUS[p.status];
           return (
-            <li key={p.reference} className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 ${i ? "border-t-2 border-dotted border-card-muted" : ""}`}>
+            <li
+              key={p.reference}
+              className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 ${i ? "border-t-2 border-dotted border-card-muted" : ""}`}
+            >
               <span className="min-w-0">
                 <span className="flex items-center gap-2 font-bold">
                   <span aria-hidden="true" className={`size-2.5 flex-none rounded-full ${dot[st.tone]}`} />

@@ -28,15 +28,13 @@ export function appIcon(size: number, { theme = "site", shape = "rounded", heade
   if (theme === "badge") {
     const w = Math.round(size * 0.94);
     return new ImageResponse(
-      (
-        <div style={box}>
-          <svg width={w} height={Math.round((w * 282) / 330)} viewBox={MARK_FIFI_VIEWBOX}>
-            {MARK_FIFI.map((d) => (
-              <path key={d} d={d} fill="#FFFFFF" fillRule="evenodd" />
-            ))}
-          </svg>
-        </div>
-      ),
+      <div style={box}>
+        <svg width={w} height={Math.round((w * 282) / 330)} viewBox={MARK_FIFI_VIEWBOX}>
+          {MARK_FIFI.map((d) => (
+            <path key={d} d={d} fill="#FFFFFF" fillRule="evenodd" />
+          ))}
+        </svg>
+      </div>,
       { width: size, height: size, headers },
     );
   }
@@ -45,12 +43,10 @@ export function appIcon(size: number, { theme = "site", shape = "rounded", heade
   // El logo del sitio en forma redondeada ocupa todo el ícono: sin fondo, sus esquinas quedan transparentes.
   const background = theme === "site" && shape === "rounded" ? "transparent" : bg;
   return new ImageResponse(
-    (
-      <div style={{ ...box, background, borderRadius: shape === "rounded" ? size * 0.22 : 0 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse dibuja <img>, no next/image */}
-        <img src={LOGO} width={w} height={w} alt="" />
-      </div>
-    ),
+    <div style={{ ...box, background, borderRadius: shape === "rounded" ? size * 0.22 : 0 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse dibuja <img>, no next/image */}
+      <img src={LOGO} width={w} height={w} alt="" />
+    </div>,
     { width: size, height: size, headers },
   );
 }

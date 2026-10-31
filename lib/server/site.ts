@@ -24,7 +24,14 @@ export async function loadSiteContent(sb: Db): Promise<SiteContent> {
   ]);
   return {
     settings: s
-      ? { checkInStart: s.check_in_start.slice(0, 5), checkInEnd: s.check_in_end.slice(0, 5), checkOutTime: s.check_out_time.slice(0, 5), phones: s.phones, whatsapp: s.whatsapp, rnt: s.rnt }
+      ? {
+          checkInStart: s.check_in_start.slice(0, 5),
+          checkInEnd: s.check_in_end.slice(0, 5),
+          checkOutTime: s.check_out_time.slice(0, 5),
+          phones: s.phones,
+          whatsapp: s.whatsapp,
+          rnt: s.rnt,
+        }
       : defaultContent.settings,
     policies: policies.map((p) => ({ id: p.id, q: p.question, a: p.answer })),
     photos: Object.fromEntries(photos.map((p) => [p.slot, photoUrl(p.path)])),

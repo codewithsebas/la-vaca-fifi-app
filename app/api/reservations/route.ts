@@ -44,7 +44,9 @@ export const POST = route(async (req: NextRequest) => {
       adults: Number(b.adults),
       children: Number(b.children),
       pet: { hasPet: !!b.pet?.hasPet, smallBreedConfirmed: !!(b.pet?.hasPet && b.pet.smallBreedConfirmed) },
-      decoration: b.decoration?.requested ? { requested: true, occasion: b.decoration.occasion, notes: (b.decoration.notes ?? "").trim() } : { requested: false, occasion: "", notes: "" },
+      decoration: b.decoration?.requested
+        ? { requested: true, occasion: b.decoration.occasion, notes: (b.decoration.notes ?? "").trim() }
+        : { requested: false, occasion: "", notes: "" },
       estimated_arrival: b.estimatedArrival,
       guest_full_name: b.guest.fullName.trim(),
       guest_doc_type: b.guest.docType,

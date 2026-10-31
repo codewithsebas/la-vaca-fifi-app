@@ -56,9 +56,13 @@ export const PUT = route(async (req: NextRequest) => {
   const roomId = b.beds24RoomId == null ? null : Number(b.beds24RoomId);
   const importUrl = roomId ? null : String(b.importUrl ?? "").trim() || null;
   if (label.length > 80) return invalid({ label: "Máximo 80 caracteres." });
-  if (importUrl && (importUrl.length > 1000 || !validImportUrl(importUrl))) return invalid({ importUrl: "Pega el enlace de exportación del extranet (empieza por https://)." });
+  if (importUrl && (importUrl.length > 1000 || !validImportUrl(importUrl)))
+    return invalid({ importUrl: "Pega el enlace de exportación del extranet (empieza por https://)." });
   // El enlace de la app es el que va en Booking (Importar calendario); aquí va el que exporta Booking.
-  if (importUrl?.includes("/api/ical/")) return invalid({ importUrl: "Ese es el enlace de la app, el que se pega en Booking.com. Aquí va el enlace de exportación de Booking.com (Exportar calendario)." });
+  if (importUrl?.includes("/api/ical/"))
+    return invalid({
+      importUrl: "Ese es el enlace de la app, el que se pega en Booking.com. Aquí va el enlace de exportación de Booking.com (Exportar calendario).",
+    });
 
   const { data: all, error: e1 } = await sb.from("channel_calendars").select("*");
   if (e1) {
@@ -101,7 +105,10 @@ export const PUT = route(async (req: NextRequest) => {
   const reset = changed ? { last_synced_at: null, sync_started_at: null, last_status: null, last_error: "", last_event_count: 0 } : {};
   const { data: saved } = await sb
     .from("channel_calendars")
-    .upsert({ cabin_type_id: b.cabinTypeId, unit, extra_units: extra, channel: "booking", label, import_url: importUrl, beds24_room_id: roomId, ...reset }, { onConflict: "cabin_type_id,unit,channel" })
+    .upsert(
+      { cabin_type_id: b.cabinTypeId, unit, extra_units: extra, channel: "booking", label, import_url: importUrl, beds24_room_id: roomId, ...reset },
+      { onConflict: "cabin_type_id,unit,channel" },
+    )
     .select("id")
     .single()
     .throwOnError();
@@ -122,7 +129,9 @@ export const PUT = route(async (req: NextRequest) => {
 export const POST = route(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin();
   if (error) return error;
-  const b = await readJson<{ action: "sync" } | { action: "rotate"; id: string } | { action: "beds24-connect"; code: string } | { action: "beds24-rooms" }>(req);
+  const b = await readJson<{ action: "sync" } | { action: "rotate"; id: string } | { action: "beds24-connect"; code: string } | { action: "beds24-rooms" }>(
+    req,
+  );
   if (b?.action === "sync") {
     const { error: e } = await sb.from("channel_calendars").select("id").limit(1);
     if (e) {

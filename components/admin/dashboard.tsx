@@ -2,7 +2,20 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import { ArrowRightIcon, CalendarIcon, ChevronRightIcon, ClockIcon, FileTextIcon, HomeIcon, LoginIcon, LogoutIcon, PlusIcon, TrendIcon, UsersIcon, WalletIcon } from "@/components/icons";
+import {
+  ArrowRightIcon,
+  CalendarIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  FileTextIcon,
+  HomeIcon,
+  LoginIcon,
+  LogoutIcon,
+  PlusIcon,
+  TrendIcon,
+  UsersIcon,
+  WalletIcon,
+} from "@/components/icons";
 import { StatusPill } from "@/components/status-pill";
 import { balanceDue, delta, finance, pendingOf, previousRange } from "@/lib/admin-metrics";
 import { ACTIVE_STATUSES, channelBlocks } from "@/lib/booking";
@@ -18,7 +31,21 @@ import { ARRIVING, DEPARTING, rowOf } from "./shared";
 import { Badge, Button, Card, CardHeader, CountBadge, EmptyState, PageHeader, Segmented, StatCard, buttonClass } from "./ui";
 
 // Bloque del dashboard, con su título: lo de hoy, lo que viene y las cifras del negocio.
-function Block({ id, title, hint, actions, className = "", children }: { id: string; title: string; hint?: ReactNode; actions?: ReactNode; className?: string; children: ReactNode }) {
+function Block({
+  id,
+  title,
+  hint,
+  actions,
+  className = "",
+  children,
+}: {
+  id: string;
+  title: string;
+  hint?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <section aria-labelledby={id} className={`flex flex-col gap-3 ${className}`}>
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
@@ -50,7 +77,25 @@ function ReservationRow({ r, meta, right }: { r: Reservation; meta: string; righ
   );
 }
 
-function ListCard({ id, icon, title, count, empty, footer, className = "", children }: { id: string; icon: ReactNode; title: string; count: number; empty: string; footer?: ReactNode; className?: string; children: ReactNode }) {
+function ListCard({
+  id,
+  icon,
+  title,
+  count,
+  empty,
+  footer,
+  className = "",
+  children,
+}: {
+  id: string;
+  icon: ReactNode;
+  title: string;
+  count: number;
+  empty: string;
+  footer?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <Card aria-labelledby={id} className={`flex flex-col gap-3 p-4 sm:p-5 ${className}`}>
       <CardHeader
@@ -94,7 +139,9 @@ export function Dashboard() {
   // Las que ya pasaron por recepción hoy: completan la cuenta del día.
   const arrived = R.filter((r) => r.checkIn === today && r.status === "checked_in").length;
   const left = R.filter((r) => r.checkOut === today && r.status === "completed").length;
-  const upcoming = R.filter((r) => r.checkIn > today && r.checkIn <= addDays(today, 7) && ARRIVING.includes(r.status)).sort((a, b) => (a.checkIn < b.checkIn ? -1 : 1));
+  const upcoming = R.filter((r) => r.checkIn > today && r.checkIn <= addDays(today, 7) && ARRIVING.includes(r.status)).sort((a, b) =>
+    a.checkIn < b.checkIn ? -1 : 1,
+  );
   // Pagos por completar: abonos de fechas retenidas y saldos de huéspedes en estadía (con su plazo), el más urgente primero.
   const deadlineOf = (r: Reservation) => (r.status === "pending_deposit" ? r.depositDueAt : (r.balanceDueAt ?? ""));
   const pend = R.filter((r) => r.status === "pending_deposit" || balanceDue(r, now)).sort((a, b) => (deadlineOf(a) < deadlineOf(b) ? -1 : 1));
@@ -122,11 +169,22 @@ export function Dashboard() {
 
       <Block id="d-today" title="Hoy" hint="Quién llega, quién sale y qué pagos faltan por completar.">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="Ocupación esta noche" value={`${occToday.busy} de ${occToday.total}`} hint={occToday.total ? `${Math.round((occToday.busy / occToday.total) * 100)} % de las cabañas` : "Sin cabañas"} icon={<HomeIcon size={15} />} />
+          <StatCard
+            label="Ocupación esta noche"
+            value={`${occToday.busy} de ${occToday.total}`}
+            hint={occToday.total ? `${Math.round((occToday.busy / occToday.total) * 100)} % de las cabañas` : "Sin cabañas"}
+            icon={<HomeIcon size={15} />}
+          />
           <StatCard
             label="Llegadas por recibir"
             value={arr.length}
-            hint={arrived ? plural(arrived, "reserva ya hizo check-in", "reservas ya hicieron check-in") : arr.length ? "ninguna ha llegado todavía" : "sin llegadas programadas"}
+            hint={
+              arrived
+                ? plural(arrived, "reserva ya hizo check-in", "reservas ya hicieron check-in")
+                : arr.length
+                  ? "ninguna ha llegado todavía"
+                  : "sin llegadas programadas"
+            }
             icon={<LoginIcon size={15} />}
             tone={arr.length ? "info" : undefined}
           />
@@ -137,14 +195,31 @@ export function Dashboard() {
             icon={<LogoutIcon size={15} />}
             tone={dep.length ? "info" : undefined}
           />
-          <StatCard label="Por cobrar" value={cop(toCollect)} hint={<Link href={paths.pagos({ vista: "por-cobrar" })} className="font-semibold text-ink underline-offset-2 hover:underline">Ver pagos pendientes</Link>} icon={<WalletIcon size={15} />} tone="warning" />
+          <StatCard
+            label="Por cobrar"
+            value={cop(toCollect)}
+            hint={
+              <Link href={paths.pagos({ vista: "por-cobrar" })} className="font-semibold text-ink underline-offset-2 hover:underline">
+                Ver pagos pendientes
+              </Link>
+            }
+            icon={<WalletIcon size={15} />}
+            tone="warning"
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ListCard id="d-arr" icon={<LoginIcon size={18} />} title="Llegadas hoy" count={arr.length} empty="No hay llegadas programadas hoy.">
             {arr.map((r) => {
               const x = rowOf(r, cabinLabel);
-              return <ReservationRow key={r.code} r={r} meta={[x.cabin, x.code, x.arrival].filter(Boolean).join(" · ")} right={<StatusPill status={r.status} size="sm" />} />;
+              return (
+                <ReservationRow
+                  key={r.code}
+                  r={r}
+                  meta={[x.cabin, x.code, x.arrival].filter(Boolean).join(" · ")}
+                  right={<StatusPill status={r.status} size="sm" />}
+                />
+              );
             })}
           </ListCard>
           <ListCard id="d-dep" icon={<LogoutIcon size={18} />} title="Salidas hoy" count={dep.length} empty="No hay salidas programadas hoy.">
@@ -153,7 +228,14 @@ export function Dashboard() {
               return <ReservationRow key={r.code} r={r} meta={`${x.cabin} · ${x.code}`} right={<StatusPill status={r.status} size="sm" />} />;
             })}
           </ListCard>
-          <ListCard id="d-pend" icon={<WalletIcon size={18} />} title="Pagos por completar" count={pend.length} empty="No hay abonos ni saldos pendientes." className="md:col-span-2 xl:col-span-1">
+          <ListCard
+            id="d-pend"
+            icon={<WalletIcon size={18} />}
+            title="Pagos por completar"
+            count={pend.length}
+            empty="No hay abonos ni saldos pendientes."
+            className="md:col-span-2 xl:col-span-1"
+          >
             {pend.map((r) => {
               const x = rowOf(r, cabinLabel);
               const bd = balanceDue(r, now);
@@ -173,7 +255,9 @@ export function Dashboard() {
                         Comprobante
                       </Badge>
                     ) : (
-                      <span className={`inline-flex flex-none items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold tabular-nums ${minutes < 10 ? "bg-error-soft text-error" : "bg-warning-soft text-warning"}`}>
+                      <span
+                        className={`inline-flex flex-none items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold tabular-nums ${minutes < 10 ? "bg-error-soft text-error" : "bg-warning-soft text-warning"}`}
+                      >
                         <ClockIcon size={13} />
                         <span className="sr-only">{bd ? "El saldo vence en " : "La retención vence en "}</span>
                         {countdown(deadline)}
@@ -206,7 +290,14 @@ export function Dashboard() {
           >
             {upcoming.slice(0, UPCOMING_MAX).map((r) => {
               const x = rowOf(r, cabinLabel);
-              return <ReservationRow key={r.code} r={r} meta={`${r.checkIn === addDays(today, 1) ? "Mañana" : fmtDate(r.checkIn)} · ${x.cabin} · ${x.nights}`} right={<StatusPill status={r.status} size="sm" />} />;
+              return (
+                <ReservationRow
+                  key={r.code}
+                  r={r}
+                  meta={`${r.checkIn === addDays(today, 1) ? "Mañana" : fmtDate(r.checkIn)} · ${x.cabin} · ${x.nights}`}
+                  right={<StatusPill status={r.status} size="sm" />}
+                />
+              );
             })}
           </ListCard>
         </div>
@@ -257,16 +348,47 @@ function FinanceBlock() {
       }
     >
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Ingresos recibidos" value={cop(now.received)} delta={delta(now.received, before.received)} hint={plural(now.payments.length, "pago", "pagos")} icon={<TrendIcon size={15} />} tone="success" />
-        <StatCard label="Reservas confirmadas" value={now.confirmedCount} delta={delta(now.confirmedCount, before.confirmedCount)} hint="abono recibido en el periodo" icon={<CalendarIcon size={15} />} />
-        <StatCard label="Ocupación" value={`${Math.round(now.occupancy * 100)} %`} delta={delta(now.occupancy, before.occupancy)} hint={`${now.occupied} de ${now.available} noches`} icon={<HomeIcon size={15} />} />
-        <StatCard label="Ticket promedio" value={now.ticket ? cop(now.ticket) : "—"} delta={now.ticket ? delta(now.ticket, before.ticket) : undefined} hint="valor por reserva confirmada" icon={<UsersIcon size={15} />} />
+        <StatCard
+          label="Ingresos recibidos"
+          value={cop(now.received)}
+          delta={delta(now.received, before.received)}
+          hint={plural(now.payments.length, "pago", "pagos")}
+          icon={<TrendIcon size={15} />}
+          tone="success"
+        />
+        <StatCard
+          label="Reservas confirmadas"
+          value={now.confirmedCount}
+          delta={delta(now.confirmedCount, before.confirmedCount)}
+          hint="abono recibido en el periodo"
+          icon={<CalendarIcon size={15} />}
+        />
+        <StatCard
+          label="Ocupación"
+          value={`${Math.round(now.occupancy * 100)} %`}
+          delta={delta(now.occupancy, before.occupancy)}
+          hint={`${now.occupied} de ${now.available} noches`}
+          icon={<HomeIcon size={15} />}
+        />
+        <StatCard
+          label="Ticket promedio"
+          value={now.ticket ? cop(now.ticket) : "—"}
+          delta={now.ticket ? delta(now.ticket, before.ticket) : undefined}
+          hint="valor por reserva confirmada"
+          icon={<UsersIcon size={15} />}
+        />
       </div>
       <RevenueChart buckets={now.buckets} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <StaysMeter stays={now.stays} />
         <BarList id="d-cabin" title="Ingresos por cabaña" subtitle="¿Qué cabaña genera más?" rows={now.byCabin} total={now.received} />
-        <BarList id="d-type" title="Ingresos por tipo de estadía" subtitle="Pareja, familia (con niños), grupo (3 o más adultos) o individual." rows={now.byType} total={now.received} />
+        <BarList
+          id="d-type"
+          title="Ingresos por tipo de estadía"
+          subtitle="Pareja, familia (con niños), grupo (3 o más adultos) o individual."
+          rows={now.byType}
+          total={now.received}
+        />
       </div>
     </Block>
   );
@@ -287,7 +409,12 @@ function OccupancyChart() {
 
   return (
     <Card aria-labelledby="d-week" className="flex flex-col gap-5 p-4 sm:p-5">
-      <CardHeader id="d-week" icon={<HomeIcon size={18} />} title="Ocupación de los próximos 7 días" subtitle={`Promedio ${avg} % · ${plural(week[0].total, "cabaña", "cabañas")}`} />
+      <CardHeader
+        id="d-week"
+        icon={<HomeIcon size={18} />}
+        title="Ocupación de los próximos 7 días"
+        subtitle={`Promedio ${avg} % · ${plural(week[0].total, "cabaña", "cabañas")}`}
+      />
       {/* Junto a una lista más alta, las columnas crecen con la tarjeta. */}
       <div className="flex flex-1 flex-col pl-9">
         <div className="relative min-h-[168px] flex-1">
@@ -309,8 +436,16 @@ function OccupancyChart() {
                 ))}
                 className="group relative flex h-full flex-col items-center justify-end"
               >
-                <span aria-hidden="true" className="relative block w-6 rounded-t-[4px] bg-chart transition-[filter] group-hover:brightness-90" style={{ height: d.pc ? `${d.pc}%` : 0 }}>
-                  {i === 0 && <span className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-[12px] font-bold whitespace-nowrap text-ink tabular-nums">{d.pc} %</span>}
+                <span
+                  aria-hidden="true"
+                  className="relative block w-6 rounded-t-[4px] bg-chart transition-[filter] group-hover:brightness-90"
+                  style={{ height: d.pc ? `${d.pc}%` : 0 }}
+                >
+                  {i === 0 && (
+                    <span className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-[12px] font-bold whitespace-nowrap text-ink tabular-nums">
+                      {d.pc} %
+                    </span>
+                  )}
                 </span>
               </li>
             ))}

@@ -1,7 +1,21 @@
 // Adaptador simulado: implementa el contrato de la API sobre localStorage.
 // Se activa con NEXT_PUBLIC_USE_MOCK_API=1 (demos sin backend). Solo corre en el navegador.
 import {
-  availability, channelBlocks, clashingReservations, computeQuote, depositDueAt, findUnit, newReservationCode, normalizePhone, slugify, unavailableDates, unitFree, validateManualReservation, validateReservation, webFirst, withTotal,
+  availability,
+  channelBlocks,
+  clashingReservations,
+  computeQuote,
+  depositDueAt,
+  findUnit,
+  newReservationCode,
+  normalizePhone,
+  slugify,
+  unavailableDates,
+  unitFree,
+  validateManualReservation,
+  validateReservation,
+  webFirst,
+  withTotal,
 } from "./booking";
 import { config } from "./config";
 import { addDays, sleep, todayISO } from "./format";
@@ -9,8 +23,29 @@ import { BALANCE_MINUTES, HOLD_OPTIONS, manualDueAt, payPath } from "./payments"
 import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "./site";
 import { mergeTheme } from "./theme";
 import type {
-  AdminNotification, ApiResult, Block, BlockInput, CabinInput, CabinType, ChannelCalendar, ChannelCalendarInput, ChannelStay, ClientProfile, EmailRecord, NotificationKind, PaymentKind, PaymentRecord, PaymentStatus, PublicReservation, RateSeason, Rates, Reservation,
-  ManualReservationInput, ReservationInput, SeasonInput, SiteInput,
+  AdminNotification,
+  ApiResult,
+  Block,
+  BlockInput,
+  CabinInput,
+  CabinType,
+  ChannelCalendar,
+  ChannelCalendarInput,
+  ChannelStay,
+  ClientProfile,
+  EmailRecord,
+  NotificationKind,
+  PaymentKind,
+  PaymentRecord,
+  PaymentStatus,
+  PublicReservation,
+  RateSeason,
+  Rates,
+  Reservation,
+  ManualReservationInput,
+  ReservationInput,
+  SeasonInput,
+  SiteInput,
 } from "./types";
 
 type MockSettings = { post: "success" | "409" | "422" | "429" | "network" | "slow" };
@@ -48,36 +83,99 @@ function mockSettings(): MockSettings {
 
 const seedCabins = (): CabinType[] =>
   Object.values(config.cabins).map((c, i) => ({
-    id: c.id, nombre: c.full, precioPareja: c.couple, personaAdicional: c.extra, maxPersonas: c.max, units: config.unidades[c.id] ?? 1,
-    badge: c.badge, descripcion: c.description, caracteristicas: c.features, fotos: [], activa: true, sort: i + 1,
+    id: c.id,
+    nombre: c.full,
+    precioPareja: c.couple,
+    personaAdicional: c.extra,
+    maxPersonas: c.max,
+    units: config.unidades[c.id] ?? 1,
+    badge: c.badge,
+    descripcion: c.description,
+    caracteristicas: c.features,
+    fotos: [],
+    activa: true,
+    sort: i + 1,
   }));
 
 const activeTypes = (db: Db) => db.cabins.filter((c) => c.activa).sort((a, b) => a.sort - b.sort);
 const unitsOf = (db: Db) => Object.fromEntries(db.cabins.map((c) => [c.id, c.units])) as Record<string, number>;
-const quoteFor = (db: Db, typeId: string, ci: string, co: string, guests: number) => computeQuote(db.cabins.find((t) => t.id === typeId)!, ci, co, guests, db.seasons);
+const quoteFor = (db: Db, typeId: string, ci: string, co: string, guests: number) =>
+  computeQuote(
+    db.cabins.find((t) => t.id === typeId)!,
+    ci,
+    co,
+    guests,
+    db.seasons,
+  );
 const keyOf = (r: Pick<Reservation, "guest">) => `${r.guest.docType}:${r.guest.docNumber.toUpperCase()}`;
 
 function notify(db: Db, kind: NotificationKind, title: string, body: string, code: string | null, read = false) {
   const id = (db.notifications[0]?.id ?? 0) + 1;
-  db.notifications.unshift({ id, kind, title, body, reservationCode: code, readAt: read ? new Date().toISOString() : null, createdAt: new Date().toISOString() });
+  db.notifications.unshift({
+    id,
+    kind,
+    title,
+    body,
+    reservationCode: code,
+    readAt: read ? new Date().toISOString() : null,
+    createdAt: new Date().toISOString(),
+  });
   db.notifications = db.notifications.slice(0, 150);
 }
 
 function seed(): Db {
   const t = todayISO();
   const now = Date.now();
-  const mk = (code: string, status: Reservation["status"], type: string, unit: number, inOff: number, n: number, g: number, name: string, due: number, doc: string, createdDaysAgo: number): Reservation => {
+  const mk = (
+    code: string,
+    status: Reservation["status"],
+    type: string,
+    unit: number,
+    inOff: number,
+    n: number,
+    g: number,
+    name: string,
+    due: number,
+    doc: string,
+    createdDaysAgo: number,
+  ): Reservation => {
     const ci = addDays(t, inOff);
     const created = new Date(now - createdDaysAgo * 864e5).toISOString();
     const paid = ["confirmed", "rescheduled", "checked_in", "completed", "cancelled"].includes(status) && code !== "VF-D0106" ? created : null;
     return {
-      code, status, cabinTypeId: type, unit, checkIn: ci, checkOut: addDays(ci, n), adults: g, children: 0,
-      pet: { hasPet: false, smallBreedConfirmed: false }, decoration: { requested: false, occasion: "", notes: "" }, estimatedArrival: "16:00",
-      guest: { fullName: name, docType: "CC", docNumber: doc, email: code.toLowerCase() + "@ejemplo.com", phone: "+57 300 000 00" + code.slice(-2), city: "Ibagué" },
-      specialRequests: "", consents: { policies: true, dataProcessing: true, marketing: false },
-      quote: null as unknown as Reservation["quote"], depositDueAt: new Date(now + due * 36e5).toISOString(), createdAt: created, notes: [], demo: true,
-      depositPaidAt: paid, balancePaidAt: status === "completed" ? addDays(ci, 0) + "T20:00:00.000Z" : null, clientKey: "",
-      paid: 0, checkedInAt: null, balanceDueAt: null, balanceOverdueAt: null,
+      code,
+      status,
+      cabinTypeId: type,
+      unit,
+      checkIn: ci,
+      checkOut: addDays(ci, n),
+      adults: g,
+      children: 0,
+      pet: { hasPet: false, smallBreedConfirmed: false },
+      decoration: { requested: false, occasion: "", notes: "" },
+      estimatedArrival: "16:00",
+      guest: {
+        fullName: name,
+        docType: "CC",
+        docNumber: doc,
+        email: code.toLowerCase() + "@ejemplo.com",
+        phone: "+57 300 000 00" + code.slice(-2),
+        city: "Ibagué",
+      },
+      specialRequests: "",
+      consents: { policies: true, dataProcessing: true, marketing: false },
+      quote: null as unknown as Reservation["quote"],
+      depositDueAt: new Date(now + due * 36e5).toISOString(),
+      createdAt: created,
+      notes: [],
+      demo: true,
+      depositPaidAt: paid,
+      balancePaidAt: status === "completed" ? addDays(ci, 0) + "T20:00:00.000Z" : null,
+      clientKey: "",
+      paid: 0,
+      checkedInAt: null,
+      balanceDueAt: null,
+      balanceOverdueAt: null,
     };
   };
   const rs = [
@@ -97,9 +195,29 @@ function seed(): Db {
     reservations: rs,
     blocks: [{ id: "b1", cabinTypeId: "familiar", unit: 1, from: addDays(t, 20), to: addDays(t, 22), reason: "Mantenimiento", notes: "Pintura del balcón" }],
     cabins: seedCabins(),
-    seasons: [{ id: "s1", cabinTypeId: "familiar", nombre: "Temporada alta de fin de año", from: `${t.slice(0, 4)}-12-15`, to: `${Number(t.slice(0, 4)) + 1}-01-15`, precioPareja: 550000, personaAdicional: 60000, activa: true }],
+    seasons: [
+      {
+        id: "s1",
+        cabinTypeId: "familiar",
+        nombre: "Temporada alta de fin de año",
+        from: `${t.slice(0, 4)}-12-15`,
+        to: `${Number(t.slice(0, 4)) + 1}-01-15`,
+        precioPareja: 550000,
+        personaAdicional: 60000,
+        activa: true,
+      },
+    ],
     clients: {
-      "CC:1010101010": { clientKey: "CC:1010101010", rating: 5, trust: "alta", tags: ["Paga puntual", "Celebra aniversario"], preferences: "Prefiere la Cabaña Familiar con Vista.", summary: "Huésped frecuente, muy cuidadosa.", updatedAt: new Date().toISOString(), entries: [] },
+      "CC:1010101010": {
+        clientKey: "CC:1010101010",
+        rating: 5,
+        trust: "alta",
+        tags: ["Paga puntual", "Celebra aniversario"],
+        preferences: "Prefiere la Cabaña Familiar con Vista.",
+        summary: "Huésped frecuente, muy cuidadosa.",
+        updatedAt: new Date().toISOString(),
+        entries: [],
+      },
     },
     notifications: [],
     payments: [],
@@ -124,14 +242,34 @@ function seed(): Db {
 }
 
 // Secreto del enlace de pago simulado (24 caracteres base64url, como en el servidor).
-const mockToken = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(18)))).replace(/\+/g, "-").replace(/\//g, "_");
+const mockToken = () =>
+  btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(18))))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
 const randomTail = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
 
-function mockPayment(r: Reservation, kind: PaymentKind, status: PaymentStatus, provider: "simulado" | "manual", at = new Date().toISOString(), amount?: number): PaymentRecord {
+function mockPayment(
+  r: Reservation,
+  kind: PaymentKind,
+  status: PaymentStatus,
+  provider: "simulado" | "manual",
+  at = new Date().toISOString(),
+  amount?: number,
+): PaymentRecord {
   return {
-    id: crypto.randomUUID(), reservationCode: r.code, reference: `${r.code}-${kind === "deposit" ? "A" : kind === "full" ? "T" : "S"}-${provider === "manual" ? "M" : ""}${randomTail()}`, kind, status,
-    amount: amount ?? (kind === "deposit" ? r.quote.deposit : r.quote.total - r.paid), provider, method: provider === "manual" ? "MANUAL" : "", detail: provider === "manual" ? "Registrado por el equipo" : "",
-    createdAt: at, expiresAt: kind === "balance" ? (r.status === "checked_in" ? r.balanceDueAt : new Date(Date.now() + 36e5).toISOString()) : r.depositDueAt, approvedAt: status === "approved" ? at : null, needsRefund: false,
+    id: crypto.randomUUID(),
+    reservationCode: r.code,
+    reference: `${r.code}-${kind === "deposit" ? "A" : kind === "full" ? "T" : "S"}-${provider === "manual" ? "M" : ""}${randomTail()}`,
+    kind,
+    status,
+    amount: amount ?? (kind === "deposit" ? r.quote.deposit : r.quote.total - r.paid),
+    provider,
+    method: provider === "manual" ? "MANUAL" : "",
+    detail: provider === "manual" ? "Registrado por el equipo" : "",
+    createdAt: at,
+    expiresAt: kind === "balance" ? (r.status === "checked_in" ? r.balanceDueAt : new Date(Date.now() + 36e5).toISOString()) : r.depositDueAt,
+    approvedAt: status === "approved" ? at : null,
+    needsRefund: false,
   };
 }
 
@@ -143,9 +281,28 @@ function applyPayment(db: Db, p: PaymentRecord): "confirmed" | "balance_paid" | 
     if (r.depositPaidAt) return "duplicate";
     if (r.status !== "pending_deposit" && r.status !== "expired") return "not_applicable";
     Object.assign(r, { status: "confirmed", depositPaidAt: now, paid: r.paid + p.amount, ...(p.kind === "full" && { balancePaidAt: now }) });
-    notify(db, "reservation_confirmed", `Nueva reserva confirmada · ${r.guest.fullName}`, `${db.cabins.find((c) => c.id === r.cabinTypeId)?.nombre ?? ""} · ${r.code}`, r.code, p.provider === "manual");
+    notify(
+      db,
+      "reservation_confirmed",
+      `Nueva reserva confirmada · ${r.guest.fullName}`,
+      `${db.cabins.find((c) => c.id === r.cabinTypeId)?.nombre ?? ""} · ${r.code}`,
+      r.code,
+      p.provider === "manual",
+    );
     if (!db.emails.some((e) => e.reservationCode === r.code && e.kind === "reservation_confirmed"))
-      db.emails.unshift({ id: crypto.randomUUID(), kind: "reservation_confirmed", reservationCode: r.code, to: r.guest.email, subject: `Reserva confirmada ${r.code}`, status: "sent", attempts: 1, lastError: "", sentAt: now, createdAt: now, updatedAt: now });
+      db.emails.unshift({
+        id: crypto.randomUUID(),
+        kind: "reservation_confirmed",
+        reservationCode: r.code,
+        to: r.guest.email,
+        subject: `Reserva confirmada ${r.code}`,
+        status: "sent",
+        attempts: 1,
+        lastError: "",
+        sentAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
   } else {
     if (r.balancePaidAt || r.paid >= r.quote.total) return "duplicate";
     if (!["confirmed", "rescheduled", "checked_in"].includes(r.status)) return "not_applicable";
@@ -153,7 +310,14 @@ function applyPayment(db: Db, p: PaymentRecord): "confirmed" | "balance_paid" | 
     notify(db, "balance_paid", `Saldo pagado · ${r.code}`, r.guest.fullName, r.code, p.provider === "manual");
   }
   const sameStage = (k: PaymentKind) => (p.kind === "balance" ? k === "balance" : k !== "balance");
-  db.payments.forEach((x) => x !== p && x.reservationCode === r.code && sameStage(x.kind) && x.status === "initiated" && Object.assign(x, { status: "expired", detail: "Ya no es necesario: el pago se completó con otro intento" }));
+  db.payments.forEach(
+    (x) =>
+      x !== p &&
+      x.reservationCode === r.code &&
+      sameStage(x.kind) &&
+      x.status === "initiated" &&
+      Object.assign(x, { status: "expired", detail: "Ya no es necesario: el pago se completó con otro intento" }),
+  );
   return p.kind === "balance" ? "balance_paid" : "confirmed";
 }
 
@@ -162,11 +326,31 @@ function seedChannels(d: Db) {
   const t = todayISO();
   const ago = (min: number) => new Date(Date.now() - min * 6e4).toISOString();
   const cal = (id: string, cabinTypeId: string, unit: number, label: string, events: number): ChannelCalendar => ({
-    id, channel: "booking", label, cabinTypeId, unit, units: [unit], importUrl: `https://admin.booking.com/hotel/hoteladmin/ical.html?t=demo-${id}`,
-    exportUrl: `${location.origin}/api/ical/demo${id}`, lastSyncedAt: ago(3), lastFetchedAt: ago(40), lastStatus: "ok", lastError: "", lastEventCount: events, beds24RoomId: null,
+    id,
+    channel: "booking",
+    label,
+    cabinTypeId,
+    unit,
+    units: [unit],
+    importUrl: `https://admin.booking.com/hotel/hoteladmin/ical.html?t=demo-${id}`,
+    exportUrl: `${location.origin}/api/ical/demo${id}`,
+    lastSyncedAt: ago(3),
+    lastFetchedAt: ago(40),
+    lastStatus: "ok",
+    lastError: "",
+    lastEventCount: events,
+    beds24RoomId: null,
   });
   const stay = (id: string, calendarId: string, cabinTypeId: string, unit: number, inOff: number, n: number, removed = false): ChannelStay => ({
-    id, calendarId, cabinTypeId, unit, checkIn: addDays(t, inOff), checkOut: addDays(t, inOff + n), summary: "CLOSED - Not available", firstSeenAt: ago(60 * 24), removedAt: removed ? ago(60 * 20) : null,
+    id,
+    calendarId,
+    cabinTypeId,
+    unit,
+    checkIn: addDays(t, inOff),
+    checkOut: addDays(t, inOff + n),
+    summary: "CLOSED - Not available",
+    firstSeenAt: ago(60 * 24),
+    removedAt: removed ? ago(60 * 20) : null,
   });
   d.channelCalendars ??= [cal("c1", "doble", 1, "Habitación Doble con baño privado", 1), cal("c2", "familiar", 1, "Habitación Familiar con baño privado", 1)];
   d.channelStays ??= [stay("cs1", "c1", "doble", 1, 12, 2), stay("cs2", "c2", "familiar", 1, 10, 2), stay("cs3", "c2", "familiar", 1, 17, 2, true)];
@@ -178,7 +362,12 @@ const channelsOf = (d: Db) => {
 };
 
 // Contenido del sitio simulado; los datos guardados antes de existir los servicios o los colores toman los de por defecto.
-const siteOf = (d: Db): SiteContent => ({ ...defaultContent, ...d.site, services: d.site?.services ?? defaultContent.services, theme: mergeTheme(d.site?.theme) });
+const siteOf = (d: Db): SiteContent => ({
+  ...defaultContent,
+  ...d.site,
+  services: d.site?.services ?? defaultContent.services,
+  theme: mergeTheme(d.site?.theme),
+});
 
 function save(d: Db) {
   try {
@@ -196,10 +385,26 @@ function load(): Db {
 }
 
 const pub = (db: Db, r: Reservation): PublicReservation => ({
-  code: r.code, status: r.status, checkIn: r.checkIn, checkOut: r.checkOut, cabinTypeId: r.cabinTypeId, quote: r.quote, depositDueAt: r.depositDueAt,
-  depositPaidAt: r.depositPaidAt, balancePaidAt: r.balancePaidAt, paid: r.paid, checkedInAt: r.checkedInAt, balanceDueAt: r.balanceDueAt, balanceOverdueAt: r.balanceOverdueAt,
-  guestFirstName: r.guest.fullName.split(" ")[0], liveKey: "simulado", serverNow: new Date().toISOString(),
-  payments: db.payments.filter((p) => p.reservationCode === r.code).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 8),
+  code: r.code,
+  status: r.status,
+  checkIn: r.checkIn,
+  checkOut: r.checkOut,
+  cabinTypeId: r.cabinTypeId,
+  quote: r.quote,
+  depositDueAt: r.depositDueAt,
+  depositPaidAt: r.depositPaidAt,
+  balancePaidAt: r.balancePaidAt,
+  paid: r.paid,
+  checkedInAt: r.checkedInAt,
+  balanceDueAt: r.balanceDueAt,
+  balanceOverdueAt: r.balanceOverdueAt,
+  guestFirstName: r.guest.fullName.split(" ")[0],
+  liveKey: "simulado",
+  serverNow: new Date().toISOString(),
+  payments: db.payments
+    .filter((p) => p.reservationCode === r.code)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, 8),
 });
 
 // Mismos plazos que run_payment_deadlines.
@@ -228,7 +433,14 @@ function expire(db: Db) {
 }
 
 const occ = (db: Db) => ({
-  reservations: db.reservations.map((r) => ({ code: r.code, cabinTypeId: r.cabinTypeId, unit: r.unit, checkIn: r.checkIn, checkOut: r.checkOut, status: r.status })),
+  reservations: db.reservations.map((r) => ({
+    code: r.code,
+    cabinTypeId: r.cabinTypeId,
+    unit: r.unit,
+    checkIn: r.checkIn,
+    checkOut: r.checkOut,
+    status: r.status,
+  })),
   blocks: [...db.blocks, ...channelBlocks(channelsOf(db).stays)],
 });
 
@@ -257,20 +469,49 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     if (st.post === "network") throw { type: "network", message: "Simulado: sin conexión" };
     if (st.post === "429") return { status: 429, data: { error: "RATE_LIMITED" } };
     if (st.post === "409") return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
-    if (st.post === "422") return invalid({ "guest.docNumber": "El número de documento no coincide con el tipo elegido.", "guest.phone": "El celular debe tener 10 dígitos." });
+    if (st.post === "422")
+      return invalid({ "guest.docNumber": "El número de documento no coincide con el tipo elegido.", "guest.phone": "El celular debe tener 10 dígitos." });
     if (body.website) return invalid({ website: "Solicitud rechazada." });
     const key = opts.headers?.["Idempotency-Key"];
-    if (key && db.idem[key]) return { status: 201, data: pub(db, db.reservations.find((r) => r.code === db.idem[key])!) };
+    if (key && db.idem[key])
+      return {
+        status: 201,
+        data: pub(
+          db,
+          db.reservations.find((r) => r.code === db.idem[key])!,
+        ),
+      };
     const f = validateReservation(body, activeTypes(db), todayISO());
     if (Object.keys(f).length) return invalid(f);
-    const linked = channelsOf(db).calendars.filter((c) => c.cabinTypeId === body.cabinTypeId && c.importUrl).flatMap((c) => c.units ?? [c.unit]);
-    const unit = findUnit(occ(db), unitsOf(db)[body.cabinTypeId] ?? 0, body.cabinTypeId, body.checkIn, body.checkOut, undefined, webFirst(unitsOf(db)[body.cabinTypeId] ?? 0, linked));
+    const linked = channelsOf(db)
+      .calendars.filter((c) => c.cabinTypeId === body.cabinTypeId && c.importUrl)
+      .flatMap((c) => c.units ?? [c.unit]);
+    const unit = findUnit(
+      occ(db),
+      unitsOf(db)[body.cabinTypeId] ?? 0,
+      body.cabinTypeId,
+      body.checkIn,
+      body.checkOut,
+      undefined,
+      webFirst(unitsOf(db)[body.cabinTypeId] ?? 0, linked),
+    );
     if (!unit) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
     const r: Reservation = {
-      ...body, code: newReservationCode(), unit, status: "pending_deposit",
+      ...body,
+      code: newReservationCode(),
+      unit,
+      status: "pending_deposit",
       quote: quoteFor(db, body.cabinTypeId, body.checkIn, body.checkOut, body.adults + body.children),
-      depositDueAt: depositDueAt(), createdAt: new Date().toISOString(), notes: [], depositPaidAt: null, balancePaidAt: null, clientKey: "",
-      paid: 0, checkedInAt: null, balanceDueAt: null, balanceOverdueAt: null,
+      depositDueAt: depositDueAt(),
+      createdAt: new Date().toISOString(),
+      notes: [],
+      depositPaidAt: null,
+      balancePaidAt: null,
+      clientKey: "",
+      paid: 0,
+      checkedInAt: null,
+      balanceDueAt: null,
+      balanceOverdueAt: null,
     };
     r.clientKey = keyOf(r);
     delete r.captchaToken;
@@ -287,7 +528,15 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     const byRef = b.ref ? db.payments.find((p) => p.reference === String(b.ref).toUpperCase())?.reservationCode : undefined;
     const r = b.token
       ? db.reservations.find((x) => x.payToken === b.token)
-      : db.reservations.find((x) => (byRef ? x.code === byRef : x.code === String(b.code || "").toUpperCase() && x.guest.email.toLowerCase() === String(b.email || "").trim().toLowerCase()));
+      : db.reservations.find((x) =>
+          byRef
+            ? x.code === byRef
+            : x.code === String(b.code || "").toUpperCase() &&
+              x.guest.email.toLowerCase() ===
+                String(b.email || "")
+                  .trim()
+                  .toLowerCase(),
+        );
     if (!r) return { status: 404, data: { error: "NOT_FOUND" } };
     if (b.token && !(r.consents.policies && r.consents.dataProcessing)) {
       if (b.accept !== true) return { status: 422, data: { error: "TERMS_REQUIRED" } };
@@ -304,9 +553,16 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     } else {
       if (!["confirmed", "rescheduled", "checked_in"].includes(r.status)) return err(422, "NOT_PAYABLE");
       if (r.balancePaidAt || r.paid >= r.quote.total) return err(409, "ALREADY_PAID");
-      if (r.status === "checked_in" && (r.balanceOverdueAt || !r.balanceDueAt || Date.parse(r.balanceDueAt) < Date.now() + 3e4)) return err(422, "BALANCE_DEADLINE_PASSED");
+      if (r.status === "checked_in" && (r.balanceOverdueAt || !r.balanceDueAt || Date.parse(r.balanceDueAt) < Date.now() + 3e4))
+        return err(422, "BALANCE_DEADLINE_PASSED");
     }
-    db.payments.forEach((p) => p.reservationCode === r.code && sameStage(p.kind) && p.status === "initiated" && Object.assign(p, { status: "expired", detail: "Reemplazado por un nuevo intento de pago" }));
+    db.payments.forEach(
+      (p) =>
+        p.reservationCode === r.code &&
+        sameStage(p.kind) &&
+        p.status === "initiated" &&
+        Object.assign(p, { status: "expired", detail: "Reemplazado por un nuevo intento de pago" }),
+    );
     const p = mockPayment(r, kind, "initiated", "simulado", undefined, kind === "full" ? r.quote.total : undefined);
     db.payments.push(p);
     save(db);
@@ -322,7 +578,12 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       if (!status) return { status: 400, data: { error: "INVALID_BODY" } };
       if (p.status !== "pending" && p.expiresAt && Date.parse(p.expiresAt) < Date.now()) return { status: 409, data: { error: "CHECKOUT_EXPIRED" } };
       if (p.status !== "approved") {
-        Object.assign(p, { status, method: "SIMULADO", detail: status === "declined" ? "Fondos insuficientes (simulado)" : status === "error" ? "Error de comunicación con el banco (simulado)" : "", approvedAt: status === "approved" ? new Date().toISOString() : null });
+        Object.assign(p, {
+          status,
+          method: "SIMULADO",
+          detail: status === "declined" ? "Fondos insuficientes (simulado)" : status === "error" ? "Error de comunicación con el banco (simulado)" : "",
+          approvedAt: status === "approved" ? new Date().toISOString() : null,
+        });
         if (status === "declined" || status === "error") notify(db, "payment_declined", `Pago rechazado · ${p.reservationCode}`, p.detail, p.reservationCode);
         if (status === "approved") {
           const applied = applyPayment(db, p);
@@ -334,7 +595,13 @@ export async function mockRequest(method: string, path: string, opts: MockReques
         save(db);
       }
     }
-    return ok({ payment: p, reservation: pub(db, db.reservations.find((r) => r.code === p.reservationCode)!) });
+    return ok({
+      payment: p,
+      reservation: pub(
+        db,
+        db.reservations.find((r) => r.code === p.reservationCode)!,
+      ),
+    });
   }
 
   if (method === "GET" && path === "/reservations/lookup") {
@@ -343,7 +610,15 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       return r ? ok({ ...pub(db, r), termsAccepted: !!(r.consents.policies && r.consents.dataProcessing) }) : { status: 404, data: { error: "NOT_FOUND" } };
     }
     const r = db.reservations.find(
-      (x) => x.code.toUpperCase() === String(q.code || "").trim().toUpperCase() && x.guest.email.toLowerCase() === String(q.email || "").trim().toLowerCase(),
+      (x) =>
+        x.code.toUpperCase() ===
+          String(q.code || "")
+            .trim()
+            .toUpperCase() &&
+        x.guest.email.toLowerCase() ===
+          String(q.email || "")
+            .trim()
+            .toLowerCase(),
     );
     return r ? ok(pub(db, r)) : { status: 404, data: { error: "NOT_FOUND" } };
   }
@@ -362,14 +637,32 @@ export async function mockRequest(method: string, path: string, opts: MockReques
   if (isAdmin && sessionStorage.getItem(AUTH_KEY) !== "1") return { status: 401, data: { error: "UNAUTHORIZED" } };
   if (method === "GET" && path === "/admin/data")
     return ok({
-      reservations: db.reservations, blocks: db.blocks, cabinTypes: [...db.cabins].sort((a, b) => a.sort - b.sort), seasons: db.seasons, unidades: unitsOf(db),
-      site: siteOf(db), proofs: [], payments: [...db.payments].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)), emails: db.emails, clients: db.clients, notifications: db.notifications,
-      channelCalendars: channelsOf(db).calendars, channelStays: channelsOf(db).stays, beds24: null,
+      reservations: db.reservations,
+      blocks: db.blocks,
+      cabinTypes: [...db.cabins].sort((a, b) => a.sort - b.sort),
+      seasons: db.seasons,
+      unidades: unitsOf(db),
+      site: siteOf(db),
+      proofs: [],
+      payments: [...db.payments].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+      emails: db.emails,
+      clients: db.clients,
+      notifications: db.notifications,
+      channelCalendars: channelsOf(db).calendars,
+      channelStays: channelsOf(db).stays,
+      beds24: null,
     });
   // En modo simulado el contenido se guarda solo en este navegador y no cambia las páginas públicas.
   if (method === "PUT" && path === "/admin/site") {
     const b = opts.body as SiteInput;
-    db.site = { settings: b.settings, policies: b.policies, photos: {}, texts: mergeTexts(b.content ?? defaultTexts), services: siteOf(db).services, theme: mergeTheme(b.theme) };
+    db.site = {
+      settings: b.settings,
+      policies: b.policies,
+      photos: {},
+      texts: mergeTexts(b.content ?? defaultTexts),
+      services: siteOf(db).services,
+      theme: mergeTheme(b.theme),
+    };
     save(db);
     return ok(db.site);
   }
@@ -377,7 +670,13 @@ export async function mockRequest(method: string, path: string, opts: MockReques
   if (path === "/admin/services") {
     const site = siteOf(db);
     const b = (opts.body ?? {}) as Partial<SiteService> & { order?: string[] };
-    const clean = (s: Partial<SiteService>) => ({ title: String(s.title ?? "").trim(), description: String(s.description ?? "").trim(), icon: String(s.icon ?? "check"), note: String(s.note ?? "").trim(), visible: s.visible !== false });
+    const clean = (s: Partial<SiteService>) => ({
+      title: String(s.title ?? "").trim(),
+      description: String(s.description ?? "").trim(),
+      icon: String(s.icon ?? "check"),
+      note: String(s.note ?? "").trim(),
+      visible: s.visible !== false,
+    });
     if ((method === "POST" || method === "PUT") && !clean(b).title) return invalid({ title: "Escribe el nombre del servicio." });
     if (method === "POST") site.services = [...site.services, { id: crypto.randomUUID(), ...clean(b) }];
     else if (method === "PUT") site.services = site.services.map((s) => (s.id === b.id ? { id: s.id, ...clean(b) } : s));
@@ -387,12 +686,18 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     save(db);
     return ok(site.services);
   }
-  if (path === "/admin/photos" || path === "/admin/cabins/photos" || path === "/admin/proofs" || path === "/admin/push") return { status: 501, data: { error: "NOT_AVAILABLE_IN_MOCK" } };
+  if (path === "/admin/photos" || path === "/admin/cabins/photos" || path === "/admin/proofs" || path === "/admin/push")
+    return { status: 501, data: { error: "NOT_AVAILABLE_IN_MOCK" } };
 
   // Reserva tomada por el equipo: mismas reglas que POST /api/admin/reservations (en modo simulado, solo en este navegador).
   if (method === "POST" && path === "/admin/reservations") {
     const raw = opts.body as ManualReservationInput;
-    const b: ManualReservationInput = { ...raw, unit: raw.unit ?? null, total: raw.total ?? null, guest: { ...raw.guest, phone: normalizePhone(raw.guest?.phone ?? "") } };
+    const b: ManualReservationInput = {
+      ...raw,
+      unit: raw.unit ?? null,
+      total: raw.total ?? null,
+      guest: { ...raw.guest, phone: normalizePhone(raw.guest?.phone ?? "") },
+    };
     const f = validateManualReservation(b, activeTypes(db), unitsOf(db), todayISO());
     const due = manualDueAt(b.checkIn, b.holdMinutes);
     if (!f.checkIn && !f.holdMinutes && due.tooShort) f.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: registra el pago manualmente.";
@@ -400,19 +705,60 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     const units = unitsOf(db)[b.cabinTypeId] ?? 0;
     const o = occ(db);
     const unit = b.unit
-      ? unitFree(o, units, b.cabinTypeId, b.unit, b.checkIn, b.checkOut) ? b.unit : 0
-      : findUnit(o, units, b.cabinTypeId, b.checkIn, b.checkOut, undefined, webFirst(units, channelsOf(db).calendars.filter((c) => c.cabinTypeId === b.cabinTypeId && c.importUrl).flatMap((c) => c.units ?? [c.unit])));
+      ? unitFree(o, units, b.cabinTypeId, b.unit, b.checkIn, b.checkOut)
+        ? b.unit
+        : 0
+      : findUnit(
+          o,
+          units,
+          b.cabinTypeId,
+          b.checkIn,
+          b.checkOut,
+          undefined,
+          webFirst(
+            units,
+            channelsOf(db)
+              .calendars.filter((c) => c.cabinTypeId === b.cabinTypeId && c.importUrl)
+              .flatMap((c) => c.units ?? [c.unit]),
+          ),
+        );
     if (!unit) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
     const quote = quoteFor(db, b.cabinTypeId, b.checkIn, b.checkOut, b.adults + b.children);
     const token = mockToken();
     const r: Reservation = {
-      cabinTypeId: b.cabinTypeId, checkIn: b.checkIn, checkOut: b.checkOut, adults: b.adults, children: b.children,
-      pet: { hasPet: !!b.pet?.hasPet, smallBreedConfirmed: !!b.pet?.hasPet }, decoration: { requested: false, occasion: "", notes: "" },
+      cabinTypeId: b.cabinTypeId,
+      checkIn: b.checkIn,
+      checkOut: b.checkOut,
+      adults: b.adults,
+      children: b.children,
+      pet: { hasPet: !!b.pet?.hasPet, smallBreedConfirmed: !!b.pet?.hasPet },
+      decoration: { requested: false, occasion: "", notes: "" },
       estimatedArrival: b.estimatedArrival || siteOf(db).settings.checkInStart,
-      guest: { ...b.guest, fullName: b.guest.fullName.trim(), docNumber: b.guest.docNumber.trim().toUpperCase(), email: b.guest.email.trim(), city: (b.guest.city ?? "").trim() },
-      specialRequests: (b.specialRequests ?? "").trim(), consents: { policies: false, dataProcessing: false, marketing: false },
-      code: newReservationCode(), unit, status: "pending_deposit", quote: b.total ? withTotal(quote, b.total) : quote, depositDueAt: due.dueAt, createdAt: new Date().toISOString(),
-      notes: [], depositPaidAt: null, balancePaidAt: null, clientKey: "", paid: 0, checkedInAt: null, balanceDueAt: null, balanceOverdueAt: null, source: "panel", payToken: token,
+      guest: {
+        ...b.guest,
+        fullName: b.guest.fullName.trim(),
+        docNumber: b.guest.docNumber.trim().toUpperCase(),
+        email: b.guest.email.trim(),
+        city: (b.guest.city ?? "").trim(),
+      },
+      specialRequests: (b.specialRequests ?? "").trim(),
+      consents: { policies: false, dataProcessing: false, marketing: false },
+      code: newReservationCode(),
+      unit,
+      status: "pending_deposit",
+      quote: b.total ? withTotal(quote, b.total) : quote,
+      depositDueAt: due.dueAt,
+      createdAt: new Date().toISOString(),
+      notes: [],
+      depositPaidAt: null,
+      balancePaidAt: null,
+      clientKey: "",
+      paid: 0,
+      checkedInAt: null,
+      balanceDueAt: null,
+      balanceOverdueAt: null,
+      source: "panel",
+      payToken: token,
     };
     r.clientKey = keyOf(r);
     db.reservations.push(r);
@@ -431,7 +777,8 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       if (!HOLD_OPTIONS.some((o) => o.value === minutes)) return { status: 400, data: { error: "INVALID_BODY" } };
       const due = manualDueAt(r.checkIn, minutes);
       if (due.tooShort) return { status: 422, data: { error: "HOLD_TOO_SHORT" } };
-      if (r.status === "expired" && !unitFree(occ(db), unitsOf(db)[r.cabinTypeId] ?? 0, r.cabinTypeId, r.unit, r.checkIn, r.checkOut, r.code)) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
+      if (r.status === "expired" && !unitFree(occ(db), unitsOf(db)[r.cabinTypeId] ?? 0, r.cabinTypeId, r.unit, r.checkIn, r.checkOut, r.code))
+        return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
       Object.assign(r, { status: "pending_deposit", depositDueAt: due.dueAt, payToken: r.payToken ?? mockToken() });
       save(db);
       return ok(r);
@@ -446,11 +793,22 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       return ok(r);
     }
     if (body.action === "checkout" && !r.balancePaidAt && r.paid < r.quote.total) return { status: 422, data: { error: "BALANCE_PENDING" } };
-    if (body.action === "checkin") Object.assign(r, { checkedInAt: now, balanceDueAt: r.paid < r.quote.total ? new Date(Date.now() + BALANCE_MINUTES * 6e4).toISOString() : null, balanceOverdueAt: null });
+    if (body.action === "checkin")
+      Object.assign(r, {
+        checkedInAt: now,
+        balanceDueAt: r.paid < r.quote.total ? new Date(Date.now() + BALANCE_MINUTES * 6e4).toISOString() : null,
+        balanceOverdueAt: null,
+      });
     if (body.action === "reschedule") {
       const unit = findUnit(occ(db), unitsOf(db)[r.cabinTypeId] ?? 0, r.cabinTypeId, body.checkIn, body.checkOut, r.code);
       if (!unit) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
-      Object.assign(r, { checkIn: body.checkIn, checkOut: body.checkOut, unit, status: r.status === "pending_deposit" ? "pending_deposit" : "rescheduled", quote: quoteFor(db, r.cabinTypeId, body.checkIn, body.checkOut, r.adults + r.children) });
+      Object.assign(r, {
+        checkIn: body.checkIn,
+        checkOut: body.checkOut,
+        unit,
+        status: r.status === "pending_deposit" ? "pending_deposit" : "rescheduled",
+        quote: quoteFor(db, r.cabinTypeId, body.checkIn, body.checkOut, r.adults + r.children),
+      });
     } else if (body.action === "note") r.notes.push({ at: now, text: body.text });
     else {
       r.status = map[body.action] || r.status;
@@ -466,9 +824,14 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     const conflicts = units.flatMap((u) => clashingReservations(occ(db).reservations, b.cabinTypeId, u, b.from, b.to).map((r) => r.code));
     if (conflicts.length) return { status: 409, data: { error: "RESERVATION_CONFLICT", conflicts } };
     const others = db.blocks.filter((x) => x.id !== b.id);
-    if (others.some((x) => x.cabinTypeId === b.cabinTypeId && units.includes(x.unit) && x.from <= b.to && b.from <= x.to)) return { status: 409, data: { error: "BLOCK_OVERLAP" } };
-    if (method === "PUT") db.blocks = others.concat({ id: b.id!, cabinTypeId: b.cabinTypeId, unit: units[0], from: b.from, to: b.to, reason: b.reason, notes: b.notes });
-    else units.forEach((unit, i) => db.blocks.push({ id: `b${Date.now()}${i}`, cabinTypeId: b.cabinTypeId, unit, from: b.from, to: b.to, reason: b.reason, notes: b.notes }));
+    if (others.some((x) => x.cabinTypeId === b.cabinTypeId && units.includes(x.unit) && x.from <= b.to && b.from <= x.to))
+      return { status: 409, data: { error: "BLOCK_OVERLAP" } };
+    if (method === "PUT")
+      db.blocks = others.concat({ id: b.id!, cabinTypeId: b.cabinTypeId, unit: units[0], from: b.from, to: b.to, reason: b.reason, notes: b.notes });
+    else
+      units.forEach((unit, i) =>
+        db.blocks.push({ id: `b${Date.now()}${i}`, cabinTypeId: b.cabinTypeId, unit, from: b.from, to: b.to, reason: b.reason, notes: b.notes }),
+      );
     db.blocks.sort((a, z) => (a.from < z.from ? -1 : 1));
     save(db);
     return ok(db.blocks);
@@ -486,7 +849,12 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       return ok({ calendars: ch.channelCalendars, stays: ch.channelStays, beds24: null, ...(results && { results }) });
     };
     const read = (c: ChannelCalendar) => {
-      Object.assign(c, { lastSyncedAt: new Date().toISOString(), lastStatus: "ok", lastError: "", lastEventCount: ch.channelStays.filter((s) => s.calendarId === c.id && !s.removedAt).length });
+      Object.assign(c, {
+        lastSyncedAt: new Date().toISOString(),
+        lastStatus: "ok",
+        lastError: "",
+        lastEventCount: ch.channelStays.filter((s) => s.calendarId === c.id && !s.removedAt).length,
+      });
       return { calendarId: c.id, ok: true, events: c.lastEventCount, added: 0, removed: 0, moved: [], conflicts: [] };
     };
     if (method === "GET") return done();
@@ -497,11 +865,32 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       let c = ch.channelCalendars.find((x) => x.cabinTypeId === b.cabinTypeId && x.unit === b.unit);
       if (!c) {
         const id = `c${Date.now()}`;
-        c = { id, channel: "booking", label: "", cabinTypeId: b.cabinTypeId, unit: b.unit, units: [b.unit], importUrl: null, exportUrl: `${location.origin}/api/ical/demo${id}`, lastSyncedAt: null, lastFetchedAt: null, lastStatus: null, lastError: "", lastEventCount: 0, beds24RoomId: null };
+        c = {
+          id,
+          channel: "booking",
+          label: "",
+          cabinTypeId: b.cabinTypeId,
+          unit: b.unit,
+          units: [b.unit],
+          importUrl: null,
+          exportUrl: `${location.origin}/api/ical/demo${id}`,
+          lastSyncedAt: null,
+          lastFetchedAt: null,
+          lastStatus: null,
+          lastError: "",
+          lastEventCount: 0,
+          beds24RoomId: null,
+        };
         ch.channelCalendars.push(c);
       }
       const changed = c.importUrl !== url;
-      Object.assign(c, { label: String(b.label ?? "").trim().slice(0, 80), importUrl: url, units: b.units?.length ? b.units : [b.unit] });
+      Object.assign(c, {
+        label: String(b.label ?? "")
+          .trim()
+          .slice(0, 80),
+        importUrl: url,
+        units: b.units?.length ? b.units : [b.unit],
+      });
       if (changed) {
         ch.channelStays = db.channelStays = ch.channelStays.filter((s) => s.calendarId !== c.id);
         Object.assign(c, { lastSyncedAt: null, lastStatus: null, lastError: "", lastEventCount: 0 });
@@ -540,8 +929,22 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     } else {
       const b = opts.body as CabinInput & { id?: string };
       if (!b.nombre || b.nombre.trim().length < 3) return invalid({ nombre: "El nombre debe tener entre 3 y 60 caracteres." });
-      const fields = { nombre: b.nombre.trim(), descripcion: b.descripcion, caracteristicas: b.caracteristicas, badge: b.badge, maxPersonas: b.maxPersonas, units: b.units, precioPareja: b.precioPareja, personaAdicional: b.personaAdicional, activa: b.activa };
-      if (method === "PUT") Object.assign(db.cabins.find((c) => c.id === b.id)!, fields);
+      const fields = {
+        nombre: b.nombre.trim(),
+        descripcion: b.descripcion,
+        caracteristicas: b.caracteristicas,
+        badge: b.badge,
+        maxPersonas: b.maxPersonas,
+        units: b.units,
+        precioPareja: b.precioPareja,
+        personaAdicional: b.personaAdicional,
+        activa: b.activa,
+      };
+      if (method === "PUT")
+        Object.assign(
+          db.cabins.find((c) => c.id === b.id)!,
+          fields,
+        );
       else {
         let id = slugify(b.nombre) || "cabana";
         for (let i = 2; db.cabins.some((c) => c.id === id) || id === "nueva"; i++) id = `${slugify(b.nombre)}-${i}`;
@@ -558,7 +961,11 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       const b = opts.body as SeasonInput;
       const clash = b.activa && db.seasons.find((s) => s.id !== b.id && s.activa && s.cabinTypeId === b.cabinTypeId && s.from <= b.to && b.from <= s.to);
       if (clash) return invalid({ dates: `Se cruza con la temporada activa "${clash.nombre}" de la misma cabaña.` });
-      if (method === "PUT") Object.assign(db.seasons.find((s) => s.id === b.id)!, b);
+      if (method === "PUT")
+        Object.assign(
+          db.seasons.find((s) => s.id === b.id)!,
+          b,
+        );
       else db.seasons.push({ ...b, id: `s${Date.now()}` });
     }
     db.seasons.sort((a, z) => (a.from < z.from ? -1 : 1));
@@ -567,7 +974,13 @@ export async function mockRequest(method: string, path: string, opts: MockReques
   }
 
   if (path === "/admin/clients") {
-    const b = opts.body as { clientKey: string; kind?: "note" | "incident"; severity?: string | null; text?: string; reservationCode?: string | null } & Partial<ClientProfile>;
+    const b = opts.body as {
+      clientKey: string;
+      kind?: "note" | "incident";
+      severity?: string | null;
+      text?: string;
+      reservationCode?: string | null;
+    } & Partial<ClientProfile>;
     let key: string | undefined = b?.clientKey;
     if (method === "DELETE") {
       key = Object.values(db.clients).find((c) => c.entries.some((e) => e.id === +q.entry))?.clientKey;
@@ -575,9 +988,26 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       db.clients[key].entries = db.clients[key].entries.filter((e) => e.id !== +q.entry);
     } else {
       if (!key) return { status: 404, data: {} };
-      const c = (db.clients[key] ??= { clientKey: key, rating: null, trust: "sin_evaluar", tags: [], preferences: "", summary: "", updatedAt: "", entries: [] });
+      const c = (db.clients[key] ??= {
+        clientKey: key,
+        rating: null,
+        trust: "sin_evaluar",
+        tags: [],
+        preferences: "",
+        summary: "",
+        updatedAt: "",
+        entries: [],
+      });
       if (method === "PUT") Object.assign(c, { rating: b.rating ?? null, trust: b.trust, tags: b.tags, preferences: b.preferences, summary: b.summary });
-      else c.entries.unshift({ id: Date.now(), kind: b.kind!, severity: (b.kind === "incident" ? b.severity : null) as ClientProfile["entries"][number]["severity"], text: b.text!, reservationCode: b.reservationCode ?? null, createdAt: new Date().toISOString() });
+      else
+        c.entries.unshift({
+          id: Date.now(),
+          kind: b.kind!,
+          severity: (b.kind === "incident" ? b.severity : null) as ClientProfile["entries"][number]["severity"],
+          text: b.text!,
+          reservationCode: b.reservationCode ?? null,
+          createdAt: new Date().toISOString(),
+        });
       c.updatedAt = new Date().toISOString();
     }
     save(db);
@@ -608,7 +1038,19 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     if (!b.subject || b.subject.trim().length < 3) return invalid({ subject: "Escribe un asunto de 3 a 150 caracteres." });
     if (!b.message || b.message.trim().length < 5) return invalid({ message: "Escribe un mensaje de 5 a 5000 caracteres." });
     const now = new Date().toISOString();
-    const e: EmailRecord = { id: crypto.randomUUID(), kind: "team_message", reservationCode: b.reservationCode ?? null, to: latest.guest.email, subject: b.subject.trim(), status: "sent", attempts: 1, lastError: "", sentAt: now, createdAt: now, updatedAt: now };
+    const e: EmailRecord = {
+      id: crypto.randomUUID(),
+      kind: "team_message",
+      reservationCode: b.reservationCode ?? null,
+      to: latest.guest.email,
+      subject: b.subject.trim(),
+      status: "sent",
+      attempts: 1,
+      lastError: "",
+      sentAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
     db.emails.unshift(e);
     save(db);
     return { status: 201, data: e };

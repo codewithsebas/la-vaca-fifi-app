@@ -3,8 +3,39 @@ import { config, isMockApi, type CabinTypeId } from "./config";
 import { mockRequest } from "./mock-server";
 import { sleep } from "./format";
 import type {
-  AdminAction, AdminData, AdminNotification, ApiResult, Availability, Beds24Room, Beds24Status, Block, BlockInput, CabinInput, CabinType, ChannelCalendar, ChannelCalendarInput, ChannelStay, ChannelSyncResult, ClientProfile, ClientProfileInput,
-  EmailRecord, FieldErrors, ManualReservationInput, ManualReservationResult, PaymentKind, PaymentProof, PaymentStart, PaymentState, ProofReview, PublicReservation, RateSeason, Rates, Reservation, ReservationInput, SeasonInput, SiteInput,
+  AdminAction,
+  AdminData,
+  AdminNotification,
+  ApiResult,
+  Availability,
+  Beds24Room,
+  Beds24Status,
+  Block,
+  BlockInput,
+  CabinInput,
+  CabinType,
+  ChannelCalendar,
+  ChannelCalendarInput,
+  ChannelStay,
+  ChannelSyncResult,
+  ClientProfile,
+  ClientProfileInput,
+  EmailRecord,
+  FieldErrors,
+  ManualReservationInput,
+  ManualReservationResult,
+  PaymentKind,
+  PaymentProof,
+  PaymentStart,
+  PaymentState,
+  ProofReview,
+  PublicReservation,
+  RateSeason,
+  Rates,
+  Reservation,
+  ReservationInput,
+  SeasonInput,
+  SiteInput,
 } from "./types";
 import type { NotificationGroup } from "./notification-groups";
 import type { SiteContent, SiteService } from "./site";
@@ -98,14 +129,17 @@ export type PushDevice = { groups: NotificationGroup[]; device: string; lastSucc
 export const api = {
   cabinTypes: () => request<CabinType[]>("GET", "/cabin-types"),
   availability: (q: { checkIn: string; checkOut: string; adults: number; children: number }) => request<Availability>("GET", "/availability", { query: q }),
-  calendar: (q: { cabinTypeId: CabinTypeId; from: string; to: string }) => request<{ unavailableDates: string[] }>("GET", "/availability/calendar", { query: q }),
+  calendar: (q: { cabinTypeId: CabinTypeId; from: string; to: string }) =>
+    request<{ unavailableDates: string[] }>("GET", "/availability/calendar", { query: q }),
   createReservation: (body: ReservationInput) =>
     request<PublicReservation | ValidationError>("POST", "/reservations", { body, headers: { "Idempotency-Key": idemKey() } }),
   lookup: (q: { code: string; email: string } | { token: string }) => request<PublicReservation>("GET", "/reservations/lookup", { query: q }),
   // Abre un intento de pago (abono o saldo) y devuelve a dónde llevar al huésped. Sin reintento automático: lo decide quien llama.
-  startPayment: (b: ({ code: string; email: string } | { ref: string } | { token: string; accept?: boolean }) & { kind?: PaymentKind }) => request<PaymentStart | ApiError>("POST", "/payments", { body: b }),
+  startPayment: (b: ({ code: string; email: string } | { ref: string } | { token: string; accept?: boolean }) & { kind?: PaymentKind }) =>
+    request<PaymentStart | ApiError>("POST", "/payments", { body: b }),
   paymentStatus: (q: { ref: string; id?: string }) => request<PaymentState>("GET", "/payments/status", { query: q }),
-  simulatePayment: (b: { ref: string; outcome: "approve" | "decline" | "pending" | "error" }) => request<PaymentState | ApiError>("POST", "/payments/simulate", { body: b }),
+  simulatePayment: (b: { ref: string; outcome: "approve" | "decline" | "pending" | "error" }) =>
+    request<PaymentState | ApiError>("POST", "/payments/simulate", { body: b }),
   admin: {
     login: (b: { email: string; password: string }) => request<object>("POST", "/admin/login", { body: b }),
     logout: () => request<object>("POST", "/admin/logout"),
@@ -159,8 +193,10 @@ export const api = {
     // Notificaciones push de este dispositivo (la suscripción la crea el navegador; aquí se registra en el servidor).
     push: {
       status: (endpoint?: string) => request<{ configured: boolean; subscription: PushDevice | null }>("GET", "/admin/push", { query: { endpoint } }),
-      subscribe: (b: { subscription: PushSubscriptionJSON; groups?: NotificationGroup[] }) => request<PushDevice | ApiError>("POST", "/admin/push", { body: { action: "subscribe", ...b } }),
-      setGroups: (endpoint: string, groups: NotificationGroup[]) => request<PushDevice | ApiError>("POST", "/admin/push", { body: { action: "groups", endpoint, groups } }),
+      subscribe: (b: { subscription: PushSubscriptionJSON; groups?: NotificationGroup[] }) =>
+        request<PushDevice | ApiError>("POST", "/admin/push", { body: { action: "subscribe", ...b } }),
+      setGroups: (endpoint: string, groups: NotificationGroup[]) =>
+        request<PushDevice | ApiError>("POST", "/admin/push", { body: { action: "groups", endpoint, groups } }),
       test: (endpoint: string) => request<{ ok: true } | ApiError>("POST", "/admin/push", { body: { action: "test", endpoint } }),
       unsubscribe: (endpoint: string) => request<{ ok: true } | ApiError>("DELETE", "/admin/push", { query: { endpoint } }),
     },

@@ -41,7 +41,13 @@ export type Beds24Booking = {
 // Estados de Beds24 que ocupan la habitación («black» es un cierre hecho en Beds24).
 export const OCCUPYING = ["confirmed", "request", "new", "black"];
 
-type PostItem = { success?: boolean; new?: { id?: number }; modified?: { id?: number }; errors?: { message?: string; field?: string }[]; warnings?: { message?: string }[] };
+type PostItem = {
+  success?: boolean;
+  new?: { id?: number };
+  modified?: { id?: number };
+  errors?: { message?: string; field?: string }[];
+  warnings?: { message?: string }[];
+};
 
 async function raw(method: string, path: string, opts: { query?: Query; body?: unknown; headers?: Record<string, string> } = {}) {
   const url = new URL(BASE + path);
@@ -90,7 +96,11 @@ export async function loadCredentials(sb: Db): Promise<Credentials | null> {
 export async function connectBeds24(sb: Db, inviteCode: string) {
   const r = await raw("GET", "/authentication/setup", { headers: { code: inviteCode, deviceName: "La Vaca Fifi" } });
   const d = r.data as { token?: string; expiresIn?: number; refreshToken?: string } | null;
-  if (r.status !== 200 || !d?.refreshToken) throw new Beds24Error(r.status === 400 || r.status === 401 ? "Beds24 no aceptó el código: puede que ya se haya usado o que tenga más de 24 horas." : errorOf(r.data, r.status), r.status);
+  if (r.status !== 200 || !d?.refreshToken)
+    throw new Beds24Error(
+      r.status === 400 || r.status === 401 ? "Beds24 no aceptó el código: puede que ya se haya usado o que tenga más de 24 horas." : errorOf(r.data, r.status),
+      r.status,
+    );
   await sb
     .from("channel_credentials")
     .upsert(
@@ -119,7 +129,12 @@ export async function beds24Client(sb: Db) {
     const r = await raw("GET", "/authentication/token", { headers: { refreshToken: cred!.refresh_token } });
     const d = r.data as { token?: string; expiresIn?: number } | null;
     if (r.status !== 200 || !d?.token)
-      throw new Beds24Error(r.status === 400 || r.status === 401 ? "Beds24 rechazó el acceso de la app: genera un código de invitación nuevo y conéctalo otra vez." : errorOf(r.data, r.status), r.status);
+      throw new Beds24Error(
+        r.status === 400 || r.status === 401
+          ? "Beds24 rechazó el acceso de la app: genera un código de invitación nuevo y conéctalo otra vez."
+          : errorOf(r.data, r.status),
+        r.status,
+      );
     const expires = new Date(Date.now() + (d.expiresIn ?? 3600) * 1000).toISOString();
     await sb.from("channel_credentials").update({ access_token: d.token, access_expires_at: expires }).eq("provider", "beds24").throwOnError();
     Object.assign(cred!, { access_token: d.token, access_expires_at: expires });
@@ -146,7 +161,11 @@ export async function beds24Client(sb: Db) {
   }
 
   const post = async (items: object[]) => (await call<PostItem[]>("POST", "/bookings", { body: items })) ?? [];
-  const messageOf = (item: PostItem | undefined) => (item?.errors ?? []).map((e) => e.message).filter(Boolean).join(" ") || "Beds24 no aceptó el cambio.";
+  const messageOf = (item: PostItem | undefined) =>
+    (item?.errors ?? [])
+      .map((e) => e.message)
+      .filter(Boolean)
+      .join(" ") || "Beds24 no aceptó el cambio.";
   const byApiReference = async (ref: string) => {
     const found = await list<Beds24Booking>("/bookings", { apiReference: ref, status: [...OCCUPYING, "cancelled", "inquiry"] });
     return found.find((b) => b.apiReference === ref && b.status !== "cancelled") ?? null;
@@ -155,8 +174,12 @@ export async function beds24Client(sb: Db) {
   return {
     // Habitaciones de todas las propiedades de la cuenta (para enlazarlas con las unidades).
     async rooms(): Promise<Beds24Room[]> {
-      const props = await list<{ id: number; name?: string; roomTypes?: { id: number; name?: string; qty?: number }[] }>("/properties", { includeAllRooms: true });
-      return props.flatMap((p) => (p.roomTypes ?? []).map((r) => ({ id: r.id, propertyId: p.id, propertyName: p.name ?? "", name: r.name ?? `Habitación ${r.id}`, qty: r.qty ?? 1 })));
+      const props = await list<{ id: number; name?: string; roomTypes?: { id: number; name?: string; qty?: number }[] }>("/properties", {
+        includeAllRooms: true,
+      });
+      return props.flatMap((p) =>
+        (p.roomTypes ?? []).map((r) => ({ id: r.id, propertyId: p.id, propertyName: p.name ?? "", name: r.name ?? `Habitación ${r.id}`, qty: r.qty ?? 1 })),
+      );
     },
 
     // Reservas que siguen ocupando (por salir o en curso) de esas habitaciones.
@@ -174,7 +197,16 @@ export async function beds24Client(sb: Db) {
     byApiReference,
 
     // Crea la reserva solo si la habitación está libre esas noches (checkAvailability): así no se vende dos veces.
-    async create(b: { roomId: number; arrival: string; departure: string; status: "confirmed" | "black"; apiReference: string; label: string; numAdult?: number; numChild?: number }) {
+    async create(b: {
+      roomId: number;
+      arrival: string;
+      departure: string;
+      status: "confirmed" | "black";
+      apiReference: string;
+      label: string;
+      numAdult?: number;
+      numChild?: number;
+    }) {
       const [item] = await post([
         {
           roomId: b.roomId,
@@ -214,9 +246,13 @@ export async function beds24Client(sb: Db) {
     async free(roomId: number, nights: string[]) {
       if (!nights.length) return true;
       const sorted = [...nights].sort();
-      const d = await call<{ data?: { roomId: number; calendar?: { from: string; to: string; numAvail?: number; override?: string }[] }[] }>("GET", "/inventory/rooms/calendar", {
-        query: { roomId, startDate: sorted[0], endDate: sorted.at(-1), includeNumAvail: true, includeOverride: true },
-      });
+      const d = await call<{ data?: { roomId: number; calendar?: { from: string; to: string; numAvail?: number; override?: string }[] }[] }>(
+        "GET",
+        "/inventory/rooms/calendar",
+        {
+          query: { roomId, startDate: sorted[0], endDate: sorted.at(-1), includeNumAvail: true, includeOverride: true },
+        },
+      );
       const ranges = d?.data?.find((x) => x.roomId === roomId)?.calendar ?? [];
       return sorted.every((n) => {
         const r = ranges.find((x) => x.from <= n && n <= x.to);

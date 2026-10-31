@@ -50,7 +50,11 @@ function vapid() {
 type Outcome = "ok" | "gone" | "error";
 async function send(sub: Sub, payload: PushPayload): Promise<Outcome> {
   try {
-    await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), { TTL, urgency: "high", timeout: 10000 });
+    await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), {
+      TTL,
+      urgency: "high",
+      timeout: 10000,
+    });
     return "ok";
   } catch (e) {
     // 404/410: el navegador anuló la suscripción (desinstalación, permisos revocados). Se borra.
@@ -73,7 +77,11 @@ async function deliver(sb: ReturnType<typeof createServiceClient>, jobs: { sub: 
 const toPayload = (n: Note): PushPayload => ({
   title: n.title,
   body: n.body,
-  url: n.reservation_code ? `/admin/reservas/${encodeURIComponent(n.reservation_code)}` : n.kind === "channel_sync_failed" ? "/admin/booking" : "/admin/notificaciones",
+  url: n.reservation_code
+    ? `/admin/reservas/${encodeURIComponent(n.reservation_code)}`
+    : n.kind === "channel_sync_failed"
+      ? "/admin/booking"
+      : "/admin/notificaciones",
   tag: `aviso-${n.id}`,
 });
 
@@ -99,7 +107,18 @@ export async function dispatchPush(): Promise<number> {
       if (!mine.length) return [];
       const payloads =
         mine.length >= SUMMARY_FROM
-          ? [{ title: `${mine.length} avisos nuevos`, body: mine.map((n) => n.title).slice(0, 3).join(" · ") + (mine.length > 3 ? " · …" : ""), url: "/admin/notificaciones", tag: `resumen-${mine[0].id}` }]
+          ? [
+              {
+                title: `${mine.length} avisos nuevos`,
+                body:
+                  mine
+                    .map((n) => n.title)
+                    .slice(0, 3)
+                    .join(" · ") + (mine.length > 3 ? " · …" : ""),
+                url: "/admin/notificaciones",
+                tag: `resumen-${mine[0].id}`,
+              },
+            ]
           : mine.map(toPayload);
       return [{ sub, payloads }];
     });
@@ -113,7 +132,12 @@ export async function dispatchPush(): Promise<number> {
 /** Notificación de prueba a un dispositivo del administrador. */
 export async function sendTestPush(sub: Sub): Promise<Outcome> {
   vapid();
-  const outcome = await send(sub, { title: "Notificaciones activadas", body: "Así llegarán las reservas, pagos y alertas del panel a este dispositivo.", url: "/admin/configuracion", tag: "prueba" });
+  const outcome = await send(sub, {
+    title: "Notificaciones activadas",
+    body: "Así llegarán las reservas, pagos y alertas del panel a este dispositivo.",
+    url: "/admin/configuracion",
+    tag: "prueba",
+  });
   const sb = createServiceClient();
   if (outcome === "gone") await sb.from("push_subscriptions").delete().eq("id", sub.id).throwOnError();
   if (outcome === "ok") await sb.from("push_subscriptions").update({ last_success_at: new Date().toISOString() }).eq("id", sub.id).throwOnError();
@@ -123,7 +147,31 @@ export async function sendTestPush(sub: Sub): Promise<Outcome> {
 // "Chrome en Windows", "Safari en iPhone"… para reconocer cada dispositivo en la lista.
 export function deviceLabel(ua: string | null) {
   if (!ua) return "";
-  const browser = /Edg\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Navegador";
-  const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /SamsungBrowser/.test(ua)
+      ? "Samsung Internet"
+      : /OPR\//.test(ua)
+        ? "Opera"
+        : /Firefox\//.test(ua)
+          ? "Firefox"
+          : /Chrome\//.test(ua)
+            ? "Chrome"
+            : /Safari\//.test(ua)
+              ? "Safari"
+              : "Navegador";
+  const os = /iPhone/.test(ua)
+    ? "iPhone"
+    : /iPad/.test(ua)
+      ? "iPad"
+      : /Android/.test(ua)
+        ? "Android"
+        : /Windows/.test(ua)
+          ? "Windows"
+          : /Mac OS X/.test(ua)
+            ? "Mac"
+            : /Linux/.test(ua)
+              ? "Linux"
+              : "";
   return os ? `${browser} en ${os}` : browser;
 }

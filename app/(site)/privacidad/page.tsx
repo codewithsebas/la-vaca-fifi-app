@@ -13,7 +13,7 @@ const h2 = "text-[1.1rem] font-extrabold";
 export default async function PrivacyPage() {
   const { c } = await getSite();
   return (
-    <main className="gutter-860 flex flex-col gap-5 pt-6 pb-[72px] leading-[1.6]">
+    <main className="flex flex-col gap-5 gutter-860 pt-6 pb-[72px] leading-[1.6]">
       <h1 className="page-title">
         <span>Política de tratamiento</span> <span className="text-accent">de datos personales</span>
       </h1>
@@ -23,11 +23,13 @@ export default async function PrivacyPage() {
       <section className="flex flex-col gap-3.5 rounded-lg bg-card p-[clamp(20px,4vw,36px)] text-on-light">
         <h2 className={h2}>1. Responsable del tratamiento</h2>
         <p>
-          {"{RAZON_SOCIAL}"} (en adelante, «{c.name}»), identificado con NIT {"{NIT}"}, con domicilio en {c.address}. Correo: {c.correoReservas}. Teléfono: {c.phones[0]}.
+          {"{RAZON_SOCIAL}"} (en adelante, «{c.name}»), identificado con NIT {"{NIT}"}, con domicilio en {c.address}. Correo: {c.correoReservas}. Teléfono:{" "}
+          {c.phones[0]}.
         </p>
         <h2 className={h2}>2. Datos que recolectamos</h2>
         <p>
-          Nombre completo, tipo y número de documento, correo, celular, ciudad de procedencia, hora estimada de llegada, información sobre mascotas, preferencias de decoración y solicitudes especiales que nos compartas al reservar.
+          Nombre completo, tipo y número de documento, correo, celular, ciudad de procedencia, hora estimada de llegada, información sobre mascotas,
+          preferencias de decoración y solicitudes especiales que nos compartas al reservar.
         </p>
         <h2 className={h2}>3. Finalidades</h2>
         <ul className="list-disc pl-5">
@@ -38,15 +40,18 @@ export default async function PrivacyPage() {
         </ul>
         <h2 className={h2}>4. Derechos del titular</h2>
         <p>
-          Puedes conocer, actualizar, rectificar y suprimir tus datos; solicitar prueba de la autorización; ser informado sobre su uso; revocar la autorización y presentar quejas ante la Superintendencia de Industria y Comercio.
+          Puedes conocer, actualizar, rectificar y suprimir tus datos; solicitar prueba de la autorización; ser informado sobre su uso; revocar la autorización
+          y presentar quejas ante la Superintendencia de Industria y Comercio.
         </p>
         <h2 className={h2}>5. Cómo ejercer tus derechos</h2>
         <p>
-          Escribe a {config.correoReservas} con tu nombre, documento y la solicitud. Respondemos consultas en máximo 10 días hábiles y reclamos en máximo 15 días hábiles, según la ley.
+          Escribe a {config.correoReservas} con tu nombre, documento y la solicitud. Respondemos consultas en máximo 10 días hábiles y reclamos en máximo 15
+          días hábiles, según la ley.
         </p>
         <h2 className={h2}>6. Seguridad y conservación</h2>
         <p>
-          Aplicamos medidas técnicas y administrativas para proteger tus datos. Los conservamos durante el tiempo necesario para las finalidades descritas y las obligaciones legales.
+          Aplicamos medidas técnicas y administrativas para proteger tus datos. Los conservamos durante el tiempo necesario para las finalidades descritas y las
+          obligaciones legales.
         </p>
         <h2 className={h2}>7. Vigencia</h2>
         <p>Esta política rige desde el {"{FECHA_DE_VIGENCIA}"}. Publicaremos aquí cualquier cambio.</p>

@@ -16,7 +16,8 @@ async function allBlocks(sb: Db) {
 
 // Valida el cuerpo y devuelve las unidades afectadas (una o todas las del tipo).
 async function validate(sb: Db, b: BlockInput | null) {
-  if (!b || !isISO(b.from) || !isISO(b.to) || b.to < b.from || nightsBetween(b.from, b.to) > 366 || !BLOCK_REASONS.includes(b.reason)) return { error: fail(400, "INVALID_BODY") };
+  if (!b || !isISO(b.from) || !isISO(b.to) || b.to < b.from || nightsBetween(b.from, b.to) > 366 || !BLOCK_REASONS.includes(b.reason))
+    return { error: fail(400, "INVALID_BODY") };
   const notes = String(b.notes ?? "").trim();
   if (notes.length > 500 || (b.reason === "Otro" && !notes)) return { error: fail(400, "INVALID_NOTES") };
   const { units } = await loadCabinTypes(sb);
@@ -48,7 +49,15 @@ async function holdBlocks(items: { id: string; cabinTypeId: string; unit: number
   const undo = () => Promise.all(holds.map((h) => h.release()));
   for (const x of items) {
     try {
-      const h = await holdRoom({ source: "block", sourceId: x.id, cabinTypeId: x.cabinTypeId, unit: x.unit, checkIn: x.from, checkOut: addDays(x.to, 1), label: `Bloqueo · ${x.reason}` });
+      const h = await holdRoom({
+        source: "block",
+        sourceId: x.id,
+        cabinTypeId: x.cabinTypeId,
+        unit: x.unit,
+        checkIn: x.from,
+        checkOut: addDays(x.to, 1),
+        label: `Bloqueo · ${x.reason}`,
+      });
       if (!h) {
         await undo();
         return { error: fail(409, "CHANNEL_CONFLICT") };
@@ -72,8 +81,18 @@ export const POST = route(async (req: NextRequest) => {
   if (v.error) return v.error;
   const conflicts = await clashes(sb, b!.cabinTypeId, v.units, b!.from, b!.to);
   if (conflicts.length) return fail(409, "RESERVATION_CONFLICT", { conflicts });
-  const rows = v.units.map((unit) => ({ id: randomUUID(), cabin_type_id: b!.cabinTypeId, unit, from_date: b!.from, to_date: b!.to, reason: b!.reason, notes: v.notes }));
-  const held = await holdBlocks(rows.map((r) => ({ id: r.id, cabinTypeId: r.cabin_type_id, unit: r.unit, from: r.from_date, to: r.to_date, reason: r.reason })));
+  const rows = v.units.map((unit) => ({
+    id: randomUUID(),
+    cabin_type_id: b!.cabinTypeId,
+    unit,
+    from_date: b!.from,
+    to_date: b!.to,
+    reason: b!.reason,
+    notes: v.notes,
+  }));
+  const held = await holdBlocks(
+    rows.map((r) => ({ id: r.id, cabinTypeId: r.cabin_type_id, unit: r.unit, from: r.from_date, to: r.to_date, reason: r.reason })),
+  );
   if (held.error) return held.error;
   try {
     await sb.from("blocks").insert(rows).throwOnError();

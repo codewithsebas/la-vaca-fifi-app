@@ -57,7 +57,11 @@ function summary(results: ChannelSyncResult[]) {
   const removed = results.reduce((s, r) => s + r.removed, 0);
   const moved = results.flatMap((r) => r.moved);
   const conflicts = results.flatMap((r) => r.conflicts);
-  const parts = [added && plural(added, "fecha nueva", "fechas nuevas"), removed && plural(removed, "cancelada", "canceladas"), moved.length && `${plural(moved.length, "reserva reacomodada", "reservas reacomodadas")}`];
+  const parts = [
+    added && plural(added, "fecha nueva", "fechas nuevas"),
+    removed && plural(removed, "cancelada", "canceladas"),
+    moved.length && `${plural(moved.length, "reserva reacomodada", "reservas reacomodadas")}`,
+  ];
   if (conflicts.length) return { ok: false, text: `Posible sobreventa: ${conflicts.join(", ")}. Revisa Notificaciones.` };
   const changes = parts.filter(Boolean).join(" · ");
   return { ok: true, text: results.length ? `Booking.com leído${changes ? `: ${changes}` : ", sin cambios"}` : "Ya estaba al día" };
@@ -90,7 +94,11 @@ export function ChannelsView() {
   const linked = [...live, ...ical];
   const failing = ical.filter((u) => u.cal!.lastStatus === "error");
   const reads = [...ical.map((u) => u.cal!.lastSyncedAt), ...(live.length ? [beds24?.lastPullAt, beds24?.lastWebhookAt] : [])];
-  const lastRead = reads.filter((x): x is string => !!x).sort().at(-1) ?? null;
+  const lastRead =
+    reads
+      .filter((x): x is string => !!x)
+      .sort()
+      .at(-1) ?? null;
   const next30 = addDays(today, 30);
   const upcoming = data.channelStays.filter((s) => !s.removedAt && s.checkOut > today).sort((a, b) => (a.checkIn < b.checkIn ? -1 : 1));
   const cancelled = data.channelStays.filter((s) => s.removedAt && s.checkOut > today).sort((a, b) => (a.checkIn < b.checkIn ? -1 : 1));
@@ -102,7 +110,8 @@ export function ChannelsView() {
   }
 
   const apply = (c: Channels) => setData((d) => ({ ...d, channelCalendars: c.calendars, channelStays: c.stays, beds24: c.beds24 }));
-  const errorOf = (r: { status: number; data: unknown }) => ERRORS[(r.data as { error?: string } | null)?.error ?? ""] ?? "No se pudo completar. Inténtalo de nuevo.";
+  const errorOf = (r: { status: number; data: unknown }) =>
+    ERRORS[(r.data as { error?: string } | null)?.error ?? ""] ?? "No se pudo completar. Inténtalo de nuevo.";
 
   async function syncNow() {
     setSyncing(true);
@@ -145,28 +154,55 @@ export function ChannelsView() {
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard label="Cabañas enlazadas" value={`${linked.length} de ${units.length}`} hint={live.length ? `${live.length} en tiempo real por Beds24` : linked.length ? "con su calendario de Booking.com" : "Ninguna todavía"} icon={<RefreshIcon size={15} />} />
+        <StatCard
+          label="Cabañas enlazadas"
+          value={`${linked.length} de ${units.length}`}
+          hint={live.length ? `${live.length} en tiempo real por Beds24` : linked.length ? "con su calendario de Booking.com" : "Ninguna todavía"}
+          icon={<RefreshIcon size={15} />}
+        />
         <StatCard label="Noches de Booking.com" value={nights30} hint="ocupadas en los próximos 30 días" icon={<CalendarIcon size={15} />} />
         <StatCard
           label="Última lectura"
           value={lastRead ? timeAgo(lastRead, now) : "—"}
-          hint={failing.length ? `${plural(failing.length, "calendario con error", "calendarios con error")}` : live.length ? "Beds24 avisa de cada reserva" : "se lee cada 5 minutos"}
+          hint={
+            failing.length
+              ? `${plural(failing.length, "calendario con error", "calendarios con error")}`
+              : live.length
+                ? "Beds24 avisa de cada reserva"
+                : "se lee cada 5 minutos"
+          }
           icon={<ClockIcon size={15} />}
           tone={failing.length || (live.length && beds24?.lastError) ? "danger" : undefined}
         />
       </div>
 
-      {isMockApi && <Callout>Modo simulado: los enlaces son de ejemplo, Beds24 no se puede conectar y «Sincronizar ahora» no lee Booking.com de verdad.</Callout>}
+      {isMockApi && (
+        <Callout>Modo simulado: los enlaces son de ejemplo, Beds24 no se puede conectar y «Sincronizar ahora» no lee Booking.com de verdad.</Callout>
+      )}
       {failing.length > 0 && (
         <Callout tone="error" role="alert">
-          No se pudo leer {failing.map((u) => u.cal!.label || u.name).join(", ")}: {failing[0].cal!.lastError} Mientras tanto, las fechas de Booking.com quedan como en la última lectura.
+          No se pudo leer {failing.map((u) => u.cal!.label || u.name).join(", ")}: {failing[0].cal!.lastError} Mientras tanto, las fechas de Booking.com quedan
+          como en la última lectura.
         </Callout>
       )}
 
-      <Beds24Card status={beds24} mapped={live.length} onConnected={(c, msg, ok) => (apply(c), toast(msg, ok ? "ok" : "error"))} onAuthError={onAuthError} errorOf={errorOf} copy={copy} />
+      <Beds24Card
+        status={beds24}
+        mapped={live.length}
+        onConnected={(c, msg, ok) => (apply(c), toast(msg, ok ? "ok" : "error"))}
+        onAuthError={onAuthError}
+        errorOf={errorOf}
+        copy={copy}
+      />
 
       <Card className="flex flex-col">
-        <CardHeader id="ch-units" className="p-4 sm:px-5" icon={<RefreshIcon size={18} />} title="Cabañas y tipos de alojamiento" subtitle="Enlaza cada cabaña con su tipo de alojamiento en Booking.com. Los que no se venden allá quedan sin enlazar." />
+        <CardHeader
+          id="ch-units"
+          className="p-4 sm:px-5"
+          icon={<RefreshIcon size={18} />}
+          title="Cabañas y tipos de alojamiento"
+          subtitle="Enlaza cada cabaña con su tipo de alojamiento en Booking.com. Los que no se venden allá quedan sin enlazar."
+        />
         <ul aria-labelledby="ch-units" className="flex flex-col divide-y divide-line border-t border-line">
           {units.map((u) => {
             const st = stateOf(u.cal, now, beds24);
@@ -182,13 +218,20 @@ export function ChannelsView() {
                   </p>
                   <p className="text-[13px] text-ink-muted">
                     {c?.label ? `En Booking.com: ${c.label}` : c?.importUrl || c?.beds24RoomId ? "En Booking.com" : "Solo se vende en la web"}
-                    {c && poolOf(c).length > 1 && ` · junto con ${poolOf(c)
-                      .filter((x) => x !== u.unit)
-                      .map((x) => cabinLabel(u.cabinTypeId, x))
-                      .join(" y ")}`}
+                    {c &&
+                      poolOf(c).length > 1 &&
+                      ` · junto con ${poolOf(c)
+                        .filter((x) => x !== u.unit)
+                        .map((x) => cabinLabel(u.cabinTypeId, x))
+                        .join(" y ")}`}
                     {c?.beds24RoomId && " · por Beds24"}
-                    {c?.importUrl && !c.beds24RoomId && c.lastSyncedAt && ` · leída ${timeAgo(c.lastSyncedAt, now)} · ${plural(c.lastEventCount, "fecha", "fechas")}`}
-                    {c?.importUrl && !c.beds24RoomId && (c.lastFetchedAt ? ` · Booking vio la web ${timeAgo(c.lastFetchedAt, now)}` : " · Booking aún no ha leído el enlace de la web")}
+                    {c?.importUrl &&
+                      !c.beds24RoomId &&
+                      c.lastSyncedAt &&
+                      ` · leída ${timeAgo(c.lastSyncedAt, now)} · ${plural(c.lastEventCount, "fecha", "fechas")}`}
+                    {c?.importUrl &&
+                      !c.beds24RoomId &&
+                      (c.lastFetchedAt ? ` · Booking vio la web ${timeAgo(c.lastFetchedAt, now)}` : " · Booking aún no ha leído el enlace de la web")}
                   </p>
                   {c?.lastStatus === "error" && !c.beds24RoomId && <p className="mt-1 text-[12.5px] font-semibold text-error">{c.lastError}</p>}
                 </div>
@@ -224,16 +267,29 @@ export function ChannelsView() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card className="flex flex-col">
-          <CardHeader id="ch-stays" className="p-4 sm:px-5" icon={<CalendarIcon size={18} />} title="Próximas fechas de Booking.com" subtitle="Reservas o cierres hechos en Booking.com. No se pueden reservar en la web." />
+          <CardHeader
+            id="ch-stays"
+            className="p-4 sm:px-5"
+            icon={<CalendarIcon size={18} />}
+            title="Próximas fechas de Booking.com"
+            subtitle="Reservas o cierres hechos en Booking.com. No se pueden reservar en la web."
+          />
           {upcoming.length ? (
             <ul aria-labelledby="ch-stays" className="flex flex-col divide-y divide-line border-t border-line">
               {upcoming.slice(0, 40).map((s) => (
                 <li key={s.id}>
-                  <Link href={paths.calendario({ fecha: s.checkIn })} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-[13.5px] transition-colors hover:bg-canvas sm:px-5">
+                  <Link
+                    href={paths.calendario({ fecha: s.checkIn })}
+                    className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-[13.5px] transition-colors hover:bg-canvas sm:px-5"
+                  >
                     <span className="font-semibold text-ink">{cabinLabel(s.cabinTypeId, s.unit)}</span>
                     <span className="text-ink-muted tabular-nums">
                       {fmtDate(s.checkIn)} → {fmtDate(s.checkOut)} · {plural(nightsBetween(s.checkIn, s.checkOut), "noche", "noches")}
-                      {s.checkIn <= today && <Badge tone="info" className="ml-2">En curso</Badge>}
+                      {s.checkIn <= today && (
+                        <Badge tone="info" className="ml-2">
+                          En curso
+                        </Badge>
+                      )}
                     </span>
                   </Link>
                 </li>
@@ -242,12 +298,18 @@ export function ChannelsView() {
           ) : (
             // Sin fechas, el aviso ocupa el alto de la tarjeta (que iguala el de las instrucciones de al lado).
             <div className="flex flex-1 flex-col border-t border-line p-4 sm:px-5 [&>div]:flex-1">
-              <EmptyState compact icon={<CalendarIcon size={20} />} title={linked.length ? "Sin fechas ocupadas en Booking.com" : "Todavía no hay cabañas enlazadas"} text={linked.length ? "Cuando alguien reserve allá, las fechas aparecerán aquí." : "Enlaza una cabaña para empezar."} />
+              <EmptyState
+                compact
+                icon={<CalendarIcon size={20} />}
+                title={linked.length ? "Sin fechas ocupadas en Booking.com" : "Todavía no hay cabañas enlazadas"}
+                text={linked.length ? "Cuando alguien reserve allá, las fechas aparecerán aquí." : "Enlaza una cabaña para empezar."}
+              />
             </div>
           )}
           {cancelled.length > 0 && (
             <p className="border-t border-line px-4 py-2.5 text-[12.5px] text-ink-muted sm:px-5">
-              Canceladas en Booking.com y ya disponibles en la web: {cancelled.map((s) => `${cabinLabel(s.cabinTypeId, s.unit)} ${fmtDate(s.checkIn)}`).join(" · ")}
+              Canceladas en Booking.com y ya disponibles en la web:{" "}
+              {cancelled.map((s) => `${cabinLabel(s.cabinTypeId, s.unit)} ${fmtDate(s.checkIn)}`).join(" · ")}
             </p>
           )}
         </Card>
@@ -257,40 +319,51 @@ export function ChannelsView() {
             <h2 className="text-[15px] font-bold text-ink">Cómo enlazar una cabaña por Beds24</h2>
             <ol className="flex list-decimal flex-col gap-2 pl-5 text-[13.5px] leading-snug text-ink">
               <li>
-                En Beds24, conecta Booking.com en <strong>Settings → Channel Manager → Booking.com</strong> y trae las reservas que ya existen con <strong>Import existing bookings</strong>.
+                En Beds24, conecta Booking.com en <strong>Settings → Channel Manager → Booking.com</strong> y trae las reservas que ya existen con{" "}
+                <strong>Import existing bookings</strong>.
               </li>
               <li>
-                Aquí, en cada cabaña que se vende en Booking.com, pulsa <strong>Editar</strong> y elige su habitación de Beds24. La app sube allá sus reservas y bloqueos.
+                Aquí, en cada cabaña que se vende en Booking.com, pulsa <strong>Editar</strong> y elige su habitación de Beds24. La app sube allá sus reservas y
+                bloqueos.
               </li>
               <li>
                 Pega la <strong>dirección del aviso</strong> (arriba) en Beds24 → <strong>Settings → Properties → Access → Booking webhook</strong>.
               </li>
-              <li>
-                Revisa que Beds24 muestre las reservas de la web («Web VF-…») y activa la conexión completa con Booking.com.
-              </li>
+              <li>Revisa que Beds24 muestre las reservas de la web («Web VF-…») y activa la conexión completa con Booking.com.</li>
             </ol>
-            <Callout tone="success">Cada venta de la web se reserva primero en Beds24: si Booking.com ya vendió esas noches, la web no la confirma y ofrece otra cabaña.</Callout>
+            <Callout tone="success">
+              Cada venta de la web se reserva primero en Beds24: si Booking.com ya vendió esas noches, la web no la confirma y ofrece otra cabaña.
+            </Callout>
           </Card>
         ) : (
           <Card className="flex flex-col gap-3 p-4 sm:p-5">
             <h2 className="text-[15px] font-bold text-ink">Cómo enlazar una cabaña por calendario</h2>
             <ol className="flex list-decimal flex-col gap-2 pl-5 text-[13.5px] leading-snug text-ink">
               <li>
-                En el extranet de Booking.com entra a <strong>Tarifas y disponibilidad → Sincronizar calendarios</strong> y pulsa <strong>Conectar un calendario</strong> en el tipo de alojamiento.
+                En el extranet de Booking.com entra a <strong>Tarifas y disponibilidad → Sincronizar calendarios</strong> y pulsa{" "}
+                <strong>Conectar un calendario</strong> en el tipo de alojamiento.
               </li>
               <li>
-                Paso 1, <strong>Importar calendario</strong>: pega el <strong>enlace para Booking</strong> de la cabaña que corresponde (aquí, en <strong>Enlazar</strong>) y ponle de nombre «Web La Vaca Fifí».
+                Paso 1, <strong>Importar calendario</strong>: pega el <strong>enlace para Booking</strong> de la cabaña que corresponde (aquí, en{" "}
+                <strong>Enlazar</strong>) y ponle de nombre «Web La Vaca Fifí».
               </li>
               <li>
                 Paso 2, <strong>Exportar calendario</strong>: copia el enlace de Booking.com y pégalo aquí, en esa misma cabaña.
               </li>
             </ol>
             <Callout tone="warning">
-              Booking.com descarga el calendario de la web a su ritmo (cada pocas horas; cada cabaña muestra cuándo lo vio por última vez). Si en ese rato alguien reserva allá una cabaña ya vendida aquí, la app reacomoda la reserva en otra libre del mismo tipo o te avisa de la posible sobreventa. Para evitarlo, conecta Beds24.
+              Booking.com descarga el calendario de la web a su ritmo (cada pocas horas; cada cabaña muestra cuándo lo vio por última vez). Si en ese rato
+              alguien reserva allá una cabaña ya vendida aquí, la app reacomoda la reserva en otra libre del mismo tipo o te avisa de la posible sobreventa.
+              Para evitarlo, conecta Beds24.
             </Callout>
             <p className="text-[12.5px] text-ink-muted">
               Booking.com solo permite sincronizar calendarios si cada tipo de alojamiento tiene una unidad y no hay un channel manager conectado.{" "}
-              <a href="https://admin.booking.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-ink underline-offset-2 hover:underline">
+              <a
+                href="https://admin.booking.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-semibold text-ink underline-offset-2 hover:underline"
+              >
                 Abrir el extranet <ExternalLinkIcon size={12} />
               </a>
             </p>
@@ -304,7 +377,12 @@ export function ChannelsView() {
           cal={data.channelCalendars.find((x) => x.cabinTypeId === editing.cabinTypeId && x.unit === editing.unit) ?? null}
           poolOptions={units
             .filter((u) => u.cabinTypeId === editing.cabinTypeId)
-            .map((u) => ({ unit: u.unit, name: u.name, takenBy: u.cal && u.cal.unit !== editing.unit && (u.cal.importUrl || u.cal.beds24RoomId) ? u.cal.label || cabinLabel(u.cabinTypeId, u.cal.unit) : null }))}
+            .map((u) => ({
+              unit: u.unit,
+              name: u.name,
+              takenBy:
+                u.cal && u.cal.unit !== editing.unit && (u.cal.importUrl || u.cal.beds24RoomId) ? u.cal.label || cabinLabel(u.cabinTypeId, u.cal.unit) : null,
+            }))}
           beds24={!!beds24}
           onClose={() => setEditing(null)}
           onSaved={(c, msg, ok) => {
@@ -365,8 +443,23 @@ function Beds24Card({
 
   const form = (
     <div className="flex flex-col gap-3">
-      <Field label="Código de invitación de Beds24" error={error} hint="Beds24 → Settings → Marketplace → API → invite code, con permisos bookings (all), inventory (read) y properties (read). Vence a las 24 horas.">
-        {(p) => <input {...p} type="text" autoComplete="off" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value)} className={`${adminInput} font-mono text-[13px]`} disabled={isMockApi} />}
+      <Field
+        label="Código de invitación de Beds24"
+        error={error}
+        hint="Beds24 → Settings → Marketplace → API → invite code, con permisos bookings (all), inventory (read) y properties (read). Vence a las 24 horas."
+      >
+        {(p) => (
+          <input
+            {...p}
+            type="text"
+            autoComplete="off"
+            spellCheck={false}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className={`${adminInput} font-mono text-[13px]`}
+            disabled={isMockApi}
+          />
+        )}
       </Field>
       <div className="flex flex-wrap gap-2">
         <Button variant="primary" loading={busy} disabled={!code.trim() || isMockApi} onClick={connect}>
@@ -406,15 +499,13 @@ function Beds24Card({
             </Badge>
           </span>
         }
-        subtitle={
-          [
-            mapped ? plural(mapped, "cabaña enlazada", "cabañas enlazadas") : "Ninguna cabaña enlazada todavía: elige su habitación de Beds24 en Editar",
-            status.lastWebhookAt ? `último aviso de Beds24 ${timeAgo(status.lastWebhookAt, now)}` : "Beds24 aún no ha enviado avisos",
-            status.lastPullAt && `revisado ${timeAgo(status.lastPullAt, now)}`,
-          ]
-            .filter(Boolean)
-            .join(" · ")
-        }
+        subtitle={[
+          mapped ? plural(mapped, "cabaña enlazada", "cabañas enlazadas") : "Ninguna cabaña enlazada todavía: elige su habitación de Beds24 en Editar",
+          status.lastWebhookAt ? `último aviso de Beds24 ${timeAgo(status.lastWebhookAt, now)}` : "Beds24 aún no ha enviado avisos",
+          status.lastPullAt && `revisado ${timeAgo(status.lastPullAt, now)}`,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         actions={
           !open && (
             <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
@@ -430,7 +521,9 @@ function Beds24Card({
       )}
       {open && form}
       <div className="flex flex-col gap-2 rounded-xl bg-canvas p-3.5">
-        <p className="text-[13px] font-semibold text-ink">Dirección del aviso (Beds24 → Settings → Properties → Access → Booking webhook, versión 2 sin datos personales)</p>
+        <p className="text-[13px] font-semibold text-ink">
+          Dirección del aviso (Beds24 → Settings → Properties → Access → Booking webhook, versión 2 sin datos personales)
+        </p>
         <code className="block rounded-lg bg-panel px-3 py-2 font-mono text-[12px] break-all text-ink-muted shadow-panel">{status.webhookUrl}</code>
         <div>
           <Button size="sm" onClick={() => copy(status.webhookUrl, "Dirección copiada. Pégala en Beds24 → Properties → Access → Booking webhook.")}>
@@ -496,7 +589,14 @@ function LinkEditor({
     setBusy(true);
     setErrors({});
     try {
-      const r = await api.admin.channels.save({ cabinTypeId: d.cabinTypeId, unit: d.unit, units: viaBeds24 ? [d.unit] : d.units, label: d.label, importUrl: viaBeds24 ? "" : d.importUrl, beds24RoomId: d.beds24RoomId });
+      const r = await api.admin.channels.save({
+        cabinTypeId: d.cabinTypeId,
+        unit: d.unit,
+        units: viaBeds24 ? [d.unit] : d.units,
+        label: d.label,
+        importUrl: viaBeds24 ? "" : d.importUrl,
+        beds24RoomId: d.beds24RoomId,
+      });
       if (r.status === 401 || r.status === 403) return onAuthError();
       if (r.status === 200 && r.data && "calendars" in r.data) {
         const res = r.data.results ?? [];
@@ -507,7 +607,11 @@ function LinkEditor({
         if (!viaBeds24 && !d.importUrl.trim()) return onSaved(r.data, `${d.name} quedó sin enlazar`, true);
         if (!res.length) return onSaved(r.data, "Cambios guardados", true);
         const s = summary(res);
-        return onSaved(r.data, s.ok ? `${d.name} enlazada · ${plural(res[0].events, "fecha leída", "fechas leídas")}` : `Se guardó el enlace, pero no se pudo leer: ${s.text}`, s.ok);
+        return onSaved(
+          r.data,
+          s.ok ? `${d.name} enlazada · ${plural(res[0].events, "fecha leída", "fechas leídas")}` : `Se guardó el enlace, pero no se pudo leer: ${s.text}`,
+          s.ok,
+        );
       }
       const fields = (r.data as { fields?: Record<string, string> } | null)?.fields;
       setErrors(fields ?? { form: errorOf(r) });
@@ -543,18 +647,39 @@ function LinkEditor({
   ];
 
   return (
-    <Modal onClose={onClose} labelledBy="ch-ed-title" initialFocus="[data-autofocus]" className="m-auto w-[calc(100%-32px)] max-w-[620px] rounded-2xl p-0 motion-safe:open:animate-pop-in">
+    <Modal
+      onClose={onClose}
+      labelledBy="ch-ed-title"
+      initialFocus="[data-autofocus]"
+      className="m-auto w-[calc(100%-32px)] max-w-[620px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+    >
       <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div>
           <h2 id="ch-ed-title" className="text-[17px] font-bold text-ink">
             {d.name} en Booking.com
           </h2>
           <p className="mt-1 text-[13.5px] text-ink-muted">
-            {beds24 ? "Elige su habitación de Beds24 (en tiempo real) o pega el enlace de exportación del calendario." : "Pega el enlace de exportación del tipo de alojamiento que corresponde a esta cabaña."}
+            {beds24
+              ? "Elige su habitación de Beds24 (en tiempo real) o pega el enlace de exportación del calendario."
+              : "Pega el enlace de exportación del tipo de alojamiento que corresponde a esta cabaña."}
           </p>
         </div>
-        <Field label="Nombre en Booking.com (opcional)" error={errors.label} hint="Como aparece en el extranet, para reconocerla. Ej. «Habitación Doble con baño privado».">
-          {(p) => <input {...p} data-autofocus type="text" maxLength={80} value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} className={adminInput} />}
+        <Field
+          label="Nombre en Booking.com (opcional)"
+          error={errors.label}
+          hint="Como aparece en el extranet, para reconocerla. Ej. «Habitación Doble con baño privado»."
+        >
+          {(p) => (
+            <input
+              {...p}
+              data-autofocus
+              type="text"
+              maxLength={80}
+              value={d.label}
+              onChange={(e) => setD({ ...d, label: e.target.value })}
+              className={adminInput}
+            />
+          )}
         </Field>
         {beds24 && (
           <Field label="Habitación en Beds24" error={errors.beds24RoomId} hint="La de Beds24 que corresponde a este tipo de alojamiento de Booking.com.">
@@ -596,16 +721,25 @@ function LinkEditor({
                 );
               })}
             </div>
-            <p className="text-[12.5px] text-ink-muted">Booking.com vende uno por noche: se cierra allá solo cuando todos los marcados están ocupados, y cada reserva suya ocupa uno libre.</p>
+            <p className="text-[12.5px] text-ink-muted">
+              Booking.com vende uno por noche: se cierra allá solo cuando todos los marcados están ocupados, y cada reserva suya ocupa uno libre.
+            </p>
             {errors.units && <p className="text-[13px] font-semibold text-error">{errors.units}</p>}
           </fieldset>
         )}
         {linking && (
-          <Callout tone="info">Al guardar, la app sube a Beds24 las reservas y bloqueos de la web de esta cabaña y empieza a recibir las de Booking.com. Deja de usar el calendario iCal.</Callout>
+          <Callout tone="info">
+            Al guardar, la app sube a Beds24 las reservas y bloqueos de la web de esta cabaña y empieza a recibir las de Booking.com. Deja de usar el calendario
+            iCal.
+          </Callout>
         )}
         {!viaBeds24 && (
           <>
-            <Field label="Enlace de exportación de Booking.com" error={errors.importUrl} hint="Extranet → Tarifas y disponibilidad → Sincronizar calendarios → Exportar calendario. Déjalo vacío para desenlazar.">
+            <Field
+              label="Enlace de exportación de Booking.com"
+              error={errors.importUrl}
+              hint="Extranet → Tarifas y disponibilidad → Sincronizar calendarios → Exportar calendario. Déjalo vacío para desenlazar."
+            >
               {(p) => (
                 <textarea
                   {...p}
@@ -646,7 +780,13 @@ function LinkEditor({
             Cancelar
           </Button>
           <Button variant="primary" loading={busy} onClick={save}>
-            {unlinking ? "Desenlazar" : linking ? "Enlazar con Beds24" : !viaBeds24 && d.importUrl.trim() && d.importUrl.trim() !== (cal?.importUrl ?? "") ? "Guardar y leer" : "Guardar"}
+            {unlinking
+              ? "Desenlazar"
+              : linking
+                ? "Enlazar con Beds24"
+                : !viaBeds24 && d.importUrl.trim() && d.importUrl.trim() !== (cal?.importUrl ?? "")
+                  ? "Guardar y leer"
+                  : "Guardar"}
           </Button>
         </div>
       </div>

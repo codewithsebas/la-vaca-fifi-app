@@ -10,8 +10,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Body =
-  | { action: "send"; clientKey: string; subject: string; message: string; reservationCode?: string | null; requestId: string }
-  | { action: "retry"; id: string };
+  { action: "send"; clientKey: string; subject: string; message: string; reservationCode?: string | null; requestId: string } | { action: "retry"; id: string };
 
 // GET /api/admin/emails → si el envío está configurado (para avisarlo en el panel antes de escribir).
 export const GET = route(async () => {
@@ -51,7 +50,13 @@ export const POST = route(async (req: NextRequest) => {
   if (Object.keys(fields).length) return fail(422, "VALIDATION_ERROR", { fields });
 
   // El destinatario sale de la última reserva del cliente (nunca del navegador).
-  const { data: latest } = await sb.from("reservations").select("code, guest_full_name, guest_email").eq("client_key", b.clientKey).order("created_at", { ascending: false }).limit(1).throwOnError();
+  const { data: latest } = await sb
+    .from("reservations")
+    .select("code, guest_full_name, guest_email")
+    .eq("client_key", b.clientKey)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .throwOnError();
   const client = latest[0];
   if (!client) return fail(404, "CLIENT_NOT_FOUND");
   if (!EMAIL.test(client.guest_email ?? "")) return fail(422, "NO_EMAIL");
@@ -65,7 +70,15 @@ export const POST = route(async (req: NextRequest) => {
   const { data: inserted } = await service
     .from("email_outbox")
     .upsert(
-      { dedupe_key: dedupe, kind: "team_message", reservation_code: code, to_email: client.guest_email, subject, payload: { nombre: client.guest_full_name, asunto: subject, mensaje: message, codigo: code, clientKey: b.clientKey }, created_by: uid },
+      {
+        dedupe_key: dedupe,
+        kind: "team_message",
+        reservation_code: code,
+        to_email: client.guest_email,
+        subject,
+        payload: { nombre: client.guest_full_name, asunto: subject, mensaje: message, codigo: code, clientKey: b.clientKey },
+        created_by: uid,
+      },
       { onConflict: "dedupe_key", ignoreDuplicates: true },
     )
     .select("id")

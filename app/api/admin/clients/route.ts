@@ -33,7 +33,14 @@ export const PUT = route(async (req: NextRequest) => {
   if (Object.keys(errors).length) return fail(422, "VALIDATION_ERROR", { fields: errors });
   await sb
     .from("client_profiles")
-    .upsert({ client_key: key, rating: b.rating, trust: b.trust, tags, preferences: String(b.preferences ?? "").trim(), summary: String(b.summary ?? "").trim() })
+    .upsert({
+      client_key: key,
+      rating: b.rating,
+      trust: b.trust,
+      tags,
+      preferences: String(b.preferences ?? "").trim(),
+      summary: String(b.summary ?? "").trim(),
+    })
     .throwOnError();
   return profile(sb, key);
 });
@@ -47,7 +54,8 @@ export const POST = route(async (req: NextRequest) => {
   if (!b || !key) return fail(404, "CLIENT_NOT_FOUND");
   const text = String(b.text ?? "").trim();
   const incident = b.kind === "incident";
-  if (!["note", "incident"].includes(b.kind) || !text || text.length > 2000 || (incident && !SEVERITY.includes(String(b.severity)))) return fail(400, "INVALID_BODY");
+  if (!["note", "incident"].includes(b.kind) || !text || text.length > 2000 || (incident && !SEVERITY.includes(String(b.severity))))
+    return fail(400, "INVALID_BODY");
   let code: string | null = null;
   if (b.reservationCode) {
     const { data } = await sb.from("reservations").select("code").eq("code", b.reservationCode).eq("client_key", key).maybeSingle().throwOnError();

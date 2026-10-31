@@ -3,7 +3,22 @@
 // Contenido del sitio → Colores: paletas listas, ajuste color por color, aviso de contraste y vista previa en vivo.
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { CheckIcon, EyeIcon, MonitorIcon, PaletteIcon, RefreshIcon, SmartphoneIcon, WarningIcon } from "@/components/icons";
-import { DEFAULT_THEME, THEME_GROUPS, THEME_PRESETS, mergeTheme, normalizeHex, presetOf, sameTheme, themeCss, themeField, themeIssues, themeVars, type SiteTheme, type ThemeIssue, type ThemeKey } from "@/lib/theme";
+import {
+  DEFAULT_THEME,
+  THEME_GROUPS,
+  THEME_PRESETS,
+  mergeTheme,
+  normalizeHex,
+  presetOf,
+  sameTheme,
+  themeCss,
+  themeField,
+  themeIssues,
+  themeVars,
+  type SiteTheme,
+  type ThemeIssue,
+  type ThemeKey,
+} from "@/lib/theme";
 import { adminInput } from "./shared";
 import { Badge, Button, Callout, Card, CardHeader, Segmented, Spinner } from "./ui";
 
@@ -29,7 +44,13 @@ export function ThemeEditor({ theme, saved, onChange }: { theme: SiteTheme; save
             subtitle="Combinaciones listas, con buen contraste. Elige una y ajusta los colores que quieras más abajo."
             actions={
               // Siempre visible (deshabilitado con los colores originales): así la cuadrícula no se mueve al elegir una paleta.
-              <Button size="sm" variant="ghost" icon={<RefreshIcon size={14} />} disabled={sameTheme(theme, DEFAULT_THEME)} onClick={() => onChange({ ...DEFAULT_THEME })}>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<RefreshIcon size={14} />}
+                disabled={sameTheme(theme, DEFAULT_THEME)}
+                onClick={() => onChange({ ...DEFAULT_THEME })}
+              >
                 Colores originales
               </Button>
             }
@@ -50,7 +71,9 @@ export function ThemeEditor({ theme, saved, onChange }: { theme: SiteTheme; save
                       <span className="flex items-center gap-1.5 text-[14px] font-semibold text-ink">
                         {p.label}
                         {on && <CheckIcon size={14} className="text-success" />}
-                        {sameTheme(p.theme, saved) && <span className="ml-auto rounded-full bg-canvas px-2 py-px text-[11px] font-bold text-ink-muted">Publicada</span>}
+                        {sameTheme(p.theme, saved) && (
+                          <span className="ml-auto rounded-full bg-canvas px-2 py-px text-[11px] font-bold text-ink-muted">Publicada</span>
+                        )}
                       </span>
                       <span className="text-[12.5px] leading-snug text-ink-muted">{p.description}</span>
                     </span>
@@ -84,7 +107,11 @@ export function ThemeEditor({ theme, saved, onChange }: { theme: SiteTheme; save
         className="sticky z-10 flex min-w-0 flex-col gap-3 max-lg:top-14 max-lg:order-first max-lg:-mx-4 max-lg:border-b max-lg:border-line max-lg:bg-canvas max-lg:px-4 max-lg:pt-2 max-lg:pb-3 lg:top-[72px] lg:h-[calc(100dvh-96px-var(--savebar-h,64px))] lg:min-h-[400px]"
       >
         <div className="flex-none max-lg:hidden">
-          {issues.length ? <ContrastIssues theme={theme} issues={issues} className="max-h-[30dvh] overflow-y-auto" /> : <Callout tone="success">Todos los textos se leen bien con estos colores.</Callout>}
+          {issues.length ? (
+            <ContrastIssues theme={theme} issues={issues} className="max-h-[30dvh] overflow-y-auto" />
+          ) : (
+            <Callout tone="success">Todos los textos se leen bien con estos colores.</Callout>
+          )}
         </div>
         <ThemePreview theme={theme} issues={issues.length} unpublished={!sameTheme(theme, saved)} />
       </aside>
@@ -142,7 +169,10 @@ function ColorField({ k, value, onChange }: { k: ThemeKey; value: string; onChan
 
   return (
     <div className="flex min-w-0 gap-3 rounded-xl border border-line p-3">
-      <label className="relative size-11 flex-none cursor-pointer overflow-hidden rounded-lg ring-1 ring-black/15 focus-within:ring-2 focus-within:ring-focus" style={{ background: value }}>
+      <label
+        className="relative size-11 flex-none cursor-pointer overflow-hidden rounded-lg ring-1 ring-black/15 focus-within:ring-2 focus-within:ring-focus"
+        style={{ background: value }}
+      >
         <span className="sr-only">{`Elegir color: ${f.label}`}</span>
         <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 size-full cursor-pointer opacity-0" />
       </label>
@@ -152,7 +182,11 @@ function ColorField({ k, value, onChange }: { k: ThemeKey; value: string; onChan
             {f.label}
           </label>
           {changed && (
-            <button type="button" onClick={() => onChange(DEFAULT_THEME[k])} className="rounded-sm text-[12px] font-semibold text-ink-muted underline-offset-2 hover:text-ink hover:underline">
+            <button
+              type="button"
+              onClick={() => onChange(DEFAULT_THEME[k])}
+              className="rounded-sm text-[12px] font-semibold text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+            >
               Original<span className="sr-only">: {f.label}</span>
             </button>
           )}
@@ -266,14 +300,25 @@ function ThemePreview({ theme, issues, unpublished }: { theme: SiteTheme; issues
           label="Equipo de la vista previa"
           value={device}
           onChange={setDevice}
-          options={(Object.keys(DEVICES) as Device[]).map((k) => ({ value: k, icon: DEVICES[k].icon, label: <span className="max-sm:sr-only">{DEVICES[k].label}</span> }))}
+          options={(Object.keys(DEVICES) as Device[]).map((k) => ({
+            value: k,
+            icon: DEVICES[k].icon,
+            label: <span className="max-sm:sr-only">{DEVICES[k].label}</span>,
+          }))}
           className="ml-auto"
         />
       </div>
       {/* En pantallas angostas el área reserva un alto máximo; lo que el marco no usa se devuelve con un margen negativo. */}
-      <div ref={area} style={{ "--unused": `${box && scale ? Math.max(0, box.h - shown) : 0}px` } as CSSProperties} className="relative min-h-0 max-lg:-mb-(--unused) max-lg:h-[min(34svh,300px)] lg:flex-1">
+      <div
+        ref={area}
+        style={{ "--unused": `${box && scale ? Math.max(0, box.h - shown) : 0}px` } as CSSProperties}
+        className="relative min-h-0 max-lg:-mb-(--unused) max-lg:h-[min(34svh,300px)] lg:flex-1"
+      >
         {scale > 0 && (
-          <div className="mx-auto overflow-hidden rounded-xl bg-panel shadow-panel ring-1 ring-line-strong" style={{ width: Math.floor(d.width * scale), height: shown }}>
+          <div
+            className="mx-auto overflow-hidden rounded-xl bg-panel shadow-panel ring-1 ring-line-strong"
+            style={{ width: Math.floor(d.width * scale), height: shown }}
+          >
             {/* Es una ruta de este mismo sitio: el panel puede escribir en su documento. Al navegar dentro del marco se
                 vuelve a pintar. */}
             <iframe

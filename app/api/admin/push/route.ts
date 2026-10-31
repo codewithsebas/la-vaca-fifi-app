@@ -14,7 +14,8 @@ type Body =
   | { action: "test"; endpoint?: unknown };
 
 const groupsOf = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter(isGroup))] : null);
-const view = (s: { groups: string[]; device: string; last_success_at: string | null } | null) => (s ? { groups: s.groups, device: s.device, lastSuccessAt: s.last_success_at } : null);
+const view = (s: { groups: string[]; device: string; last_success_at: string | null } | null) =>
+  s ? { groups: s.groups, device: s.device, lastSuccessAt: s.last_success_at } : null;
 
 // GET /api/admin/push?endpoint=… → ¿está configurado el envío y registrado este dispositivo?
 export const GET = route(async (req: NextRequest) => {
@@ -22,7 +23,13 @@ export const GET = route(async (req: NextRequest) => {
   if (error) return error;
   const endpoint = req.nextUrl.searchParams.get("endpoint");
   if (!isPushEndpoint(endpoint) || !uid) return json({ configured: pushConfigured(), subscription: null });
-  const { data } = await createServiceClient().from("push_subscriptions").select("groups, device, last_success_at").eq("endpoint", endpoint).eq("user_id", uid).maybeSingle().throwOnError();
+  const { data } = await createServiceClient()
+    .from("push_subscriptions")
+    .select("groups, device, last_success_at")
+    .eq("endpoint", endpoint)
+    .eq("user_id", uid)
+    .maybeSingle()
+    .throwOnError();
   return json({ configured: pushConfigured(), subscription: view(data) });
 });
 
@@ -44,12 +51,16 @@ export const POST = route(async (req: NextRequest) => {
     // Mismo dispositivo con otra sesión: la suscripción pasa al administrador que la registra ahora.
     const { data } = await sb
       .from("push_subscriptions")
-      .upsert({ endpoint: s.endpoint, p256dh, auth, user_id: uid, device: deviceLabel(req.headers.get("user-agent")), ...(groups && { groups }) }, { onConflict: "endpoint" })
+      .upsert(
+        { endpoint: s.endpoint, p256dh, auth, user_id: uid, device: deviceLabel(req.headers.get("user-agent")), ...(groups && { groups }) },
+        { onConflict: "endpoint" },
+      )
       .select("groups, device, last_success_at")
       .single()
       .throwOnError();
     // El navegador renovó la suscripción (pushsubscriptionchange): se borra la anterior.
-    if (isPushEndpoint(b.replaces) && b.replaces !== s.endpoint) await sb.from("push_subscriptions").delete().eq("endpoint", b.replaces).eq("user_id", uid).throwOnError();
+    if (isPushEndpoint(b.replaces) && b.replaces !== s.endpoint)
+      await sb.from("push_subscriptions").delete().eq("endpoint", b.replaces).eq("user_id", uid).throwOnError();
     return json(view(data));
   }
 

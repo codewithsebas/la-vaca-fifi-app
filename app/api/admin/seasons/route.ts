@@ -17,10 +17,25 @@ async function clean(sb: Db, b: SeasonInput | null) {
   else if (nightsBetween(b.from, b.to) > 366) errors.dates = "Una temporada puede durar máximo un año.";
   if (!money(b.precioPareja)) errors.precioPareja = "Escribe una tarifa válida.";
   if (!money(b.personaAdicional)) errors.personaAdicional = "Escribe una tarifa válida.";
-  const { data: cabin } = await sb.from("cabin_types").select("id").eq("id", String(b.cabinTypeId ?? "")).maybeSingle().throwOnError();
+  const { data: cabin } = await sb
+    .from("cabin_types")
+    .select("id")
+    .eq("id", String(b.cabinTypeId ?? ""))
+    .maybeSingle()
+    .throwOnError();
   if (!cabin) errors.cabinTypeId = "Elige una cabaña.";
   if (Object.keys(errors).length) return { errors };
-  return { row: { cabin_type_id: b.cabinTypeId, nombre, from_date: b.from, to_date: b.to, precio_pareja: b.precioPareja, persona_adicional: b.personaAdicional, activa: !!b.activa } };
+  return {
+    row: {
+      cabin_type_id: b.cabinTypeId,
+      nombre,
+      from_date: b.from,
+      to_date: b.to,
+      precio_pareja: b.precioPareja,
+      persona_adicional: b.personaAdicional,
+      activa: !!b.activa,
+    },
+  };
 }
 
 // Nombre de la temporada activa que se cruza, para explicar el rechazo.
@@ -50,7 +65,8 @@ async function save(req: NextRequest, mode: "create" | "update") {
       if (!data.length) return fail(404, "NOT_FOUND");
     }
   } catch (e) {
-    if (isExclusionViolation(e)) return fail(422, "VALIDATION_ERROR", { fields: { dates: `Se cruza con la temporada activa "${await overlapping(sb, b!)}" de la misma cabaña.` } });
+    if (isExclusionViolation(e))
+      return fail(422, "VALIDATION_ERROR", { fields: { dates: `Se cruza con la temporada activa "${await overlapping(sb, b!)}" de la misma cabaña.` } });
     throw e;
   }
   return done(sb);

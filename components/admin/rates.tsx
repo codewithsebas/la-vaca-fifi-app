@@ -13,7 +13,24 @@ import { useAdmin, useParam, useSetParams } from "./context";
 import { MODULES } from "./routes";
 import { DateRangePicker } from "./date-picker";
 import { adminInput } from "./shared";
-import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, FieldError, IconButton, Modal, MoneyInput, PageHeader, Segmented, Stepper, Switch, type Tone } from "./ui";
+import {
+  Badge,
+  Button,
+  Callout,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  FieldError,
+  IconButton,
+  Modal,
+  MoneyInput,
+  PageHeader,
+  Segmented,
+  Stepper,
+  Switch,
+  type Tone,
+} from "./ui";
 
 const pct = (v: number, base: number) => (base ? Math.round(((v - base) / base) * 100) : 0);
 const diff = (v: number, base: number) => {
@@ -41,12 +58,27 @@ export function RatesView() {
   const first = data.cabinTypes[0];
   const found = seasonId && seasonId !== "nueva" ? data.seasons.find((x) => x.id === seasonId) : undefined;
   const editing: SeasonInput | null =
-    seasonId === "nueva" ? { cabinTypeId: first?.id ?? "", nombre: "", from: "", to: "", precioPareja: first?.precioPareja ?? 0, personaAdicional: first?.personaAdicional ?? 0, activa: true } : found ? { ...found } : null;
+    seasonId === "nueva"
+      ? {
+          cabinTypeId: first?.id ?? "",
+          nombre: "",
+          from: "",
+          to: "",
+          precioPareja: first?.precioPareja ?? 0,
+          personaAdicional: first?.personaAdicional ?? 0,
+          activa: true,
+        }
+      : found
+        ? { ...found }
+        : null;
   const edit = (id: string) => setParams({ temporada: id });
 
   return (
     <>
-      <PageHeader title={MODULES.tarifas.label} description="El precio base aplica todo el año. Las temporadas reemplazan el precio base en sus fechas (por ejemplo, fin de año o puentes festivos)." />
+      <PageHeader
+        title={MODULES.tarifas.label}
+        description="El precio base aplica todo el año. Las temporadas reemplazan el precio base en sus fechas (por ejemplo, fin de año o puentes festivos)."
+      />
 
       <section aria-labelledby="rt-base" className="flex flex-col gap-3">
         <h2 id="rt-base" className="text-[15px] font-bold text-ink">
@@ -66,11 +98,7 @@ export function RatesView() {
           title="Temporadas"
           subtitle="Precio especial por fechas. Dos temporadas activas de la misma cabaña no pueden cruzarse."
           actions={
-            <Button
-              variant="primary"
-              icon={<PlusIcon size={14} />}
-              onClick={() => edit("nueva")}
-            >
+            <Button variant="primary" icon={<PlusIcon size={14} />} onClick={() => edit("nueva")}>
               Nueva temporada
             </Button>
           }
@@ -98,7 +126,11 @@ export function RatesView() {
             compact
             icon={<CalendarIcon size={18} />}
             title={data.seasons.length ? "No hay temporadas en este filtro" : "Aún no hay temporadas"}
-            text={data.seasons.length ? undefined : "Crea una temporada para cobrar distinto en fechas de alta demanda. Se aplica automáticamente al cotizar en el sitio."}
+            text={
+              data.seasons.length
+                ? undefined
+                : "Crea una temporada para cobrar distinto en fechas de alta demanda. Se aplica automáticamente al cotizar en el sitio."
+            }
           />
         )}
       </Card>
@@ -141,7 +173,15 @@ function BaseRateCard({ c }: { c: CabinType }) {
         actions={!c.activa ? <Badge>Inactivo</Badge> : undefined}
       />
       <Field label="Noche para 2" error={invalid ? "La tarifa debe ser mayor que cero." : undefined}>
-        {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} invalid={invalid} value={v.precioPareja} onChange={(n) => setV({ ...v, precioPareja: n })} />}
+        {(p) => (
+          <MoneyInput
+            id={p.id}
+            describedBy={p["aria-describedby"]}
+            invalid={invalid}
+            value={v.precioPareja}
+            onChange={(n) => setV({ ...v, precioPareja: n })}
+          />
+        )}
       </Field>
       <Field label="Persona adicional por noche" hint="Desde la 3.ª persona.">
         {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={v.personaAdicional} onChange={(n) => setV({ ...v, personaAdicional: n })} />}
@@ -175,7 +215,9 @@ function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
   const toggle = () =>
     ask({
       title: s.activa ? "Pausar temporada" : "Activar temporada",
-      text: s.activa ? `«${s.nombre}» deja de aplicarse: esas fechas vuelven al precio base.` : `«${s.nombre}» vuelve a aplicarse a las cotizaciones de esas fechas.`,
+      text: s.activa
+        ? `«${s.nombre}» deja de aplicarse: esas fechas vuelven al precio base.`
+        : `«${s.nombre}» vuelve a aplicarse a las cotizaciones de esas fechas.`,
       okLabel: s.activa ? "Pausar" : "Activar",
       done: s.activa ? "Temporada pausada" : "Temporada activada",
       run: () => api.admin.updateSeason({ ...s, activa: !s.activa }),
@@ -191,7 +233,9 @@ function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
     });
 
   return (
-    <li className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border px-4 py-3 ${st.order === 0 ? "border-success/30 bg-success-soft/40" : "border-line"} ${st.order >= 2 ? "opacity-75" : ""}`}>
+    <li
+      className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border px-4 py-3 ${st.order === 0 ? "border-success/30 bg-success-soft/40" : "border-line"} ${st.order >= 2 ? "opacity-75" : ""}`}
+    >
       <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-xl bg-canvas text-ink-muted">
         <TagIcon size={17} />
       </span>
@@ -226,7 +270,14 @@ function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
 function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () => void }) {
   const { data, setData, toast, today, onAuthError } = useAdmin();
   const [s, setS] = useState<SeasonInput>(initial);
-  const [cabins, setCabins] = useState<string[]>(initial.id ? [initial.cabinTypeId] : data.cabinTypes.filter((c) => c.activa).map((c) => c.id).slice(0, 1));
+  const [cabins, setCabins] = useState<string[]>(
+    initial.id
+      ? [initial.cabinTypeId]
+      : data.cabinTypes
+          .filter((c) => c.activa)
+          .map((c) => c.id)
+          .slice(0, 1),
+  );
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -237,7 +288,10 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
   const ref = data.cabinTypes.find((c) => c.id === (initial.id ? s.cabinTypeId : cabins[0]));
 
   // Cruces con otras temporadas activas de las mismas cabañas.
-  const clash = s.activa && s.from && s.to ? data.seasons.filter((x) => x.id !== s.id && x.activa && cabins.includes(x.cabinTypeId) && x.from <= s.to && s.from <= x.to) : [];
+  const clash =
+    s.activa && s.from && s.to
+      ? data.seasons.filter((x) => x.id !== s.id && x.activa && cabins.includes(x.cabinTypeId) && x.from <= s.to && s.from <= x.to)
+      : [];
   const errs = {
     nombre: !s.nombre.trim() ? "Escribe un nombre, por ejemplo «Temporada alta de diciembre»." : "",
     cabins: !cabins.length ? "Elige al menos una cabaña." : "",
@@ -277,7 +331,12 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
   const nights = s.from && s.to ? nightsBetween(s.from, s.to) + 1 : 0;
 
   return (
-    <Modal onClose={onClose} labelledBy="se-title" initialFocus="#se-name" className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-2xl p-0 motion-safe:open:animate-pop-in">
+    <Modal
+      onClose={onClose}
+      labelledBy="se-title"
+      initialFocus="#se-name"
+      className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+    >
       <div className="flex max-h-[calc(100dvh-140px)] flex-col gap-4 overflow-y-auto p-5 sm:p-6">
         <div>
           <h2 id="se-title" className="text-[17px] font-bold text-ink">
@@ -286,13 +345,33 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
           <p className="text-[13.5px] text-ink-muted">En estas noches se cobra este precio en lugar de la tarifa base.</p>
         </div>
         <Field label="Nombre" error={tried ? errs.nombre : undefined}>
-          {(p) => <input {...p} id="se-name" type="text" maxLength={80} value={s.nombre} onChange={(e) => set({ nombre: e.target.value })} placeholder="Temporada alta de fin de año" className={adminInput} />}
+          {(p) => (
+            <input
+              {...p}
+              id="se-name"
+              type="text"
+              maxLength={80}
+              value={s.nombre}
+              onChange={(e) => set({ nombre: e.target.value })}
+              placeholder="Temporada alta de fin de año"
+              className={adminInput}
+            />
+          )}
         </Field>
         {s.id ? (
-          <Field label="Cabaña">{(p) => <Combobox id={p.id} value={s.cabinTypeId} onChange={(v) => {
+          <Field label="Cabaña">
+            {(p) => (
+              <Combobox
+                id={p.id}
+                value={s.cabinTypeId}
+                onChange={(v) => {
                   set({ cabinTypeId: v });
                   setCabins([v]);
-                }} options={data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))} />}</Field>
+                }}
+                options={data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))}
+              />
+            )}
+          </Field>
         ) : (
           <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="mb-1.5 text-[13px] font-semibold text-ink">Aplica a</legend>
@@ -300,8 +379,16 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
               {data.cabinTypes.map((c) => {
                 const on = cabins.includes(c.id);
                 return (
-                  <label key={c.id} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-[13.5px] font-semibold transition-colors ${on ? "border-ink bg-ink/5 text-ink" : "border-line-strong text-ink-muted hover:text-ink"}`}>
-                    <input type="checkbox" checked={on} onChange={() => setCabins(on ? cabins.filter((x) => x !== c.id) : [...cabins, c.id])} className="size-4 accent-[var(--color-cta)]" />
+                  <label
+                    key={c.id}
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-[13.5px] font-semibold transition-colors ${on ? "border-ink bg-ink/5 text-ink" : "border-line-strong text-ink-muted hover:text-ink"}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() => setCabins(on ? cabins.filter((x) => x !== c.id) : [...cabins, c.id])}
+                      className="size-4 accent-[var(--color-cta)]"
+                    />
                     {c.nombre}
                   </label>
                 );
@@ -310,26 +397,60 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
             {tried && errs.cabins && <FieldError>{errs.cabins}</FieldError>}
           </fieldset>
         )}
-        <Field label="Noches que cubre (la última incluida)" error={tried ? errs.dates : undefined} hint={nights ? `${plural(nights, "noche", "noches")}: se cobra la temporada a quien duerma en cualquiera de ellas.` : undefined}>
-          {(p) => <DateRangePicker id={p.id} describedBy={p["aria-describedby"]} invalid={!!p["aria-invalid"]} mode="days" from={s.from || null} to={s.to || null} min={s.id ? undefined : today} onChange={(from, to) => set({ from: from ?? "", to: to ?? "" })} />}
+        <Field
+          label="Noches que cubre (la última incluida)"
+          error={tried ? errs.dates : undefined}
+          hint={nights ? `${plural(nights, "noche", "noches")}: se cobra la temporada a quien duerma en cualquiera de ellas.` : undefined}
+        >
+          {(p) => (
+            <DateRangePicker
+              id={p.id}
+              describedBy={p["aria-describedby"]}
+              invalid={!!p["aria-invalid"]}
+              mode="days"
+              from={s.from || null}
+              to={s.to || null}
+              min={s.id ? undefined : today}
+              onChange={(from, to) => set({ from: from ?? "", to: to ?? "" })}
+            />
+          )}
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Noche para 2" error={tried ? errs.price : undefined} hint={ref ? `Base ${cop(ref.precioPareja)} · ${diff(s.precioPareja, ref.precioPareja)}` : undefined}>
-            {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} invalid={!!p["aria-invalid"]} value={s.precioPareja} onChange={(n) => set({ precioPareja: n })} />}
+          <Field
+            label="Noche para 2"
+            error={tried ? errs.price : undefined}
+            hint={ref ? `Base ${cop(ref.precioPareja)} · ${diff(s.precioPareja, ref.precioPareja)}` : undefined}
+          >
+            {(p) => (
+              <MoneyInput
+                id={p.id}
+                describedBy={p["aria-describedby"]}
+                invalid={!!p["aria-invalid"]}
+                value={s.precioPareja}
+                onChange={(n) => set({ precioPareja: n })}
+              />
+            )}
           </Field>
           <Field label="Persona adicional" hint={ref ? `Base ${cop(ref.personaAdicional)}` : undefined}>
             {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={s.personaAdicional} onChange={(n) => set({ personaAdicional: n })} />}
           </Field>
         </div>
-        <Switch checked={s.activa} onChange={(v) => set({ activa: v })} label="Activa" description="Si la pausas, se guarda pero no se aplica a las cotizaciones." />
+        <Switch
+          checked={s.activa}
+          onChange={(v) => set({ activa: v })}
+          label="Activa"
+          description="Si la pausas, se guarda pero no se aplica a las cotizaciones."
+        />
         {clash.length > 0 && (
           <Callout tone="error" role="alert">
-            Se cruza con {clash.map((x) => `«${x.nombre}» (${fmtDate(x.from)} → ${fmtDate(x.to)})`).join(", ")} de la misma cabaña. Ajusta las fechas o pausa una de las dos.
+            Se cruza con {clash.map((x) => `«${x.nombre}» (${fmtDate(x.from)} → ${fmtDate(x.to)})`).join(", ")} de la misma cabaña. Ajusta las fechas o pausa
+            una de las dos.
           </Callout>
         )}
         {s.from && s.to && !clash.length && ref && s.precioPareja > 0 && (
           <Callout>
-            Ejemplo: 2 noches para 2 personas en {ref.nombre} durante esta temporada = <strong>{cop(s.precioPareja * 2)}</strong> (con la tarifa base serían {cop(ref.precioPareja * 2)}).
+            Ejemplo: 2 noches para 2 personas en {ref.nombre} durante esta temporada = <strong>{cop(s.precioPareja * 2)}</strong> (con la tarifa base serían{" "}
+            {cop(ref.precioPareja * 2)}).
           </Callout>
         )}
         {error && <FieldError>{error}</FieldError>}
@@ -372,10 +493,19 @@ function Simulator() {
   if (!active.length) return null;
   return (
     <Card aria-labelledby="rt-sim" className="flex flex-col gap-4 p-4 sm:p-5">
-      <CardHeader id="rt-sim" icon={<TagIcon size={18} />} title="Simulador de precio" subtitle="Comprueba cuánto se cobraría con las tarifas y temporadas actuales." />
+      <CardHeader
+        id="rt-sim"
+        icon={<TagIcon size={18} />}
+        title="Simulador de precio"
+        subtitle="Comprueba cuánto se cobraría con las tarifas y temporadas actuales."
+      />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.4fr_auto]">
-        <Field label="Cabaña">{(p) => <Combobox id={p.id} value={cabinId} onChange={setCabinId} options={active.map((x) => ({ value: x.id, label: x.nombre }))} />}</Field>
-        <Field label="Fechas">{(p) => <DateRangePicker id={p.id} mode="nights" from={range.from} to={range.to} onChange={(from, to) => setRange({ from, to })} clearable={false} />}</Field>
+        <Field label="Cabaña">
+          {(p) => <Combobox id={p.id} value={cabinId} onChange={setCabinId} options={active.map((x) => ({ value: x.id, label: x.nombre }))} />}
+        </Field>
+        <Field label="Fechas">
+          {(p) => <DateRangePicker id={p.id} mode="nights" from={range.from} to={range.to} onChange={(from, to) => setRange({ from, to })} clearable={false} />}
+        </Field>
         <Field label="Huéspedes">{(p) => <Stepper id={p.id} value={guests} onChange={setGuests} min={1} max={c?.maxPersonas ?? 12} />}</Field>
       </div>
       {result ? (

@@ -35,7 +35,8 @@ function describeChange(a: PublicReservation, b: PublicReservation) {
   if (a.status !== b.status) return `Tu reserva se actualizó: ${statusOf(b.status).label.toLowerCase()}.`;
   const lastA = a.payments?.[0];
   const lastB = b.payments?.[0];
-  if (lastB && (lastB.reference !== lastA?.reference || lastB.status !== lastA?.status) && (lastB.status === "declined" || lastB.status === "error")) return "Tu último pago no fue aprobado.";
+  if (lastB && (lastB.reference !== lastA?.reference || lastB.status !== lastA?.status) && (lastB.status === "declined" || lastB.status === "error"))
+    return "Tu último pago no fue aprobado.";
   if (a.checkIn !== b.checkIn || a.checkOut !== b.checkOut || a.cabinTypeId !== b.cabinTypeId) return "Se actualizaron las fechas o la cabaña de tu reserva.";
   if (JSON.stringify(a.quote) !== JSON.stringify(b.quote) || a.paid !== b.paid) return "Se actualizaron los valores de tu reserva.";
   return null;
@@ -45,7 +46,10 @@ function LiveBadge({ status }: { status: SyncStatus }) {
   if (status === "off") return null;
   return (
     <span className="inline-flex items-center gap-1.5 text-[.82rem] font-semibold opacity-80">
-      <span aria-hidden="true" className={`size-2 rounded-full ${status === "live" ? "bg-accent motion-safe:animate-pulse" : status === "offline" ? "bg-error" : "bg-highlight"}`} />
+      <span
+        aria-hidden="true"
+        className={`size-2 rounded-full ${status === "live" ? "bg-accent motion-safe:animate-pulse" : status === "offline" ? "bg-error" : "bg-highlight"}`}
+      />
       {status === "live" ? "Se actualiza en tiempo real" : status === "offline" ? "Reconectando…" : "Conectando…"}
     </span>
   );
@@ -94,7 +98,11 @@ export function LookupForm() {
 
   // Los datos guardados solo existen en el navegador: se leen al hidratar (null en el servidor) y se aplican una vez.
   // Con código y correo conocidos, la reserva se consulta sola.
-  const saved = useSyncExternalStore(noop, () => savedSnapshot(urlCode), () => null);
+  const saved = useSyncExternalStore(
+    noop,
+    () => savedSnapshot(urlCode),
+    () => null,
+  );
   const [restored, setRestored] = useState(false);
   const [auto, setAuto] = useState<{ code: string; email: string } | null>(null);
   if (saved !== null && !restored) {
@@ -281,14 +289,21 @@ export function LookupForm() {
 
       {notFound && (
         <p id="lk-result" tabIndex={-1} role="alert" className="rounded-lg bg-surface px-[22px] py-[18px] font-bold">
-          {notFound === "failed" ? "No pudimos conectar. Inténtalo de nuevo en un momento." : "No encontramos una reserva con ese código y correo. Revisa los datos o escríbenos por WhatsApp."}
+          {notFound === "failed"
+            ? "No pudimos conectar. Inténtalo de nuevo en un momento."
+            : "No encontramos una reserva con ese código y correo. Revisa los datos o escríbenos por WhatsApp."}
         </p>
       )}
 
       {r && (
         // Móvil: estado → pago → detalles. Escritorio: estado y detalles a la izquierda, pago a la derecha (fijo al desplazar).
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:grid-rows-[auto_1fr]">
-          <section id="lk-result" tabIndex={-1} aria-labelledby="lk-title" className="flex flex-col gap-3.5 rounded-lg bg-card p-[clamp(22px,4vw,36px)] text-on-light lg:col-start-1">
+          <section
+            id="lk-result"
+            tabIndex={-1}
+            aria-labelledby="lk-title"
+            className="flex flex-col gap-3.5 rounded-lg bg-card p-[clamp(22px,4vw,36px)] text-on-light lg:col-start-1"
+          >
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <StatusPill status={r.status} />
               <LiveBadge status={live} />
@@ -302,7 +317,11 @@ export function LookupForm() {
               </p>
             </div>
             {liveNote && (
-              <p key={liveNote.id} aria-hidden="true" className="flex items-center gap-2 rounded-md border-2 border-accent/60 px-4 py-2.5 text-[.92rem] font-bold motion-safe:animate-fade-in">
+              <p
+                key={liveNote.id}
+                aria-hidden="true"
+                className="flex items-center gap-2 rounded-md border-2 border-accent/60 px-4 py-2.5 text-[.92rem] font-bold motion-safe:animate-fade-in"
+              >
                 <span className="size-2 flex-none rounded-full bg-accent" />
                 {liveNote.text}
               </p>
@@ -324,11 +343,21 @@ export function LookupForm() {
             <KeyValues rows={rows} />
             <div className="flex flex-col items-start gap-2">
               {canChange ? (
-                <a href={wa(c.whatsapp, `Hola, quiero solicitar un cambio de fecha para mi reserva ${r.code}.`)} target="_blank" rel="noopener" className="btn btn-cta min-h-[52px] px-6">
+                <a
+                  href={wa(c.whatsapp, `Hola, quiero solicitar un cambio de fecha para mi reserva ${r.code}.`)}
+                  target="_blank"
+                  rel="noopener"
+                  className="btn btn-cta min-h-[52px] px-6"
+                >
                   Solicitar cambio de fecha
                 </a>
               ) : (
-                <button type="button" disabled aria-describedby="chg-why" className="btn min-h-[52px] cursor-not-allowed bg-card-muted px-6 text-on-light opacity-60">
+                <button
+                  type="button"
+                  disabled
+                  aria-describedby="chg-why"
+                  className="btn min-h-[52px] cursor-not-allowed bg-card-muted px-6 text-on-light opacity-60"
+                >
                   Solicitar cambio de fecha
                 </button>
               )}

@@ -27,7 +27,8 @@ export const POST = route(async (req: NextRequest) => {
   const input: ManualReservationInput = { ...b, unit: b.unit ?? null, total: b.total ?? null, guest: { ...b.guest, phone: normalizePhone(b.guest.phone) } };
   const fields = validateManualReservation(input, types, units, todayISO());
   const due = manualDueAt(input.checkIn, input.holdMinutes);
-  if (!fields.checkIn && !fields.holdMinutes && due.tooShort) fields.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: registra el pago manualmente.";
+  if (!fields.checkIn && !fields.holdMinutes && due.tooShort)
+    fields.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: registra el pago manualmente.";
   if (Object.keys(fields).length) return validation(fields);
 
   const type = types.find((t) => t.id === input.cabinTypeId)!;

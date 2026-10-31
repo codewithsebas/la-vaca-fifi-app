@@ -47,7 +47,8 @@ export const defaultTexts: SiteTexts = {
     highlight: "come mejor",
     rotating: "¡Muuuy bienvenidos!\nEl café va por mi cuenta\nA 5 minutos de Murillo",
     badge: "A 5 minutos de Murillo, Tolima",
-    description: "Cabañas de colores con baño privado, balcón con vista a la montaña y desayuno americano incluido. Al lado, el restaurante y café de Fifí: comida casera, parque para los niños y atención familiar.",
+    description:
+      "Cabañas de colores con baño privado, balcón con vista a la montaña y desayuno americano incluido. Al lado, el restaurante y café de Fifí: comida casera, parque para los niños y atención familiar.",
   },
   location: { note: "A 5 minutos de Murillo por la vía Líbano – Murillo, en la vereda Pajonales. El Nevado del Ruiz queda a aproximadamente 1 hora en carro." },
   payment: { instructions: "" },
@@ -59,7 +60,11 @@ export const TEXT_LIMITS = { title: 40, highlight: 40, rotating: 200, rotatingLi
 
 // Lo que dice Fifí en su globo: las líneas no vacías del campo «rotating», con el mismo límite por línea.
 export const fifiPhrases = (hero: { rotating: string }) =>
-  hero.rotating.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, TEXT_LIMITS.rotatingLines);
+  hero.rotating
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, TEXT_LIMITS.rotatingLines);
 
 // Mezcla lo guardado con los valores por defecto; ignora claves desconocidas o que no sean texto.
 export function mergeTexts(raw: unknown): SiteTexts {
@@ -75,18 +80,99 @@ export function mergeTexts(raw: unknown): SiteTexts {
 }
 
 // `hint`: orientación sugerida; `min`: resolución mínima (px) para que la foto se vea nítida en pantallas de alta densidad.
-export type PhotoSlotDef = { id: string; group: string; label: string; alt: string; placeholder: string; aspect: string; hint: string; min: readonly [width: number, height: number] };
+export type PhotoSlotDef = {
+  id: string;
+  group: string;
+  label: string;
+  alt: string;
+  placeholder: string;
+  aspect: string;
+  hint: string;
+  min: readonly [width: number, height: number];
+};
 
 // Huecos de imagen del sitio, en el orden en que aparecen en el panel. Las fotos de cada cabaña se administran en su ficha.
 export const PHOTO_SLOTS: PhotoSlotDef[] = [
-  { id: "hero-main", group: "Foto principal", label: "Foto principal", alt: "Corredor de las cabañas de colores de La Vaca Fifí", placeholder: "Foto real (4:5): las cabañas y su corredor", aspect: "4/5", hint: "Vertical 4:5", min: [1200, 1500] },
-  { id: "exp-restaurante", group: "Restaurante", label: "Foto del restaurante 1", alt: "Restaurante y café de La Vaca Fifí", placeholder: "Foto real: el restaurante por dentro", aspect: "4/3", hint: "Horizontal 4:3", min: [1200, 900] },
-  { id: "restaurante-2", group: "Restaurante", label: "Foto del restaurante 2", alt: "El restaurante de La Vaca Fifí por fuera", placeholder: "Foto real: el restaurante por fuera", aspect: "4/3", hint: "Horizontal 4:3", min: [1200, 900] },
-  { id: "exp-desayuno", group: "La finca", label: "Desayuno con vista", alt: "Desayuno con vista a la montaña", placeholder: "Foto real: desayuno o balcón con vista", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "exp-parque", group: "La finca", label: "Parque infantil", alt: "Parque infantil", placeholder: "Foto real: el parque infantil", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "exp-jardines", group: "La finca", label: "Jardines y flores", alt: "Jardines y flores", placeholder: "Foto real: los jardines", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "exp-finca", group: "La finca", label: "Ambiente de finca", alt: "Ambiente de finca tradicional", placeholder: "Foto real: los caminos y zonas verdes de la finca", aspect: "3/4.1", hint: "Vertical 3:4", min: [900, 1230] },
-  { id: "contact", group: "Contacto", label: "Imagen de contacto", alt: "Entrada de La Vaca Fifí", placeholder: "Foto real: la entrada o los anfitriones", aspect: "4/3", hint: "Horizontal 4:3", min: [1200, 900] },
+  {
+    id: "hero-main",
+    group: "Foto principal",
+    label: "Foto principal",
+    alt: "Corredor de las cabañas de colores de La Vaca Fifí",
+    placeholder: "Foto real (4:5): las cabañas y su corredor",
+    aspect: "4/5",
+    hint: "Vertical 4:5",
+    min: [1200, 1500],
+  },
+  {
+    id: "exp-restaurante",
+    group: "Restaurante",
+    label: "Foto del restaurante 1",
+    alt: "Restaurante y café de La Vaca Fifí",
+    placeholder: "Foto real: el restaurante por dentro",
+    aspect: "4/3",
+    hint: "Horizontal 4:3",
+    min: [1200, 900],
+  },
+  {
+    id: "restaurante-2",
+    group: "Restaurante",
+    label: "Foto del restaurante 2",
+    alt: "El restaurante de La Vaca Fifí por fuera",
+    placeholder: "Foto real: el restaurante por fuera",
+    aspect: "4/3",
+    hint: "Horizontal 4:3",
+    min: [1200, 900],
+  },
+  {
+    id: "exp-desayuno",
+    group: "La finca",
+    label: "Desayuno con vista",
+    alt: "Desayuno con vista a la montaña",
+    placeholder: "Foto real: desayuno o balcón con vista",
+    aspect: "3/4.1",
+    hint: "Vertical 3:4",
+    min: [900, 1230],
+  },
+  {
+    id: "exp-parque",
+    group: "La finca",
+    label: "Parque infantil",
+    alt: "Parque infantil",
+    placeholder: "Foto real: el parque infantil",
+    aspect: "3/4.1",
+    hint: "Vertical 3:4",
+    min: [900, 1230],
+  },
+  {
+    id: "exp-jardines",
+    group: "La finca",
+    label: "Jardines y flores",
+    alt: "Jardines y flores",
+    placeholder: "Foto real: los jardines",
+    aspect: "3/4.1",
+    hint: "Vertical 3:4",
+    min: [900, 1230],
+  },
+  {
+    id: "exp-finca",
+    group: "La finca",
+    label: "Ambiente de finca",
+    alt: "Ambiente de finca tradicional",
+    placeholder: "Foto real: los caminos y zonas verdes de la finca",
+    aspect: "3/4.1",
+    hint: "Vertical 3:4",
+    min: [900, 1230],
+  },
+  {
+    id: "contact",
+    group: "Contacto",
+    label: "Imagen de contacto",
+    alt: "Entrada de La Vaca Fifí",
+    placeholder: "Foto real: la entrada o los anfitriones",
+    aspect: "4/3",
+    hint: "Horizontal 4:3",
+    min: [1200, 900],
+  },
 ];
 
 export const photoSlot = (id: string) => PHOTO_SLOTS.find((s) => s.id === id);
@@ -148,6 +234,13 @@ export const defaultContent: SiteContent = {
   policies: config.policies.map((p, i) => ({ ...p, id: `default-${i}` })),
   photos: DEFAULT_PHOTOS,
   texts: defaultTexts,
-  services: DEFAULT_SERVICES.map((x, i) => ({ id: `default-${i}`, title: x.title, description: x.description ?? "", icon: x.icon, note: x.note ?? "", visible: true })),
+  services: DEFAULT_SERVICES.map((x, i) => ({
+    id: `default-${i}`,
+    title: x.title,
+    description: x.description ?? "",
+    icon: x.icon,
+    note: x.note ?? "",
+    visible: true,
+  })),
   theme: DEFAULT_THEME,
 };

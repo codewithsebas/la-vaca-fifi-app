@@ -23,12 +23,32 @@ const SOCIAL_ICONS = {
     </svg>
   ),
   Facebook: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M15 3h-2.5A4.5 4.5 0 0 0 8 7.5V10H5.5v4H8v7h4v-7h3l1-4h-4V7.5a1 1 0 0 1 1-1h2z" />
     </svg>
   ),
   TikTok: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5M14 3c.4 2.6 2.4 4.5 5 4.8" />
     </svg>
   ),
@@ -49,9 +69,12 @@ export async function SiteFooter() {
       <SpotEdge className="relative z-1 h-[clamp(26px,3.4vw,48px)] text-highlight" />
       <CowHide id="footer-hide" className="-z-1 text-bg opacity-[.035]" />
 
-      <div className="gutter-1360 relative">
+      <div className="relative gutter-1360">
         {/* Fifí asoma por el borde, a la derecha. */}
-        <div aria-hidden="true" className="pointer-events-none absolute top-[-12px] right-[max(16px,calc((100%-1360px)/2))] w-[clamp(92px,12vw,150px)] rotate-[-8deg] max-sm:hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[-12px] right-[max(16px,calc((100%-1360px)/2))] w-[clamp(92px,12vw,150px)] rotate-[-8deg] max-sm:hidden"
+        >
           <Fifi />
         </div>
 

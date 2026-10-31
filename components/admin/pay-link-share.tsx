@@ -49,7 +49,13 @@ export function PayLinkShare({ r, url, compact = false }: { r: Reservation; url:
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <input readOnly value={url} aria-label="Enlace de pago" onFocus={(e) => e.currentTarget.select()} className={`${adminInput} min-w-0 flex-1 font-mono text-[12.5px]`} />
+        <input
+          readOnly
+          value={url}
+          aria-label="Enlace de pago"
+          onFocus={(e) => e.currentTarget.select()}
+          className={`${adminInput} min-w-0 flex-1 font-mono text-[12.5px]`}
+        />
         <Button onClick={() => copy("link")} icon={copied === "link" ? <CheckIcon size={14} /> : undefined}>
           {copied === "link" ? "Copiado" : "Copiar"}
         </Button>

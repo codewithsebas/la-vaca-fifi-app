@@ -19,7 +19,17 @@ type Draft = Omit<SiteService, "id"> & { id?: string };
 const EMPTY: Draft = { title: "", description: "", icon: "check", note: "", visible: true };
 
 const Icon = ({ icon, size = 20 }: { icon: string; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d={serviceIconPath(icon)} />
   </svg>
 );
@@ -58,7 +68,12 @@ export function ServicesManager() {
   const toggle = (s: SiteService) => {
     const next = services.map((x) => (x.id === s.id ? { ...x, visible: !x.visible } : x));
     apply(next);
-    void run(`vis-${s.id}`, () => api.admin.services.update({ ...s, visible: !s.visible }), s.visible ? `«${s.title}» quedó oculto` : `«${s.title}» ya se ve en el sitio`, services);
+    void run(
+      `vis-${s.id}`,
+      () => api.admin.services.update({ ...s, visible: !s.visible }),
+      s.visible ? `«${s.title}» quedó oculto` : `«${s.title}» ya se ve en el sitio`,
+      services,
+    );
   };
   const remove = (s: SiteService) =>
     ask({
@@ -85,7 +100,13 @@ export function ServicesManager() {
             title="Servicios"
             subtitle={`${services.length} en total · ${visible.length} visibles en el sitio`}
             actions={
-              <Button variant="primary" size="sm" icon={<PlusIcon size={15} />} disabled={services.length >= SERVICE_LIMITS.max} onClick={() => setEditing({ ...EMPTY })}>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<PlusIcon size={15} />}
+                disabled={services.length >= SERVICE_LIMITS.max}
+                onClick={() => setEditing({ ...EMPTY })}
+              >
                 Nuevo servicio
               </Button>
             }
@@ -94,7 +115,10 @@ export function ServicesManager() {
             <ul className="flex flex-col divide-y divide-line rounded-xl border border-line">
               {services.map((s, i) => (
                 <li key={s.id} className={`flex items-center gap-3 px-3 py-2.5 transition-opacity sm:px-4 ${s.visible ? "" : "bg-canvas/60"}`}>
-                  <span aria-hidden="true" className={`grid size-10 flex-none place-items-center rounded-xl ${s.note ? "bg-warning-soft text-warning" : "bg-success-soft text-success"} ${s.visible ? "" : "opacity-50"}`}>
+                  <span
+                    aria-hidden="true"
+                    className={`grid size-10 flex-none place-items-center rounded-xl ${s.note ? "bg-warning-soft text-warning" : "bg-success-soft text-success"} ${s.visible ? "" : "opacity-50"}`}
+                  >
                     <Icon icon={s.icon} />
                   </span>
                   <div className={`min-w-0 flex-1 ${s.visible ? "" : "opacity-60"}`}>
@@ -106,7 +130,13 @@ export function ServicesManager() {
                     {s.description && <p className="truncate text-[12.5px] text-ink-muted">{s.description}</p>}
                   </div>
                   <div className="flex flex-none items-center gap-0.5">
-                    <IconButton label={s.visible ? `Ocultar «${s.title}»` : `Mostrar «${s.title}»`} size="sm" disabled={!!busy} onClick={() => toggle(s)} aria-pressed={!s.visible}>
+                    <IconButton
+                      label={s.visible ? `Ocultar «${s.title}»` : `Mostrar «${s.title}»`}
+                      size="sm"
+                      disabled={!!busy}
+                      onClick={() => toggle(s)}
+                      aria-pressed={!s.visible}
+                    >
                       {s.visible ? <EyeIcon size={16} /> : <EyeOffIcon size={16} />}
                     </IconButton>
                     <IconButton label={`Subir «${s.title}»`} size="sm" disabled={!!busy || i === 0} onClick={() => move(i, -1)}>
@@ -126,7 +156,16 @@ export function ServicesManager() {
               ))}
             </ul>
           ) : (
-            <EmptyState icon={<CheckIcon size={18} />} title="Aún no hay servicios" text="Agrega lo que incluye la estadía: desayuno, parqueadero, wifi…" action={<Button variant="primary" icon={<PlusIcon size={15} />} onClick={() => setEditing({ ...EMPTY })}>Nuevo servicio</Button>} />
+            <EmptyState
+              icon={<CheckIcon size={18} />}
+              title="Aún no hay servicios"
+              text="Agrega lo que incluye la estadía: desayuno, parqueadero, wifi…"
+              action={
+                <Button variant="primary" icon={<PlusIcon size={15} />} onClick={() => setEditing({ ...EMPTY })}>
+                  Nuevo servicio
+                </Button>
+              }
+            />
           )}
         </Card>
 
@@ -136,7 +175,11 @@ export function ServicesManager() {
             <CheckIcon size={14} />
             Así se ven en el sitio
           </h3>
-          <ul aria-hidden="true" style={themeStyle(data.site.theme)} className="grid max-h-[70dvh] grid-cols-2 gap-1 overflow-y-auto rounded-2xl bg-surface p-3 text-on-dark">
+          <ul
+            aria-hidden="true"
+            style={themeStyle(data.site.theme)}
+            className="grid max-h-[70dvh] grid-cols-2 gap-1 overflow-y-auto rounded-2xl bg-surface p-3 text-on-dark"
+          >
             {visible.map((s) => (
               <li key={s.id}>
                 <ServiceCard s={s} />
@@ -162,7 +205,17 @@ export function ServicesManager() {
   );
 }
 
-function ServiceEditor({ draft, onClose, onSaved, onAuthError }: { draft: Draft; onClose: () => void; onSaved: (list: SiteService[], title: string, isNew: boolean) => void; onAuthError: () => void }) {
+function ServiceEditor({
+  draft,
+  onClose,
+  onSaved,
+  onAuthError,
+}: {
+  draft: Draft;
+  onClose: () => void;
+  onSaved: (list: SiteService[], title: string, isNew: boolean) => void;
+  onAuthError: () => void;
+}) {
   const theme = useAdmin().data.site.theme;
   const [d, setD] = useState<Draft>(draft);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -189,20 +242,51 @@ function ServiceEditor({ draft, onClose, onSaved, onAuthError }: { draft: Draft;
   }
 
   return (
-    <Modal onClose={onClose} labelledBy="sv-ed-title" initialFocus="[data-autofocus]" className="m-auto w-[calc(100%-32px)] max-w-[860px] rounded-2xl p-0 motion-safe:open:animate-pop-in">
+    <Modal
+      onClose={onClose}
+      labelledBy="sv-ed-title"
+      initialFocus="[data-autofocus]"
+      className="m-auto w-[calc(100%-32px)] max-w-[860px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+    >
       <div className="grid grid-cols-1 gap-5 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_260px]">
         <div className="flex min-w-0 flex-col gap-4">
           <h2 id="sv-ed-title" className="text-[17px] font-bold text-ink">
             {isNew ? "Nuevo servicio" : "Editar servicio"}
           </h2>
           <Field label="Nombre" error={errors.title} hint={`${d.title.length}/${SERVICE_LIMITS.title}`}>
-            {(p) => <input {...p} data-autofocus type="text" maxLength={SERVICE_LIMITS.title} value={d.title} onChange={(e) => set({ title: e.target.value })} className={adminInput} placeholder="Ej. Wifi en la cabaña" />}
+            {(p) => (
+              <input
+                {...p}
+                data-autofocus
+                type="text"
+                maxLength={SERVICE_LIMITS.title}
+                value={d.title}
+                onChange={(e) => set({ title: e.target.value })}
+                className={adminInput}
+                placeholder="Ej. Wifi en la cabaña"
+              />
+            )}
           </Field>
-          <Field label="Descripción (opcional)" error={errors.description} hint={`Una línea que lo explique. ${d.description.length}/${SERVICE_LIMITS.description}`}>
-            {(p) => <textarea {...p} rows={2} maxLength={SERVICE_LIMITS.description} value={d.description} onChange={(e) => set({ description: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} />}
+          <Field
+            label="Descripción (opcional)"
+            error={errors.description}
+            hint={`Una línea que lo explique. ${d.description.length}/${SERVICE_LIMITS.description}`}
+          >
+            {(p) => (
+              <textarea
+                {...p}
+                rows={2}
+                maxLength={SERVICE_LIMITS.description}
+                value={d.description}
+                onChange={(e) => set({ description: e.target.value })}
+                className={`${adminInput} resize-y leading-relaxed`}
+              />
+            )}
           </Field>
           <Field label="Etiqueta (opcional)" error={errors.note} hint="Ej. «Valor adicional». Lo destaca como extra, con borde dorado.">
-            {(p) => <input {...p} type="text" maxLength={SERVICE_LIMITS.note} value={d.note} onChange={(e) => set({ note: e.target.value })} className={adminInput} />}
+            {(p) => (
+              <input {...p} type="text" maxLength={SERVICE_LIMITS.note} value={d.note} onChange={(e) => set({ note: e.target.value })} className={adminInput} />
+            )}
           </Field>
           <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="mb-1.5 text-[13px] font-semibold text-ink">Ícono</legend>
@@ -227,8 +311,17 @@ function ServiceEditor({ draft, onClose, onSaved, onAuthError }: { draft: Draft;
             </div>
             {errors.icon && <p className="text-[13px] font-semibold text-error">{errors.icon}</p>}
           </fieldset>
-          <Switch checked={d.visible} onChange={(v) => set({ visible: v })} label="Visible en el sitio" description="Si lo apagas, queda guardado pero no se muestra." />
-          {errors.form && <Callout tone="error" role="alert">{errors.form}</Callout>}
+          <Switch
+            checked={d.visible}
+            onChange={(v) => set({ visible: v })}
+            label="Visible en el sitio"
+            description="Si lo apagas, queda guardado pero no se muestra."
+          />
+          {errors.form && (
+            <Callout tone="error" role="alert">
+              {errors.form}
+            </Callout>
+          )}
         </div>
 
         <div className="flex flex-col gap-2 md:pt-10">

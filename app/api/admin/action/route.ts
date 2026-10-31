@@ -13,7 +13,14 @@ import type { Tables } from "@/lib/supabase/database.types";
 import type { AdminAction, Quote, ReservationStatus } from "@/lib/types";
 
 // Lo que Beds24 necesita de una reserva para retener su cabaña (si se vende en Booking).
-const holdOf = (r: Tables<"reservations">) => ({ source: "reservation" as const, sourceId: r.code, cabinTypeId: r.cabin_type_id, label: `Web ${r.code}`, adults: r.adults, children: r.children });
+const holdOf = (r: Tables<"reservations">) => ({
+  source: "reservation" as const,
+  sourceId: r.code,
+  cabinTypeId: r.cabin_type_id,
+  label: `Web ${r.code}`,
+  adults: r.adults,
+  children: r.children,
+});
 
 // Reactivar una retención vencida (pagarla o darle un plazo nuevo) vuelve a ocupar sus noches: si la cabaña se vende en
 // Booking por Beds24, se retiene allá antes. Las demás no necesitan retener nada.
@@ -57,7 +64,9 @@ export const POST = route(async (req: NextRequest) => {
 
   try {
     if (b.action === "note") {
-      const text = String(b.text ?? "").trim().slice(0, 2000);
+      const text = String(b.text ?? "")
+        .trim()
+        .slice(0, 2000);
       if (!text) return fail(400, "INVALID_BODY");
       await sb.from("reservation_notes").insert({ reservation_code: current.code, text }).throwOnError();
     } else if (b.action === "payment_link") {

@@ -3,7 +3,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, type DragEvent } from "react";
-import { ArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, CheckIcon, CloseIcon, HomeIcon, ImageIcon, PencilIcon, PlusIcon, StarOutlineIcon, TagIcon, TrashIcon, UploadIcon, UsersIcon } from "@/components/icons";
+import {
+  ArrowDownIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  CloseIcon,
+  HomeIcon,
+  ImageIcon,
+  PencilIcon,
+  PlusIcon,
+  StarOutlineIcon,
+  TagIcon,
+  TrashIcon,
+  UploadIcon,
+  UsersIcon,
+} from "@/components/icons";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { cop, plural } from "@/lib/format";
@@ -15,9 +31,37 @@ import { MODULES, paths } from "./routes";
 import { useTip } from "@/components/ui/floating";
 import { adminInput } from "./shared";
 import { themeStyle } from "./theme";
-import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, IconButton, MoneyInput, PageHeader, SaveBar, Spinner, Stepper, Switch, buttonClass } from "./ui";
+import {
+  Badge,
+  Button,
+  Callout,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  IconButton,
+  MoneyInput,
+  PageHeader,
+  SaveBar,
+  Spinner,
+  Stepper,
+  Switch,
+  buttonClass,
+} from "./ui";
 
-const SUGGESTED = ["Cama doble", "Dos camas dobles", "Cama doble y camarote", "Baño privado con agua caliente", "Balcón con vista a la montaña", "TV de pantalla plana", "Wifi", "Desayuno americano", "Vista al Nevado", "Cerca del parque infantil", "Pet friendly"];
+const SUGGESTED = [
+  "Cama doble",
+  "Dos camas dobles",
+  "Cama doble y camarote",
+  "Baño privado con agua caliente",
+  "Balcón con vista a la montaña",
+  "TV de pantalla plana",
+  "Wifi",
+  "Desayuno americano",
+  "Vista al Nevado",
+  "Cerca del parque infantil",
+  "Pet friendly",
+];
 
 /* ───────────── Listado ───────────── */
 
@@ -28,12 +72,22 @@ export function CabinList() {
   const count = (id: string) => data.reservations.filter((r) => r.cabinTypeId === id).length;
 
   const toInput = (c: CabinType): CabinInput => ({
-    nombre: c.nombre, descripcion: c.descripcion, caracteristicas: c.caracteristicas, badge: c.badge, maxPersonas: c.maxPersonas, units: c.units, precioPareja: c.precioPareja, personaAdicional: c.personaAdicional, activa: c.activa,
+    nombre: c.nombre,
+    descripcion: c.descripcion,
+    caracteristicas: c.caracteristicas,
+    badge: c.badge,
+    maxPersonas: c.maxPersonas,
+    units: c.units,
+    precioPareja: c.precioPareja,
+    personaAdicional: c.personaAdicional,
+    activa: c.activa,
   });
   const toggle = (c: CabinType) =>
     ask({
       title: c.activa ? "Desactivar cabaña" : "Activar cabaña",
-      text: c.activa ? `${c.nombre} deja de mostrarse en el sitio y no se puede reservar. Las reservas existentes no cambian.` : `${c.nombre} vuelve a mostrarse en el sitio y se puede reservar.`,
+      text: c.activa
+        ? `${c.nombre} deja de mostrarse en el sitio y no se puede reservar. Las reservas existentes no cambian.`
+        : `${c.nombre} vuelve a mostrarse en el sitio y se puede reservar.`,
       okLabel: c.activa ? "Desactivar" : "Activar",
       danger: c.activa,
       done: c.activa ? "Cabaña desactivada" : "Cabaña activada",
@@ -79,7 +133,10 @@ export function CabinList() {
           {cabins.map((c, i) => {
             const n = count(c.id);
             return (
-              <li key={c.id} className={`flex flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-panel transition-opacity ${c.activa ? "" : "opacity-80"}`}>
+              <li
+                key={c.id}
+                className={`flex flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-panel transition-opacity ${c.activa ? "" : "opacity-80"}`}
+              >
                 <div className="relative aspect-[16/10] bg-canvas">
                   {c.fotos[0] ? (
                     <Image src={c.fotos[0]} alt={c.nombre} fill sizes="(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw" className="object-cover" />
@@ -96,7 +153,11 @@ export function CabinList() {
                       {c.activa ? "Activa" : "Inactiva"}
                     </Badge>
                     {/* La etiqueta de la cabaña, como en el sitio. No usa Badge: su fondo neutro le gana al resaltado y no se lee sobre la foto. */}
-                    {c.badge && <span className="inline-flex items-center rounded-full bg-highlight px-2 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-on-light shadow-panel">{c.badge}</span>}
+                    {c.badge && (
+                      <span className="inline-flex items-center rounded-full bg-highlight px-2 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-on-light shadow-panel">
+                        {c.badge}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="flex flex-1 flex-col gap-3 p-4">
@@ -119,7 +180,8 @@ export function CabinList() {
                     </div>
                   </dl>
                   <p className="text-[12.5px] text-ink-muted">
-                    {plural(c.fotos.length, "foto", "fotos")} · {plural(c.caracteristicas.length, "característica", "características")} · {plural(n, "reserva", "reservas")}
+                    {plural(c.fotos.length, "foto", "fotos")} · {plural(c.caracteristicas.length, "característica", "características")} ·{" "}
+                    {plural(n, "reserva", "reservas")}
                   </p>
                   <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
                     <Link href={paths.cabana(c.id)} className={buttonClass("primary", "sm")}>
@@ -137,7 +199,11 @@ export function CabinList() {
                         <ArrowDownIcon size={15} />
                       </IconButton>
                       {n ? (
-                        <span {...tip(() => "Tiene reservas: no se puede eliminar. Desactívala para ocultarla del sitio.")} tabIndex={0} className="inline-grid">
+                        <span
+                          {...tip(() => "Tiene reservas: no se puede eliminar. Desactívala para ocultarla del sitio.")}
+                          tabIndex={0}
+                          className="inline-grid"
+                        >
                           <IconButton label="No se puede eliminar: tiene reservas" size="sm" variant="danger-ghost" disabled>
                             <TrashIcon size={15} />
                           </IconButton>
@@ -156,7 +222,16 @@ export function CabinList() {
         </ul>
       ) : (
         <Card className="p-4">
-          <EmptyState icon={<HomeIcon size={18} />} title="Aún no hay cabañas" text="Crea la primera para que aparezca en el sitio y se pueda reservar." action={<Link href={paths.nuevaCabana} className={buttonClass()}>Nueva cabaña</Link>} />
+          <EmptyState
+            icon={<HomeIcon size={18} />}
+            title="Aún no hay cabañas"
+            text="Crea la primera para que aparezca en el sitio y se pueda reservar."
+            action={
+              <Link href={paths.nuevaCabana} className={buttonClass()}>
+                Nueva cabaña
+              </Link>
+            }
+          />
         </Card>
       )}
     </>
@@ -165,14 +240,34 @@ export function CabinList() {
 
 /* ───────────── Editor ───────────── */
 
-const EMPTY: CabinInput = { nombre: "", descripcion: "", caracteristicas: [], badge: "", maxPersonas: 2, units: 1, precioPareja: 0, personaAdicional: 0, activa: true };
+const EMPTY: CabinInput = {
+  nombre: "",
+  descripcion: "",
+  caracteristicas: [],
+  badge: "",
+  maxPersonas: 2,
+  units: 1,
+  precioPareja: 0,
+  personaAdicional: 0,
+  activa: true,
+};
 
 // Crear (sin id) o editar una cabaña.
 export function CabinEditor({ id }: { id?: string }) {
   const { data, setData, toast, go, onAuthError } = useAdmin();
   const current = id ? data.cabinTypes.find((c) => c.id === id) : null;
   const base: CabinInput = current
-    ? { nombre: current.nombre, descripcion: current.descripcion, caracteristicas: current.caracteristicas, badge: current.badge, maxPersonas: current.maxPersonas, units: current.units, precioPareja: current.precioPareja, personaAdicional: current.personaAdicional, activa: current.activa }
+    ? {
+        nombre: current.nombre,
+        descripcion: current.descripcion,
+        caracteristicas: current.caracteristicas,
+        badge: current.badge,
+        maxPersonas: current.maxPersonas,
+        units: current.units,
+        precioPareja: current.precioPareja,
+        personaAdicional: current.personaAdicional,
+        activa: current.activa,
+      }
     : EMPTY;
   const [v, setV] = useState<CabinInput>(base);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -186,7 +281,15 @@ export function CabinEditor({ id }: { id?: string }) {
       <>
         <PageHeader title="Cabaña no encontrada" />
         <Card className="p-4">
-          <EmptyState icon={<HomeIcon size={18} />} title="Esta cabaña ya no existe" action={<Link href={paths.cabanas} className={buttonClass("primary")}>Ir a Cabañas</Link>} />
+          <EmptyState
+            icon={<HomeIcon size={18} />}
+            title="Esta cabaña ya no existe"
+            action={
+              <Link href={paths.cabanas} className={buttonClass("primary")}>
+                Ir a Cabañas
+              </Link>
+            }
+          />
         </Card>
       </>
     );
@@ -247,28 +350,83 @@ export function CabinEditor({ id }: { id?: string }) {
             <CardHeader id="cb-info" icon={<HomeIcon size={18} />} title="Información" subtitle="Nombre, etiqueta y descripción que ven los huéspedes." />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_220px]">
               <Field label="Nombre" error={errors.nombre}>
-                {(p) => <input {...p} type="text" maxLength={60} value={v.nombre} onChange={(e) => set({ nombre: e.target.value })} placeholder="Cabaña Familiar" className={adminInput} />}
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    maxLength={60}
+                    value={v.nombre}
+                    onChange={(e) => set({ nombre: e.target.value })}
+                    placeholder="Cabaña Familiar"
+                    className={adminInput}
+                  />
+                )}
               </Field>
               <Field label="Etiqueta (opcional)" hint="Se muestra sobre la foto." error={errors.badge}>
-                {(p) => <input {...p} type="text" maxLength={30} value={v.badge} onChange={(e) => set({ badge: e.target.value })} placeholder="Desayuno incluido" className={adminInput} />}
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    maxLength={30}
+                    value={v.badge}
+                    onChange={(e) => set({ badge: e.target.value })}
+                    placeholder="Desayuno incluido"
+                    className={adminInput}
+                  />
+                )}
               </Field>
             </div>
             <Field label="Descripción" hint={`${v.descripcion.length}/1200`} error={errors.descripcion}>
-              {(p) => <textarea {...p} rows={4} maxLength={1200} value={v.descripcion} onChange={(e) => set({ descripcion: e.target.value })} placeholder="Cabaña con cama doble, baño privado con agua caliente y balcón con vista a la montaña." className={`${adminInput} resize-y leading-relaxed`} />}
+              {(p) => (
+                <textarea
+                  {...p}
+                  rows={4}
+                  maxLength={1200}
+                  value={v.descripcion}
+                  onChange={(e) => set({ descripcion: e.target.value })}
+                  placeholder="Cabaña con cama doble, baño privado con agua caliente y balcón con vista a la montaña."
+                  className={`${adminInput} resize-y leading-relaxed`}
+                />
+              )}
             </Field>
           </Card>
 
           <Card aria-labelledby="cb-cap" className="flex flex-col gap-4 p-4 sm:p-5">
-            <CardHeader id="cb-cap" icon={<UsersIcon size={18} />} title="Capacidad y precio base" subtitle="Las temporadas con precio especial se configuran en Tarifas." />
+            <CardHeader
+              id="cb-cap"
+              icon={<UsersIcon size={18} />}
+              title="Capacidad y precio base"
+              subtitle="Las temporadas con precio especial se configuran en Tarifas."
+            />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Capacidad máxima" hint="Personas por cabaña, incluidos niños." error={errors.maxPersonas}>
-                {(p) => <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.maxPersonas} onChange={(n) => set({ maxPersonas: n })} min={1} max={12} unit="personas" />}
+                {(p) => (
+                  <Stepper
+                    id={p.id}
+                    describedBy={p["aria-describedby"]}
+                    value={v.maxPersonas}
+                    onChange={(n) => set({ maxPersonas: n })}
+                    min={1}
+                    max={12}
+                    unit="personas"
+                  />
+                )}
               </Field>
               <Field label="Unidades" hint="Cuántas cabañas iguales de este tipo hay." error={errors.units}>
-                {(p) => <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.units} onChange={(n) => set({ units: n })} min={0} max={20} unit="cabañas" />}
+                {(p) => (
+                  <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.units} onChange={(n) => set({ units: n })} min={0} max={20} unit="cabañas" />
+                )}
               </Field>
               <Field label="Noche para 2" error={errors.precioPareja}>
-                {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} invalid={!!p["aria-invalid"]} value={v.precioPareja} onChange={(n) => set({ precioPareja: n })} />}
+                {(p) => (
+                  <MoneyInput
+                    id={p.id}
+                    describedBy={p["aria-describedby"]}
+                    invalid={!!p["aria-invalid"]}
+                    value={v.precioPareja}
+                    onChange={(n) => set({ precioPareja: n })}
+                  />
+                )}
               </Field>
               <Field label="Persona adicional por noche" hint="Desde la 3.ª persona." error={errors.personaAdicional}>
                 {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={v.personaAdicional} onChange={(n) => set({ personaAdicional: n })} />}
@@ -283,7 +441,12 @@ export function CabinEditor({ id }: { id?: string }) {
                 {v.caracteristicas.map((f) => (
                   <li key={f} className="inline-flex items-center gap-1 rounded-full bg-canvas py-1 pr-1 pl-3 text-[13px] font-semibold text-ink">
                     {f}
-                    <button type="button" aria-label={`Quitar ${f}`} onClick={() => set({ caracteristicas: v.caracteristicas.filter((x) => x !== f) })} className="btn-icon size-6 text-ink-muted transition-colors hover:bg-ink/8 hover:text-ink">
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${f}`}
+                      onClick={() => set({ caracteristicas: v.caracteristicas.filter((x) => x !== f) })}
+                      className="btn-icon size-6 text-ink-muted transition-colors hover:bg-ink/8 hover:text-ink"
+                    >
                       <CloseIcon size={13} />
                     </button>
                   </li>
@@ -313,7 +476,12 @@ export function CabinEditor({ id }: { id?: string }) {
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[12.5px] text-ink-muted">Sugerencias:</span>
               {SUGGESTED.filter((s) => !v.caracteristicas.some((x) => x.toLowerCase() === s.toLowerCase())).map((s) => (
-                <button key={s} type="button" onClick={() => addFeature(s)} className="rounded-full border border-dashed border-line-strong px-2.5 py-0.5 text-[12.5px] text-ink-muted transition-colors hover:border-ink hover:text-ink">
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => addFeature(s)}
+                  className="rounded-full border border-dashed border-line-strong px-2.5 py-0.5 text-[12.5px] text-ink-muted transition-colors hover:border-ink hover:text-ink"
+                >
                   + {s}
                 </button>
               ))}
@@ -321,10 +489,20 @@ export function CabinEditor({ id }: { id?: string }) {
           </Card>
 
           <Card className="p-4 sm:p-5">
-            <Switch checked={v.activa} onChange={(a) => set({ activa: a })} label="Activo" description="Se muestra en el sitio y se puede reservar. Si lo desactivas, las reservas existentes no cambian." />
+            <Switch
+              checked={v.activa}
+              onChange={(a) => set({ activa: a })}
+              label="Activo"
+              description="Se muestra en el sitio y se puede reservar. Si lo desactivas, las reservas existentes no cambian."
+            />
           </Card>
 
-          <SaveBar dirty={dirty || !current} onDiscard={() => (current ? setV(base) : go(paths.cabanas))} onSave={save} saveLabel={busy ? "Guardando…" : current ? "Guardar cambios" : "Crear cabaña"} />
+          <SaveBar
+            dirty={dirty || !current}
+            onDiscard={() => (current ? setV(base) : go(paths.cabanas))}
+            onSave={save}
+            saveLabel={busy ? "Guardando…" : current ? "Guardar cambios" : "Crear cabaña"}
+          />
         </div>
 
         <div className="flex flex-col gap-4 xl:sticky xl:top-20">
@@ -372,7 +550,13 @@ function PhotoManager({ c }: { c: CabinType }) {
       setQueue((q) => q - 1);
     }
     setQueue(0);
-    if (done) toast(low ? `${plural(done, "foto publicada", "fotos publicadas")}. ${plural(low, "tiene", "tienen")} poca resolución y puede verse borrosa.` : plural(done, "foto publicada", "fotos publicadas"), low ? "error" : "ok");
+    if (done)
+      toast(
+        low
+          ? `${plural(done, "foto publicada", "fotos publicadas")}. ${plural(low, "tiene", "tienen")} poca resolución y puede verse borrosa.`
+          : plural(done, "foto publicada", "fotos publicadas"),
+        low ? "error" : "ok",
+      );
   }
 
   const reorder = async (fotos: string[]) => {
@@ -409,7 +593,13 @@ function PhotoManager({ c }: { c: CabinType }) {
         title="Fotos"
         subtitle={`${plural(c.fotos.length, "foto", "fotos")} de 12 · la primera es la portada`}
         actions={
-          <Button size="sm" variant="primary" icon={queue ? <Spinner size={13} /> : <UploadIcon size={14} />} disabled={full || queue > 0} onClick={() => input.current?.click()}>
+          <Button
+            size="sm"
+            variant="primary"
+            icon={queue ? <Spinner size={13} /> : <UploadIcon size={14} />}
+            disabled={full || queue > 0}
+            onClick={() => input.current?.click()}
+          >
             {queue ? `Subiendo ${queue}…` : "Subir"}
           </Button>
         }
@@ -457,7 +647,16 @@ function PhotoManager({ c }: { c: CabinType }) {
                     label={`Quitar foto ${i + 1}`}
                     size="sm"
                     variant="danger-ghost"
-                    onClick={() => ask({ title: "Quitar foto", text: `Se quita de ${c.nombre} y del sitio.`, okLabel: "Quitar", danger: true, done: "Foto quitada", run: () => api.admin.deleteCabinPhoto(c.id, url) })}
+                    onClick={() =>
+                      ask({
+                        title: "Quitar foto",
+                        text: `Se quita de ${c.nombre} y del sitio.`,
+                        okLabel: "Quitar",
+                        danger: true,
+                        done: "Foto quitada",
+                        run: () => api.admin.deleteCabinPhoto(c.id, url),
+                      })
+                    }
                   >
                     <TrashIcon size={14} />
                   </IconButton>
@@ -493,9 +692,17 @@ function Preview({ v, photo }: { v: CabinInput; photo?: string }) {
         <CheckIcon size={14} />
         Así se verá en el sitio
       </h2>
-      <article aria-hidden="true" style={themeStyle(data.site.theme)} className="pointer-events-none flex flex-col gap-3 rounded-lg bg-card p-2.5 text-on-light">
+      <article
+        aria-hidden="true"
+        style={themeStyle(data.site.theme)}
+        className="pointer-events-none flex flex-col gap-3 rounded-lg bg-card p-2.5 text-on-light"
+      >
         <div className="relative aspect-4/3 overflow-hidden rounded-md bg-card-muted">
-          {photo ? <Image src={photo} alt="" fill sizes="400px" className="object-cover" /> : <div className="absolute inset-0 grid place-items-center text-[12px] opacity-60">Sin foto de portada</div>}
+          {photo ? (
+            <Image src={photo} alt="" fill sizes="400px" className="object-cover" />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center text-[12px] opacity-60">Sin foto de portada</div>
+          )}
           {v.badge && <span className="absolute top-2.5 left-2.5 rounded-full bg-highlight px-3 py-1 text-[.72rem] font-extrabold">{v.badge}</span>}
         </div>
         <div className="flex flex-col gap-2 px-1.5 pb-1.5">

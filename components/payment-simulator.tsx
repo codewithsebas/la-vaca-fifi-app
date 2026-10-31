@@ -69,7 +69,9 @@ export function PaymentSimulator() {
 
   return (
     <section aria-labelledby="sim-title" className="flex flex-col gap-5 rounded-lg bg-card p-[clamp(22px,4vw,40px)] text-on-light">
-      <p className="self-start rounded-full bg-highlight px-3.5 py-1 text-[.8rem] font-extrabold tracking-[.06em] uppercase">Modo de pruebas · no se cobra dinero</p>
+      <p className="self-start rounded-full bg-highlight px-3.5 py-1 text-[.8rem] font-extrabold tracking-[.06em] uppercase">
+        Modo de pruebas · no se cobra dinero
+      </p>
       <div>
         <h1 id="sim-title" className="display text-[clamp(2.2rem,5vw,3.2rem)] leading-none">
           Pasarela de pagos simulada

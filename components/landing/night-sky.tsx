@@ -20,7 +20,16 @@ const FIGURES = {
       [150, 190, 4.6], // pie (Rigel)
     ],
     bright: [1, 7],
-    lines: [[1, 0], [0, 2], [1, 3], [2, 5], [3, 4], [4, 5], [3, 6], [5, 7]],
+    lines: [
+      [1, 0],
+      [0, 2],
+      [1, 3],
+      [2, 5],
+      [3, 4],
+      [4, 5],
+      [3, 6],
+      [5, 7],
+    ],
   },
   // La Cruz del Sur, que desde Murillo se ve sobre el horizonte sur; las más brillantes son Acrux y Mimosa.
   crux: {
@@ -32,7 +41,10 @@ const FIGURES = {
       [128, 164, 1.8], // Épsilon
     ],
     bright: [1, 2],
-    lines: [[0, 1], [2, 3]],
+    lines: [
+      [0, 1],
+      [2, 3],
+    ],
   },
 } satisfies Record<string, Figure>;
 // Destello de cuatro puntas centrado en el origen (radio 1).
@@ -63,7 +75,17 @@ export function Constellation({ figure = "orion", className = "", opacity = 0.25
         <div className="motion-safe:animate-sky-drift" style={drift}>
           <svg viewBox="0 0 200 240" className="block h-auto w-full overflow-visible fill-on-dark stroke-on-dark" style={{ opacity }}>
             {lines.map(([a, b]) => (
-              <line key={`${a}-${b}`} x1={stars[a][0]} y1={stars[a][1]} x2={stars[b][0]} y2={stars[b][1]} strokeWidth={1.1} strokeDasharray="1 6" strokeLinecap="round" opacity={0.7} />
+              <line
+                key={`${a}-${b}`}
+                x1={stars[a][0]}
+                y1={stars[a][1]}
+                x2={stars[b][0]}
+                y2={stars[b][1]}
+                strokeWidth={1.1}
+                strokeDasharray="1 6"
+                strokeLinecap="round"
+                opacity={0.7}
+              />
             ))}
             {stars.map(([x, y, r], i) => (
               <g key={i} className="motion-safe:animate-star" style={{ animationDelay: `${-((i * 0.73 + offset * 4.5) % 4.5)}s` }} stroke="none">

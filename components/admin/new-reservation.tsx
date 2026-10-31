@@ -90,7 +90,12 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   const occ = { reservations: data.reservations, blocks };
   const range = f.checkIn && f.checkOut && f.checkOut > f.checkIn ? { ci: f.checkIn, co: f.checkOut } : null;
   const marks = useMemo(
-    () => (type ? (unit ? unitMarks(data.reservations, blocks, type.id, unit, today, addDays(today, 400)) : typeMarks(data.reservations, blocks, type.id, units, today, addDays(today, 400))) : {}),
+    () =>
+      type
+        ? unit
+          ? unitMarks(data.reservations, blocks, type.id, unit, today, addDays(today, 400))
+          : typeMarks(data.reservations, blocks, type.id, units, today, addDays(today, 400))
+        : {},
     [type, unit, units, data.reservations, blocks, today],
   );
   const free = !type || !range ? true : unit ? unitFree(occ, units, type.id, unit, range.ci, range.co) : findUnit(occ, units, type.id, range.ci, range.co) > 0;
@@ -156,22 +161,38 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
     }
   }
 
-  if (done) return <Created result={done} onClose={onClose} onOpen={() => {
+  if (done)
+    return (
+      <Created
+        result={done}
+        onClose={onClose}
+        onOpen={() => {
           onClose();
           go(paths.reserva(done.reservation.code));
-        }} />;
+        }}
+      />
+    );
 
   const unitOptions = [
     { value: "", label: "La primera libre", description: "Como en la web: deja libres las que también se venden en Booking" },
     ...Array.from({ length: units }, (_, i) => {
       const u = i + 1;
       const ok = !type || !range || unitFree(occ, units, type.id, u, range.ci, range.co);
-      return { value: String(u), label: cabinLabel(type?.id ?? "", u), description: range ? (ok ? "Libre en esas fechas" : "Ocupada en esas fechas") : undefined };
+      return {
+        value: String(u),
+        label: cabinLabel(type?.id ?? "", u),
+        description: range ? (ok ? "Libre en esas fechas" : "Ocupada en esas fechas") : undefined,
+      };
     }),
   ];
 
   return (
-    <Modal onClose={onClose} labelledBy="nr-title" initialFocus={range ? "[data-autofocus]" : "[data-dates] button"} className="m-auto w-[calc(100%-32px)] max-w-[760px] rounded-2xl p-0 motion-safe:open:animate-pop-in">
+    <Modal
+      onClose={onClose}
+      labelledBy="nr-title"
+      initialFocus={range ? "[data-autofocus]" : "[data-dates] button"}
+      className="m-auto w-[calc(100%-32px)] max-w-[760px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+    >
       <div className="flex flex-col gap-5 p-5 sm:p-6">
         <div className="flex items-start gap-3.5">
           <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-success-soft text-success">
@@ -181,7 +202,9 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
             <h2 id="nr-title" className="text-[17px] font-bold text-ink">
               Nueva reserva
             </h2>
-            <p className="text-[13.5px] text-ink-muted">Las fechas quedan apartadas y le envías al huésped un enlace para pagar. Si no paga a tiempo, se liberan solas.</p>
+            <p className="text-[13.5px] text-ink-muted">
+              Las fechas quedan apartadas y le envías al huésped un enlace para pagar. Si no paga a tiempo, se liberan solas.
+            </p>
           </div>
         </div>
 
@@ -198,7 +221,11 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
                   id={p.id}
                   value={f.type}
                   onChange={(v) => set({ type: v, unit: "" })}
-                  options={cabins.map((c) => ({ value: c.id, label: c.nombre, description: `${plural(c.units, "unidad", "unidades")} · hasta ${c.maxPersonas} personas` }))}
+                  options={cabins.map((c) => ({
+                    value: c.id,
+                    label: c.nombre,
+                    description: `${plural(c.units, "unidad", "unidades")} · hasta ${c.maxPersonas} personas`,
+                  }))}
                 />
               )}
             </Field>
@@ -226,7 +253,11 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
               <Field label="Adultos" error={err("adults")}>
                 {(p) => <Stepper id={p.id} value={f.adults} onChange={(v) => set({ adults: v })} min={1} max={type?.maxPersonas ?? 20} />}
               </Field>
-              <Field label="Niños">{(p) => <Stepper id={p.id} value={f.children} onChange={(v) => set({ children: v })} min={0} max={Math.max(0, (type?.maxPersonas ?? 20) - 1)} />}</Field>
+              <Field label="Niños">
+                {(p) => (
+                  <Stepper id={p.id} value={f.children} onChange={(v) => set({ children: v })} min={0} max={Math.max(0, (type?.maxPersonas ?? 20) - 1)} />
+                )}
+              </Field>
             </div>
             <div className="sm:col-span-2">
               <Switch checked={f.pet} onChange={(v) => set({ pet: v })} label="Viene con mascota" description="Sin costo adicional, según las políticas." />
@@ -242,26 +273,94 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
           </h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Nombre completo" error={err("guest.fullName")}>
-              {(p) => <input {...p} data-autofocus type="text" autoComplete="off" maxLength={120} value={f.fullName} onChange={(e) => set({ fullName: e.target.value })} className={adminInput} />}
+              {(p) => (
+                <input
+                  {...p}
+                  data-autofocus
+                  type="text"
+                  autoComplete="off"
+                  maxLength={120}
+                  value={f.fullName}
+                  onChange={(e) => set({ fullName: e.target.value })}
+                  className={adminInput}
+                />
+              )}
             </Field>
             <Field label="Celular (WhatsApp)" error={err("guest.phone")} hint="Si no es de Colombia, con indicativo: +1 555…">
-              {(p) => <input {...p} type="tel" inputMode="tel" autoComplete="off" maxLength={24} value={f.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="300 123 4567" className={adminInput} />}
+              {(p) => (
+                <input
+                  {...p}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  maxLength={24}
+                  value={f.phone}
+                  onChange={(e) => set({ phone: e.target.value })}
+                  placeholder="300 123 4567"
+                  className={adminInput}
+                />
+              )}
             </Field>
             <Field label="Correo" error={err("guest.email")} hint="Ahí le llega la confirmación cuando pague.">
-              {(p) => <input {...p} type="email" inputMode="email" autoComplete="off" maxLength={160} value={f.email} onChange={(e) => set({ email: e.target.value })} className={adminInput} />}
+              {(p) => (
+                <input
+                  {...p}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="off"
+                  maxLength={160}
+                  value={f.email}
+                  onChange={(e) => set({ email: e.target.value })}
+                  className={adminInput}
+                />
+              )}
             </Field>
             <Field label="Ciudad (opcional)" error={err("guest.city")}>
-              {(p) => <input {...p} type="text" autoComplete="off" maxLength={80} value={f.city} onChange={(e) => set({ city: e.target.value })} className={adminInput} />}
+              {(p) => (
+                <input
+                  {...p}
+                  type="text"
+                  autoComplete="off"
+                  maxLength={80}
+                  value={f.city}
+                  onChange={(e) => set({ city: e.target.value })}
+                  className={adminInput}
+                />
+              )}
             </Field>
             <fieldset className="flex min-w-0 flex-col gap-1.5">
               <legend className="mb-1.5 text-[13px] font-semibold text-ink">Tipo de documento</legend>
               <Segmented label="Tipo de documento" size="sm" value={f.docType} onChange={(v) => set({ docType: v })} options={DOCS} />
             </fieldset>
             <Field label="Número de documento" error={err("guest.docNumber")}>
-              {(p) => <input {...p} type="text" autoComplete="off" maxLength={15} value={f.docNumber} onChange={(e) => set({ docNumber: e.target.value.replace(/[^A-Za-z0-9]/g, "") })} className={adminInput} />}
+              {(p) => (
+                <input
+                  {...p}
+                  type="text"
+                  autoComplete="off"
+                  maxLength={15}
+                  value={f.docNumber}
+                  onChange={(e) => set({ docNumber: e.target.value.replace(/[^A-Za-z0-9]/g, "") })}
+                  className={adminInput}
+                />
+              )}
             </Field>
-            <Field label="Notas (opcional)" className="sm:col-span-2" error={err("specialRequests")} hint="Peticiones del huésped o acuerdos. Las ve el equipo en la ficha.">
-              {(p) => <textarea {...p} rows={2} maxLength={1000} value={f.notes} onChange={(e) => set({ notes: e.target.value })} className={`${adminInput} resize-y`} />}
+            <Field
+              label="Notas (opcional)"
+              className="sm:col-span-2"
+              error={err("specialRequests")}
+              hint="Peticiones del huésped o acuerdos. Las ve el equipo en la ficha."
+            >
+              {(p) => (
+                <textarea
+                  {...p}
+                  rows={2}
+                  maxLength={1000}
+                  value={f.notes}
+                  onChange={(e) => set({ notes: e.target.value })}
+                  className={`${adminInput} resize-y`}
+                />
+              )}
             </Field>
           </div>
         </section>
@@ -276,16 +375,27 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
             checked={f.special}
             onChange={(v) => set({ special: v, total: v && !f.total && rate ? rate.total : f.total })}
             label="Precio especial"
-            description={rate ? `Tarifa vigente: ${cop(rate.total)}. Úsalo si acordaste otro valor con el huésped.` : "Úsalo si acordaste otro valor con el huésped."}
+            description={
+              rate ? `Tarifa vigente: ${cop(rate.total)}. Úsalo si acordaste otro valor con el huésped.` : "Úsalo si acordaste otro valor con el huésped."
+            }
           />
           {f.special && (
             <Field label="Total acordado" error={err("total")} className="max-w-[260px]">
-              {(p) => <MoneyInput id={p.id} value={f.total} onChange={(v) => set({ total: v })} invalid={!!p["aria-invalid"]} describedBy={p["aria-describedby"]} />}
+              {(p) => (
+                <MoneyInput id={p.id} value={f.total} onChange={(v) => set({ total: v })} invalid={!!p["aria-invalid"]} describedBy={p["aria-describedby"]} />
+              )}
             </Field>
           )}
           <fieldset className="flex min-w-0 flex-col gap-1.5">
             <legend className="mb-1.5 text-[13px] font-semibold text-ink">Plazo para pagar por el enlace</legend>
-            <Segmented label="Plazo para pagar" size="sm" value={String(f.hold)} onChange={(v) => set({ hold: Number(v) })} options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} className="flex-wrap" />
+            <Segmented
+              label="Plazo para pagar"
+              size="sm"
+              value={String(f.hold)}
+              onChange={(v) => set({ hold: Number(v) })}
+              options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
+              className="flex-wrap"
+            />
             {due && !due.tooShort && (
               <p className="text-[12.5px] text-ink-muted">
                 {`El enlace vence el ${fmtDeadline(due.dueAt)}`}
@@ -299,10 +409,12 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
         {quote && range && free && (
           <Callout tone="success">
             <span className="font-semibold">{cabinLabel(type!.id, unit ?? undefined)}</span>
-            {unit ? "" : " (la unidad se asigna al crear)"} · {fmtDate(range.ci)} → {fmtDate(range.co)} · {plural(nightsBetween(range.ci, range.co), "noche", "noches")} · {plural(guests, "persona", "personas")}
+            {unit ? "" : " (la unidad se asigna al crear)"} · {fmtDate(range.ci)} → {fmtDate(range.co)} ·{" "}
+            {plural(nightsBetween(range.ci, range.co), "noche", "noches")} · {plural(guests, "persona", "personas")}
             <span className="mt-1 block">
               Total <strong>{cop(quote.total)}</strong>
-              {quote.adjustment ? ` (${quote.adjustment < 0 ? "descuento" : "recargo"} de ${cop(Math.abs(quote.adjustment))})` : ""} · abono para confirmar <strong>{cop(quote.deposit)}</strong>
+              {quote.adjustment ? ` (${quote.adjustment < 0 ? "descuento" : "recargo"} de ${cop(Math.abs(quote.adjustment))})` : ""} · abono para confirmar{" "}
+              <strong>{cop(quote.deposit)}</strong>
             </span>
           </Callout>
         )}
@@ -310,7 +422,13 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       </div>
       <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
         <Button onClick={onClose}>Cancelar</Button>
-        <Button variant="primary" loading={busy} disabled={tried && blocked} icon={blocked && tried ? <WarningIcon size={14} /> : <CheckIcon size={14} />} onClick={save}>
+        <Button
+          variant="primary"
+          loading={busy}
+          disabled={tried && blocked}
+          icon={blocked && tried ? <WarningIcon size={14} /> : <CheckIcon size={14} />}
+          onClick={save}
+        >
           Crear y obtener enlace de pago
         </Button>
       </div>
@@ -341,11 +459,14 @@ function Created({ result, onClose, onOpen }: { result: ManualReservationResult;
           </div>
         </div>
         {paid ? (
-          <Callout tone="success">{r.status === "confirmed" ? "El huésped ya pagó: la reserva está confirmada." : "La reserva ya no está pendiente de pago."}</Callout>
+          <Callout tone="success">
+            {r.status === "confirmed" ? "El huésped ya pagó: la reserva está confirmada." : "La reserva ya no está pendiente de pago."}
+          </Callout>
         ) : (
           <>
             <p className="text-[14px] text-ink">
-              Envíale este enlace al huésped. Ahí ve su reserva y paga el abono de <strong>{cop(r.quote.deposit)}</strong> o el total de <strong>{cop(r.quote.total)}</strong> con Wompi. Al pagar, la reserva se confirma sola y le llega el correo.
+              Envíale este enlace al huésped. Ahí ve su reserva y paga el abono de <strong>{cop(r.quote.deposit)}</strong> o el total de{" "}
+              <strong>{cop(r.quote.total)}</strong> con Wompi. Al pagar, la reserva se confirma sola y le llega el correo.
             </p>
             <PayLinkShare r={r} url={result.payUrl} />
           </>

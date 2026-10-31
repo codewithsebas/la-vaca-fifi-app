@@ -87,7 +87,13 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
 
   // La animación de entrada depende solo del cambio que la originó (step 0 = al abrir), no de si la foto anterior sigue
   // saliendo: si dependiera de `from`, al terminar la salida la foto visible cambiaría de animación y se volvería a animar.
-  const enter = !view ? "" : view.step === 0 ? "motion-safe:animate-photo-open" : view.dir === 1 ? "motion-safe:animate-photo-in-next" : "motion-safe:animate-photo-in-prev";
+  const enter = !view
+    ? ""
+    : view.step === 0
+      ? "motion-safe:animate-photo-open"
+      : view.dir === 1
+        ? "motion-safe:animate-photo-in-next"
+        : "motion-safe:animate-photo-in-prev";
 
   // Respaldo: si el navegador no avisa el fin de la animación de salida (pestaña en segundo plano), se retira igual.
   const leaving = view?.from !== null && view?.from !== undefined ? view.step : null;
@@ -113,11 +119,11 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
         if (e.key === "ArrowRight") go(1);
         if (e.key === "ArrowLeft") go(-1);
       }}
-      className="group/lb m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden bg-transparent p-0 text-on-dark transition-opacity duration-300 ease-out backdrop:bg-night/90 backdrop:backdrop-blur-md backdrop:transition-opacity backdrop:duration-300 open:flex data-closing:opacity-0 data-closing:backdrop:opacity-0 motion-safe:open:animate-[ec-fade-in_.3s_ease-out] motion-safe:backdrop:animate-[ec-fade-in_.3s_ease-out]"
+      className="group/lb m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden bg-transparent p-0 text-on-dark transition-opacity duration-300 ease-out backdrop:bg-night/90 backdrop:backdrop-blur-md backdrop:transition-opacity backdrop:duration-300 open:flex data-closing:opacity-0 data-closing:backdrop:opacity-0 motion-safe:backdrop:animate-[ec-fade-in_.3s_ease-out] motion-safe:open:animate-[ec-fade-in_.3s_ease-out]"
     >
       {view && (
         <div className="flex size-full flex-col gap-[clamp(10px,2svh,20px)] bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-surface)_55%,transparent),transparent_70%)] py-[clamp(12px,2.5svh,24px)]">
-          <header className="gutter-1360 flex items-center justify-between gap-4">
+          <header className="flex items-center justify-between gap-4 gutter-1360">
             <h2 id="lb-title" className="display flex min-w-0 items-center gap-2.5 text-[clamp(1.6rem,3.6svh,2.4rem)] leading-none">
               <Bean size={18} light />
               <span className="truncate">{TITLE}</span>
@@ -128,14 +134,25 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
                 <span className="text-accent">{pad(view.i + 1)}</span>
                 <span className="text-on-dark/45"> / {pad(n)}</span>
               </p>
-              <button type="button" autoFocus aria-label="Cerrar la galería" onClick={close} className="btn-icon btn-card size-11 border-0 transition-transform duration-300 motion-safe:hover:rotate-90">
+              <button
+                type="button"
+                autoFocus
+                aria-label="Cerrar la galería"
+                onClick={close}
+                className="btn-icon btn-card size-11 border-0 transition-transform duration-300 motion-safe:hover:rotate-90"
+              >
                 <CloseIcon />
               </button>
             </div>
           </header>
 
           {/* Foto entera (sin recortar). Al cerrar, se encoge un poco mientras todo se desvanece. */}
-          <div className="gutter-1360 relative min-h-0 flex-1" onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => (swipe.current = null)}>
+          <div
+            className="relative min-h-0 flex-1 gutter-1360"
+            onPointerDown={onPointerDown}
+            onPointerUp={onPointerUp}
+            onPointerCancel={() => (swipe.current = null)}
+          >
             <div className="relative size-full transition-transform duration-300 ease-out group-data-closing/lb:scale-[.96]">
               {view.from !== null && (
                 <div
@@ -161,10 +178,20 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
             </div>
             {n > 1 && (
               <>
-                <button type="button" aria-label="Foto anterior" onClick={() => go(-1)} className="btn-icon btn-card absolute top-1/2 left-[max(16px,calc((100%-1360px)/2))] z-1 size-10 -translate-y-1/2 border-0 shadow-card transition-transform duration-200 motion-safe:hover:-translate-x-0.5 sm:size-11">
+                <button
+                  type="button"
+                  aria-label="Foto anterior"
+                  onClick={() => go(-1)}
+                  className="btn-icon btn-card absolute top-1/2 left-[max(16px,calc((100%-1360px)/2))] z-1 size-10 -translate-y-1/2 border-0 shadow-card transition-transform duration-200 motion-safe:hover:-translate-x-0.5 sm:size-11"
+                >
                   <ChevronLeftIcon size={18} />
                 </button>
-                <button type="button" aria-label="Foto siguiente" onClick={() => go(1)} className="btn-icon btn-card absolute top-1/2 right-[max(16px,calc((100%-1360px)/2))] z-1 size-10 -translate-y-1/2 border-0 shadow-card transition-transform duration-200 motion-safe:hover:translate-x-0.5 sm:size-11">
+                <button
+                  type="button"
+                  aria-label="Foto siguiente"
+                  onClick={() => go(1)}
+                  className="btn-icon btn-card absolute top-1/2 right-[max(16px,calc((100%-1360px)/2))] z-1 size-10 -translate-y-1/2 border-0 shadow-card transition-transform duration-200 motion-safe:hover:translate-x-0.5 sm:size-11"
+                >
                   <ChevronRightIcon size={18} />
                 </button>
               </>
@@ -173,7 +200,7 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
 
           {/* Todas las fotos, centradas (si no caben, se desplazan desde el inicio); la activa resaltada. */}
           {n > 1 && (
-            <div ref={strip} className="gutter-1360 no-scrollbar flex-none overflow-x-auto py-1">
+            <div ref={strip} className="no-scrollbar flex-none overflow-x-auto gutter-1360 py-1">
               <ul aria-label="Todas las fotos" className="mx-auto flex w-max gap-2">
                 {photos.map((src, i) => (
                   <li key={src} className="flex-none">
@@ -184,7 +211,9 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
                       aria-current={i === view.i ? "true" : undefined}
                       onClick={() => show(i, i > view.i ? 1 : -1)}
                       className={`relative block h-[clamp(48px,8svh,72px)] w-[clamp(64px,11svh,96px)] overflow-hidden rounded-sm transition-[opacity,box-shadow,transform] duration-300 ${
-                        i === view.i ? "opacity-100 shadow-[0_0_0_2px_var(--color-highlight)]" : "opacity-50 hover:opacity-85 motion-safe:hover:-translate-y-0.5"
+                        i === view.i
+                          ? "opacity-100 shadow-[0_0_0_2px_var(--color-highlight)]"
+                          : "opacity-50 hover:opacity-85 motion-safe:hover:-translate-y-0.5"
                       }`}
                     >
                       <Image src={src} alt="" fill sizes="96px" className="object-cover" />

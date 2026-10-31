@@ -38,7 +38,8 @@ const isDevice = (d: unknown): d is PushDevice => !!d && typeof d === "object" &
 
 async function detect(): Promise<PushState> {
   if (isMockApi) return { s: "mock" };
-  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return { s: isIos() && !standalone() ? "ios-install" : "unsupported" };
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window))
+    return { s: isIos() && !standalone() ? "ios-install" : "unsupported" };
   if (!VAPID_KEY) return { s: "unconfigured" };
   if (Notification.permission === "denied") return { s: "denied" };
   const reg = await navigator.serviceWorker.getRegistration("/");
@@ -59,7 +60,11 @@ function usePush() {
 
   useEffect(() => {
     let alive = true;
-    const run = () => void detect().then((s) => alive && setState(s), () => alive && setState({ s: "off" }));
+    const run = () =>
+      void detect().then(
+        (s) => alive && setState(s),
+        () => alive && setState({ s: "off" }),
+      );
     run();
     window.addEventListener(CHANGED, run);
     return () => {
@@ -175,21 +180,31 @@ export function PushSettingsCard() {
 
       {state.s === "loading" && <p className="text-[13.5px] text-ink-muted">Revisando este dispositivo…</p>}
       {state.s === "mock" && <Callout>Las notificaciones push no están disponibles en modo simulado.</Callout>}
-      {state.s === "unsupported" && <Callout tone="warning">Este navegador no permite notificaciones push. Usa Chrome, Edge, Firefox o Safari actualizados.</Callout>}
+      {state.s === "unsupported" && (
+        <Callout tone="warning">Este navegador no permite notificaciones push. Usa Chrome, Edge, Firefox o Safari actualizados.</Callout>
+      )}
       {state.s === "ios-install" && (
         <Callout>
-          En iPhone y iPad las notificaciones solo llegan con el panel instalado: en Safari toca <strong>Compartir → Agregar a inicio</strong>, abre el panel desde ese ícono y vuelve a esta página para activarlas.
+          En iPhone y iPad las notificaciones solo llegan con el panel instalado: en Safari toca <strong>Compartir → Agregar a inicio</strong>, abre el panel
+          desde ese ícono y vuelve a esta página para activarlas.
         </Callout>
       )}
-      {state.s === "unconfigured" && <Callout tone="warning">El servidor aún no tiene las llaves de notificaciones (VAPID). Agrégalas a las variables de entorno y vuelve a desplegar.</Callout>}
+      {state.s === "unconfigured" && (
+        <Callout tone="warning">
+          El servidor aún no tiene las llaves de notificaciones (VAPID). Agrégalas a las variables de entorno y vuelve a desplegar.
+        </Callout>
+      )}
       {state.s === "denied" && (
         <Callout tone="warning">
-          Bloqueaste las notificaciones de este sitio. Para activarlas, toca el ícono junto a la dirección (el candado o los ajustes del sitio), permite las <strong>Notificaciones</strong> y recarga la página.
+          Bloqueaste las notificaciones de este sitio. Para activarlas, toca el ícono junto a la dirección (el candado o los ajustes del sitio), permite las{" "}
+          <strong>Notificaciones</strong> y recarga la página.
         </Callout>
       )}
       {state.s === "off" && (
         <div className="flex flex-col items-start gap-3">
-          <p className="text-[13.5px] text-ink-muted">Recibe al instante las reservas confirmadas, los pagos y las alertas. Cada dispositivo se activa por separado.</p>
+          <p className="text-[13.5px] text-ink-muted">
+            Recibe al instante las reservas confirmadas, los pagos y las alertas. Cada dispositivo se activa por separado.
+          </p>
           <Button variant="primary" icon={<BellIcon size={15} />} loading={busy} onClick={enable}>
             Activar notificaciones
           </Button>

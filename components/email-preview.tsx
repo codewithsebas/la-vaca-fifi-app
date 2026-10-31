@@ -23,7 +23,6 @@ function AutoHeightFrame({ title, html, width }: { title: string; html: string; 
   return <iframe ref={ref} title={title} srcDoc={html} className="mx-auto block h-[900px] rounded-xl border-0 bg-transparent" style={{ width }} />;
 }
 
-
 export function EmailPreview() {
   const { c } = useSite();
   const templates = emailTemplates(c);
@@ -39,16 +38,23 @@ export function EmailPreview() {
   ];
 
   return (
-    <div className="gutter-1200 box-border min-h-screen pt-7 pb-20">
+    <div className="box-border min-h-screen gutter-1200 pt-7 pb-20">
       <h1 className="display mb-1.5 text-[clamp(2.4rem,5vw,4rem)] leading-[.95]">Plantillas de correo</h1>
       <p className="mb-5 max-w-[70ch]">
-        HTML de 600 px con tablas, estilos inline y colores hex. Los dos primeros se envían de verdad (con Resend) y se muestran con datos de ejemplo; el resto son plantillas de referencia con variables <strong>{"{{var}}"}</strong> que aún no se envían. Cada correo trae su versión en texto plano.
+        HTML de 600 px con tablas, estilos inline y colores hex. Los dos primeros se envían de verdad (con Resend) y se muestran con datos de ejemplo; el resto
+        son plantillas de referencia con variables <strong>{"{{var}}"}</strong> que aún no se envían. Cada correo trae su versión en texto plano.
       </p>
       <div role="toolbar" aria-label="Vista previa" className="sticky top-0 z-5 flex flex-wrap gap-3.5 bg-bg pt-3 pb-4">
         {groups.map((g) => (
           <div key={g.label} role="group" aria-label={g.label} className="flex gap-1 rounded-full bg-surface p-1">
             {g.opts.map((o) => (
-              <button key={o.label} type="button" aria-pressed={o.on} onClick={o.pick} className={`min-h-11 rounded-full px-4 font-bold ${o.on ? "bg-card text-on-light" : "bg-transparent text-on-dark"}`}>
+              <button
+                key={o.label}
+                type="button"
+                aria-pressed={o.on}
+                onClick={o.pick}
+                className={`min-h-11 rounded-full px-4 font-bold ${o.on ? "bg-card text-on-light" : "bg-transparent text-on-dark"}`}
+              >
                 {o.label}
               </button>
             ))}
@@ -70,7 +76,9 @@ export function EmailPreview() {
                 <span className="text-[.85rem]">
                   Para: <strong>{t.to}</strong>
                 </span>
-                <span className={`rounded-full px-2.5 py-0.5 text-[.78rem] font-extrabold ${t.sent ? "bg-accent text-on-light" : "bg-card-muted text-on-light"}`}>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[.78rem] font-extrabold ${t.sent ? "bg-accent text-on-light" : "bg-card-muted text-on-light"}`}
+                >
                   {t.sent === "auto" ? "Se envía automáticamente" : t.sent === "panel" ? "Se envía desde el panel" : "Plantilla · aún no se envía"}
                 </span>
               </div>
@@ -87,7 +95,10 @@ export function EmailPreview() {
                   <AutoHeightFrame key={`${width}-${dark}`} title={`Vista previa: ${t.name}`} html={html} width={width} />
                 </div>
               ) : (
-                <pre className="rounded-md bg-card p-[18px] font-mono text-[.82rem] leading-[1.6] whitespace-pre-wrap text-on-light [overflow-wrap:anywhere]" style={{ maxWidth: width }}>
+                <pre
+                  className="rounded-md bg-card p-[18px] font-mono text-[.82rem] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-on-light"
+                  style={{ maxWidth: width }}
+                >
                   {t.text}
                 </pre>
               )}

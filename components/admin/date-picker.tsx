@@ -84,7 +84,10 @@ function MonthGrid({ month, from, to, preview, focus, today, isDisabled, marks =
               {i + 1}
               {iso === today && !isStart && !isEnd && <span aria-hidden="true" className="absolute bottom-1 h-0.5 w-3 rounded-full bg-ink/50" />}
               {(mark === "busy" || mark === "partial") && (
-                <span aria-hidden="true" className={`absolute top-1 right-1 size-1.5 rounded-full ${mark === "busy" ? "bg-status-cancelled" : "bg-highlight"} ${isStart || isEnd ? "ring-1 ring-white" : ""}`} />
+                <span
+                  aria-hidden="true"
+                  className={`absolute top-1 right-1 size-1.5 rounded-full ${mark === "busy" ? "bg-status-cancelled" : "bg-highlight"} ${isStart || isEnd ? "ring-1 ring-white" : ""}`}
+                />
               )}
             </button>
           );
@@ -187,10 +190,20 @@ const triggerCls = (className = "") => `${adminInput} flex items-center justify-
 function Nav({ month, setMonth, count }: { month: string; setMonth: (m: string) => void; count: number }) {
   return (
     <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-between">
-      <button type="button" aria-label="Mes anterior" onClick={() => setMonth(addMonths(month, -1))} className="btn-icon pointer-events-auto size-8 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink">
+      <button
+        type="button"
+        aria-label="Mes anterior"
+        onClick={() => setMonth(addMonths(month, -1))}
+        className="btn-icon pointer-events-auto size-8 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
+      >
         <ChevronLeftIcon size={16} />
       </button>
-      <button type="button" aria-label={count > 1 ? "Meses siguientes" : "Mes siguiente"} onClick={() => setMonth(addMonths(month, 1))} className="btn-icon pointer-events-auto size-8 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink">
+      <button
+        type="button"
+        aria-label={count > 1 ? "Meses siguientes" : "Mes siguiente"}
+        onClick={() => setMonth(addMonths(month, 1))}
+        className="btn-icon pointer-events-auto size-8 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
+      >
         <ChevronRightIcon size={16} />
       </button>
     </div>
@@ -199,7 +212,12 @@ function Nav({ month, setMonth, count }: { month: string; setMonth: (m: string) 
 
 /* ───────────── Una fecha ───────────── */
 
-export function DatePicker({ value, onChange, clearable = true, ...p }: PickerProps & { value: string | null; onChange: (v: string | null) => void; clearable?: boolean }) {
+export function DatePicker({
+  value,
+  onChange,
+  clearable = true,
+  ...p
+}: PickerProps & { value: string | null; onChange: (v: string | null) => void; clearable?: boolean }) {
   const anchor = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const k = usePicker(value, p.min, p.max, p.disabled);
@@ -244,11 +262,20 @@ export function DatePicker({ value, onChange, clearable = true, ...p }: PickerPr
           />
           {p.legend && <Legend />}
           <div className="flex w-full justify-between gap-2 border-t border-line pt-2.5">
-            <button type="button" disabled={k.isDisabled(k.today)} onClick={() => pick(k.today)} className="rounded-lg px-2 py-1 text-[13px] font-semibold text-ink transition-colors hover:bg-ink/6 disabled:opacity-40">
+            <button
+              type="button"
+              disabled={k.isDisabled(k.today)}
+              onClick={() => pick(k.today)}
+              className="rounded-lg px-2 py-1 text-[13px] font-semibold text-ink transition-colors hover:bg-ink/6 disabled:opacity-40"
+            >
               Hoy
             </button>
             {clearable && value && (
-              <button type="button" onClick={() => pick(null)} className="rounded-lg px-2 py-1 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink">
+              <button
+                type="button"
+                onClick={() => pick(null)}
+                className="rounded-lg px-2 py-1 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
+              >
                 Quitar fecha
               </button>
             )}
@@ -298,7 +325,14 @@ export function DateRangePicker({ from, to, onChange, mode = "days", clearable =
 
   const count = from && to ? (mode === "nights" ? plural(nightsBetween(from, to), "noche", "noches") : plural(nightsBetween(from, to) + 1, "día", "días")) : "";
   const label = from && to ? `${fmtDate(from)} → ${fmtDate(to)}` : from ? `Desde ${fmtDate(from)}` : (p.placeholder ?? "Elegir fechas");
-  const hint = !draft.from || draft.to ? (mode === "nights" ? "Elige la fecha de llegada" : "Elige el primer día") : mode === "nights" ? "Ahora elige la fecha de salida" : "Ahora elige el último día (incluido)";
+  const hint =
+    !draft.from || draft.to
+      ? mode === "nights"
+        ? "Elige la fecha de llegada"
+        : "Elige el primer día"
+      : mode === "nights"
+        ? "Ahora elige la fecha de salida"
+        : "Ahora elige el último día (incluido)";
 
   return (
     <>

@@ -44,7 +44,9 @@ export const POST = route(async (req: NextRequest) => {
       const { data } = await sb.from("payments").select("reservation_code").eq("reference", ref).maybeSingle().throwOnError();
       code = data?.reservation_code ?? "";
     } else {
-      code = String(b.code ?? "").trim().toUpperCase();
+      code = String(b.code ?? "")
+        .trim()
+        .toUpperCase();
       if (!CODE.test(code) || !b.email) return fail(404, "NOT_FOUND");
     }
     if (!code) return fail(404, "NOT_FOUND");

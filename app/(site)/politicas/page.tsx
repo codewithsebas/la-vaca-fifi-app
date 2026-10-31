@@ -15,7 +15,7 @@ const h2 = "text-[1.15rem] font-extrabold";
 export default async function PoliciesPage() {
   const { c } = await getSite();
   return (
-    <main className="gutter-860 flex flex-col gap-5 pt-6 pb-[72px] leading-[1.6]">
+    <main className="flex flex-col gap-5 gutter-860 pt-6 pb-[72px] leading-[1.6]">
       <h1 className="page-title">
         <span>Políticas</span> <span className="text-accent">de reserva</span>
       </h1>
@@ -27,10 +27,12 @@ export default async function PoliciesPage() {
         </p>
         <h2 className={h2}>Abono, confirmación y saldo</h2>
         <p>
-          La reserva se confirma cuando se aprueba el pago en línea del abono del {c.depositPct} % del valor total, o del valor total si prefieres pagarlo de una vez. Mientras pagas, las fechas quedan apartadas durante {HOLD_MINUTES} minutos; si el pago no se aprueba en ese tiempo, se liberan.
+          La reserva se confirma cuando se aprueba el pago en línea del abono del {c.depositPct} % del valor total, o del valor total si prefieres pagarlo de
+          una vez. Mientras pagas, las fechas quedan apartadas durante {HOLD_MINUTES} minutos; si el pago no se aprueba en ese tiempo, se liberan.
         </p>
         <p>
-          El saldo se puede pagar en línea en cualquier momento antes de llegar, o después del check-in con un plazo de {BALANCE_MINUTES / 60} hora desde que se registra tu llegada. Si el plazo vence, el saldo se paga en recepción. El check-out se realiza con el saldo pagado.
+          El saldo se puede pagar en línea en cualquier momento antes de llegar, o después del check-in con un plazo de {BALANCE_MINUTES / 60} hora desde que se
+          registra tu llegada. Si el plazo vence, el saldo se paga en recepción. El check-out se realiza con el saldo pagado.
         </p>
         {c.policies.map((p) => (
           <div key={p.id} className="contents">
@@ -40,7 +42,8 @@ export default async function PoliciesPage() {
         ))}
         <h2 className={h2}>Tarifas</h2>
         <p>
-          Las tarifas incluyen 2 personas. Desde la 3.ª persona se cobra un valor adicional por persona y por noche. Adultos y niños cuentan igual para la capacidad y la tarifa. La decoración para ocasiones especiales tiene un valor adicional que se cotiza aparte.
+          Las tarifas incluyen 2 personas. Desde la 3.ª persona se cobra un valor adicional por persona y por noche. Adultos y niños cuentan igual para la
+          capacidad y la tarifa. La decoración para ocasiones especiales tiene un valor adicional que se cotiza aparte.
         </p>
       </section>
       <p>

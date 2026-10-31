@@ -54,13 +54,21 @@ export function FifiHeader() {
       {/* El fondo esmerilado va en su propia capa: un backdrop-filter en el <header> lo volvería el bloque contenedor del
           panel fijo del menú, que quedaría con alto 0 (top y bottom medidos contra la barra, no contra la pantalla). */}
       <div aria-hidden="true" className="absolute inset-0 -z-1 bg-bg/95 backdrop-blur-md" />
-      <div className="gutter-1360 flex min-h-[72px] items-center gap-3 py-2">
-        <a href="#top" aria-label={`${c.name}, inicio`} className="flex min-h-11 min-w-0 items-center gap-2.5 text-on-dark no-underline max-[440px]:[&_.brand-eyebrow]:hidden">
+      <div className="flex min-h-[72px] items-center gap-3 gutter-1360 py-2">
+        <a
+          href="#top"
+          aria-label={`${c.name}, inicio`}
+          className="flex min-h-11 min-w-0 items-center gap-2.5 text-on-dark no-underline max-[440px]:[&_.brand-eyebrow]:hidden"
+        >
           <Brand size={48} wordSize="clamp(1.15rem,calc(4vw + .2rem),1.55rem)" eyebrowSize=".52em" eager />
         </a>
         <nav aria-label="Secciones" className="ml-auto hidden items-center gap-0.5 lg:flex">
           {SECTIONS.map(([id, label]) => (
-            <a key={id} href={`#${id}`} className="inline-flex min-h-11 items-center rounded-full px-3.5 text-[.95rem] font-extrabold text-on-dark no-underline transition-colors hover:bg-highlight hover:text-on-light">
+            <a
+              key={id}
+              href={`#${id}`}
+              className="inline-flex min-h-11 items-center rounded-full px-3.5 text-[.95rem] font-extrabold text-on-dark no-underline transition-colors hover:bg-highlight hover:text-on-light"
+            >
               {label}
             </a>
           ))}
@@ -84,15 +92,23 @@ export function FifiHeader() {
       </div>
 
       {open && (
-        <div id="menu-fifi" className="fixed inset-x-0 top-(--header-offset,75px) bottom-0 z-50 overflow-auto bg-bg text-on-dark motion-safe:animate-menu-drop lg:hidden">
-          <nav aria-label="Secciones" className="gutter-1360 flex flex-col gap-1 py-6">
+        <div
+          id="menu-fifi"
+          className="fixed inset-x-0 top-(--header-offset,75px) bottom-0 z-50 overflow-auto bg-bg text-on-dark motion-safe:animate-menu-drop lg:hidden"
+        >
+          <nav aria-label="Secciones" className="flex flex-col gap-1 gutter-1360 py-6">
             {SECTIONS.map(([id, label]) => (
-              <a key={id} href={`#${id}`} onClick={() => setOpen(false)} className="flex min-h-14 items-center rounded-2xl px-3 font-display text-[2rem] leading-none text-on-dark no-underline hover:bg-highlight hover:text-on-light">
+              <a
+                key={id}
+                href={`#${id}`}
+                onClick={() => setOpen(false)}
+                className="flex min-h-14 items-center rounded-2xl px-3 font-display text-[2rem] leading-none text-on-dark no-underline hover:bg-highlight hover:text-on-light"
+              >
                 {label}
               </a>
             ))}
           </nav>
-          <div className="gutter-1360 flex flex-col gap-3 pb-8">
+          <div className="flex flex-col gap-3 gutter-1360 pb-8">
             <a href="#reserva" onClick={() => setOpen(false)} className="btn btn-cta min-h-14 text-[1.05rem]">
               Reservar cabaña
             </a>

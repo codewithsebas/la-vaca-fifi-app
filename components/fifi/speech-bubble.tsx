@@ -22,7 +22,7 @@ export function SpeechBubble({ phrases, className = "" }: { phrases: string[]; c
         {phrases[i]}
       </p>
       {/* Colita del globo, hacia Fifí (abajo a la derecha). */}
-      <svg viewBox="0 0 40 30" className="absolute -bottom-[25px] right-[22%] h-[30px] w-[40px]">
+      <svg viewBox="0 0 40 30" className="absolute right-[22%] -bottom-[25px] h-[30px] w-[40px]">
         <path d="M2 0H30L36 28L12 2" className="fill-card" />
         <path d="M2 1.5L36 28L28 1.5" fill="none" stroke="var(--color-on-dark)" strokeWidth={3} strokeLinejoin="round" />
       </svg>

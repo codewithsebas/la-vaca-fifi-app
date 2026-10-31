@@ -52,7 +52,12 @@ function NevadoScene({ id, sky = true, className = "" }: { id: string; sky?: boo
       <svg viewBox="0 0 1200 220" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-[72%] w-full fill-surface motion-safe:animate-land-rise">
         <path d={RANGE} />
       </svg>
-      <svg viewBox="0 0 1200 100" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-[30%] w-full fill-[color-mix(in_srgb,var(--color-surface)_55%,var(--color-deep))] motion-safe:animate-land-rise" style={{ animationDelay: "120ms" }}>
+      <svg
+        viewBox="0 0 1200 100"
+        preserveAspectRatio="none"
+        className="absolute inset-x-0 bottom-0 h-[30%] w-full fill-[color-mix(in_srgb,var(--color-surface)_55%,var(--color-deep))] motion-safe:animate-land-rise"
+        style={{ animationDelay: "120ms" }}
+      >
         <path d={HILLS} />
       </svg>
     </div>
@@ -108,13 +113,20 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   // La foto y el título de la portada del sitio (Contenido del sitio → Portada): si cambian allá, cambian aquí.
   const { photos, texts } = useSite();
   const photo = photos["hero-main"];
-  const split = (t: string | undefined, accent: boolean) => (t ?? "").split(" ").filter(Boolean).map((w) => ({ w, accent }));
+  const split = (t: string | undefined, accent: boolean) =>
+    (t ?? "")
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => ({ w, accent }));
   const words = [...split(texts.hero.title, false), ...split(texts.hero.highlight, true)];
   return (
     <main className="admin-dark relative grid min-h-dvh bg-bg text-on-dark lg:grid-cols-[minmax(0,1.2fr)_minmax(460px,1fr)]">
       {/* Foto: arriba en el celular, mitad izquierda en pantallas anchas. */}
       {/* En el celular la foto se disuelve hacia abajo (máscara): así su borde no se marca como una línea sobre el logo. */}
-      <div aria-hidden="true" className="relative h-[38vh] min-h-[240px] overflow-hidden bg-surface max-lg:[mask-image:linear-gradient(to_bottom,black_65%,transparent)] lg:sticky lg:top-0 lg:h-dvh">
+      <div
+        aria-hidden="true"
+        className="relative h-[38vh] min-h-[240px] overflow-hidden bg-surface max-lg:[mask-image:linear-gradient(to_bottom,black_65%,transparent)] lg:sticky lg:top-0 lg:h-dvh"
+      >
         {photo ? (
           // Se asienta al cargar y luego respira con un acercamiento muy lento, como la portada del sitio.
           <div className="absolute inset-0 motion-safe:animate-ken-burns">
@@ -141,7 +153,10 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
             </Fragment>
           ))}
           {texts.hero.badge && (
-            <span className="mt-4 block font-body text-[15px] leading-snug font-semibold tracking-normal text-on-dark/85 normal-case motion-safe:animate-rise" style={{ animationDelay: `${450 + words.length * 90}ms` }}>
+            <span
+              className="mt-4 block font-body text-[15px] leading-snug font-semibold tracking-normal text-on-dark/85 normal-case motion-safe:animate-rise"
+              style={{ animationDelay: `${450 + words.length * 90}ms` }}
+            >
               {texts.hero.badge}
             </span>
           )}
@@ -156,20 +171,48 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
         <p className="relative flex items-center gap-3 motion-safe:animate-rise">
           <Brand size={52} wordSize="1.6rem" eyebrowSize=".7rem" eager />
         </p>
-        <form noValidate onSubmit={onSubmit} aria-labelledby="lg-title" className="admin-surface relative flex w-full max-w-[400px] flex-col gap-5 rounded-2xl bg-panel p-6 text-ink shadow-overlay motion-safe:animate-pop-in sm:p-8">
+        <form
+          noValidate
+          onSubmit={onSubmit}
+          aria-labelledby="lg-title"
+          className="admin-surface relative flex w-full max-w-[400px] flex-col gap-5 rounded-2xl bg-panel p-6 text-ink shadow-overlay motion-safe:animate-pop-in sm:p-8"
+        >
           <div>
             <h1 id="lg-title" className="text-[22px] leading-tight font-extrabold tracking-[-0.01em]">
               Panel de reservas
             </h1>
-            <p className="mt-1 text-[14px] text-ink-muted">{isMockApi ? "Modo simulado: entra con cualquier correo y contraseña." : "Ingresa con tu cuenta de administración."}</p>
+            <p className="mt-1 text-[14px] text-ink-muted">
+              {isMockApi ? "Modo simulado: entra con cualquier correo y contraseña." : "Ingresa con tu cuenta de administración."}
+            </p>
           </div>
           <Field label="Correo">
-            {(p) => <input {...p} {...missing(lg.email)} type="email" autoComplete="username" inputMode="email" placeholder="tucorreo@ejemplo.com" value={lg.email} onChange={(e) => setLg({ ...lg, email: e.target.value })} className={adminInput} />}
+            {(p) => (
+              <input
+                {...p}
+                {...missing(lg.email)}
+                type="email"
+                autoComplete="username"
+                inputMode="email"
+                placeholder="tucorreo@ejemplo.com"
+                value={lg.email}
+                onChange={(e) => setLg({ ...lg, email: e.target.value })}
+                className={adminInput}
+              />
+            )}
           </Field>
           <Field label="Contraseña">
             {(p) => (
               <div className="relative">
-                <input {...p} {...missing(lg.password)} type={show ? "text" : "password"} autoComplete="current-password" placeholder="***********" value={lg.password} onChange={(e) => setLg({ ...lg, password: e.target.value })} className={`${adminInput} pr-12`} />
+                <input
+                  {...p}
+                  {...missing(lg.password)}
+                  type={show ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="***********"
+                  value={lg.password}
+                  onChange={(e) => setLg({ ...lg, password: e.target.value })}
+                  className={`${adminInput} pr-12`}
+                />
                 <button
                   type="button"
                   onClick={() => setShow(!show)}
@@ -192,7 +235,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           </Button>
         </form>
         <Link href="/" className="relative rounded-sm text-[13.5px] font-semibold text-on-dark/75 transition-colors hover:text-on-dark">
-          ←  Volver al sitio
+          ← Volver al sitio
         </Link>
       </div>
     </main>

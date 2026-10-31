@@ -45,7 +45,14 @@ const toEvent = (b: Beds24Booking): StayEvent => ({
 });
 // Una vez al día por aviso: un choque que sigue sin resolverse no se repite en cada repaso.
 async function notifyOnce(sb: Db, kind: NotificationKind, title: string, body: string, code: string | null) {
-  const { data } = await sb.from("admin_notifications").select("id").eq("kind", kind).eq("title", title.slice(0, 200)).gt("created_at", new Date(Date.now() - 864e5).toISOString()).limit(1).throwOnError();
+  const { data } = await sb
+    .from("admin_notifications")
+    .select("id")
+    .eq("kind", kind)
+    .eq("title", title.slice(0, 200))
+    .gt("created_at", new Date(Date.now() - 864e5).toISOString())
+    .limit(1)
+    .throwOnError();
   if (!data.length) await notify(sb, kind, title, body, code);
 }
 const quietly = (what: string, p: PromiseLike<unknown>): Promise<void> =>
@@ -91,11 +98,18 @@ async function create(sb: Db, client: Client, w: Want) {
     });
   } catch (e) {
     // Puede que Beds24 sí la haya creado (p. ej. si tardó en responder): queda pending y el repaso lo averigua.
-    await sb.from("channel_bookings").update({ last_error: errText(e) }).eq("id", row.id);
+    await sb
+      .from("channel_bookings")
+      .update({ last_error: errText(e) })
+      .eq("id", row.id);
     throw e;
   }
   if (!res.ok) {
-    await sb.from("channel_bookings").update({ state: "cancelled", last_error: `${UNAVAILABLE}: ${res.message}`.slice(0, 500) }).eq("id", row.id).throwOnError();
+    await sb
+      .from("channel_bookings")
+      .update({ state: "cancelled", last_error: `${UNAVAILABLE}: ${res.message}`.slice(0, 500) })
+      .eq("id", row.id)
+      .throwOnError();
     return null;
   }
   await sb.from("channel_bookings").update({ beds24_id: res.id, last_error: "" }).eq("id", row.id).throwOnError();
@@ -120,7 +134,13 @@ export async function holdRoom(x: Omit<Want, "cal"> & { cabinTypeId: string; uni
   if (!cal) return NOOP;
   const client = await beds24Client(sb);
   if (!client) throw new Beds24Error("Beds24 no está conectado.");
-  const { data: live } = await sb.from("channel_bookings").select("*").eq("source", x.source).eq("source_id", x.sourceId).in("state", ["pending", "active"]).throwOnError();
+  const { data: live } = await sb
+    .from("channel_bookings")
+    .select("*")
+    .eq("source", x.source)
+    .eq("source_id", x.sourceId)
+    .in("state", ["pending", "active"])
+    .throwOnError();
 
   // Ya está en esa habitación: solo cambian las noches, y las que se suman tienen que estar libres en Beds24.
   const same = live.find((l) => l.calendar_id === cal.id && l.beds24_id && (l.state === "active" || Date.now() - Date.parse(l.created_at) > IN_FLIGHT_MS));
@@ -130,7 +150,11 @@ export async function holdRoom(x: Omit<Want, "cal"> & { cabinTypeId: string; uni
     if (!(await client.free(cal.beds24_room_id, added))) return null;
     await client.move(same.beds24_id!, x.checkIn, x.checkOut);
     return {
-      commit: () => quietly("guardar fechas", sb.from("channel_bookings").update({ check_in: x.checkIn, check_out: x.checkOut, state: "active" }).eq("id", same.id).throwOnError()),
+      commit: () =>
+        quietly(
+          "guardar fechas",
+          sb.from("channel_bookings").update({ check_in: x.checkIn, check_out: x.checkOut, state: "active" }).eq("id", same.id).throwOnError(),
+        ),
       release: () => quietly("devolver fechas", client.move(same.beds24_id!, same.check_in, same.check_out)),
     };
   }
@@ -181,19 +205,48 @@ async function pushBeds24(sb: Db, client: Client, cals: Mapped[], types: CabinTy
   const today = todayISO();
   const calOf = new Map(cals.map((c) => [`${c.cabin_type_id}:${c.unit}`, c]));
   const [{ data: rs }, { data: bs }, { data: links }, { data: refused }] = await Promise.all([
-    sb.from("reservations").select("code, cabin_type_id, unit, check_in, check_out, adults, children").in("status", ACTIVE_STATUSES).gt("check_out", today).throwOnError(),
+    sb
+      .from("reservations")
+      .select("code, cabin_type_id, unit, check_in, check_out, adults, children")
+      .in("status", ACTIVE_STATUSES)
+      .gt("check_out", today)
+      .throwOnError(),
     sb.from("blocks").select("id, cabin_type_id, unit, from_date, to_date, reason").gte("to_date", today).throwOnError(),
     sb.from("channel_bookings").select("*").in("state", ["pending", "active"]).throwOnError(),
-    sb.from("channel_bookings").select("source, source_id, calendar_id, updated_at").eq("state", "cancelled").like("last_error", `${UNAVAILABLE}%`).gt("updated_at", new Date(Date.now() - RETRY_MS).toISOString()).throwOnError(),
+    sb
+      .from("channel_bookings")
+      .select("source, source_id, calendar_id, updated_at")
+      .eq("state", "cancelled")
+      .like("last_error", `${UNAVAILABLE}%`)
+      .gt("updated_at", new Date(Date.now() - RETRY_MS).toISOString())
+      .throwOnError(),
   ]);
   const want = new Map<string, Want>();
   for (const r of rs) {
     const cal = calOf.get(`${r.cabin_type_id}:${r.unit}`);
-    if (cal) want.set(`reservation:${r.code}`, { source: "reservation", sourceId: r.code, cal, checkIn: r.check_in, checkOut: r.check_out, label: `Web ${r.code}`, adults: r.adults, children: r.children });
+    if (cal)
+      want.set(`reservation:${r.code}`, {
+        source: "reservation",
+        sourceId: r.code,
+        cal,
+        checkIn: r.check_in,
+        checkOut: r.check_out,
+        label: `Web ${r.code}`,
+        adults: r.adults,
+        children: r.children,
+      });
   }
   for (const b of bs) {
     const cal = calOf.get(`${b.cabin_type_id}:${b.unit}`);
-    if (cal) want.set(`block:${b.id}`, { source: "block", sourceId: b.id, cal, checkIn: b.from_date, checkOut: addDays(b.to_date, 1), label: `Bloqueo · ${b.reason}` });
+    if (cal)
+      want.set(`block:${b.id}`, {
+        source: "block",
+        sourceId: b.id,
+        cal,
+        checkIn: b.from_date,
+        checkOut: addDays(b.to_date, 1),
+        label: `Bloqueo · ${b.reason}`,
+      });
   }
   const keyOf = (l: { source: string; source_id: string }) => `${l.source}:${l.source_id}`;
   const covered = new Set<string>(); // «clave|habitación» con algo vivo en Beds24 (o en curso)
@@ -257,7 +310,13 @@ async function pushBeds24(sb: Db, client: Client, cals: Mapped[], types: CabinTy
         w.sourceId,
       );
     else
-      await notifyOnce(sb, "channel_conflict", `Bloqueo sin cerrar en Booking.com · ${where}`, `El bloqueo de ${where} no se pudo cerrar en Booking.com porque allá ya hay una reserva en esas noches.`, null);
+      await notifyOnce(
+        sb,
+        "channel_conflict",
+        `Bloqueo sin cerrar en Booking.com · ${where}`,
+        `El bloqueo de ${where} no se pudo cerrar en Booking.com porque allá ya hay una reserva en esas noches.`,
+        null,
+      );
   }
   if (errors.length) throw errors[0];
   return conflicts.map((w) => w.sourceId);
@@ -348,7 +407,13 @@ export async function syncBeds24(mode: "push" | "all" = "all"): Promise<Beds24Sy
     await sb.from("channel_credentials").update({ last_error: message, last_error_at: new Date().toISOString() }).eq("provider", "beds24");
     // Se avisa una vez, cuando la conexión que funcionaba deja de responder.
     if (!cred.last_error)
-      await notify(sb, "channel_sync_failed", "No se pudo sincronizar con Beds24", `${message} Mientras tanto, la web no vende las cabañas de Booking.com que Beds24 no confirme.`, null).catch(() => {});
+      await notify(
+        sb,
+        "channel_sync_failed",
+        "No se pudo sincronizar con Beds24",
+        `${message} Mientras tanto, la web no vende las cabañas de Booking.com que Beds24 no confirme.`,
+        null,
+      ).catch(() => {});
     return { ok: false, error: message };
   }
 }

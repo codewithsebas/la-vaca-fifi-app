@@ -43,7 +43,11 @@ export function ReservationsView() {
     "en-estadia": (r) => r.status === "checked_in",
   };
   const test = quickTest[quick] ?? quickTest.todas;
-  const counts = { pendientes: data.reservations.filter(quickTest.pendientes).length, comprobantes: data.reservations.filter(quickTest.comprobantes).length, estadia: data.reservations.filter(quickTest["en-estadia"]).length };
+  const counts = {
+    pendientes: data.reservations.filter(quickTest.pendientes).length,
+    comprobantes: data.reservations.filter(quickTest.comprobantes).length,
+    estadia: data.reservations.filter(quickTest["en-estadia"]).length,
+  };
 
   const nq = norm(q.trim());
   const list = data.reservations
@@ -57,7 +61,19 @@ export function ReservationsView() {
         (!nq || [r.code, r.guest.fullName, r.guest.email, r.guest.phone, r.guest.docNumber].some((v) => norm(v || "").includes(nq))),
     )
     .sort((a, b) =>
-      sort === "llegada-asc" ? (a.checkIn < b.checkIn ? -1 : 1) : sort === "creada-desc" ? (a.createdAt < b.createdAt ? 1 : -1) : sort === "valor-desc" ? b.quote.total - a.quote.total : a.checkIn < b.checkIn ? 1 : -1,
+      sort === "llegada-asc"
+        ? a.checkIn < b.checkIn
+          ? -1
+          : 1
+        : sort === "creada-desc"
+          ? a.createdAt < b.createdAt
+            ? 1
+            : -1
+          : sort === "valor-desc"
+            ? b.quote.total - a.quote.total
+            : a.checkIn < b.checkIn
+              ? 1
+              : -1,
     );
   const active = !!(q || status || cabin || from || quick !== "todas");
   const clear = () => {
@@ -97,12 +113,24 @@ export function ReservationsView() {
         ]}
       />
       <Card className="p-4">
-        <form role="search" aria-label="Filtrar reservas" onSubmit={(e) => e.preventDefault()} className="grid grid-cols-2 items-end gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)]">
+        <form
+          role="search"
+          aria-label="Filtrar reservas"
+          onSubmit={(e) => e.preventDefault()}
+          className="grid grid-cols-2 items-end gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)]"
+        >
           <Field label="Buscar" className="col-span-2 xl:col-span-1">
             {(p) => (
               <div className="relative">
                 <SearchIcon size={17} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle" />
-                <input {...p} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre, código, correo, celular o documento" className={`${adminInput} pl-9`} />
+                <input
+                  {...p}
+                  type="search"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Nombre, código, correo, celular o documento"
+                  className={`${adminInput} pl-9`}
+                />
               </div>
             )}
           </Field>
@@ -117,7 +145,17 @@ export function ReservationsView() {
             )}
           </Field>
           <Field label="Cabaña">
-            {(p) => <Combobox id={p.id} value={cabin} onChange={setCabin} options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre, description: c.activa ? undefined : "Inactiva" }))]} />}
+            {(p) => (
+              <Combobox
+                id={p.id}
+                value={cabin}
+                onChange={setCabin}
+                options={[
+                  { value: "", label: "Todas las cabañas" },
+                  ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre, description: c.activa ? undefined : "Inactiva" })),
+                ]}
+              />
+            )}
           </Field>
           <Field label="Llegada entre">
             {(p) => (
@@ -186,7 +224,11 @@ export function ReservationsView() {
                   return (
                     <tr key={r.code} onClick={() => openReservation(r.code)} className="group cursor-pointer transition-colors hover:bg-canvas/70">
                       <td className="px-4 py-3">
-                        <Link href={paths.reserva(r.code)} onClick={(e) => e.stopPropagation()} className="rounded-sm font-bold whitespace-nowrap text-ink underline-offset-2 hover:underline">
+                        <Link
+                          href={paths.reserva(r.code)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded-sm font-bold whitespace-nowrap text-ink underline-offset-2 hover:underline"
+                        >
                           {x.code}
                         </Link>
                       </td>
@@ -227,7 +269,10 @@ export function ReservationsView() {
               const pay = paymentState(r);
               return (
                 <li key={r.code}>
-                  <Link href={paths.reserva(r.code)} className="flex w-full flex-col gap-1.5 rounded-2xl border border-line bg-panel p-4 text-left shadow-panel transition-colors hover:bg-canvas/60">
+                  <Link
+                    href={paths.reserva(r.code)}
+                    className="flex w-full flex-col gap-1.5 rounded-2xl border border-line bg-panel p-4 text-left shadow-panel transition-colors hover:bg-canvas/60"
+                  >
                     <span className="flex w-full items-center justify-between gap-2">
                       <strong className="text-[13px] font-bold text-ink-muted">{x.code}</strong>
                       <StatusPill status={r.status} size="sm" />

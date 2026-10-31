@@ -56,7 +56,10 @@ export const POST = route(async (req: NextRequest) => {
   // "nueva" es la ruta del panel para crear una cabaña (/admin/cabanas/nueva): no puede ser un id.
   for (let i = 2; rows.some((r) => r.id === id) || id === "nueva"; i++) id = `${base}-${i}`.slice(0, 40);
   const sort = rows.reduce((m, r) => Math.max(m, r.sort), 0) + 1;
-  await sb.from("cabin_types").insert({ id, sort, ...v.row }).throwOnError();
+  await sb
+    .from("cabin_types")
+    .insert({ id, sort, ...v.row })
+    .throwOnError();
   return done(sb);
 });
 
@@ -73,18 +76,36 @@ export const PUT = route(async (req: NextRequest) => {
   if (v.row.units < current.units) {
     const today = todayISO();
     const [{ data: rs }, { data: bs }] = await Promise.all([
-      sb.from("reservations").select("code").eq("cabin_type_id", id).gt("unit", v.row.units).in("status", ACTIVE_STATUSES).gte("check_out", today).limit(5).throwOnError(),
+      sb
+        .from("reservations")
+        .select("code")
+        .eq("cabin_type_id", id)
+        .gt("unit", v.row.units)
+        .in("status", ACTIVE_STATUSES)
+        .gte("check_out", today)
+        .limit(5)
+        .throwOnError(),
       sb.from("blocks").select("id").eq("cabin_type_id", id).gt("unit", v.row.units).gte("to_date", today).limit(5).throwOnError(),
     ]);
     if (rs.length || bs.length)
-      return fail(422, "VALIDATION_ERROR", { fields: { units: `Hay reservas o bloqueos vigentes en las unidades que quitarías${rs.length ? ` (${rs.map((r) => r.code).join(", ")})` : ""}. Reprográmalos primero.` } });
+      return fail(422, "VALIDATION_ERROR", {
+        fields: {
+          units: `Hay reservas o bloqueos vigentes en las unidades que quitarías${rs.length ? ` (${rs.map((r) => r.code).join(", ")})` : ""}. Reprográmalos primero.`,
+        },
+      });
     // Una unidad enlazada con Booking seguiría recibiendo sus fechas: primero se desenlaza en el módulo Booking.com.
-    const { data: cals, error: le } = await sb.from("channel_calendars").select("label, unit, extra_units").eq("cabin_type_id", id).or("import_url.not.is.null,beds24_room_id.not.is.null");
+    const { data: cals, error: le } = await sb
+      .from("channel_calendars")
+      .select("label, unit, extra_units")
+      .eq("cabin_type_id", id)
+      .or("import_url.not.is.null,beds24_room_id.not.is.null");
     if (le && !isMissingTable(le)) throw le;
     const linked = (cals ?? []).filter((c) => [c.unit, ...c.extra_units].some((u) => u > v.row.units));
     if (linked.length)
       return fail(422, "VALIDATION_ERROR", {
-        fields: { units: `Alguna de las unidades que quitarías está enlazada con Booking.com (${linked.map((c) => c.label || `unidad ${c.unit}`).join(", ")}). Quita el enlace primero.` },
+        fields: {
+          units: `Alguna de las unidades que quitarías está enlazada con Booking.com (${linked.map((c) => c.label || `unidad ${c.unit}`).join(", ")}). Quita el enlace primero.`,
+        },
       });
   }
   await sb.from("cabin_types").update(v.row).eq("id", id).throwOnError();
@@ -99,7 +120,12 @@ export const PATCH = route(async (req: NextRequest) => {
   const { rows } = await loadCabinTypes(sb);
   const order = Array.isArray(b?.order) ? b.order.map(String) : [];
   if (order.length !== rows.length || rows.some((r) => !order.includes(r.id))) return fail(400, "INVALID_ORDER");
-  for (const [i, id] of order.entries()) await sb.from("cabin_types").update({ sort: i + 1 }).eq("id", id).throwOnError();
+  for (const [i, id] of order.entries())
+    await sb
+      .from("cabin_types")
+      .update({ sort: i + 1 })
+      .eq("id", id)
+      .throwOnError();
   return done(sb);
 });
 

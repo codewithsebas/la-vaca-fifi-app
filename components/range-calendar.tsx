@@ -30,7 +30,13 @@ export function RangeCalendar({ view, today, checkIn, checkOut, pick, unavailabl
   return (
     <>
       <div className="flex items-center justify-between gap-2">
-        <button type="button" aria-label="Mes anterior" disabled={prevDisabled} onClick={() => onMonth(addDays(view, -1).slice(0, 7) + "-01")} className={navBtn}>
+        <button
+          type="button"
+          aria-label="Mes anterior"
+          disabled={prevDisabled}
+          onClick={() => onMonth(addDays(view, -1).slice(0, 7) + "-01")}
+          className={navBtn}
+        >
           <ChevronLeftIcon />
         </button>
         <strong aria-live="polite" className="display text-[1.65rem] tracking-[.02em]">

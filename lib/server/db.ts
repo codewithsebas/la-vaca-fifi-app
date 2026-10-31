@@ -3,8 +3,33 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ACTIVE_STATUSES, channelBlocks, type Occupancy, type Units } from "@/lib/booking";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import type {
-  AdminNotification, Beds24Status, Block, CabinType, ChannelCalendar, ChannelStay, ClientEntry, ClientProfile, DocType, EmailKind, EmailRecord, EmailStatus, NotificationKind, PaymentKind, PaymentProof, PaymentProvider, PaymentRecord,
-  PaymentStatus, ProofStatus, PublicPayment, PublicReservation, Quote, RateSeason, Reservation, ReservationSource, Severity, Trust,
+  AdminNotification,
+  Beds24Status,
+  Block,
+  CabinType,
+  ChannelCalendar,
+  ChannelStay,
+  ClientEntry,
+  ClientProfile,
+  DocType,
+  EmailKind,
+  EmailRecord,
+  EmailStatus,
+  NotificationKind,
+  PaymentKind,
+  PaymentProof,
+  PaymentProvider,
+  PaymentRecord,
+  PaymentStatus,
+  ProofStatus,
+  PublicPayment,
+  PublicReservation,
+  Quote,
+  RateSeason,
+  Reservation,
+  ReservationSource,
+  Severity,
+  Trust,
 } from "@/lib/types";
 import { addDays, todayISO } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -79,7 +104,11 @@ export async function loadOccupancy(sb: Db, firstNight: string, lastNight: strin
     rq = rq.eq("cabin_type_id", cabinTypeId);
     bq = bq.eq("cabin_type_id", cabinTypeId);
   }
-  const [{ data: rs }, { data: bs }, stays] = await Promise.all([rq.throwOnError(), bq.throwOnError(), loadChannelStays(sb, firstNight, lastNight, cabinTypeId)]);
+  const [{ data: rs }, { data: bs }, stays] = await Promise.all([
+    rq.throwOnError(),
+    bq.throwOnError(),
+    loadChannelStays(sb, firstNight, lastNight, cabinTypeId),
+  ]);
   return {
     reservations: rs.map((r) => ({ code: r.code, cabinTypeId: r.cabin_type_id, unit: r.unit, checkIn: r.check_in, checkOut: r.check_out, status: r.status })),
     blocks: [...bs.map((b) => ({ cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date })), ...channelBlocks(stays)],
@@ -128,7 +157,11 @@ export async function loadChannels(sb: Db, base: string): Promise<{ calendars: C
   const [c, s, b] = await Promise.all([
     sb.from("channel_calendars").select("*").order("cabin_type_id").order("unit"),
     sb.from("channel_stays").select("*").gte("check_out", addDays(todayISO(), -400)).order("check_in"),
-    createServiceClient().from("channel_credentials").select("webhook_key, last_pull_at, last_push_at, last_webhook_at, last_error, last_error_at").eq("provider", "beds24").maybeSingle(),
+    createServiceClient()
+      .from("channel_credentials")
+      .select("webhook_key, last_pull_at, last_push_at, last_webhook_at, last_error, last_error_at")
+      .eq("provider", "beds24")
+      .maybeSingle(),
   ]);
   const error = c.error ?? s.error ?? b.error;
   if (error) {
@@ -224,7 +257,12 @@ export function toPublic(r: ReservationRow, payments?: PublicPayment[]): PublicR
 
 // Vista del huésped completa: pagos, canal en tiempo real y hora del servidor.
 export async function publicView(sb: Db, r: ReservationRow): Promise<PublicReservation> {
-  return { ...toPublic(r, await loadPublicPayments(sb, r.code)), guestFirstName: r.guest_full_name.split(" ")[0], liveKey: r.live_key, serverNow: new Date().toISOString() };
+  return {
+    ...toPublic(r, await loadPublicPayments(sb, r.code)),
+    guestFirstName: r.guest_full_name.split(" ")[0],
+    liveKey: r.live_key,
+    serverNow: new Date().toISOString(),
+  };
 }
 
 export function toReservation(r: ReservationRow & { reservation_notes?: { text: string; created_at: string }[] }): Reservation {
@@ -236,7 +274,14 @@ export function toReservation(r: ReservationRow & { reservation_notes?: { text: 
     pet: r.pet as Reservation["pet"],
     decoration: r.decoration as Reservation["decoration"],
     estimatedArrival: r.estimated_arrival,
-    guest: { fullName: r.guest_full_name, docType: r.guest_doc_type as DocType, docNumber: r.guest_doc_number, email: r.guest_email, phone: r.guest_phone, city: r.guest_city },
+    guest: {
+      fullName: r.guest_full_name,
+      docType: r.guest_doc_type as DocType,
+      docNumber: r.guest_doc_number,
+      email: r.guest_email,
+      phone: r.guest_phone,
+      city: r.guest_city,
+    },
     specialRequests: r.special_requests,
     consents: r.consents as Reservation["consents"],
     createdAt: r.created_at,

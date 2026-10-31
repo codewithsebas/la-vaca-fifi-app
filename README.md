@@ -17,35 +17,35 @@ pnpm build
 
 ## Rutas
 
-| Ruta | Qué es |
-| --- | --- |
-| `/` | Portada: presentación, cotizador de reserva, cabañas, servicios, la finca, ubicación, políticas y contacto |
-| `/reservar` | Reserva en 4 pasos (acepta `?checkIn&checkOut&adults&children&type&pet&deco` desde la portada). El último paso retiene las fechas y abre el pago: abono o total |
-| `/confirmacion?ref=` | Resultado del pago al volver de la pasarela (aprobado, en proceso, rechazado), con la reserva y sus próximos pasos |
-| `/mi-reserva` | Consulta de una reserva con código y correo: estado, lo pagado, saldo, plazos y botón de pago (abono o total; saldo antes de llegar o tras el check-in) |
-| `/pago-simulado?ref=` | Pasarela simulada para desarrollo (sin llaves de Wompi) |
-| `/politicas`, `/privacidad` | Textos legales |
-| `/admin/*` | Panel de administración (noindex). Una página por módulo, ver abajo |
-| `/correos` | Vista previa de las plantillas de correo transaccional (noindex) |
+| Ruta                        | Qué es                                                                                                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                         | Portada: presentación, cotizador de reserva, cabañas, servicios, la finca, ubicación, políticas y contacto                                                      |
+| `/reservar`                 | Reserva en 4 pasos (acepta `?checkIn&checkOut&adults&children&type&pet&deco` desde la portada). El último paso retiene las fechas y abre el pago: abono o total |
+| `/confirmacion?ref=`        | Resultado del pago al volver de la pasarela (aprobado, en proceso, rechazado), con la reserva y sus próximos pasos                                              |
+| `/mi-reserva`               | Consulta de una reserva con código y correo: estado, lo pagado, saldo, plazos y botón de pago (abono o total; saldo antes de llegar o tras el check-in)         |
+| `/pago-simulado?ref=`       | Pasarela simulada para desarrollo (sin llaves de Wompi)                                                                                                         |
+| `/politicas`, `/privacidad` | Textos legales                                                                                                                                                  |
+| `/admin/*`                  | Panel de administración (noindex). Una página por módulo, ver abajo                                                                                             |
+| `/correos`                  | Vista previa de las plantillas de correo transaccional (noindex)                                                                                                |
 
 ### Panel
 
 `app/admin/layout.tsx` monta el marco común (`components/admin/shell.tsx`): sesión, datos, tiempo real, menú, migas de pan, avisos y confirmaciones. Cada módulo es su propia ruta; el mapa de módulos y rutas está en `components/admin/routes.ts`. Los filtros y vistas de cada página se guardan en la URL (`?vista=…`), así que volver atrás o compartir un enlace conserva el estado.
 
-| Ruta | Módulo |
-| --- | --- |
-| `/admin` | Dashboard: llegadas, salidas, pagos por completar (abonos y saldos con su plazo) y ocupación de la semana |
-| `/admin/calendario` | Ocupación por cabaña (`?vista=dia\|3dias\|semana\|mes&fecha=&cabana=`) |
-| `/admin/reservas`, `/admin/reservas/[codigo]` | Lista con filtros y ficha de cada reserva |
-| `/admin/pagos` | Transacciones (iniciadas, en proceso, aprobadas, rechazadas, por reembolsar), pagos recibidos y lo pendiente por cobrar |
-| `/admin/clientes`, `/admin/clientes/[cc-123…]` | Clientes y su ficha con valoración interna |
-| `/admin/bloqueos` | Bloqueos (`?nuevo=1&cabana=&unidad=&fecha=` o `?editar=<id>` abren el editor) |
-| `/admin/finanzas` | Análisis de ingresos por periodo |
-| `/admin/cabanas`, `/admin/cabanas/nueva`, `/admin/cabanas/[id]` | Cabañas del sitio |
-| `/admin/tarifas` | Tarifa base y temporadas (`?temporada=nueva\|<id>`) |
-| `/admin/contenido/[seccion]` | Contenido del sitio por zona (portada, la finca, horarios, políticas, contacto, pagos, redes) |
-| `/admin/notificaciones` | Historial de avisos |
-| `/admin/configuracion` | Sonido, tiempo real, vista del calendario y sesión |
+| Ruta                                                            | Módulo                                                                                                                  |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `/admin`                                                        | Dashboard: llegadas, salidas, pagos por completar (abonos y saldos con su plazo) y ocupación de la semana               |
+| `/admin/calendario`                                             | Ocupación por cabaña (`?vista=dia\|3dias\|semana\|mes&fecha=&cabana=`)                                                  |
+| `/admin/reservas`, `/admin/reservas/[codigo]`                   | Lista con filtros y ficha de cada reserva                                                                               |
+| `/admin/pagos`                                                  | Transacciones (iniciadas, en proceso, aprobadas, rechazadas, por reembolsar), pagos recibidos y lo pendiente por cobrar |
+| `/admin/clientes`, `/admin/clientes/[cc-123…]`                  | Clientes y su ficha con valoración interna                                                                              |
+| `/admin/bloqueos`                                               | Bloqueos (`?nuevo=1&cabana=&unidad=&fecha=` o `?editar=<id>` abren el editor)                                           |
+| `/admin/finanzas`                                               | Análisis de ingresos por periodo                                                                                        |
+| `/admin/cabanas`, `/admin/cabanas/nueva`, `/admin/cabanas/[id]` | Cabañas del sitio                                                                                                       |
+| `/admin/tarifas`                                                | Tarifa base y temporadas (`?temporada=nueva\|<id>`)                                                                     |
+| `/admin/contenido/[seccion]`                                    | Contenido del sitio por zona (portada, la finca, horarios, políticas, contacto, pagos, redes)                           |
+| `/admin/notificaciones`                                         | Historial de avisos                                                                                                     |
+| `/admin/configuracion`                                          | Sonido, tiempo real, vista del calendario y sesión                                                                      |
 
 ## Dónde se edita cada cosa
 
@@ -64,15 +64,15 @@ Por confirmar con el cliente (vienen de Booking.com, Google Maps y otros portale
 
 Las rutas `app/api/*` implementan el contrato que usa el front (`lib/api.ts`) sobre Postgres en Supabase.
 
-| Ruta | Acceso |
-| --- | --- |
-| `GET /api/cabin-types`, `GET /api/availability`, `GET /api/availability/calendar` | Público |
-| `POST /api/reservations` (cabecera `Idempotency-Key`), `GET /api/reservations/lookup` | Público |
-| `POST /api/payments`, `GET /api/payments/status`, `POST /api/payments/simulate` (solo desarrollo) | Público (código + correo, o la referencia del pago) |
-| `POST /api/payments/webhook` | Eventos de Wompi (firma con `WOMPI_EVENTS_SECRET`) |
-| `GET/POST /api/admin/emails` | Sesión de administrador |
-| `POST /api/admin/login`, `POST /api/admin/logout` | Supabase Auth |
-| `GET /api/admin/data`, `POST /api/admin/action`, `POST/DELETE /api/admin/blocks`, `PUT /api/admin/cabin-types` | Sesión con `app_metadata.role = "admin"` |
+| Ruta                                                                                                           | Acceso                                              |
+| -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `GET /api/cabin-types`, `GET /api/availability`, `GET /api/availability/calendar`                              | Público                                             |
+| `POST /api/reservations` (cabecera `Idempotency-Key`), `GET /api/reservations/lookup`                          | Público                                             |
+| `POST /api/payments`, `GET /api/payments/status`, `POST /api/payments/simulate` (solo desarrollo)              | Público (código + correo, o la referencia del pago) |
+| `POST /api/payments/webhook`                                                                                   | Eventos de Wompi (firma con `WOMPI_EVENTS_SECRET`)  |
+| `GET/POST /api/admin/emails`                                                                                   | Sesión de administrador                             |
+| `POST /api/admin/login`, `POST /api/admin/logout`                                                              | Supabase Auth                                       |
+| `GET /api/admin/data`, `POST /api/admin/action`, `POST/DELETE /api/admin/blocks`, `PUT /api/admin/cabin-types` | Sesión con `app_metadata.role = "admin"`            |
 
 **Seguridad.** Las rutas públicas usan la clave secreta solo en el servidor y validan todo (fechas, capacidad, campos, antispam). El panel usa la sesión del administrador, así que RLS limita el acceso. El rol `anon` no tiene permisos sobre ninguna tabla. La restricción `reservations_no_overlap` (exclusión GiST) impide en la base de datos que una unidad tenga dos reservas activas cruzadas, incluso con solicitudes simultáneas.
 

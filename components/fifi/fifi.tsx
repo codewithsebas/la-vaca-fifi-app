@@ -54,7 +54,16 @@ export function Fifi({ cup = false, title, className = "" }: { cup?: boolean; ti
         <g className="motion-safe:animate-fifi-tag" style={pivot("50% 6%")}>
           <path d={FIFI.tag} fill={C.tag} />
           <circle cx={46} cy={174} r={4} fill={C.white} strokeWidth={3} />
-          <text x={46} y={202} textAnchor="middle" fill={C.ink} stroke="none" fontSize={10.5} letterSpacing={0.3} style={{ fontFamily: "var(--font-display), 'Arial Black', sans-serif" }}>
+          <text
+            x={46}
+            y={202}
+            textAnchor="middle"
+            fill={C.ink}
+            stroke="none"
+            fontSize={10.5}
+            letterSpacing={0.3}
+            style={{ fontFamily: "var(--font-display), 'Arial Black', sans-serif" }}
+          >
             MURILLO
           </text>
         </g>

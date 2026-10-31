@@ -7,7 +7,19 @@ import { fmtTime, type SiteConfig } from "./site";
 
 type Cfg = SiteConfig;
 
-const X = { bg: "#FFF8EB", card: "#FFFFFF", box: "#FFF3DC", ink: "#241A14", muted: "#5E5550", brand: "#241A14", cream: "#FFF8EB", hl: "#FFD23F", line: "#F3E6D2", accent: "#157AB8", accentSoft: "#DDF0FA" };
+const X = {
+  bg: "#FFF8EB",
+  card: "#FFFFFF",
+  box: "#FFF3DC",
+  ink: "#241A14",
+  muted: "#5E5550",
+  brand: "#241A14",
+  cream: "#FFF8EB",
+  hl: "#FFD23F",
+  line: "#F3E6D2",
+  accent: "#157AB8",
+  accentSoft: "#DDF0FA",
+};
 const FONT = "Arial, Helvetica, sans-serif";
 const DISPLAY = "'Lilita One', 'Arial Rounded MT Bold', 'Arial Black', Arial, sans-serif";
 // El nombre, en letras redondas y gruesas como las del letrero de Fifí (las fuentes web no llegan a todos los clientes
@@ -17,13 +29,14 @@ const DARK =
   ".em-body{background:#120D0A!important}.em-card{background:#241A14!important}.em-text{color:#FFF8EB!important}.em-muted{color:#CFC6BD!important}.em-box{background:#33261D!important}.em-line{border-color:#4A382B!important}.em-code{color:#FFD23F!important}.em-ok{background:#33261D!important;color:#DDF0FA!important}";
 
 // Todo dato del huésped o del equipo se escapa antes de entrar al HTML.
-const esc = (s: string | number) =>
-  String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
+const esc = (s: string | number) => String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 
-const h1 = (t: string) => `<h1 class="em-text em-h1" style="margin:0 0 12px;font-family:${DISPLAY};font-size:32px;line-height:36px;font-weight:400;color:${X.ink}">${t}</h1>`;
+const h1 = (t: string) =>
+  `<h1 class="em-text em-h1" style="margin:0 0 12px;font-family:${DISPLAY};font-size:32px;line-height:36px;font-weight:400;color:${X.ink}">${t}</h1>`;
 const p = (t: string) => `<p class="em-text" style="margin:0 0 14px;font-family:${FONT};font-size:16px;line-height:24px;color:${X.ink}">${t}</p>`;
 const small = (t: string) => `<p class="em-muted" style="margin:0 0 10px;font-family:${FONT};font-size:13px;line-height:20px;color:${X.muted}">${t}</p>`;
-const h2 = (t: string) => `<h2 class="em-text" style="margin:26px 0 10px;font-family:${FONT};font-size:13px;line-height:18px;font-weight:bold;text-transform:uppercase;letter-spacing:1.5px;color:${X.ink}">${t}</h2>`;
+const h2 = (t: string) =>
+  `<h2 class="em-text" style="margin:26px 0 10px;font-family:${FONT};font-size:13px;line-height:18px;font-weight:bold;text-transform:uppercase;letter-spacing:1.5px;color:${X.ink}">${t}</h2>`;
 const pill = (t: string) =>
   `<p style="margin:0 0 14px"><span class="em-ok" style="display:inline-block;padding:5px 12px;border-radius:999px;background:${X.accentSoft};font-family:${FONT};font-size:12px;font-weight:bold;letter-spacing:.5px;color:${X.ink}">&#10003;&nbsp; ${t}</span></p>`;
 const kv = (rows: [string, string][]) =>
@@ -55,7 +68,9 @@ const btns = (items: [string, string, string, string][]) =>
   `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${items.map((b) => `<td class="em-col" style="padding:0 10px 0 0">${btn(...b)}</td>`).join("")}</tr></table>`;
 const codeBox = (code: string, status: string) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 4px"><tr><td style="background:${X.brand};border-radius:14px;padding:18px 20px"><p style="margin:0;font-family:${FONT};font-size:12px;letter-spacing:1px;text-transform:uppercase;color:${X.cream}">Código de reserva</p><p class="em-code" style="margin:4px 0 0;font-family:${DISPLAY};font-size:40px;line-height:42px;letter-spacing:2px;color:${X.hl}">${code}</p>${
-    status ? `<p style="margin:8px 0 0"><span style="display:inline-block;padding:4px 12px;border-radius:999px;background:${X.hl};font-family:${FONT};font-size:12px;font-weight:bold;color:${X.ink}">${status}</span></p>` : ""
+    status
+      ? `<p style="margin:8px 0 0"><span style="display:inline-block;padding:4px 12px;border-radius:999px;background:${X.hl};font-family:${FONT};font-size:12px;font-weight:bold;color:${X.ink}">${status}</span></p>`
+      : ""
   }</td></tr></table>`;
 
 function emailLayout(c: Cfg, { title, preheader, body }: { title: string; preheader: string; body: string }) {
@@ -83,7 +98,8 @@ ${darkRules(".dm ")}</style></head>
 }
 
 const footText = (c: Cfg) =>
-  "\n\n—\n" + `${c.name}\n${c.address}\nTel. ${c.phones.join(" · ")} · WhatsApp +${c.whatsapp}${c.rnt ? `\nRNT ${c.rnt}` : ""}\nLey 679 de 2001: rechazamos la explotación y el abuso sexual de niños, niñas y adolescentes.`;
+  "\n\n—\n" +
+  `${c.name}\n${c.address}\nTel. ${c.phones.join(" · ")} · WhatsApp +${c.whatsapp}${c.rnt ? `\nRNT ${c.rnt}` : ""}\nLey 679 de 2001: rechazamos la explotación y el abuso sexual de niños, niñas y adolescentes.`;
 
 export type RenderedEmail = { subject: string; preheader: string; html: string; text: string };
 
@@ -154,7 +170,9 @@ export function reservationConfirmedEmail(c: Cfg, d: ConfirmedEmailData): Render
       ["Ver mi reserva", d.miReservaUrl, X.hl, X.ink],
       ["Cómo llegar", d.comoLlegarUrl, X.brand, X.cream],
     ]) +
-    small(`Adjuntamos <strong>reserva-${esc(d.codigo)}.ics</strong> para que la agregues a tu calendario. ¿Dudas? <a href="${d.whatsappUrl}" class="em-text" style="color:${X.ink};font-weight:bold;text-decoration:underline">Escríbenos por WhatsApp</a>.`) +
+    small(
+      `Adjuntamos <strong>reserva-${esc(d.codigo)}.ics</strong> para que la agregues a tu calendario. ¿Dudas? <a href="${d.whatsappUrl}" class="em-text" style="color:${X.ink};font-weight:bold;text-decoration:underline">Escríbenos por WhatsApp</a>.`,
+    ) +
     small("El abono no es reembolsable. Los cambios de fecha se solicitan con al menos 5 días de anticipación.");
   const text =
     `¡Te esperamos, ${first}! Tu reserva está confirmada.\n\n` +
@@ -163,7 +181,12 @@ export function reservationConfirmedEmail(c: Cfg, d: ConfirmedEmailData): Render
     `PARA TU LLEGADA\n- Presenta el documento de identidad físico de cada huésped.\n- Check-in ${checkInWindow.replace(/\.$/, "")}. Si llegas más tarde, avísanos por WhatsApp.\n- Trae ropa abrigada: las noches son frías.\n${d.mascota ? "- Tu mascota es bienvenida, sin costo adicional.\n" : ""}- Dirección: ${c.address}\n\n` +
     `Ver mi reserva: ${d.miReservaUrl}\nCómo llegar: ${d.comoLlegarUrl}\nWhatsApp: ${d.whatsappUrl}\nAdjunto: reserva-${d.codigo}.ics` +
     footText(c);
-  return finish(c, d.logoUrl, { subject: `Reserva confirmada ${d.codigo} · ${fmtDate(d.checkIn)}`, preheader: full ? `Te esperamos el ${llegada}. Tu estadía está pagada.` : `Te esperamos el ${llegada}. Abono recibido; saldo pendiente ${cop(saldo)}.`, body, text });
+  return finish(c, d.logoUrl, {
+    subject: `Reserva confirmada ${d.codigo} · ${fmtDate(d.checkIn)}`,
+    preheader: full ? `Te esperamos el ${llegada}. Tu estadía está pagada.` : `Te esperamos el ${llegada}. Abono recibido; saldo pendiente ${cop(saldo)}.`,
+    body,
+    text,
+  });
 }
 
 /* ───────────── Mensaje del equipo (desde la ficha del cliente) ───────────── */
@@ -184,7 +207,9 @@ export function teamMessageEmail(c: Cfg, d: TeamMessageData): RenderedEmail {
     (d.codigo ? small(`Referencia: reserva <strong>${esc(d.codigo)}</strong>`) : "") +
     btn("Escribir por WhatsApp", d.whatsappUrl, X.hl, X.ink) +
     small("Puedes responder a este correo o escribirnos por WhatsApp.");
-  const text = `Hola ${first},\n\n${d.mensaje.trim()}\n\nUn saludo,\nEquipo de ${c.name}${d.codigo ? `\n\nReferencia: reserva ${d.codigo}` : ""}\n\nWhatsApp: ${d.whatsappUrl}` + footText(c);
+  const text =
+    `Hola ${first},\n\n${d.mensaje.trim()}\n\nUn saludo,\nEquipo de ${c.name}${d.codigo ? `\n\nReferencia: reserva ${d.codigo}` : ""}\n\nWhatsApp: ${d.whatsappUrl}` +
+    footText(c);
   return finish(c, d.logoUrl, { subject: d.asunto.trim(), preheader: d.mensaje.trim().slice(0, 90), body, text });
 }
 
@@ -197,12 +222,28 @@ const SAMPLE = { checkIn: "2026-10-03", checkOut: "2026-10-04" };
 export function emailTemplates(c: Cfg): EmailTemplate[] {
   const preview = (logo: string) => {
     const confirmed = reservationConfirmedEmail(c, {
-      nombre: "Laura Gómez", codigo: "VF-7W9DX", cabana: "Cabaña Doble", ...SAMPLE, adultos: 2, ninos: 0, mascota: true, total: 470000, pagado: 141000,
-      miReservaUrl: "#", comoLlegarUrl: "#", whatsappUrl: "#", logoUrl: logo,
+      nombre: "Laura Gómez",
+      codigo: "VF-7W9DX",
+      cabana: "Cabaña Doble",
+      ...SAMPLE,
+      adultos: 2,
+      ninos: 0,
+      mascota: true,
+      total: 470000,
+      pagado: 141000,
+      miReservaUrl: "#",
+      comoLlegarUrl: "#",
+      whatsappUrl: "#",
+      logoUrl: logo,
     });
     const team = teamMessageEmail(c, {
-      nombre: "Laura Gómez", asunto: "Tu llegada el sábado", codigo: "VF-7W9DX", whatsappUrl: "#", logoUrl: logo,
-      mensaje: "Te escribimos para confirmar tu hora de llegada.\n\nSi necesitas indicaciones para llegar desde Murillo, cuéntanos y te enviamos la ubicación exacta.",
+      nombre: "Laura Gómez",
+      asunto: "Tu llegada el sábado",
+      codigo: "VF-7W9DX",
+      whatsappUrl: "#",
+      logoUrl: logo,
+      mensaje:
+        "Te escribimos para confirmar tu hora de llegada.\n\nSi necesitas indicaciones para llegar desde Murillo, cuéntanos y te enviamos la ubicación exacta.",
     });
     return { confirmed, team };
   };
@@ -210,10 +251,26 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
   const ref = (body: string, title: string, preheader: string) => emailLayout(c, { title, preheader, body });
   const pct = c.depositPct + " %";
   return [
-    { name: "Reserva confirmada", to: "Huésped", sent: "auto", subject: confirmed.subject, preheader: confirmed.preheader, html: confirmed.html, text: confirmed.text,
-      vars: "Se envía una sola vez cuando se aprueba el abono o el pago total (en línea o registrado por el equipo). Adjunta el .ics de la estadía." },
-    { name: "Mensaje del equipo", to: "Cliente", sent: "panel", subject: team.subject, preheader: team.preheader, html: team.html, text: team.text,
-      vars: "Se envía desde la ficha del cliente (botón «Correo») con el asunto y el mensaje que escribe el equipo." },
+    {
+      name: "Reserva confirmada",
+      to: "Huésped",
+      sent: "auto",
+      subject: confirmed.subject,
+      preheader: confirmed.preheader,
+      html: confirmed.html,
+      text: confirmed.text,
+      vars: "Se envía una sola vez cuando se aprueba el abono o el pago total (en línea o registrado por el equipo). Adjunta el .ics de la estadía.",
+    },
+    {
+      name: "Mensaje del equipo",
+      to: "Cliente",
+      sent: "panel",
+      subject: team.subject,
+      preheader: team.preheader,
+      html: team.html,
+      text: team.text,
+      vars: "Se envía desde la ficha del cliente (botón «Correo») con el asunto y el mensaje que escribe el equipo.",
+    },
     {
       name: "Nueva reserva (negocio)",
       to: `Negocio · ${c.correoReservas}`,
@@ -224,12 +281,22 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       html: ref(
         h1("Nueva reserva {{codigo}}") +
           p(`El huésped pagó el abono del ${pct} y la reserva quedó confirmada.`) +
-          kv([["Cabaña", "{{cabana}}"], ["Fechas", "{{checkIn}} → {{checkOut}} · {{noches}} noches"], ["Huéspedes", "{{adultos}} adultos · {{ninos}} niños"], ["Huésped", "{{nombre}} · {{celular}}"], ["Total", "{{total}}"], ["Abono pagado", "{{abono}}"], ["Saldo", "{{saldo}}"]]) +
+          kv([
+            ["Cabaña", "{{cabana}}"],
+            ["Fechas", "{{checkIn}} → {{checkOut}} · {{noches}} noches"],
+            ["Huéspedes", "{{adultos}} adultos · {{ninos}} niños"],
+            ["Huésped", "{{nombre}} · {{celular}}"],
+            ["Total", "{{total}}"],
+            ["Abono pagado", "{{abono}}"],
+            ["Saldo", "{{saldo}}"],
+          ]) +
           btn("Ver en el panel", "{{panelUrl}}", X.brand, X.cream),
         "Nueva reserva",
         "{{nombre}} · {{cabana}}",
       ),
-      text: "Nueva reserva {{codigo}} ({{checkIn}} → {{checkOut}})\n{{nombre}} · {{celular}}\nTotal {{total}} · abono pagado {{abono}} · saldo {{saldo}}\nPanel: {{panelUrl}}" + footText(c),
+      text:
+        "Nueva reserva {{codigo}} ({{checkIn}} → {{checkOut}})\n{{nombre}} · {{celular}}\nTotal {{total}} · abono pagado {{abono}} · saldo {{saldo}}\nPanel: {{panelUrl}}" +
+        footText(c),
     },
     {
       name: "Recordatorio 2 días antes",
@@ -241,12 +308,23 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       html: ref(
         h1("Faltan 2 días") +
           p("Hola {{nombre}}, el {{checkIn}} te esperamos en la {{cabana}}. Te dejamos lo esencial para tu llegada.") +
-          kv([["Check-in", c.checkIn], ["Check-out", `hasta las ${c.checkOut}`], ["Saldo pendiente", `{{saldo}} · en línea, antes de llegar o en la hora siguiente al check-in`], ["Documento", "Documento de identidad físico de cada huésped"], ["Dirección", c.address]]) +
-          btns([["Cómo llegar", "{{comoLlegarUrl}}", X.brand, X.cream], ["Escribir por WhatsApp", "{{whatsappUrl}}", X.hl, X.ink]]),
+          kv([
+            ["Check-in", c.checkIn],
+            ["Check-out", `hasta las ${c.checkOut}`],
+            ["Saldo pendiente", `{{saldo}} · en línea, antes de llegar o en la hora siguiente al check-in`],
+            ["Documento", "Documento de identidad físico de cada huésped"],
+            ["Dirección", c.address],
+          ]) +
+          btns([
+            ["Cómo llegar", "{{comoLlegarUrl}}", X.brand, X.cream],
+            ["Escribir por WhatsApp", "{{whatsappUrl}}", X.hl, X.ink],
+          ]),
         "Faltan 2 días",
         "Recuerda tu documento físico.",
       ),
-      text: `Hola {{nombre}}, faltan 2 días para tu llegada.\nReserva {{codigo}} · {{cabana}}\nCheck-in: ${c.checkIn} · Check-out: hasta las ${c.checkOut}\nSaldo pendiente: {{saldo}} (en línea, dentro de la hora siguiente al check-in)\nCómo llegar: {{comoLlegarUrl}}` + footText(c),
+      text:
+        `Hola {{nombre}}, faltan 2 días para tu llegada.\nReserva {{codigo}} · {{cabana}}\nCheck-in: ${c.checkIn} · Check-out: hasta las ${c.checkOut}\nSaldo pendiente: {{saldo}} (en línea, dentro de la hora siguiente al check-in)\nCómo llegar: {{comoLlegarUrl}}` +
+        footText(c),
     },
     {
       name: "Reserva cancelada",
@@ -260,11 +338,16 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
           p("Hola {{nombre}}, tu reserva {{codigo}} para la {{cabana}} del {{checkIn}} al {{checkOut}} fue cancelada.") +
           kv([["Motivo", "{{motivo}}"]]) +
           small("Según nuestras políticas, el abono no es reembolsable.") +
-          btns([["Hacer una nueva reserva", "{{reservarUrl}}", X.brand, X.cream], ["Escribir por WhatsApp", "{{whatsappUrl}}", X.hl, X.ink]]),
+          btns([
+            ["Hacer una nueva reserva", "{{reservarUrl}}", X.brand, X.cream],
+            ["Escribir por WhatsApp", "{{whatsappUrl}}", X.hl, X.ink],
+          ]),
         "Reserva cancelada",
         "Cancelamos tu reserva.",
       ),
-      text: "Hola {{nombre}}, tu reserva {{codigo}} ({{cabana}}, {{checkIn}} → {{checkOut}}) fue cancelada.\nMotivo: {{motivo}}\nSegún nuestras políticas, el abono no es reembolsable." + footText(c),
+      text:
+        "Hola {{nombre}}, tu reserva {{codigo}} ({{cabana}}, {{checkIn}} → {{checkOut}}) fue cancelada.\nMotivo: {{motivo}}\nSegún nuestras políticas, el abono no es reembolsable." +
+        footText(c),
     },
     {
       name: "Reserva reprogramada",
@@ -276,13 +359,22 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       html: ref(
         h1("Nuevas fechas") +
           p("Hola {{nombre}}, reprogramamos tu reserva {{codigo}}. Tu abono se mantiene.") +
-          kv([["Cabaña", "{{cabana}}"], ["Antes", "{{checkInAnterior}} → {{checkOutAnterior}}"], ["Ahora", "{{nuevoCheckIn}} → {{nuevoCheckOut}}"], ["Total", "{{total}}"], ["Pagado", "{{pagado}}"], ["Saldo pendiente", "{{saldo}} · en línea, dentro de la hora siguiente al check-in"]]) +
+          kv([
+            ["Cabaña", "{{cabana}}"],
+            ["Antes", "{{checkInAnterior}} → {{checkOutAnterior}}"],
+            ["Ahora", "{{nuevoCheckIn}} → {{nuevoCheckOut}}"],
+            ["Total", "{{total}}"],
+            ["Pagado", "{{pagado}}"],
+            ["Saldo pendiente", "{{saldo}} · en línea, dentro de la hora siguiente al check-in"],
+          ]) +
           btn("Ver mi reserva", "{{miReservaUrl}}", X.brand, X.cream) +
           small("Con menos de 5 días (120 horas) antes de la llegada ya no se permiten nuevos cambios."),
         "Nuevas fechas",
         "Reprogramamos tu reserva.",
       ),
-      text: "Hola {{nombre}}, reprogramamos tu reserva {{codigo}}.\nAhora: {{nuevoCheckIn}} → {{nuevoCheckOut}}\nTotal {{total}} · pagado {{pagado}} · saldo {{saldo}}\nVer mi reserva: {{miReservaUrl}}" + footText(c),
+      text:
+        "Hola {{nombre}}, reprogramamos tu reserva {{codigo}}.\nAhora: {{nuevoCheckIn}} → {{nuevoCheckOut}}\nTotal {{total}} · pagado {{pagado}} · saldo {{saldo}}\nVer mi reserva: {{miReservaUrl}}" +
+        footText(c),
     },
   ];
 }

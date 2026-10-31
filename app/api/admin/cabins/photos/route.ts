@@ -36,7 +36,11 @@ export const POST = route(async (req: NextRequest) => {
   const path = `cabins/${id}/${Date.now()}.${ext}`;
   const { error: upErr } = await sb.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type, cacheControl: "31536000", upsert: false });
   if (upErr) throw upErr;
-  await sb.from("cabin_types").update({ fotos: [...fotos, path] }).eq("id", id).throwOnError();
+  await sb
+    .from("cabin_types")
+    .update({ fotos: [...fotos, path] })
+    .eq("id", id)
+    .throwOnError();
   return done(sb);
 });
 
@@ -49,7 +53,11 @@ export const PUT = route(async (req: NextRequest) => {
   if (!b || !fotos || !Array.isArray(b.fotos)) return fail(400, "INVALID_BODY");
   const next = b.fotos.map((u) => photoPath(String(u)));
   if (next.length !== fotos.length || next.some((p) => !p || !fotos.includes(p))) return fail(400, "INVALID_ORDER");
-  await sb.from("cabin_types").update({ fotos: next as string[] }).eq("id", b.cabinId).throwOnError();
+  await sb
+    .from("cabin_types")
+    .update({ fotos: next as string[] })
+    .eq("id", b.cabinId)
+    .throwOnError();
   return done(sb);
 });
 
@@ -62,7 +70,11 @@ export const DELETE = route(async (req: NextRequest) => {
   const fotos = await cabinPhotos(sb, id);
   if (!fotos) return fail(404, "NOT_FOUND");
   if (!path || !fotos.includes(path)) return fail(400, "INVALID_PHOTO");
-  await sb.from("cabin_types").update({ fotos: fotos.filter((p) => p !== path) }).eq("id", id).throwOnError();
+  await sb
+    .from("cabin_types")
+    .update({ fotos: fotos.filter((p) => p !== path) })
+    .eq("id", id)
+    .throwOnError();
   await sb.storage.from(PHOTO_BUCKET).remove([path]);
   return done(sb);
 });

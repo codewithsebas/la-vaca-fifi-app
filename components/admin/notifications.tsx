@@ -4,7 +4,23 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { AlertIcon, BellIcon, CheckIcon, ChevronRightIcon, ClockIcon, CloseIcon, FileTextIcon, LoginIcon, MailIcon, RefreshIcon, SlidersIcon, VolumeIcon, VolumeOffIcon, WalletIcon, WarningIcon } from "@/components/icons";
+import {
+  AlertIcon,
+  BellIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  CloseIcon,
+  FileTextIcon,
+  LoginIcon,
+  MailIcon,
+  RefreshIcon,
+  SlidersIcon,
+  VolumeIcon,
+  VolumeOffIcon,
+  WalletIcon,
+  WarningIcon,
+} from "@/components/icons";
 import { api } from "@/lib/api";
 import { isMockApi } from "@/lib/config";
 import { NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";
@@ -31,7 +47,15 @@ const browserClient = () => {
 };
 
 type Row = { id: number; kind: string; title: string; body: string; reservation_code: string | null; read_at: string | null; created_at: string };
-const toNotification = (n: Row): AdminNotification => ({ id: n.id, kind: n.kind as NotificationKind, title: n.title, body: n.body, reservationCode: n.reservation_code, readAt: n.read_at, createdAt: n.created_at });
+const toNotification = (n: Row): AdminNotification => ({
+  id: n.id,
+  kind: n.kind as NotificationKind,
+  title: n.title,
+  body: n.body,
+  reservationCode: n.reservation_code,
+  readAt: n.read_at,
+  createdAt: n.created_at,
+});
 
 // Escucha notificaciones nuevas y cambios en reservas, comprobantes, bloqueos y fechas de Booking (sin sondeos).
 export function useRealtime(handlers: { onNotification: (n: AdminNotification) => void; onChange: () => void }) {
@@ -52,14 +76,18 @@ export function useRealtime(handlers: { onNotification: (n: AdminNotification) =
       const changed = () => h.current.onChange();
       channel = sb
         .channel("panel-admin")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "admin_notifications" }, (p) => h.current.onNotification(toNotification(p.new as Row)))
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "admin_notifications" }, (p) =>
+          h.current.onNotification(toNotification(p.new as Row)),
+        )
         .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "payment_proofs" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "email_outbox" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "blocks" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "channel_stays" }, changed)
-        .subscribe((st) => alive && setStatus(st === "SUBSCRIBED" ? "live" : st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED" ? "offline" : "connecting"));
+        .subscribe(
+          (st) => alive && setStatus(st === "SUBSCRIBED" ? "live" : st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED" ? "offline" : "connecting"),
+        );
     })();
     // El token de la sesión se renueva: Realtime necesita el nuevo para seguir autorizado.
     const { data: sub } = sb.auth.onAuthStateChange((_e, session) => session && sb.realtime.setAuth(session.access_token));
@@ -168,21 +196,63 @@ function useReminders(): Reminder[] {
   const out: Reminder[] = [];
   for (const p of data.proofs.filter((p) => p.status === "pending")) {
     const r = data.reservations.find((x) => x.code === p.reservationCode);
-    out.push({ key: `p${p.id}`, icon: FileTextIcon, tone: "bg-info-soft text-info", title: `Comprobante por revisar · ${p.reservationCode}`, body: r?.guest.fullName ?? "", code: p.reservationCode });
+    out.push({
+      key: `p${p.id}`,
+      icon: FileTextIcon,
+      tone: "bg-info-soft text-info",
+      title: `Comprobante por revisar · ${p.reservationCode}`,
+      body: r?.guest.fullName ?? "",
+      code: p.reservationCode,
+    });
   }
   for (const p of data.payments.filter((p) => p.needsRefund))
-    out.push({ key: `r${p.id}`, icon: WalletIcon, tone: "bg-error-soft text-error", title: `Pago por reembolsar · ${p.reservationCode}`, body: p.detail, code: p.reservationCode });
+    out.push({
+      key: `r${p.id}`,
+      icon: WalletIcon,
+      tone: "bg-error-soft text-error",
+      title: `Pago por reembolsar · ${p.reservationCode}`,
+      body: p.detail,
+      code: p.reservationCode,
+    });
   for (const e of data.emails.filter((e) => e.status === "failed" && e.kind === "reservation_confirmed" && e.reservationCode))
-    out.push({ key: `e${e.id}`, icon: MailIcon, tone: "bg-error-soft text-error", title: `Confirmación sin enviar · ${e.reservationCode}`, body: e.lastError, code: e.reservationCode! });
+    out.push({
+      key: `e${e.id}`,
+      icon: MailIcon,
+      tone: "bg-error-soft text-error",
+      title: `Confirmación sin enviar · ${e.reservationCode}`,
+      body: e.lastError,
+      code: e.reservationCode!,
+    });
   for (const r of data.reservations) {
     if (r.status === "checked_in" && !r.balancePaidAt && r.balanceDueAt)
       out.push(
         r.balanceOverdueAt || Date.parse(r.balanceDueAt) <= now
-          ? { key: `s${r.code}`, icon: ClockIcon, tone: "bg-error-soft text-error", title: `Saldo vencido sin pagar · ${r.code}`, body: `${r.guest.fullName} · registra el pago en recepción`, code: r.code }
-          : { key: `s${r.code}`, icon: WalletIcon, tone: "bg-warning-soft text-warning", title: `Saldo por pagar · ${r.code}`, body: `${r.guest.fullName} · vence en ${countdown(r.balanceDueAt)}`, code: r.code },
+          ? {
+              key: `s${r.code}`,
+              icon: ClockIcon,
+              tone: "bg-error-soft text-error",
+              title: `Saldo vencido sin pagar · ${r.code}`,
+              body: `${r.guest.fullName} · registra el pago en recepción`,
+              code: r.code,
+            }
+          : {
+              key: `s${r.code}`,
+              icon: WalletIcon,
+              tone: "bg-warning-soft text-warning",
+              title: `Saldo por pagar · ${r.code}`,
+              body: `${r.guest.fullName} · vence en ${countdown(r.balanceDueAt)}`,
+              code: r.code,
+            },
       );
     if (r.checkIn === tomorrow && ["confirmed", "rescheduled", "pending_deposit"].includes(r.status))
-      out.push({ key: `a${r.code}`, icon: LoginIcon, tone: "bg-success-soft text-success", title: `Llega mañana · ${r.guest.fullName}`, body: `${r.code}${r.estimatedArrival ? ` · ${r.estimatedArrival}` : ""}`, code: r.code });
+      out.push({
+        key: `a${r.code}`,
+        icon: LoginIcon,
+        tone: "bg-success-soft text-success",
+        title: `Llega mañana · ${r.guest.fullName}`,
+        body: `${r.code}${r.estimatedArrival ? ` · ${r.estimatedArrival}` : ""}`,
+        code: r.code,
+      });
   }
   return out;
 }
@@ -204,7 +274,11 @@ function ReminderList({ items, onPick }: { items: Reminder[]; onPick: (code: str
     <ul>
       {items.map((r) => (
         <li key={r.key}>
-          <button type="button" onClick={() => onPick(r.code)} className="flex w-full items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-canvas">
+          <button
+            type="button"
+            onClick={() => onPick(r.code)}
+            className="flex w-full items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-canvas"
+          >
             <span aria-hidden="true" className={`grid size-8 flex-none place-items-center rounded-full ${r.tone}`}>
               <r.icon size={15} />
             </span>
@@ -251,19 +325,34 @@ export function NotificationCenter() {
       >
         <BellIcon size={19} />
         {unread.length > 0 && (
-          <span aria-hidden="true" className="absolute top-1 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-error px-1 text-[10px] leading-none font-bold text-white tabular-nums ring-2 ring-[var(--bell-ring,var(--color-panel))] motion-safe:animate-pop-in">
+          <span
+            aria-hidden="true"
+            className="absolute top-1 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-error px-1 text-[10px] leading-none font-bold text-white tabular-nums ring-2 ring-[var(--bell-ring,var(--color-panel))] motion-safe:animate-pop-in"
+          >
             {unread.length > 9 ? "9+" : unread.length}
           </span>
         )}
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} placement="bottom-end" label="Notificaciones" className="w-[400px] max-w-[calc(100vw-16px)]">
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchor={anchor}
+        placement="bottom-end"
+        label="Notificaciones"
+        className="w-[400px] max-w-[calc(100vw-16px)]"
+      >
         <div className="flex max-h-[min(640px,80dvh)] flex-col">
           <div className="flex items-center justify-between gap-2 border-b border-line px-4 pt-3.5 pb-3">
             <div className="min-w-0">
               <h2 className="text-[15px] font-bold text-ink">Notificaciones</h2>
             </div>
             <div className="flex items-center gap-1">
-              <IconButton label={sound ? "Silenciar sonido de notificaciones" : "Activar sonido de notificaciones"} size="sm" onClick={() => setSound(!sound)} aria-pressed={sound}>
+              <IconButton
+                label={sound ? "Silenciar sonido de notificaciones" : "Activar sonido de notificaciones"}
+                size="sm"
+                onClick={() => setSound(!sound)}
+                aria-pressed={sound}
+              >
                 {sound ? <VolumeIcon size={17} /> : <VolumeOffIcon size={17} />}
               </IconButton>
               {unread.length > 0 && (
@@ -283,14 +372,20 @@ export function NotificationCenter() {
                 <ReminderList items={reminders} onPick={(code) => pick(code)} />
               </section>
             )}
-            <h3 className="px-4 pt-3 pb-1 text-[11.5px] font-bold tracking-[.06em] text-ink-muted uppercase">{unread.length ? `Sin leer · ${unread.length}` : "Recientes"}</h3>
+            <h3 className="px-4 pt-3 pb-1 text-[11.5px] font-bold tracking-[.06em] text-ink-muted uppercase">
+              {unread.length ? `Sin leer · ${unread.length}` : "Recientes"}
+            </h3>
             {recent.length ? (
               <ul className="px-2 pb-2">
                 {recent.map((n) => {
                   const k = kindOf(n);
                   return (
                     <li key={n.id}>
-                      <button type="button" onClick={() => pick(n.reservationCode, n.readAt ? undefined : n.id)} className="flex w-full items-start gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas">
+                      <button
+                        type="button"
+                        onClick={() => pick(n.reservationCode, n.readAt ? undefined : n.id)}
+                        className="flex w-full items-start gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas"
+                      >
                         <span aria-hidden="true" className={`grid size-8 flex-none place-items-center rounded-full ${k.tone}`}>
                           <k.icon size={15} />
                         </span>
@@ -311,7 +406,9 @@ export function NotificationCenter() {
                   <BellIcon size={18} />
                 </span>
                 <p className="text-[14px] font-semibold text-ink">Aún no hay notificaciones</p>
-                <p className="max-w-[30ch] text-[12.5px] text-ink-muted">Aquí aparecen las reservas nuevas, los comprobantes de pago y los cambios importantes.</p>
+                <p className="max-w-[30ch] text-[12.5px] text-ink-muted">
+                  Aquí aparecen las reservas nuevas, los comprobantes de pago y los cambios importantes.
+                </p>
               </div>
             )}
           </div>
@@ -379,7 +476,12 @@ export function NotificationsView() {
 
       {reminders.length > 0 && (
         <Card aria-labelledby="nt-rem" className="flex flex-col gap-2 p-4 sm:p-5">
-          <CardHeader id="nt-rem" icon={<AlertIcon size={18} />} title="Requiere atención" subtitle="Calculado con los datos actuales; desaparece cuando se resuelve." />
+          <CardHeader
+            id="nt-rem"
+            icon={<AlertIcon size={18} />}
+            title="Requiere atención"
+            subtitle="Calculado con los datos actuales; desaparece cuando se resuelve."
+          />
           <div className="-mx-2">
             <ReminderList items={reminders} onPick={openReservation} />
           </div>
@@ -400,10 +502,7 @@ export function NotificationsView() {
           label="Tipo"
           value={kind}
           onChange={setKind}
-          options={[
-            { value: "todas", label: "Todos los tipos" },
-            ...SOUND_GROUPS.map((g) => ({ value: g.id, label: g.label, count: countOf(g.id) })),
-          ]}
+          options={[{ value: "todas", label: "Todos los tipos" }, ...SOUND_GROUPS.map((g) => ({ value: g.id, label: g.label, count: countOf(g.id) }))]}
         />
       </div>
 
@@ -434,7 +533,11 @@ export function NotificationsView() {
                       </div>
                       <div className="flex flex-none items-center gap-1">
                         {n.reservationCode && (
-                          <Link href={paths.reserva(n.reservationCode)} onClick={() => !n.readAt && void mark({ ids: [n.id] })} className={buttonClass("secondary", "sm")}>
+                          <Link
+                            href={paths.reserva(n.reservationCode)}
+                            onClick={() => !n.readAt && void mark({ ids: [n.id] })}
+                            className={buttonClass("secondary", "sm")}
+                          >
                             Ver reserva
                           </Link>
                         )}
@@ -456,8 +559,18 @@ export function NotificationsView() {
         <Card className="p-4">
           <EmptyState
             icon={<BellIcon size={18} />}
-            title={status === "sin-leer" && unread.length === 0 ? "Estás al día" : data.notifications.length ? "No hay avisos con estos filtros" : "Aún no hay notificaciones"}
-            text={status === "sin-leer" && unread.length === 0 ? "No tienes avisos sin leer." : "Aquí aparecen las reservas nuevas, los comprobantes de pago y los cambios importantes."}
+            title={
+              status === "sin-leer" && unread.length === 0
+                ? "Estás al día"
+                : data.notifications.length
+                  ? "No hay avisos con estos filtros"
+                  : "Aún no hay notificaciones"
+            }
+            text={
+              status === "sin-leer" && unread.length === 0
+                ? "No tienes avisos sin leer."
+                : "Aquí aparecen las reservas nuevas, los comprobantes de pago y los cambios importantes."
+            }
             action={
               status !== "todas" || kind !== "todas" ? (
                 <Button

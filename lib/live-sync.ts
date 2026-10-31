@@ -16,7 +16,9 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 let client: Promise<SupabaseClient> | null = null;
 // El cliente se carga aparte, después de mostrar la página: no pesa en la carga inicial del sitio.
 const getClient = () =>
-  (client ??= import("@supabase/supabase-js").then(({ createClient }) => createClient(url!, key!, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })));
+  (client ??= import("@supabase/supabase-js").then(({ createClient }) =>
+    createClient(url!, key!, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }),
+  ));
 
 const GROUP_MS = 300; // avisos seguidos se agrupan
 const MIN_GAP_MS = 1500; // como máximo una actualización cada 1,5 s
@@ -28,7 +30,12 @@ const STALE_MS = 30_000; // al volver a una pestaña oculta más de 30 s se resi
  * Tras una caída de la conexión, al recuperar internet o al volver a la pestaña, llega `null` (resincronizar todo),
  * porque en ese tiempo pudo perderse algún aviso.
  */
-export function useBroadcastSync<T>(topic: string | null, event: string, parse: (payload: unknown) => T | null, onChange: (changes: T[] | null) => void): SyncStatus {
+export function useBroadcastSync<T>(
+  topic: string | null,
+  event: string,
+  parse: (payload: unknown) => T | null,
+  onChange: (changes: T[] | null) => void,
+): SyncStatus {
   const handler = useRef({ parse, onChange });
   useEffect(() => {
     handler.current = { parse, onChange };

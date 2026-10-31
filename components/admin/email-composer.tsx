@@ -82,7 +82,13 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
   }
 
   return (
-    <Modal onClose={onClose} labelledBy="em-title" describedBy="em-to" initialFocus="#em-subject" className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-2xl p-0 motion-safe:open:animate-pop-in">
+    <Modal
+      onClose={onClose}
+      labelledBy="em-title"
+      describedBy="em-to"
+      initialFocus="#em-subject"
+      className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+    >
       <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
         <div className="min-w-0">
           <h2 id="em-title" className="flex items-center gap-2 text-[17px] font-bold text-ink">
@@ -94,7 +100,10 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard?.writeText(email).then(() => setCopied(true), () => {});
+                navigator.clipboard?.writeText(email).then(
+                  () => setCopied(true),
+                  () => {},
+                );
               }}
               className="text-[12.5px] font-semibold text-ink underline underline-offset-2"
             >
@@ -110,17 +119,38 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
       <div className="flex flex-col gap-4 px-5 py-4">
         {configured === false && (
           <Callout tone="warning">
-            El envío de correos aún no está configurado (falta <code>RESEND_API_KEY</code> en el servidor). Si lo envías, quedará registrado como no enviado y podrás reintentarlo después.{" "}
+            El envío de correos aún no está configurado (falta <code>RESEND_API_KEY</code> en el servidor). Si lo envías, quedará registrado como no enviado y
+            podrás reintentarlo después.{" "}
             <a href={`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`} className="font-semibold underline">
               Abrir en mi aplicación de correo
             </a>
           </Callout>
         )}
         <Field label="Asunto" error={fields.subject}>
-          {(p) => <input {...p} id="em-subject" type="text" maxLength={150} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ej. Tu llegada el sábado" className={adminInput} />}
+          {(p) => (
+            <input
+              {...p}
+              id="em-subject"
+              type="text"
+              maxLength={150}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Ej. Tu llegada el sábado"
+              className={adminInput}
+            />
+          )}
         </Field>
         <Field label="Mensaje" hint={`Empieza con «Hola ${name.split(" ")[0]},» y termina con la firma del equipo automáticamente.`} error={fields.message}>
-          {(p) => <textarea {...p} rows={6} maxLength={5000} value={message} onChange={(e) => setMessage(e.target.value)} className={`${adminInput} resize-y leading-relaxed`} />}
+          {(p) => (
+            <textarea
+              {...p}
+              rows={6}
+              maxLength={5000}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className={`${adminInput} resize-y leading-relaxed`}
+            />
+          )}
         </Field>
         {reservations.length > 0 && (
           <Field label="Reserva relacionada">
@@ -129,7 +159,10 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
                 id={p.id}
                 value={code}
                 onChange={setCode}
-                options={[{ value: "", label: "Ninguna" }, ...reservations.map((r) => ({ value: r.code, label: r.code, description: `${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}` }))]}
+                options={[
+                  { value: "", label: "Ninguna" },
+                  ...reservations.map((r) => ({ value: r.code, label: r.code, description: `${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}` })),
+                ]}
               />
             )}
           </Field>
@@ -145,10 +178,14 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
             <ul className="flex flex-col gap-1">
               {history.map((e) => (
                 <li key={e.id} className="flex items-center justify-between gap-2 text-[13px]">
-                  <span className="min-w-0 truncate text-ink">{e.kind === "reservation_confirmed" ? `Confirmación ${e.reservationCode ?? ""}` : e.subject}</span>
+                  <span className="min-w-0 truncate text-ink">
+                    {e.kind === "reservation_confirmed" ? `Confirmación ${e.reservationCode ?? ""}` : e.subject}
+                  </span>
                   <span className="flex flex-none items-center gap-1.5 text-[12px] text-ink-muted">
                     {timeAgo(e.sentAt ?? e.createdAt, now)}
-                    <Badge tone={e.status === "sent" ? "success" : e.status === "failed" ? "danger" : "info"}>{e.status === "sent" ? "Enviado" : e.status === "failed" ? "No enviado" : "En cola"}</Badge>
+                    <Badge tone={e.status === "sent" ? "success" : e.status === "failed" ? "danger" : "info"}>
+                      {e.status === "sent" ? "Enviado" : e.status === "failed" ? "No enviado" : "En cola"}
+                    </Badge>
                   </span>
                 </li>
               ))}

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function PayLinkPage({ params }: PageProps<"/pagar/[token]">) {
   const { token } = await params;
   return (
-    <main className="gutter-1000 flex flex-col gap-5 pt-6 pb-[72px]">
+    <main className="flex flex-col gap-5 gutter-1000 pt-6 pb-[72px]">
       <PayLink token={token} />
     </main>
   );

@@ -27,7 +27,8 @@ export const valueOf = (r: Reservation) => (SECURED.includes(r.status) ? r.quote
 // Lo que falta por cobrar hoy: abonos de fechas retenidas y saldos de estadías confirmadas o en curso.
 export function pendingOf(r: Reservation) {
   const deposit = r.status === "pending_deposit" || (SECURED.includes(r.status) && !r.depositPaidAt && r.status !== "completed") ? r.quote.deposit : 0;
-  const balance = ["pending_deposit", "confirmed", "rescheduled", "checked_in"].includes(r.status) && !r.balancePaidAt ? Math.max(0, r.quote.total - r.paid - deposit) : 0;
+  const balance =
+    ["pending_deposit", "confirmed", "rescheduled", "checked_in"].includes(r.status) && !r.balancePaidAt ? Math.max(0, r.quote.total - r.paid - deposit) : 0;
   return { deposit, balance, total: deposit + balance };
 }
 
@@ -129,7 +130,8 @@ function bucketsFor(r: Range): Bucket[] {
   const dm = (d: string) => `${parseISO(d).getUTCDate()} ${MS[parseISO(d).getUTCMonth()]}`;
   if (n <= 31) for (let d = r.from; d <= r.to; d = addDays(d, 1)) mk(d, d, dm(d));
   else if (n <= 190) {
-    for (let d = addDays(r.from, -((parseISO(r.from).getUTCDay() + 6) % 7)); d <= r.to; d = addDays(d, 7)) mk(d < r.from ? r.from : d, addDays(d, 6) > r.to ? r.to : addDays(d, 6), `Sem. ${dm(d < r.from ? r.from : d)}`);
+    for (let d = addDays(r.from, -((parseISO(r.from).getUTCDay() + 6) % 7)); d <= r.to; d = addDays(d, 7))
+      mk(d < r.from ? r.from : d, addDays(d, 6) > r.to ? r.to : addDays(d, 6), `Sem. ${dm(d < r.from ? r.from : d)}`);
   } else {
     let d = r.from.slice(0, 7) + "-01";
     while (d <= r.to) {
@@ -172,7 +174,9 @@ export function finance(reservations: Reservation[], blocks: Block[], cabins: Ca
     .sort((a, b) => b.value - a.value);
 
   const types: GuestType[] = ["Pareja", "Familia", "Grupo", "Individual"];
-  const byType = types.map((t) => ({ id: t, label: t, value: payments.filter((p) => guestType(p.r) === t).reduce((s, p) => s + p.amount, 0) })).sort((a, b) => b.value - a.value);
+  const byType = types
+    .map((t) => ({ id: t, label: t, value: payments.filter((p) => guestType(p.r) === t).reduce((s, p) => s + p.amount, 0) }))
+    .sort((a, b) => b.value - a.value);
 
   // Ocupación: noches ocupadas / noches disponibles (las bloqueadas no cuentan como disponibles).
   const cabs = cabins.filter((c) => !cabinId || c.id === cabinId);
@@ -217,7 +221,8 @@ export function typeMarks(reservations: Reservation[], blocks: Block[], typeId: 
   const out: Record<string, Mark> = {};
   for (let d = from; d <= to; d = addDays(d, 1)) {
     const busy = new Set<number>();
-    for (const r of reservations) if (r.code !== ignoreCode && r.cabinTypeId === typeId && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= d && d < r.checkOut) busy.add(r.unit);
+    for (const r of reservations)
+      if (r.code !== ignoreCode && r.cabinTypeId === typeId && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= d && d < r.checkOut) busy.add(r.unit);
     for (const b of blocks) if (b.cabinTypeId === typeId && b.from <= d && d <= b.to) busy.add(b.unit);
     const free = units - busy.size;
     if (free <= 0) out[d] = "busy";
@@ -231,8 +236,10 @@ export function unitMarks(reservations: Reservation[], blocks: Block[], typeId: 
   const out: Record<string, Mark> = {};
   const hit = (u: number) => unit === "all" || u === unit;
   for (const b of blocks)
-    if (b.id !== ignoreBlock && b.cabinTypeId === typeId && hit(b.unit)) for (let d = b.from > from ? b.from : from; d <= b.to && d <= to; d = addDays(d, 1)) out[d] = "blocked";
+    if (b.id !== ignoreBlock && b.cabinTypeId === typeId && hit(b.unit))
+      for (let d = b.from > from ? b.from : from; d <= b.to && d <= to; d = addDays(d, 1)) out[d] = "blocked";
   for (const r of reservations)
-    if (r.cabinTypeId === typeId && hit(r.unit) && ACTIVE_STATUSES.includes(r.status)) for (let d = r.checkIn > from ? r.checkIn : from; d < r.checkOut && d <= to; d = addDays(d, 1)) out[d] = "busy";
+    if (r.cabinTypeId === typeId && hit(r.unit) && ACTIVE_STATUSES.includes(r.status))
+      for (let d = r.checkIn > from ? r.checkIn : from; d < r.checkOut && d <= to; d = addDays(d, 1)) out[d] = "busy";
   return out;
 }

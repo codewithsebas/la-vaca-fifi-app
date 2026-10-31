@@ -30,7 +30,15 @@ async function sendWithResend(m: { to: string; subject: string; html: string; te
     method: "POST",
     // La clave de idempotencia evita un duplicado si la misma solicitud se repite (p. ej. por un corte de red).
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": m.idempotencyKey },
-    body: JSON.stringify({ from, to: [m.to], subject: m.subject, html: m.html, text: m.text, ...(replyTo && { reply_to: replyTo }), ...(m.attachments && { attachments: m.attachments }) }),
+    body: JSON.stringify({
+      from,
+      to: [m.to],
+      subject: m.subject,
+      html: m.html,
+      text: m.text,
+      ...(replyTo && { reply_to: replyTo }),
+      ...(m.attachments && { attachments: m.attachments }),
+    }),
     signal: AbortSignal.timeout(15000),
   });
   const body = (await res.json().catch(() => null)) as { id?: string; message?: string; name?: string } | null;
@@ -55,7 +63,15 @@ async function render(ctx: Ctx, row: Row): Promise<{ email: RenderedEmail; attac
     if (!row.reservation_code) throw new Error("La reserva del correo ya no existe.");
     const [{ data: r }, { data: deposit }] = await Promise.all([
       ctx.sb.from("reservations").select("*").eq("code", row.reservation_code).single().throwOnError(),
-      ctx.sb.from("payments").select("amount").eq("reservation_code", row.reservation_code).in("kind", ["deposit", "full"]).eq("status", "approved").order("approved_at").limit(1).throwOnError(),
+      ctx.sb
+        .from("payments")
+        .select("amount")
+        .eq("reservation_code", row.reservation_code)
+        .in("kind", ["deposit", "full"])
+        .eq("status", "approved")
+        .order("approved_at")
+        .limit(1)
+        .throwOnError(),
     ]);
     const { data: cabin } = await ctx.sb.from("cabin_types").select("nombre").eq("id", r.cabin_type_id).maybeSingle().throwOnError();
     const q = r.quote as Quote;
@@ -112,7 +128,14 @@ async function deliver(ctx: Ctx, row: Row): Promise<Row> {
   if (!taken) return row;
   try {
     const { email, attachments } = await render(ctx, taken);
-    const id = await sendWithResend({ to: taken.to_email, subject: email.subject, html: email.html, text: email.text, attachments, idempotencyKey: `${taken.id}:${taken.attempts}` });
+    const id = await sendWithResend({
+      to: taken.to_email,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
+      attachments,
+      idempotencyKey: `${taken.id}:${taken.attempts}`,
+    });
     const { data } = await ctx.sb
       .from("email_outbox")
       .update({ status: "sent", provider_id: id, sent_at: new Date().toISOString(), subject: email.subject.slice(0, 200), last_error: "" })
@@ -144,7 +167,12 @@ export async function processOutbox(base: string, opts: { ids?: string[]; limit?
   try {
     const sb = createServiceClient();
     const now = new Date().toISOString();
-    let q = sb.from("email_outbox").select("*").neq("status", "sent").order("created_at").limit(opts.limit ?? 10);
+    let q = sb
+      .from("email_outbox")
+      .select("*")
+      .neq("status", "sent")
+      .order("created_at")
+      .limit(opts.limit ?? 10);
     q = opts.ids?.length ? q.in("id", opts.ids) : q.lte("next_attempt_at", now).lt("attempts", MAX_ATTEMPTS);
     const { data: rows } = await q.throwOnError();
     const ctx: Ctx = { sb, base };

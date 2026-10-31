@@ -7,7 +7,9 @@ const nextConfig = {
   // Hostinger arranca el servidor standalone (.next/standalone/server.js).
   output: "standalone",
   images: {
-    remotePatterns: supabaseHost ? [{ protocol: "https", hostname: supabaseHost, port: "", pathname: "/storage/v1/object/public/site-images/**", search: "" }] : [],
+    remotePatterns: supabaseHost
+      ? [{ protocol: "https", hostname: supabaseHost, port: "", pathname: "/storage/v1/object/public/site-images/**", search: "" }]
+      : [],
     // 90 para las fotos del sitio (PhotoSlot); 75 queda para miniaturas del panel.
     qualities: [75, 90],
   },

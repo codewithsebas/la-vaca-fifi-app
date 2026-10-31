@@ -25,7 +25,15 @@ export function cropOutput(cropWidth: number, ratio: number): Size {
 // Reduce el lado mayor a `maxSide` sin bajar del mínimo que necesita el hueco (`min`), con remuestreo
 // de alta calidad, y codifica en WebP (o JPEG si el navegador no codifica WebP).
 // Con `crop` y `size` solo usa esa región de la foto y la entrega exactamente a ese tamaño.
-export async function resizeImage(file: File, { maxSide = MAX_SIDE, min = [0, 0] as readonly [number, number], crop, size }: { maxSide?: number; min?: readonly [number, number]; crop?: Crop; size?: Size } = {}): Promise<Blob> {
+export async function resizeImage(
+  file: File,
+  {
+    maxSide = MAX_SIDE,
+    min = [0, 0] as readonly [number, number],
+    crop,
+    size,
+  }: { maxSide?: number; min?: readonly [number, number]; crop?: Crop; size?: Size } = {},
+): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   try {
     let rect: Crop | undefined = crop ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };

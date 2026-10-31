@@ -50,7 +50,9 @@ export function PayLink({ token }: { token: string }) {
           {state === "missing" ? "Este enlace no es válido" : "No pudimos cargar tu reserva"}
         </h1>
         <p className="max-w-[52ch] text-on-dark-muted">
-          {state === "missing" ? "Revisa que el enlace esté completo o pídenos uno nuevo por WhatsApp." : "Revisa tu conexión e inténtalo de nuevo en un momento."}
+          {state === "missing"
+            ? "Revisa que el enlace esté completo o pídenos uno nuevo por WhatsApp."
+            : "Revisa tu conexión e inténtalo de nuevo en un momento."}
         </p>
         <div className="flex flex-wrap gap-2.5">
           {state === "error" && (
@@ -58,7 +60,12 @@ export function PayLink({ token }: { token: string }) {
               Intentar de nuevo
             </button>
           )}
-          <a href={wa(c.whatsapp, "Hola, necesito un enlace de pago para mi reserva.")} target="_blank" rel="noopener" className="btn btn-outline-dark min-h-12 gap-2 px-6">
+          <a
+            href={wa(c.whatsapp, "Hola, necesito un enlace de pago para mi reserva.")}
+            target="_blank"
+            rel="noopener"
+            className="btn btn-outline-dark min-h-12 gap-2 px-6"
+          >
             <WhatsAppIcon />
             Escribir por WhatsApp
           </a>
@@ -102,7 +109,12 @@ export function PayLink({ token }: { token: string }) {
           Tu estadía
         </h2>
         <KeyValues rows={rows} />
-        <a href={wa(c.whatsapp, `Hola, tengo una pregunta sobre mi reserva ${r.code}.`)} target="_blank" rel="noopener" className="btn btn-outline-light min-h-12 gap-2 self-start px-5">
+        <a
+          href={wa(c.whatsapp, `Hola, tengo una pregunta sobre mi reserva ${r.code}.`)}
+          target="_blank"
+          rel="noopener"
+          className="btn btn-outline-light min-h-12 gap-2 self-start px-5"
+        >
           <WhatsAppIcon />
           ¿Dudas? Escríbenos
         </a>

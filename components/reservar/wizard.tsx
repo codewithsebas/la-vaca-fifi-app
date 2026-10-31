@@ -23,29 +23,89 @@ const STEPS = ["Fechas y huéspedes", "Cabaña", "Tus datos", "Revisar y pagar"]
 const OCCASIONS: Record<string, string> = { aniversario: "Aniversario", cumpleanos: "Cumpleaños", propuesta: "Propuesta", otra: "Otra" };
 // Errores del servidor (rutas del contrato) → campos del formulario.
 const SERVER_FIELD: Record<string, string> = {
-  "guest.fullName": "fullName", "guest.docType": "docType", "guest.docNumber": "docNumber", "guest.email": "email", "guest.phone": "phone", "guest.city": "city",
-  estimatedArrival: "arrival", "pet.smallBreedConfirmed": "smallBreed", "decoration.occasion": "occasion", "consents.policies": "policies", "consents.dataProcessing": "dataProcessing",
+  "guest.fullName": "fullName",
+  "guest.docType": "docType",
+  "guest.docNumber": "docNumber",
+  "guest.email": "email",
+  "guest.phone": "phone",
+  "guest.city": "city",
+  estimatedArrival: "arrival",
+  "pet.smallBreedConfirmed": "smallBreed",
+  "decoration.occasion": "occasion",
+  "consents.policies": "policies",
+  "consents.dataProcessing": "dataProcessing",
 };
 const LABEL: Record<string, string> = {
-  fullName: "Nombre completo", docType: "Tipo de documento", docNumber: "Número de documento", email: "Correo electrónico", phone: "Celular", city: "Ciudad de procedencia",
-  arrival: "Hora estimada de llegada", smallBreed: "Mascota", occasion: "Ocasión", policies: "Políticas de reserva", dataProcessing: "Tratamiento de datos",
-  checkIn: "Fechas", adults: "Huéspedes", cabinTypeId: "Cabaña", specialRequests: "Solicitudes especiales", captchaToken: "Verificación antispam",
+  fullName: "Nombre completo",
+  docType: "Tipo de documento",
+  docNumber: "Número de documento",
+  email: "Correo electrónico",
+  phone: "Celular",
+  city: "Ciudad de procedencia",
+  arrival: "Hora estimada de llegada",
+  smallBreed: "Mascota",
+  occasion: "Ocasión",
+  policies: "Políticas de reserva",
+  dataProcessing: "Tratamiento de datos",
+  checkIn: "Fechas",
+  adults: "Huéspedes",
+  cabinTypeId: "Cabaña",
+  specialRequests: "Solicitudes especiales",
+  captchaToken: "Verificación antispam",
 };
 const FIELD_ID: Record<string, string> = {
-  fullName: "f-name", docType: "f-doctype", docNumber: "f-docnum", email: "f-email", phone: "f-phone", city: "f-city", arrival: "f-arrival",
-  smallBreed: "f-smallbreed", occasion: "f-occasion", policies: "f-policies", dataProcessing: "f-data",
+  fullName: "f-name",
+  docType: "f-doctype",
+  docNumber: "f-docnum",
+  email: "f-email",
+  phone: "f-phone",
+  city: "f-city",
+  arrival: "f-arrival",
+  smallBreed: "f-smallbreed",
+  occasion: "f-occasion",
+  policies: "f-policies",
+  dataProcessing: "f-data",
 };
 const ORDER = Object.keys(FIELD_ID);
 
 type Form = {
-  fullName: string; docType: DocType; docNumber: string; email: string; phone: string; city: string; arrival: string;
-  hasPet: "no" | "si"; smallBreed: boolean; decoRequested: boolean; occasion: string; decoNotes: string; specialRequests: string;
-  policies: boolean; dataProcessing: boolean; marketing: boolean; website: string;
+  fullName: string;
+  docType: DocType;
+  docNumber: string;
+  email: string;
+  phone: string;
+  city: string;
+  arrival: string;
+  hasPet: "no" | "si";
+  smallBreed: boolean;
+  decoRequested: boolean;
+  occasion: string;
+  decoNotes: string;
+  specialRequests: string;
+  policies: boolean;
+  dataProcessing: boolean;
+  marketing: boolean;
+  website: string;
 };
 
 const EMPTY_FORM: Form = {
-  fullName: "", docType: "CC", docNumber: "", email: "", phone: "", city: "", arrival: "", hasPet: "no", smallBreed: false,
-  decoRequested: false, occasion: "", decoNotes: "", specialRequests: "", policies: false, dataProcessing: false, marketing: false, website: "",
+  fullName: "",
+  docType: "CC",
+  docNumber: "",
+  email: "",
+  phone: "",
+  city: "",
+  arrival: "",
+  hasPet: "no",
+  smallBreed: false,
+  decoRequested: false,
+  occasion: "",
+  decoNotes: "",
+  specialRequests: "",
+  policies: false,
+  dataProcessing: false,
+  marketing: false,
+  website: "",
 };
 
 function validate(f: Form): FieldErrors {
@@ -101,7 +161,21 @@ declare global {
   }
 }
 
-function Field({ id, label, error, errId, wide, children }: { id: string; label: ReactNode; error?: string; errId: string; wide?: boolean; children: ReactNode }) {
+function Field({
+  id,
+  label,
+  error,
+  errId,
+  wide,
+  children,
+}: {
+  id: string;
+  label: ReactNode;
+  error?: string;
+  errId: string;
+  wide?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className={`flex flex-col gap-1.5 ${wide ? "col-span-full" : ""}`}>
       <label htmlFor={id} className="field-label">
@@ -115,7 +189,23 @@ function Field({ id, label, error, errId, wide, children }: { id: string; label:
   );
 }
 
-function Counter({ label, sub, count, decDisabled, incDisabled, onDec, onInc }: { label: string; sub: string; count: number; decDisabled: boolean; incDisabled: boolean; onDec: () => void; onInc: () => void }) {
+function Counter({
+  label,
+  sub,
+  count,
+  decDisabled,
+  incDisabled,
+  onDec,
+  onInc,
+}: {
+  label: string;
+  sub: string;
+  count: number;
+  decDisabled: boolean;
+  incDisabled: boolean;
+  onDec: () => void;
+  onInc: () => void;
+}) {
   return (
     <div className="clear-both flex items-center justify-between gap-3 border-b-2 border-dotted border-card-muted py-2.5">
       <div className="flex flex-col">
@@ -123,13 +213,25 @@ function Counter({ label, sub, count, decDisabled, incDisabled, onDec, onInc }: 
         <span className="text-[.8rem]">{sub}</span>
       </div>
       <div className="flex items-center gap-2.5">
-        <button type="button" aria-label={`Quitar ${label.toLowerCase()}`} disabled={decDisabled} onClick={onDec} className="btn-icon size-11 border-2 border-on-light disabled:opacity-35">
+        <button
+          type="button"
+          aria-label={`Quitar ${label.toLowerCase()}`}
+          disabled={decDisabled}
+          onClick={onDec}
+          className="btn-icon size-11 border-2 border-on-light disabled:opacity-35"
+        >
           <MinusIcon />
         </button>
         <span aria-live="polite" className="min-w-[22px] text-center text-[1.1rem] font-extrabold">
           {count}
         </span>
-        <button type="button" aria-label={`Añadir ${label.toLowerCase()}`} disabled={incDisabled} onClick={onInc} className="btn-icon size-11 border-2 border-on-light disabled:opacity-35">
+        <button
+          type="button"
+          aria-label={`Añadir ${label.toLowerCase()}`}
+          disabled={incDisabled}
+          onClick={onInc}
+          className="btn-icon size-11 border-2 border-on-light disabled:opacity-35"
+        >
           <PlusIcon />
         </button>
       </div>
@@ -165,7 +267,8 @@ export function ReservationWizard() {
     if (!(ci && isISO(co) && co > ci)) co = null;
     const type = params.get("type");
     return {
-      ci, co,
+      ci,
+      co,
       adults: Math.min(6, Math.max(1, parseInt(params.get("adults") ?? "") || 2)),
       children: Math.max(0, parseInt(params.get("children") ?? "") || 0),
       type: type && cabins.some((x) => x.id === type) ? (type as CabinTypeId) : null,
@@ -219,35 +322,38 @@ export function ReservationWizard() {
 
   // Las funciones fetch* solo actualizan estado al resolver; quien las llama marca la carga.
   // Días sin cabañas libres del mes visible y el siguiente. Si una fecha elegida se acaba de ocupar, se ajusta la selección.
-  const fetchCal = useCallback((v: string) => {
-    const seq = ++calSeq.current;
-    unavailableDays(v, cabinIds ? cabinIds.split(",") : []).then(
-      (days) => {
-        if (seq !== calSeq.current) return;
-        setUnavail((prev) => ({ ...prev, ...days }));
-        setCalLoading(false);
-        const s = sel.current;
-        if (s.step !== 1 || !s.ci) return;
-        if (days[s.ci]) {
-          setCi(null);
-          setCo(null);
-          setPick("in");
-          setAvail(null);
-          setLiveNotice({ text: `La noche del ${fmtDate(s.ci)} se acaba de ocupar. Elige otra fecha de llegada.` });
-          return;
-        }
-        for (let x = s.ci; s.co && x < s.co; x = addDays(x, 1))
-          if (days[x]) {
+  const fetchCal = useCallback(
+    (v: string) => {
+      const seq = ++calSeq.current;
+      unavailableDays(v, cabinIds ? cabinIds.split(",") : []).then(
+        (days) => {
+          if (seq !== calSeq.current) return;
+          setUnavail((prev) => ({ ...prev, ...days }));
+          setCalLoading(false);
+          const s = sel.current;
+          if (s.step !== 1 || !s.ci) return;
+          if (days[s.ci]) {
+            setCi(null);
             setCo(null);
-            setPick("out");
+            setPick("in");
             setAvail(null);
-            setLiveNotice({ text: `Alguien acaba de reservar la noche del ${fmtDate(x)}. Elige otra fecha de salida.` });
+            setLiveNotice({ text: `La noche del ${fmtDate(s.ci)} se acaba de ocupar. Elige otra fecha de llegada.` });
             return;
           }
-      },
-      () => seq === calSeq.current && setCalLoading(false),
-    );
-  }, [setUnavail, setCalLoading, setCi, setCo, setPick, setAvail, setLiveNotice, cabinIds]);
+          for (let x = s.ci; s.co && x < s.co; x = addDays(x, 1))
+            if (days[x]) {
+              setCo(null);
+              setPick("out");
+              setAvail(null);
+              setLiveNotice({ text: `Alguien acaba de reservar la noche del ${fmtDate(x)}. Elige otra fecha de salida.` });
+              return;
+            }
+        },
+        () => seq === calSeq.current && setCalLoading(false),
+      );
+    },
+    [setUnavail, setCalLoading, setCi, setCo, setPick, setAvail, setLiveNotice, cabinIds],
+  );
 
   // Cabañas disponibles para las fechas y huéspedes. `silent`: actualización en tiempo real (sin esqueleto ni error visible).
   const fetchAvail = useCallback(
@@ -310,7 +416,10 @@ export function ReservationWizard() {
   );
 
   useEffect(() => {
-    api.cabinTypes().then((r) => r.status === 200 && r.data && setTypes(r.data)).catch(() => {});
+    api
+      .cabinTypes()
+      .then((r) => r.status === 200 && r.data && setTypes(r.data))
+      .catch(() => {});
     fetchCal(init.view);
   }, [init, fetchCal]);
 
@@ -423,11 +532,22 @@ export function ReservationWizard() {
     }, 60);
 
   const body = (): ReservationInput => ({
-    cabinTypeId: type!, checkIn: ci!, checkOut: co!, adults, children,
+    cabinTypeId: type!,
+    checkIn: ci!,
+    checkOut: co!,
+    adults,
+    children,
     pet: { hasPet: f.hasPet === "si", smallBreedConfirmed: f.hasPet === "si" && f.smallBreed },
     decoration: { requested: f.decoRequested, occasion: f.decoRequested ? f.occasion : "", notes: f.decoRequested ? f.decoNotes.trim() : "" },
     estimatedArrival: f.arrival,
-    guest: { fullName: f.fullName.trim(), docType: f.docType, docNumber: f.docNumber.trim(), email: f.email.trim(), phone: `+57 ${f.phone.replace(/\D/g, "")}`, city: f.city.trim() },
+    guest: {
+      fullName: f.fullName.trim(),
+      docType: f.docType,
+      docNumber: f.docNumber.trim(),
+      email: f.email.trim(),
+      phone: `+57 ${f.phone.replace(/\D/g, "")}`,
+      city: f.city.trim(),
+    },
     specialRequests: f.specialRequests.trim(),
     consents: { policies: f.policies, dataProcessing: f.dataProcessing, marketing: f.marketing },
     captchaToken: captcha,
@@ -452,7 +572,9 @@ export function ReservationWizard() {
       `Decoración: ${f.decoRequested ? (OCCASIONS[f.occasion] || "sí") + (f.decoNotes ? " – " + f.decoNotes : "") : "no"}`,
       f.specialRequests ? `Solicitudes: ${f.specialRequests}` : "",
       q ? `Total: ${cop(q.total)} (abono ${cop(q.deposit)})` : "",
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
   async function submit() {
     if (submitting || needCabin()) return;
@@ -572,7 +694,9 @@ export function ReservationWizard() {
     { k: "Huéspedes", v: `${plural(adults, "adulto", "adultos")}${children ? ` · ${plural(children, "niño", "niños")}` : ""}` },
   ];
   const sumTotal = q ? cop(q.total) : "—";
-  const depositLine = q ? `Para confirmar: abono de ${cop(q.deposit)} (saldo ${cop(q.balance)}) o el total de una vez.` : "Elige fechas y cabaña para ver el total.";
+  const depositLine = q
+    ? `Para confirmar: abono de ${cop(q.deposit)} (saldo ${cop(q.balance)}) o el total de una vez.`
+    : "Elige fechas y cabaña para ver el total.";
   const errText = {
     network: "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
     "429": "Recibimos demasiados intentos seguidos. Espera un momento y vuelve a intentarlo.",
@@ -602,7 +726,9 @@ export function ReservationWizard() {
                   aria-current={cur ? "step" : undefined}
                   className={`flex min-h-11 items-center gap-2.5 text-left text-on-dark disabled:cursor-default ${n > step ? "opacity-60" : ""}`}
                 >
-                  <span className={`grid size-8 flex-none place-items-center rounded-full text-[.85rem] font-extrabold ${cur ? "bg-card text-on-light" : done ? "bg-accent text-on-light" : "border-2 border-on-dark/40 text-on-dark"}`}>
+                  <span
+                    className={`grid size-8 flex-none place-items-center rounded-full text-[.85rem] font-extrabold ${cur ? "bg-card text-on-light" : done ? "bg-accent text-on-light" : "border-2 border-on-dark/40 text-on-dark"}`}
+                  >
                     {done ? "✓" : n}
                   </span>
                   <span className={`text-[.88rem] leading-[1.2] font-bold ${cur ? "max-sm:hidden" : "max-[899px]:hidden"}`}>{label}</span>
@@ -619,7 +745,10 @@ export function ReservationWizard() {
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[1_1_600px] flex-col gap-5">
           {liveNotice && (
-            <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[color-mix(in_srgb,var(--color-highlight)_32%,var(--color-card))] px-5 py-3.5 text-on-light">
+            <div
+              role="status"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[color-mix(in_srgb,var(--color-highlight)_32%,var(--color-card))] px-5 py-3.5 text-on-light"
+            >
               <p className="min-w-0 flex-[1_1_260px] font-bold">{liveNotice.text}</p>
               <div className="flex items-center gap-2">
                 {liveNotice.action && !(liveNotice.action === "cabana" && step === 2) && (
@@ -635,7 +764,12 @@ export function ReservationWizard() {
                     {liveNotice.action === "fechas" ? "Cambiar fechas" : "Elegir otra cabaña"}
                   </button>
                 )}
-                <button type="button" aria-label="Cerrar aviso" onClick={() => setLiveNotice(null)} className="btn-icon size-11 text-[1.4rem] leading-none hover:bg-on-light/8">
+                <button
+                  type="button"
+                  aria-label="Cerrar aviso"
+                  onClick={() => setLiveNotice(null)}
+                  className="btn-icon size-11 text-[1.4rem] leading-none hover:bg-on-light/8"
+                >
                   ×
                 </button>
               </div>
@@ -693,7 +827,13 @@ export function ReservationWizard() {
                         pick={pick}
                         unavailable={unavail}
                         loading={calLoading}
-                        hint={pick === "out" && ci ? "Ahora elige el día de salida" : ci && co ? `${nTxt(nights)} · ${fmtDate(ci)} → ${fmtDate(co)}` : "Elige el día de llegada"}
+                        hint={
+                          pick === "out" && ci
+                            ? "Ahora elige el día de salida"
+                            : ci && co
+                              ? `${nTxt(nights)} · ${fmtDate(ci)} → ${fmtDate(co)}`
+                              : "Elige el día de llegada"
+                        }
                         onPick={pickDate}
                         onMonth={changeMonth}
                       />
@@ -715,14 +855,21 @@ export function ReservationWizard() {
                       </span>
                       {live !== "off" && (
                         <span className="ml-auto inline-flex items-center gap-1.5 opacity-80">
-                          <span aria-hidden="true" className={`size-2 rounded-full ${live === "live" ? "bg-accent" : live === "offline" ? "bg-error" : "bg-highlight"}`} />
+                          <span
+                            aria-hidden="true"
+                            className={`size-2 rounded-full ${live === "live" ? "bg-accent" : live === "offline" ? "bg-error" : "bg-highlight"}`}
+                          />
                           {live === "live" ? "Disponibilidad en tiempo real" : live === "offline" ? "Reconectando…" : "Conectando…"}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div role="group" aria-labelledby="guests-title" className="flex min-w-0 flex-col gap-3 border-t-2 border-dotted border-card-muted p-4 sm:p-5 md:border-t-0 md:border-l-2">
+                  <div
+                    role="group"
+                    aria-labelledby="guests-title"
+                    className="flex min-w-0 flex-col gap-3 border-t-2 border-dotted border-card-muted p-4 sm:p-5 md:border-t-0 md:border-l-2"
+                  >
                     <div className="flex min-h-[64px] flex-col justify-center">
                       <h3 id="guests-title" className="text-[.72rem] font-extrabold tracking-[.06em] uppercase">
                         Huéspedes
@@ -768,7 +915,9 @@ export function ReservationWizard() {
                 {/* Acción del paso: siempre visible (fija al pie en el celular) y con el resultado de la consulta al lado. */}
                 <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-b-lg border-t-2 border-dotted border-card-muted bg-card px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-14px_24px_-20px_rgb(0_0_0/0.5)] sm:px-5 sm:py-4">
                   <div aria-live="polite" className="min-w-0">
-                    <p className="text-[.74rem] font-extrabold tracking-[.06em] uppercase opacity-80 max-sm:hidden">{ci && co ? `${fmtDate(ci)} → ${fmtDate(co)} · ${nTxt(nights)} · ${guestsTxt}` : "Tu búsqueda"}</p>
+                    <p className="text-[.74rem] font-extrabold tracking-[.06em] uppercase opacity-80 max-sm:hidden">
+                      {ci && co ? `${fmtDate(ci)} → ${fmtDate(co)} · ${nTxt(nights)} · ${guestsTxt}` : "Tu búsqueda"}
+                    </p>
                     <p className={`text-[.92rem] leading-snug font-bold sm:text-[1.02rem] ${searchTone === "bad" ? "text-error" : ""}`}>{searchText}</p>
                   </div>
                   <button
@@ -835,15 +984,26 @@ export function ReservationWizard() {
                           className={`flex flex-col gap-3 rounded-lg bg-card p-3.5 text-on-light ${sel ? "shadow-[0_0_0_3px_var(--color-highlight)]" : ""} ${op.available ? "" : "opacity-70"}`}
                         >
                           <div className="relative aspect-video overflow-hidden rounded-md bg-card-muted">
-                            <PhotoSlot src={cab?.photos[0]} alt={name} placeholder={`Foto real: ${name.toLowerCase()}`} sizes="(min-width: 900px) 400px, 100vw" />
-                            {cab?.badge && <span className="pointer-events-none absolute top-2.5 left-2.5 rounded-full bg-highlight px-3 py-1.5 text-[.78rem] font-extrabold">{cab.badge}</span>}
+                            <PhotoSlot
+                              src={cab?.photos[0]}
+                              alt={name}
+                              placeholder={`Foto real: ${name.toLowerCase()}`}
+                              sizes="(min-width: 900px) 400px, 100vw"
+                            />
+                            {cab?.badge && (
+                              <span className="pointer-events-none absolute top-2.5 left-2.5 rounded-full bg-highlight px-3 py-1.5 text-[.78rem] font-extrabold">
+                                {cab.badge}
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-col gap-1.5 px-1.5 pb-1.5">
                             <h3 className="display text-[2rem] leading-none">{name}</h3>
                             <p className="text-[.88rem]">{`${cop(ty?.precioPareja)} la noche para 2 personas · Persona adicional ${cop(ty?.personaAdicional)} · Máximo ${ty?.maxPersonas} personas`}</p>
                             {op.available ? (
                               <>
-                                <p className="text-[.85rem] font-bold">{op.unitsLeft === 1 ? "Queda 1 cabaña de este tipo" : `Quedan ${op.unitsLeft} cabañas de este tipo`}</p>
+                                <p className="text-[.85rem] font-bold">
+                                  {op.unitsLeft === 1 ? "Queda 1 cabaña de este tipo" : `Quedan ${op.unitsLeft} cabañas de este tipo`}
+                                </p>
                                 <p className="mt-1.5 flex flex-wrap items-baseline gap-2">
                                   <strong className="display text-[2rem] leading-none">{cop(op.quote.total)}</strong>
                                   <span className="text-[.85rem] font-semibold">{`por ${nTxt(avail.nights)} · ${guestsTxt}`}</span>
@@ -860,7 +1020,9 @@ export function ReservationWizard() {
                               </>
                             ) : (
                               <p className="mt-1.5 rounded-sm bg-card-muted px-3.5 py-2.5 font-bold">
-                                {op.reason === "capacity" || (ty && total > ty.maxPersonas) ? `Máximo ${ty?.maxPersonas} personas en esta cabaña` : "Sin disponibilidad en estas fechas"}
+                                {op.reason === "capacity" || (ty && total > ty.maxPersonas)
+                                  ? `Máximo ${ty?.maxPersonas} personas en esta cabaña`
+                                  : "Sin disponibilidad en estas fechas"}
                               </p>
                             )}
                           </div>
@@ -887,9 +1049,17 @@ export function ReservationWizard() {
                 3 · Tus datos
               </h2>
               {showErrSummary && errKeys.length > 0 && (
-                <div id="err-summary" tabIndex={-1} role="alert" aria-labelledby="err-summary-title" className="rounded-lg bg-card px-[22px] py-[18px] text-on-light shadow-[inset_0_0_0_3px_var(--color-error)]">
+                <div
+                  id="err-summary"
+                  tabIndex={-1}
+                  role="alert"
+                  aria-labelledby="err-summary-title"
+                  className="rounded-lg bg-card px-[22px] py-[18px] text-on-light shadow-[inset_0_0_0_3px_var(--color-error)]"
+                >
                   <h3 id="err-summary-title" className="mb-2 font-extrabold text-error">
-                    {errFromServer ? `Revisa ${plural(errKeys.length, "dato", "datos")} que no pudimos validar` : `Corrige ${plural(errKeys.length, "campo", "campos")} para continuar`}
+                    {errFromServer
+                      ? `Revisa ${plural(errKeys.length, "dato", "datos")} que no pudimos validar`
+                      : `Corrige ${plural(errKeys.length, "campo", "campos")} para continuar`}
                   </h3>
                   <ul className="flex list-disc flex-col gap-1 pl-5">
                     {errKeys.map((k) => (
@@ -909,23 +1079,65 @@ export function ReservationWizard() {
                   </ul>
                 </div>
               )}
-              <form noValidate onSubmit={(e) => e.preventDefault()} className="relative flex flex-col gap-[22px] rounded-lg bg-card p-[clamp(18px,3vw,32px)] text-on-light">
+              <form
+                noValidate
+                onSubmit={(e) => e.preventDefault()}
+                className="relative flex flex-col gap-[22px] rounded-lg bg-card p-[clamp(18px,3vw,32px)] text-on-light"
+              >
                 <div aria-hidden="true" className="absolute -left-[10000px] size-px overflow-hidden">
                   <label htmlFor="f-website">Deja este campo vacío</label>
                   <input id="f-website" name="website" type="text" tabIndex={-1} autoComplete="off" {...bind("website")} />
                 </div>
                 <div className="grid grid-cols-1 gap-x-[18px] gap-y-4 sm:grid-cols-2">
                   <Field id="f-name" label="Nombre completo" errId="e-name" error={errors.fullName} wide>
-                    <input id="f-name" name="name" type="text" autoComplete="name" required {...bind("fullName")} {...inv("fullName")} aria-describedby="e-name" className="field-input" />
+                    <input
+                      id="f-name"
+                      name="name"
+                      type="text"
+                      autoComplete="name"
+                      required
+                      {...bind("fullName")}
+                      {...inv("fullName")}
+                      aria-describedby="e-name"
+                      className="field-input"
+                    />
                   </Field>
                   <Field id="f-doctype" label="Tipo de documento" errId="e-doctype" error={errors.docType}>
-                    <Combobox tone="site" id="f-doctype" value={f.docType} onChange={(v) => setField("docType", v as DocType)} options={DOC_TYPES} invalid={!!errors.docType} describedBy="e-doctype" />
+                    <Combobox
+                      tone="site"
+                      id="f-doctype"
+                      value={f.docType}
+                      onChange={(v) => setField("docType", v as DocType)}
+                      options={DOC_TYPES}
+                      invalid={!!errors.docType}
+                      describedBy="e-doctype"
+                    />
                   </Field>
                   <Field id="f-docnum" label="Número de documento" errId="e-docnum" error={errors.docNumber}>
-                    <input id="f-docnum" name="docNumber" type="text" inputMode={f.docType === "CC" || f.docType === "PPT" ? "numeric" : "text"} autoComplete="off" {...bind("docNumber")} {...inv("docNumber")} aria-describedby="e-docnum" className="field-input" />
+                    <input
+                      id="f-docnum"
+                      name="docNumber"
+                      type="text"
+                      inputMode={f.docType === "CC" || f.docType === "PPT" ? "numeric" : "text"}
+                      autoComplete="off"
+                      {...bind("docNumber")}
+                      {...inv("docNumber")}
+                      aria-describedby="e-docnum"
+                      className="field-input"
+                    />
                   </Field>
                   <Field id="f-email" label="Correo electrónico" errId="e-email" error={errors.email}>
-                    <input id="f-email" name="email" type="email" autoComplete="email" inputMode="email" {...bind("email")} {...inv("email")} aria-describedby="e-email" className="field-input" />
+                    <input
+                      id="f-email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      {...bind("email")}
+                      {...inv("email")}
+                      aria-describedby="e-email"
+                      className="field-input"
+                    />
                   </Field>
                   <Field id="f-phone" label="Celular" errId="e-phone" error={errors.phone}>
                     {/* Siempre de Colombia: el +57 es fijo y se agrega al enviar. */}
@@ -950,7 +1162,16 @@ export function ReservationWizard() {
                     </div>
                   </Field>
                   <Field id="f-city" label="Ciudad de procedencia" errId="e-city" error={errors.city}>
-                    <input id="f-city" name="city" type="text" autoComplete="address-level2" {...bind("city")} {...inv("city")} aria-describedby="e-city" className="field-input" />
+                    <input
+                      id="f-city"
+                      name="city"
+                      type="text"
+                      autoComplete="address-level2"
+                      {...bind("city")}
+                      {...inv("city")}
+                      aria-describedby="e-city"
+                      className="field-input"
+                    />
                   </Field>
                   <Field id="f-arrival" label="Hora estimada de llegada" errId="e-arrival" error={errors.arrival}>
                     <Combobox
@@ -977,7 +1198,14 @@ export function ReservationWizard() {
                     onChange={(on) => setField("hasPet", on ? "si" : "no")}
                   >
                     <div className="flex flex-col gap-1">
-                      <CheckOption id="f-smallbreed" checked={f.smallBreed} onChange={(v) => setField("smallBreed", v)} invalid={!!errors.smallBreed} describedBy="e-smallbreed" note="Por comodidad de todos los huéspedes y de las mascotas de la casa.">
+                      <CheckOption
+                        id="f-smallbreed"
+                        checked={f.smallBreed}
+                        onChange={(v) => setField("smallBreed", v)}
+                        invalid={!!errors.smallBreed}
+                        describedBy="e-smallbreed"
+                        note="Por comodidad de todos los huéspedes y de las mascotas de la casa."
+                      >
                         Confirmo que mi mascota estará bajo mi cuidado durante la estadía
                       </CheckOption>
                       <p id="e-smallbreed" aria-live="polite" className="field-error">
@@ -1008,7 +1236,14 @@ export function ReservationWizard() {
                         />
                       </Field>
                       <Field id="f-deconotes" label="Detalles (opcional)" errId="e-deconotes">
-                        <input id="f-deconotes" type="text" maxLength={500} placeholder="Ej. globos, pétalos, un mensaje" {...bind("decoNotes")} className="field-input" />
+                        <input
+                          id="f-deconotes"
+                          type="text"
+                          maxLength={500}
+                          placeholder="Ej. globos, pétalos, un mensaje"
+                          {...bind("decoNotes")}
+                          className="field-input"
+                        />
                       </Field>
                     </div>
                   </ToggleCard>
@@ -1024,7 +1259,15 @@ export function ReservationWizard() {
                 <fieldset className="flex min-w-0 flex-col gap-2.5">
                   <legend className="mb-2 font-extrabold">Autorizaciones</legend>
                   <div className="flex flex-col gap-1">
-                    <CheckOption card id="f-policies" checked={f.policies} onChange={(v) => setField("policies", v)} invalid={!!errors.policies} describedBy="e-policies" note="Obligatorio">
+                    <CheckOption
+                      card
+                      id="f-policies"
+                      checked={f.policies}
+                      onChange={(v) => setField("policies", v)}
+                      invalid={!!errors.policies}
+                      describedBy="e-policies"
+                      note="Obligatorio"
+                    >
                       Acepto las{" "}
                       <Link href="/politicas" target="_blank" className="font-extrabold underline">
                         políticas de reserva
@@ -1035,7 +1278,15 @@ export function ReservationWizard() {
                     </p>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <CheckOption card id="f-data" checked={f.dataProcessing} onChange={(v) => setField("dataProcessing", v)} invalid={!!errors.dataProcessing} describedBy="e-data" note="Obligatorio · Ley 1581 de 2012">
+                    <CheckOption
+                      card
+                      id="f-data"
+                      checked={f.dataProcessing}
+                      onChange={(v) => setField("dataProcessing", v)}
+                      invalid={!!errors.dataProcessing}
+                      describedBy="e-data"
+                      note="Obligatorio · Ley 1581 de 2012"
+                    >
                       Autorizo el tratamiento de mis datos personales según la{" "}
                       <Link href="/privacidad" target="_blank" className="font-extrabold underline">
                         política de privacidad
@@ -1045,7 +1296,13 @@ export function ReservationWizard() {
                       {errors.dataProcessing}
                     </p>
                   </div>
-                  <CheckOption card id="f-marketing" checked={f.marketing} onChange={(v) => setField("marketing", v)} note="Opcional · puedes darte de baja cuando quieras">
+                  <CheckOption
+                    card
+                    id="f-marketing"
+                    checked={f.marketing}
+                    onChange={(v) => setField("marketing", v)}
+                    note="Opcional · puedes darte de baja cuando quieras"
+                  >
                     Quiero recibir promociones
                   </CheckOption>
                 </fieldset>
@@ -1082,7 +1339,15 @@ export function ReservationWizard() {
                 </dl>
                 <div className="flex flex-col gap-2.5">
                   <h3 className="text-[1.05rem] font-extrabold">¿Cuánto quieres pagar ahora?</h3>
-                  <PlanChoice wide value={plan} onChange={setPlan} deposit={q?.deposit ?? 0} total={q?.total ?? 0} pct={config.depositPct} disabled={submitting} />
+                  <PlanChoice
+                    wide
+                    value={plan}
+                    onChange={setPlan}
+                    deposit={q?.deposit ?? 0}
+                    total={q?.total ?? 0}
+                    pct={config.depositPct}
+                    disabled={submitting}
+                  />
                   <p className="text-[.82rem]">Lo que pagues para confirmar no es reembolsable.</p>
                 </div>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-2.5 rounded-md bg-card-muted px-4 py-3.5 text-[.9rem]">
@@ -1097,7 +1362,7 @@ export function ReservationWizard() {
                     { k: "Solicitudes", v: f.specialRequests || "Ninguna" },
                   ].map((r) => (
                     <div key={r.k}>
-                      <span className="block text-[.72rem] font-extrabold uppercase tracking-[.06em]">{r.k}</span>
+                      <span className="block text-[.72rem] font-extrabold tracking-[.06em] uppercase">{r.k}</span>
                       <span className="font-semibold break-words">{r.v}</span>
                     </div>
                   ))}
@@ -1137,7 +1402,10 @@ export function ReservationWizard() {
                   )}
                 </div>
                 {submitError && (
-                  <div role="alert" className="flex flex-col gap-3 rounded-md bg-[color-mix(in_srgb,var(--color-highlight)_30%,var(--color-card))] px-[18px] py-4">
+                  <div
+                    role="alert"
+                    className="flex flex-col gap-3 rounded-md bg-[color-mix(in_srgb,var(--color-highlight)_30%,var(--color-card))] px-[18px] py-4"
+                  >
                     <strong>{errText[submitError]}</strong>
                     <div className="flex flex-wrap gap-2.5">
                       <button type="button" onClick={submit} className="btn btn-cta min-h-12 px-[22px]">
@@ -1173,7 +1441,10 @@ export function ReservationWizard() {
           )}
         </div>
 
-        <aside aria-label="Resumen de tu reserva" className="sticky top-4 hidden flex-[0_0_340px] flex-col gap-3.5 rounded-lg bg-surface p-[22px] min-[900px]:flex">
+        <aside
+          aria-label="Resumen de tu reserva"
+          className="sticky top-4 hidden flex-[0_0_340px] flex-col gap-3.5 rounded-lg bg-surface p-[22px] min-[900px]:flex"
+        >
           <h2 className="display text-[1.8rem] leading-none">Tu reserva</h2>
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 gap-y-2 text-[.92rem]">
             {sumRows.map((r) => (
@@ -1192,7 +1463,9 @@ export function ReservationWizard() {
         </aside>
       </div>
 
-      <div className={`fixed inset-x-0 bottom-0 z-60 rounded-t-lg bg-surface px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] shadow-[0_-12px_30px_-12px_rgb(0_0_0/0.5)] min-[900px]:hidden ${step === 1 ? "hidden" : ""}`}>
+      <div
+        className={`fixed inset-x-0 bottom-0 z-60 rounded-t-lg bg-surface px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] shadow-[0_-12px_30px_-12px_rgb(0_0_0/0.5)] min-[900px]:hidden ${step === 1 ? "hidden" : ""}`}
+      >
         {sumOpen && (
           <div id="sum-panel" className="max-h-[50vh] overflow-auto px-1 pt-1.5 pb-3.5">
             <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 gap-y-2 text-[.92rem]">
@@ -1208,10 +1481,16 @@ export function ReservationWizard() {
         )}
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col leading-[1.1]">
-            <span className="text-[.72rem] font-extrabold uppercase tracking-[.06em]">Total</span>
+            <span className="text-[.72rem] font-extrabold tracking-[.06em] uppercase">Total</span>
             <strong className="display text-[1.9rem]">{sumTotal}</strong>
           </div>
-          <button type="button" aria-expanded={sumOpen} aria-controls="sum-panel" onClick={() => setSumOpen(!sumOpen)} className="btn btn-outline-dark min-h-12 px-5">
+          <button
+            type="button"
+            aria-expanded={sumOpen}
+            aria-controls="sum-panel"
+            onClick={() => setSumOpen(!sumOpen)}
+            className="btn btn-outline-dark min-h-12 px-5"
+          >
             {sumOpen ? "Ocultar resumen" : "Ver resumen"}
           </button>
         </div>
@@ -1219,7 +1498,13 @@ export function ReservationWizard() {
 
       {modal409 && (
         <div className="fixed inset-0 z-100 grid place-items-center bg-black/55 p-4">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="m409-title" aria-describedby="m409-desc" className="flex w-full max-w-[440px] flex-col gap-3.5 rounded-lg bg-card p-7 text-on-light shadow-card">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="m409-title"
+            aria-describedby="m409-desc"
+            className="flex w-full max-w-[440px] flex-col gap-3.5 rounded-lg bg-card p-7 text-on-light shadow-card"
+          >
             <h2 id="m409-title" className="display text-[2rem] leading-none">
               Estas fechas se acaban de ocupar
             </h2>

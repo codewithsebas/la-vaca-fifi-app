@@ -43,8 +43,17 @@ const useBooking = () => useContext(BookingCtx)!;
 // `cabins` llega del servidor con las tarifas vigentes.
 export function BookingProvider({ cabins, children }: { cabins: Cabin[]; children: ReactNode }) {
   const [s, setS] = useState<BookingState>({
-    open: null, pick: "in", checkIn: null, checkOut: null, view: null,
-    type: cabins[0]?.id ?? "", guests: 2, pet: false, deco: false, notice: "", error: "",
+    open: null,
+    pick: "in",
+    checkIn: null,
+    checkOut: null,
+    view: null,
+    type: cabins[0]?.id ?? "",
+    guests: 2,
+    pet: false,
+    deco: false,
+    notice: "",
+    error: "",
   });
   const cabinOf = (id: CabinTypeId) => cabins.find((c) => c.id === id) ?? cabins[0];
   const set = (p: Partial<BookingState>) => setS((prev) => ({ ...prev, ...p }));
@@ -87,7 +96,23 @@ function fieldStyle(focused: boolean, filled: boolean) {
   };
 }
 
-function PillField({ label, value, focused, filled, icon, popup, onClick }: { label: string; value: string; focused: boolean; filled: boolean; icon: ReactNode; popup: "dialog" | "listbox"; onClick: () => void }) {
+function PillField({
+  label,
+  value,
+  focused,
+  filled,
+  icon,
+  popup,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  focused: boolean;
+  filled: boolean;
+  icon: ReactNode;
+  popup: "dialog" | "listbox";
+  onClick: () => void;
+}) {
   const f = fieldStyle(focused, filled);
   return (
     <button
@@ -98,7 +123,7 @@ function PillField({ label, value, focused, filled, icon, popup, onClick }: { la
       className={`flex min-h-16 min-w-0 flex-1 items-center justify-between gap-3 rounded-full border-2 py-2 pr-2.5 pl-[22px] text-left text-on-light transition-[box-shadow,background-color] duration-200 ${f.border} ${f.bg} ${f.ring}`}
     >
       <span className="flex min-w-0 flex-col">
-        <span className="text-[.74rem] font-bold uppercase tracking-[.06em]">{label}</span>
+        <span className="text-[.74rem] font-bold tracking-[.06em] uppercase">{label}</span>
         <span className={`truncate ${f.value}`}>{value}</span>
       </span>
       <span aria-hidden="true" className={`grid size-10 flex-none place-items-center rounded-full ${f.icon}`}>
@@ -111,9 +136,15 @@ function PillField({ label, value, focused, filled, icon, popup, onClick }: { la
 function Switch({ label, on, note, onToggle }: { label: string; on: boolean; note: string; onToggle: () => void }) {
   const f = fieldStyle(false, on);
   return (
-    <button type="button" role="switch" aria-checked={on} onClick={onToggle} className={`flex min-h-16 items-center justify-between gap-3 rounded-full border-2 py-2 pr-3.5 pl-[22px] text-left text-on-light ${f.border} ${f.bg}`}>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onToggle}
+      className={`flex min-h-16 items-center justify-between gap-3 rounded-full border-2 py-2 pr-3.5 pl-[22px] text-left text-on-light ${f.border} ${f.bg}`}
+    >
       <span className="flex min-w-0 flex-col">
-        <span className="truncate text-[.74rem] font-bold uppercase tracking-[.06em]">{label}</span>
+        <span className="truncate text-[.74rem] font-bold tracking-[.06em] uppercase">{label}</span>
         <span className={f.value}>
           {on ? "Sí" : "No"} <span className="text-[.82rem] font-medium">· {note}</span>
         </span>
@@ -123,7 +154,8 @@ function Switch({ label, on, note, onToggle }: { label: string; on: boolean; not
   );
 }
 
-const popover = "absolute top-[calc(100%+10px)] left-0 z-40 rounded-[22px] border-[2.5px] border-on-dark bg-card text-on-light shadow-[4px_4px_0_var(--color-on-dark)]";
+const popover =
+  "absolute top-[calc(100%+10px)] left-0 z-40 rounded-[22px] border-[2.5px] border-on-dark bg-card text-on-light shadow-[4px_4px_0_var(--color-on-dark)]";
 
 export function BookingWidget() {
   const { s, cabins, cabinOf, set, selectCabin } = useBooking();
@@ -159,7 +191,9 @@ export function BookingWidget() {
     let live = true;
     api
       .calendar({ cabinTypeId: s.type, from: s.view, to: monthEnd(s.view) })
-      .then((r) => live && setMarks({ key: marksKey, days: Object.fromEntries((r.status === 200 ? (r.data?.unavailableDates ?? []) : []).map((d) => [d, true])) }))
+      .then(
+        (r) => live && setMarks({ key: marksKey, days: Object.fromEntries((r.status === 200 ? (r.data?.unavailableDates ?? []) : []).map((d) => [d, true])) }),
+      )
       .catch(() => live && setMarks({ key: marksKey, days: {} }));
     return () => {
       live = false;
@@ -254,13 +288,19 @@ export function BookingWidget() {
   return (
     // Una calcomanía grande, separada del cartel de la portada (no se monta sobre las flores). scroll-mt: al llegar
     // con «Reservar» (#reserva), el módulo queda con aire bajo la barra fija en vez de pegado a ella.
-    <section id="reserva" aria-labelledby="reserva-title" className="gutter-1360 relative z-5 mt-[clamp(20px,3vw,40px)] scroll-mt-[calc(var(--header-offset,76px)+16px)]">
+    <section
+      id="reserva"
+      aria-labelledby="reserva-title"
+      className="relative z-5 mt-[clamp(20px,3vw,40px)] scroll-mt-[calc(var(--header-offset,76px)+16px)] gutter-1360"
+    >
       <div ref={ref} className="sticker flex flex-col gap-5 rounded-[30px] bg-card p-[calc(16px_+_1cqi)] text-on-light">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-1">
           <h2 id="reserva-title" className="display text-[clamp(1.9rem,3vw,2.4rem)] leading-none">
             Reserva tu cabaña
           </h2>
-          <p className="max-w-[48ch] text-[.9rem] font-semibold">Elige fechas, cabaña y huéspedes: ves el total al instante y reservas en línea con un abono del {config.depositPct} %.</p>
+          <p className="max-w-[48ch] text-[.9rem] font-semibold">
+            Elige fechas, cabaña y huéspedes: ves el total al instante y reservas en línea con un abono del {config.depositPct} %.
+          </p>
         </div>
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,330px),1fr))] gap-3">
@@ -275,7 +315,11 @@ export function BookingWidget() {
               onClick={() => (datesFocused && s.pick === "in" ? set({ open: null }) : openDates("in"))}
             />
             {datesFocused && s.view && (
-              <div role="dialog" aria-label="Elegir fechas" className={`${popover} flex w-[372px] max-w-[calc(100cqi-32px)] flex-col gap-2.5 p-4 max-sm:right-0 max-sm:w-auto`}>
+              <div
+                role="dialog"
+                aria-label="Elegir fechas"
+                className={`${popover} flex w-[372px] max-w-[calc(100cqi-32px)] flex-col gap-2.5 p-4 max-sm:right-0 max-sm:w-auto`}
+              >
                 <RangeCalendar
                   view={s.view}
                   today={today}
@@ -301,10 +345,18 @@ export function BookingWidget() {
                 )}
                 <div className="dotted-top flex flex-wrap items-center justify-between gap-2 pt-2.5">
                   <span className="text-[.82rem] font-semibold">
-                    {nights && s.checkIn && s.checkOut ? `${nightsTxt} · ${fmtDate(s.checkIn)} → ${fmtDate(s.checkOut)}` : s.checkIn ? `Llegada: ${fmtDate(s.checkIn)}` : `Check-in ${c.checkIn}`}
+                    {nights && s.checkIn && s.checkOut
+                      ? `${nightsTxt} · ${fmtDate(s.checkIn)} → ${fmtDate(s.checkOut)}`
+                      : s.checkIn
+                        ? `Llegada: ${fmtDate(s.checkIn)}`
+                        : `Check-in ${c.checkIn}`}
                   </span>
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={() => set({ checkIn: null, checkOut: null, pick: "in" })} className="min-h-11 rounded-full px-4 font-bold underline">
+                    <button
+                      type="button"
+                      onClick={() => set({ checkIn: null, checkOut: null, pick: "in" })}
+                      className="min-h-11 rounded-full px-4 font-bold underline"
+                    >
                       Limpiar
                     </button>
                     <button type="button" onClick={() => set({ open: null })} className="btn btn-cta min-h-11 px-5 font-bold">
@@ -329,7 +381,15 @@ export function BookingWidget() {
           </div>
 
           <div data-popover-root="type" className="relative flex">
-            <PillField label="Tipo de cabaña" value={cab.name} focused={s.open === "type"} filled popup="listbox" icon={<HomeIcon />} onClick={() => set({ open: s.open === "type" ? null : "type" })} />
+            <PillField
+              label="Tipo de cabaña"
+              value={cab.name}
+              focused={s.open === "type"}
+              filled
+              popup="listbox"
+              icon={<HomeIcon />}
+              onClick={() => set({ open: s.open === "type" ? null : "type" })}
+            />
             {s.open === "type" && (
               <div role="listbox" aria-label="Tipo de cabaña" className={`${popover} right-0 flex min-w-[min(320px,calc(100cqi-32px))] flex-col gap-1.5 p-2.5`}>
                 {cabins.map((c) => {
@@ -358,7 +418,15 @@ export function BookingWidget() {
           </div>
 
           <div data-popover-root="guests" className="relative flex">
-            <PillField label="Huéspedes" value={guestsTxt} focused={s.open === "guests"} filled popup="dialog" icon={<UsersIcon />} onClick={() => set({ open: s.open === "guests" ? null : "guests" })} />
+            <PillField
+              label="Huéspedes"
+              value={guestsTxt}
+              focused={s.open === "guests"}
+              filled
+              popup="dialog"
+              icon={<UsersIcon />}
+              onClick={() => set({ open: s.open === "guests" ? null : "guests" })}
+            />
             {s.open === "guests" && (
               <div role="dialog" aria-label="Número de huéspedes" className={`${popover} right-0 flex flex-col gap-3 p-4`}>
                 <div className="flex items-center justify-between gap-3">
@@ -367,13 +435,25 @@ export function BookingWidget() {
                     <span className="text-[.8rem]">{`Máximo ${cab.max} en ${cab.full}`}</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <button type="button" aria-label="Quitar un huésped" disabled={s.guests <= 1} onClick={() => set({ guests: Math.max(1, s.guests - 1), notice: "" })} className="btn-icon size-11 border-2 border-on-light disabled:opacity-35">
+                    <button
+                      type="button"
+                      aria-label="Quitar un huésped"
+                      disabled={s.guests <= 1}
+                      onClick={() => set({ guests: Math.max(1, s.guests - 1), notice: "" })}
+                      className="btn-icon size-11 border-2 border-on-light disabled:opacity-35"
+                    >
                       <MinusIcon />
                     </button>
                     <span aria-live="polite" className="min-w-5 text-center text-[1.1rem] font-extrabold">
                       {s.guests}
                     </span>
-                    <button type="button" aria-label="Añadir un huésped" disabled={s.guests >= cab.max} onClick={() => set({ guests: Math.min(cab.max, s.guests + 1), notice: "" })} className="btn-icon size-11 border-2 border-on-light disabled:opacity-35">
+                    <button
+                      type="button"
+                      aria-label="Añadir un huésped"
+                      disabled={s.guests >= cab.max}
+                      onClick={() => set({ guests: Math.min(cab.max, s.guests + 1), notice: "" })}
+                      className="btn-icon size-11 border-2 border-on-light disabled:opacity-35"
+                    >
                       <PlusIcon />
                     </button>
                   </div>
@@ -391,14 +471,17 @@ export function BookingWidget() {
         </div>
 
         {s.notice && (
-          <p role="status" className="rounded-[18px] border-2 border-on-light bg-[color-mix(in_srgb,var(--color-highlight)_45%,var(--color-card))] px-[18px] py-3 text-[.9rem] font-bold">
+          <p
+            role="status"
+            className="rounded-[18px] border-2 border-on-light bg-[color-mix(in_srgb,var(--color-highlight)_45%,var(--color-card))] px-[18px] py-3 text-[.9rem] font-bold"
+          >
             {s.notice}
           </p>
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] border-[2.5px] border-dashed border-on-light/30 bg-bg px-5 py-4">
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-0.5">
-            <span className="text-[.74rem] font-bold uppercase tracking-[.06em]">Total estimado</span>
+            <span className="text-[.74rem] font-bold tracking-[.06em] uppercase">Total estimado</span>
             <strong className="display text-[2.6rem] leading-none">{totalLabel}</strong>
             <span className="text-[.86rem] font-semibold">{summary}</span>
             {s.deco && <span className="text-[.84rem]">Decoración especial: valor adicional, se cotiza por WhatsApp.</span>}
@@ -410,7 +493,10 @@ export function BookingWidget() {
               Continuar con la reserva
               <ArrowRightIcon />
             </Link>
-            <Link href={`/reservar?${rq}${s.checkIn && s.checkOut ? "&paso=cabana" : ""}`} className="btn btn-outline-light min-h-12 px-6 text-center text-[.95rem] hover:bg-card">
+            <Link
+              href={`/reservar?${rq}${s.checkIn && s.checkOut ? "&paso=cabana" : ""}`}
+              className="btn btn-outline-light min-h-12 px-6 text-center text-[.95rem] hover:bg-card"
+            >
               Ver disponibilidad
             </Link>
           </div>

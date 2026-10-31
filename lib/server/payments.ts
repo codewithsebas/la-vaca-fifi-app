@@ -111,7 +111,11 @@ export async function fetchWompiTransaction(id: string): Promise<GatewayTx | nul
   const k = wompiKeys();
   if (!k?.privateKey || !/^[\w-]{3,80}$/.test(id)) return null;
   try {
-    const res = await fetch(`${k.api}/transactions/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${k.privateKey}` }, cache: "no-store", signal: AbortSignal.timeout(8000) });
+    const res = await fetch(`${k.api}/transactions/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${k.privateKey}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) return null;
     const body = (await res.json()) as { data?: Record<string, unknown> };
     return toTx(body.data);
@@ -124,8 +128,10 @@ export async function fetchWompiTransaction(id: string): Promise<GatewayTx | nul
 export function parseWompiEvent(body: unknown, headerChecksum: string | null): GatewayTx | null {
   const k = wompiKeys();
   const e = body as { event?: string; data?: Record<string, unknown>; signature?: { properties?: string[]; checksum?: string }; timestamp?: number } | null;
-  if (!k?.events || !e || e.event !== "transaction.updated" || !e.data || !Array.isArray(e.signature?.properties) || typeof e.timestamp !== "number") return null;
-  const value = (path: string) => path.split(".").reduce<unknown>((o, key) => (o && typeof o === "object" ? (o as Record<string, unknown>)[key] : undefined), e.data);
+  if (!k?.events || !e || e.event !== "transaction.updated" || !e.data || !Array.isArray(e.signature?.properties) || typeof e.timestamp !== "number")
+    return null;
+  const value = (path: string) =>
+    path.split(".").reduce<unknown>((o, key) => (o && typeof o === "object" ? (o as Record<string, unknown>)[key] : undefined), e.data);
   const expected = sha256(e.signature.properties.map((p) => String(value(p) ?? "")).join("") + e.timestamp + k.events).toUpperCase();
   const given = String(headerChecksum || e.signature.checksum || "").toUpperCase();
   if (given.length !== expected.length || !timingSafeEqual(Buffer.from(given), Buffer.from(expected))) return null;

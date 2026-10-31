@@ -191,7 +191,19 @@ export type ManualReservationResult = { reservation: Reservation; payUrl: string
 // `serverNow`: hora del servidor, para que las cuentas regresivas no dependan del reloj del dispositivo.
 export type PublicReservation = Pick<
   Reservation,
-  "code" | "status" | "checkIn" | "checkOut" | "cabinTypeId" | "quote" | "depositDueAt" | "depositPaidAt" | "balancePaidAt" | "paid" | "checkedInAt" | "balanceDueAt" | "balanceOverdueAt"
+  | "code"
+  | "status"
+  | "checkIn"
+  | "checkOut"
+  | "cabinTypeId"
+  | "quote"
+  | "depositDueAt"
+  | "depositPaidAt"
+  | "balancePaidAt"
+  | "paid"
+  | "checkedInAt"
+  | "balanceDueAt"
+  | "balanceOverdueAt"
 > & { guestFirstName?: string; payments?: PublicPayment[]; liveKey?: string; serverNow?: string; termsAccepted?: boolean };
 
 // Respuesta al abrir un pago: a dónde llevar al huésped.
@@ -235,17 +247,43 @@ export type ChannelCalendar = {
 };
 
 // Conexión con Beds24 (channel manager). webhookUrl: la que se pega en Beds24 → Properties → Access → Booking webhook.
-export type Beds24Status = { webhookUrl: string; lastPullAt: string | null; lastPushAt: string | null; lastWebhookAt: string | null; lastError: string; lastErrorAt: string | null };
+export type Beds24Status = {
+  webhookUrl: string;
+  lastPullAt: string | null;
+  lastPushAt: string | null;
+  lastWebhookAt: string | null;
+  lastError: string;
+  lastErrorAt: string | null;
+};
 export type Beds24Room = { id: number; propertyId: number; propertyName: string; name: string; qty: number };
 
 // Noches ocupadas en Booking (una reserva o un cierre: el iCal no los distingue). checkOut exclusivo, como en las reservas.
 // removedAt: dejó de venir en el calendario de Booking (se canceló).
-export type ChannelStay = { id: string; calendarId: string; cabinTypeId: CabinTypeId; unit: number; checkIn: string; checkOut: string; summary: string; firstSeenAt: string; removedAt: string | null };
+export type ChannelStay = {
+  id: string;
+  calendarId: string;
+  cabinTypeId: CabinTypeId;
+  unit: number;
+  checkIn: string;
+  checkOut: string;
+  summary: string;
+  firstSeenAt: string;
+  removedAt: string | null;
+};
 
 // Cuerpo de PUT /admin/channels: enlaza (o desenlaza, con importUrl vacío) una unidad con un tipo de Booking.
 export type ChannelCalendarInput = { cabinTypeId: string; unit: number; units?: number[]; label: string; importUrl: string; beds24RoomId?: number | null };
 // Resultado de una sincronización (por calendario).
-export type ChannelSyncResult = { calendarId: string; ok: boolean; events: number; added: number; removed: number; moved: string[]; conflicts: string[]; error?: string };
+export type ChannelSyncResult = {
+  calendarId: string;
+  ok: boolean;
+  events: number;
+  added: number;
+  removed: number;
+  moved: string[];
+  conflicts: string[];
+  error?: string;
+};
 
 export type Rates = Partial<Record<CabinTypeId, { precioPareja: number; personaAdicional: number; maxPersonas: number }>>;
 
@@ -285,7 +323,15 @@ export type NotificationKind =
   | "channel_moved"
   | "channel_sync_failed";
 
-export type AdminNotification = { id: number; kind: NotificationKind; title: string; body: string; reservationCode: string | null; readAt: string | null; createdAt: string };
+export type AdminNotification = {
+  id: number;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  reservationCode: string | null;
+  readAt: string | null;
+  createdAt: string;
+};
 
 export type AdminData = {
   reservations: Reservation[];

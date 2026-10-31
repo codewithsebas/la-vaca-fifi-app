@@ -4,7 +4,24 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import {
-  ArrowDownIcon, ArrowUpIcon, CheckIcon, ClockIcon, CloseIcon, ExternalLinkIcon, FileTextIcon, HomeIcon, ImageIcon, PaletteIcon, PhoneIcon, PinIcon, PlusIcon, ShieldIcon, TrashIcon, UploadIcon, WalletIcon, WarningIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  ClockIcon,
+  CloseIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  HomeIcon,
+  ImageIcon,
+  PaletteIcon,
+  PhoneIcon,
+  PinIcon,
+  PlusIcon,
+  ShieldIcon,
+  TrashIcon,
+  UploadIcon,
+  WalletIcon,
+  WarningIcon,
 } from "@/components/icons";
 import { api } from "@/lib/api";
 import { config, isMockApi } from "@/lib/config";
@@ -55,18 +72,24 @@ type Form = { s: SiteSettings; policies: SitePolicy[]; t: SiteTexts; theme: Site
 function validate({ s, policies, t }: Form) {
   const e: Record<string, { msg: string; tab: ContentSectionId }> = {};
   if (!t.hero.title.trim()) e.heroTitle = { msg: "Escribe el título de la portada.", tab: "portada" };
-  const lines = t.hero.rotating.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = t.hero.rotating
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   if (lines.length > TEXT_LIMITS.rotatingLines || lines.some((l) => l.length > TEXT_LIMITS.highlight))
     e.heroRotating = { msg: `Hasta ${TEXT_LIMITS.rotatingLines} frases, de máximo ${TEXT_LIMITS.highlight} caracteres cada una.`, tab: "portada" };
-  if (!TIME.test(s.checkInStart) || !TIME.test(s.checkInEnd) || s.checkInEnd <= s.checkInStart) e.checkIn = { msg: "La hora final del check-in debe ser posterior a la inicial.", tab: "horarios" };
+  if (!TIME.test(s.checkInStart) || !TIME.test(s.checkInEnd) || s.checkInEnd <= s.checkInStart)
+    e.checkIn = { msg: "La hora final del check-in debe ser posterior a la inicial.", tab: "horarios" };
   if (!TIME.test(s.checkOutTime)) e.checkOut = { msg: "Elige la hora de check-out.", tab: "horarios" };
   const phones = s.phones.map((p) => p.trim()).filter(Boolean);
   if (!phones.length) e.phones = { msg: "Escribe al menos un teléfono.", tab: "contacto" };
-  else if (phones.some((p) => !/^[\d\s()+-]{7,20}$/.test(p))) e.phones = { msg: "Los teléfonos solo pueden tener números, espacios y los signos + ( ) -.", tab: "contacto" };
+  else if (phones.some((p) => !/^[\d\s()+-]{7,20}$/.test(p)))
+    e.phones = { msg: "Los teléfonos solo pueden tener números, espacios y los signos + ( ) -.", tab: "contacto" };
   if (!/^\d{10,15}$/.test(s.whatsapp.replace(/\D/g, ""))) e.whatsapp = { msg: "Incluye el indicativo del país, por ejemplo 573144001279.", tab: "contacto" };
   if (!policies.length) e.policies = { msg: "Debe haber al menos una política.", tab: "politicas" };
   else if (policies.some((p) => !p.q.trim() || !p.a.trim())) e.policies = { msg: "Cada política necesita título y texto.", tab: "politicas" };
-  for (const k of ["instagram", "facebook", "tiktok"] as const) if (t.social[k].trim() && !URL_OK.test(t.social[k].trim())) e[k] = { msg: "Pega el enlace completo, empezando por https://", tab: "redes" };
+  for (const k of ["instagram", "facebook", "tiktok"] as const)
+    if (t.social[k].trim() && !URL_OK.test(t.social[k].trim())) e[k] = { msg: "Pega el enlace completo, empezando por https://", tab: "redes" };
   return e;
 }
 
@@ -129,11 +152,23 @@ export function ContentLayout({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={ctx}>
-      <PageHeader title={MODULES.contenido.label} description="Organizado por las secciones del sitio. Las fotos se publican al subirlas; los textos, al guardar." />
+      <PageHeader
+        title={MODULES.contenido.label}
+        description="Organizado por las secciones del sitio. Las fotos se publican al subirlas; los textos, al guardar."
+      />
       <GroupedNavTabs
         label="Secciones del sitio"
         current={section ?? ""}
-        groups={CONTENT_GROUPS.map((g) => ({ label: g, tabs: CONTENT_SECTIONS.filter((x) => x.group === g).map((x) => ({ id: x.id, href: paths.contenido(x.id), label: x.label, icon: ICONS[x.id], count: counts[x.id] })) }))}
+        groups={CONTENT_GROUPS.map((g) => ({
+          label: g,
+          tabs: CONTENT_SECTIONS.filter((x) => x.group === g).map((x) => ({
+            id: x.id,
+            href: paths.contenido(x.id),
+            label: x.label,
+            icon: ICONS[x.id],
+            count: counts[x.id],
+          })),
+        }))}
       />
       {meta && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-panel/60 px-4 py-3 text-[13.5px] text-ink-muted">
@@ -141,7 +176,12 @@ export function ContentLayout({ children }: { children: ReactNode }) {
             <span className="font-semibold text-ink">Dónde aparece: </span>
             {meta.where}
           </p>
-          <a href={meta.href} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 font-semibold text-ink underline-offset-2 hover:underline">
+          <a
+            href={meta.href}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-1.5 font-semibold text-ink underline-offset-2 hover:underline"
+          >
             Ver en el sitio
             <ExternalLinkIcon size={14} />
           </a>
@@ -170,206 +210,388 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
   const { f, saved, errors, err, setS, setT, setPolicies, setTheme } = useContext(Ctx)!;
   return (
     <>
-        {id === "portada" && (
-          <>
-            <Card aria-labelledby="ct-hero" className="grid grid-cols-1 gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
-              <div className="flex flex-col gap-4">
-                <CardHeader id="ct-hero" icon={<HomeIcon size={18} />} title="Textos de la portada" />
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Field label="Título (primera línea)" error={err("heroTitle")} hint={`${f.t.hero.title.length}/${TEXT_LIMITS.title}`}>
-                    {(p) => <input {...p} type="text" maxLength={TEXT_LIMITS.title} value={f.t.hero.title} onChange={(e) => setT("hero", { title: e.target.value })} className={adminInput} />}
-                  </Field>
-                  <Field label="Título resaltado (va subrayado con la lengua de Fifí)" hint={`${f.t.hero.highlight.length}/${TEXT_LIMITS.highlight}`}>
-                    {(p) => <input {...p} type="text" maxLength={TEXT_LIMITS.highlight} value={f.t.hero.highlight} onChange={(e) => setT("hero", { highlight: e.target.value })} className={adminInput} />}
-                  </Field>
-                </div>
-                <Field
-                  label="Lo que dice Fifí (opcional)"
-                  error={err("heroRotating")}
-                  hint={`Una frase por línea, hasta ${TEXT_LIMITS.rotatingLines}, de máximo ${TEXT_LIMITS.highlight} caracteres. Aparecen una tras otra en el globo de Fifí. Déjalo vacío para que no hable.`}
-                >
-                  {(p) => <textarea {...p} rows={3} maxLength={TEXT_LIMITS.rotating} value={f.t.hero.rotating} onChange={(e) => setT("hero", { rotating: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} placeholder={"¡Muuuy bienvenidos!\nEl café va por mi cuenta"} />}
+      {id === "portada" && (
+        <>
+          <Card aria-labelledby="ct-hero" className="grid grid-cols-1 gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+            <div className="flex flex-col gap-4">
+              <CardHeader id="ct-hero" icon={<HomeIcon size={18} />} title="Textos de la portada" />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Título (primera línea)" error={err("heroTitle")} hint={`${f.t.hero.title.length}/${TEXT_LIMITS.title}`}>
+                  {(p) => (
+                    <input
+                      {...p}
+                      type="text"
+                      maxLength={TEXT_LIMITS.title}
+                      value={f.t.hero.title}
+                      onChange={(e) => setT("hero", { title: e.target.value })}
+                      className={adminInput}
+                    />
+                  )}
                 </Field>
-                <Field label="Etiqueta sobre el título" hint="Corta. Ej. «A 5 minutos de Murillo, Tolima».">
-
-                  {(p) => <input {...p} type="text" maxLength={TEXT_LIMITS.badge} value={f.t.hero.badge} onChange={(e) => setT("hero", { badge: e.target.value })} className={adminInput} />}
-                </Field>
-                <Field label="Descripción" hint={`${f.t.hero.description.length}/${TEXT_LIMITS.description}`}>
-                  {(p) => <textarea {...p} rows={3} maxLength={TEXT_LIMITS.description} value={f.t.hero.description} onChange={(e) => setT("hero", { description: e.target.value })} className={`${adminInput} resize-y leading-relaxed`} />}
+                <Field label="Título resaltado (va subrayado con la lengua de Fifí)" hint={`${f.t.hero.highlight.length}/${TEXT_LIMITS.highlight}`}>
+                  {(p) => (
+                    <input
+                      {...p}
+                      type="text"
+                      maxLength={TEXT_LIMITS.highlight}
+                      value={f.t.hero.highlight}
+                      onChange={(e) => setT("hero", { highlight: e.target.value })}
+                      className={adminInput}
+                    />
+                  )}
                 </Field>
               </div>
-              <HeroPreview t={f.t} theme={f.theme} />
-            </Card>
-            <PhotoGroups groups={["Foto principal"]} />
-          </>
-        )}
-
-        {id === "experiencias" && <PhotoGroups groups={["Restaurante", "La finca"]} />}
-
-        {id === "colores" && <ThemeEditor theme={f.theme} saved={saved.theme} onChange={setTheme} />}
-
-        {id === "servicios" && <ServicesManager />}
-
-        {id === "horarios" && (
-          <Card aria-labelledby="ct-hours" className="flex max-w-[640px] flex-col gap-4 p-4 sm:p-5">
-            <CardHeader id="ct-hours" icon={<ClockIcon size={18} />} title="Horarios" subtitle="Las horas de llegada que se pueden elegir al reservar siguen esta ventana." />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Field label="Check-in desde">
-                {(p) => <Combobox id={p.id} describedBy={p["aria-describedby"]} invalid={!!err("checkIn")} value={f.s.checkInStart} onChange={(v) => setS({ checkInStart: v })} options={timeOptions(f.s.checkInStart)} searchPlaceholder="Buscar hora…" />}
+              <Field
+                label="Lo que dice Fifí (opcional)"
+                error={err("heroRotating")}
+                hint={`Una frase por línea, hasta ${TEXT_LIMITS.rotatingLines}, de máximo ${TEXT_LIMITS.highlight} caracteres. Aparecen una tras otra en el globo de Fifí. Déjalo vacío para que no hable.`}
+              >
+                {(p) => (
+                  <textarea
+                    {...p}
+                    rows={3}
+                    maxLength={TEXT_LIMITS.rotating}
+                    value={f.t.hero.rotating}
+                    onChange={(e) => setT("hero", { rotating: e.target.value })}
+                    className={`${adminInput} resize-y leading-relaxed`}
+                    placeholder={"¡Muuuy bienvenidos!\nEl café va por mi cuenta"}
+                  />
+                )}
               </Field>
-              <Field label="Check-in hasta">
-                {(p) => <Combobox id={p.id} describedBy={p["aria-describedby"]} invalid={!!err("checkIn")} value={f.s.checkInEnd} onChange={(v) => setS({ checkInEnd: v })} options={timeOptions(f.s.checkInEnd)} searchPlaceholder="Buscar hora…" />}
+              <Field label="Etiqueta sobre el título" hint="Corta. Ej. «A 5 minutos de Murillo, Tolima».">
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    maxLength={TEXT_LIMITS.badge}
+                    value={f.t.hero.badge}
+                    onChange={(e) => setT("hero", { badge: e.target.value })}
+                    className={adminInput}
+                  />
+                )}
               </Field>
-              <Field label="Check-out" error={err("checkOut")}>
-                {(p) => <Combobox id={p.id} describedBy={p["aria-describedby"]} invalid={!!p["aria-invalid"]} value={f.s.checkOutTime} onChange={(v) => setS({ checkOutTime: v })} options={timeOptions(f.s.checkOutTime)} searchPlaceholder="Buscar hora…" />}
+              <Field label="Descripción" hint={`${f.t.hero.description.length}/${TEXT_LIMITS.description}`}>
+                {(p) => (
+                  <textarea
+                    {...p}
+                    rows={3}
+                    maxLength={TEXT_LIMITS.description}
+                    value={f.t.hero.description}
+                    onChange={(e) => setT("hero", { description: e.target.value })}
+                    className={`${adminInput} resize-y leading-relaxed`}
+                  />
+                )}
               </Field>
             </div>
-            {err("checkIn") && <FieldError>{err("checkIn")}</FieldError>}
-            {TIME.test(f.s.checkInStart) && TIME.test(f.s.checkInEnd) && TIME.test(f.s.checkOutTime) && (
-              <Callout>
-                <span className="font-semibold">En el sitio:</span> Check-in {fmtTime(f.s.checkInStart)} a {fmtTime(f.s.checkInEnd)} · Check-out {fmtTime(f.s.checkOutTime)}
-              </Callout>
-            )}
+            <HeroPreview t={f.t} theme={f.theme} />
           </Card>
-        )}
+          <PhotoGroups groups={["Foto principal"]} />
+        </>
+      )}
 
-        {id === "politicas" && (
-          <Card aria-labelledby="ct-pol" className="flex flex-col gap-4 p-4 sm:p-5">
-            <CardHeader id="ct-pol" icon={<FileTextIcon size={18} />} title="Reservas y políticas" subtitle="Funcionan como preguntas frecuentes: un título y su respuesta. El orden es el del sitio." />
-            <ol className="flex flex-col gap-3">
-              {f.policies.map((p, i) => (
-                <li key={p.id} className="flex gap-3 rounded-xl border border-line p-3 sm:p-4">
-                  <span aria-hidden="true" className="mt-7 grid size-6 flex-none place-items-center rounded-full bg-canvas text-[12px] font-bold text-ink-muted tabular-nums max-sm:hidden">
-                    {i + 1}
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-3">
-                    <div className="flex items-end gap-2">
-                      <Field label={<>Título<span className="sr-only"> de la política {i + 1}</span></>} className="flex-1">
-                        {(fp) => (
-                          <input {...fp} aria-invalid={errors.policies && !p.q.trim() ? true : undefined} type="text" maxLength={120} value={p.q} onChange={(e) => setPolicies((ps) => ps.map((x, j) => (j === i ? { ...x, q: e.target.value } : x)))} className={adminInput} />
-                        )}
-                      </Field>
-                      <div className="flex gap-0.5">
-                        <IconButton label={`Subir política ${i + 1}`} disabled={i === 0} onClick={() => setPolicies((ps) => swap(ps, i, i - 1))}>
-                          <ArrowUpIcon size={16} />
-                        </IconButton>
-                        <IconButton label={`Bajar política ${i + 1}`} disabled={i === f.policies.length - 1} onClick={() => setPolicies((ps) => swap(ps, i, i + 1))}>
-                          <ArrowDownIcon size={16} />
-                        </IconButton>
-                        <IconButton label={`Eliminar política ${i + 1}`} variant="danger-ghost" disabled={f.policies.length <= 1} onClick={() => setPolicies((ps) => ps.filter((_, j) => j !== i))}>
-                          <TrashIcon size={16} />
-                        </IconButton>
-                      </div>
-                    </div>
-                    <Field label={<>Texto<span className="sr-only"> de la política {i + 1}</span></>}>
-                      {(fp) => (
-                        <textarea {...fp} aria-invalid={errors.policies && !p.a.trim() ? true : undefined} rows={3} maxLength={2000} value={p.a} onChange={(e) => setPolicies((ps) => ps.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} className={`${adminInput} resize-y leading-relaxed`} />
-                      )}
-                    </Field>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            {err("policies") && <FieldError>{err("policies")}</FieldError>}
-            {f.policies.length < 20 && (
-              <Button icon={<PlusIcon size={14} />} onClick={() => setPolicies((ps) => [...ps, { id: crypto.randomUUID(), q: "", a: "" }])} className="self-start">
-                Agregar política
-              </Button>
-            )}
-          </Card>
-        )}
+      {id === "experiencias" && <PhotoGroups groups={["Restaurante", "La finca"]} />}
 
-        {id === "contacto" && (
-          <>
-            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-              <Card aria-labelledby="ct-contact" className="flex flex-col gap-4 p-4 sm:p-5">
-                <CardHeader id="ct-contact" icon={<PhoneIcon size={17} />} title="Contacto" />
-                <Field label="WhatsApp (con indicativo)" hint="Solo números, con el indicativo del país. Ej. 573144001279" error={err("whatsapp")}>
-                  {(p) => <input {...p} type="tel" inputMode="numeric" value={f.s.whatsapp} onChange={(e) => setS({ whatsapp: e.target.value })} placeholder="573144001279" className={adminInput} />}
-                </Field>
-                <fieldset className="flex min-w-0 flex-col gap-2">
-                  <legend className="mb-1.5 text-[13px] font-semibold text-ink">Teléfonos</legend>
-                  {f.s.phones.map((ph, i) => (
-                    <div key={i} className="flex gap-2">
-                      <input
-                        type="tel"
-                        aria-label={`Teléfono ${i + 1}`}
-                        aria-invalid={errors.phones && !/^[\d\s()+-]{7,20}$/.test(ph.trim()) ? true : undefined}
-                        value={ph}
-                        onChange={(e) => setS({ phones: f.s.phones.map((x, j) => (j === i ? e.target.value : x)) })}
-                        className={`${adminInput} min-w-0 flex-1`}
-                      />
-                      <IconButton label={`Quitar teléfono ${i + 1}`} disabled={f.s.phones.length <= 1} onClick={() => setS({ phones: f.s.phones.filter((_, j) => j !== i) })}>
-                        <CloseIcon size={17} />
-                      </IconButton>
-                    </div>
-                  ))}
-                  {f.s.phones.length < 5 && (
-                    <Button size="sm" variant="ghost" icon={<PlusIcon size={14} />} onClick={() => setS({ phones: [...f.s.phones, ""] })} className="self-start">
-                      Agregar teléfono
-                    </Button>
-                  )}
-                  {err("phones") && <FieldError>{err("phones")}</FieldError>}
-                </fieldset>
-              </Card>
-              <Card aria-labelledby="ct-loc" className="flex flex-col gap-4 p-4 sm:p-5">
-                <CardHeader id="ct-loc" icon={<PinIcon size={17} />} title="Ubicación" />
-                <div className="rounded-xl bg-canvas px-3.5 py-3 text-[13.5px]">
-                  <p className="font-semibold text-ink">{config.address}</p>
-                  <p className="mt-0.5 text-ink-muted">La dirección y el punto del mapa forman parte de la configuración del sitio; para cambiarlos se requiere un ajuste técnico.</p>
-                </div>
-                <Field label="Nota de ubicación" hint="Se muestra bajo la dirección. Déjala vacía para ocultarla.">
-                  {(p) => <input {...p} type="text" maxLength={TEXT_LIMITS.note} value={f.t.location.note} onChange={(e) => setT("location", { note: e.target.value })} className={adminInput} />}
-                </Field>
-              </Card>
-            </div>
-            <PhotoGroups groups={["Contacto"]} />
-          </>
-        )}
+      {id === "colores" && <ThemeEditor theme={f.theme} saved={saved.theme} onChange={setTheme} />}
 
-        {id === "pagos" && (
-          <Card aria-labelledby="ct-pay" className="flex max-w-[760px] flex-col gap-4 p-4 sm:p-5">
-            <CardHeader id="ct-pay" icon={<WalletIcon size={18} />} title="Pago fuera de línea" subtitle={`El abono (${config.depositPct} %) y el saldo se pagan en línea con Wompi. Si el huésped no paga el saldo dentro de la hora siguiente al check-in, ve estas instrucciones para pagarlo en recepción o por transferencia.`} />
-            <Field label="Instrucciones de pago" hint="Banco, tipo y número de cuenta, titular, o llave de Bre-B / Nequi. Se muestran tal cual las escribas.">
+      {id === "servicios" && <ServicesManager />}
+
+      {id === "horarios" && (
+        <Card aria-labelledby="ct-hours" className="flex max-w-[640px] flex-col gap-4 p-4 sm:p-5">
+          <CardHeader
+            id="ct-hours"
+            icon={<ClockIcon size={18} />}
+            title="Horarios"
+            subtitle="Las horas de llegada que se pueden elegir al reservar siguen esta ventana."
+          />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Field label="Check-in desde">
               {(p) => (
-                <textarea
-                  {...p}
-                  rows={4}
-                  maxLength={TEXT_LIMITS.instructions}
-                  value={f.t.payment.instructions}
-                  onChange={(e) => setT("payment", { instructions: e.target.value })}
-                  placeholder="Bancolombia · Ahorros 000-000000-00 · a nombre de …"
-                  className={`${adminInput} resize-y leading-relaxed`}
+                <Combobox
+                  id={p.id}
+                  describedBy={p["aria-describedby"]}
+                  invalid={!!err("checkIn")}
+                  value={f.s.checkInStart}
+                  onChange={(v) => setS({ checkInStart: v })}
+                  options={timeOptions(f.s.checkInStart)}
+                  searchPlaceholder="Buscar hora…"
                 />
               )}
             </Field>
-            {!f.t.payment.instructions.trim() && (
-              <Callout tone="warning">
-                Aún no hay instrucciones: si el saldo vence, el huésped solo verá que debe pagar en recepción o escribir por WhatsApp.
-              </Callout>
-            )}
-            <Callout>Cuando recibas un pago por fuera de la pasarela, regístralo en la ficha de la reserva («Registrar abono» o «Registrar pago del saldo»): queda en el historial de pagos y aplica las mismas reglas que un pago en línea.</Callout>
-          </Card>
-        )}
+            <Field label="Check-in hasta">
+              {(p) => (
+                <Combobox
+                  id={p.id}
+                  describedBy={p["aria-describedby"]}
+                  invalid={!!err("checkIn")}
+                  value={f.s.checkInEnd}
+                  onChange={(v) => setS({ checkInEnd: v })}
+                  options={timeOptions(f.s.checkInEnd)}
+                  searchPlaceholder="Buscar hora…"
+                />
+              )}
+            </Field>
+            <Field label="Check-out" error={err("checkOut")}>
+              {(p) => (
+                <Combobox
+                  id={p.id}
+                  describedBy={p["aria-describedby"]}
+                  invalid={!!p["aria-invalid"]}
+                  value={f.s.checkOutTime}
+                  onChange={(v) => setS({ checkOutTime: v })}
+                  options={timeOptions(f.s.checkOutTime)}
+                  searchPlaceholder="Buscar hora…"
+                />
+              )}
+            </Field>
+          </div>
+          {err("checkIn") && <FieldError>{err("checkIn")}</FieldError>}
+          {TIME.test(f.s.checkInStart) && TIME.test(f.s.checkInEnd) && TIME.test(f.s.checkOutTime) && (
+            <Callout>
+              <span className="font-semibold">En el sitio:</span> Check-in {fmtTime(f.s.checkInStart)} a {fmtTime(f.s.checkInEnd)} · Check-out{" "}
+              {fmtTime(f.s.checkOutTime)}
+            </Callout>
+          )}
+        </Card>
+      )}
 
-        {id === "redes" && (
+      {id === "politicas" && (
+        <Card aria-labelledby="ct-pol" className="flex flex-col gap-4 p-4 sm:p-5">
+          <CardHeader
+            id="ct-pol"
+            icon={<FileTextIcon size={18} />}
+            title="Reservas y políticas"
+            subtitle="Funcionan como preguntas frecuentes: un título y su respuesta. El orden es el del sitio."
+          />
+          <ol className="flex flex-col gap-3">
+            {f.policies.map((p, i) => (
+              <li key={p.id} className="flex gap-3 rounded-xl border border-line p-3 sm:p-4">
+                <span
+                  aria-hidden="true"
+                  className="mt-7 grid size-6 flex-none place-items-center rounded-full bg-canvas text-[12px] font-bold text-ink-muted tabular-nums max-sm:hidden"
+                >
+                  {i + 1}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-3">
+                  <div className="flex items-end gap-2">
+                    <Field
+                      label={
+                        <>
+                          Título<span className="sr-only"> de la política {i + 1}</span>
+                        </>
+                      }
+                      className="flex-1"
+                    >
+                      {(fp) => (
+                        <input
+                          {...fp}
+                          aria-invalid={errors.policies && !p.q.trim() ? true : undefined}
+                          type="text"
+                          maxLength={120}
+                          value={p.q}
+                          onChange={(e) => setPolicies((ps) => ps.map((x, j) => (j === i ? { ...x, q: e.target.value } : x)))}
+                          className={adminInput}
+                        />
+                      )}
+                    </Field>
+                    <div className="flex gap-0.5">
+                      <IconButton label={`Subir política ${i + 1}`} disabled={i === 0} onClick={() => setPolicies((ps) => swap(ps, i, i - 1))}>
+                        <ArrowUpIcon size={16} />
+                      </IconButton>
+                      <IconButton
+                        label={`Bajar política ${i + 1}`}
+                        disabled={i === f.policies.length - 1}
+                        onClick={() => setPolicies((ps) => swap(ps, i, i + 1))}
+                      >
+                        <ArrowDownIcon size={16} />
+                      </IconButton>
+                      <IconButton
+                        label={`Eliminar política ${i + 1}`}
+                        variant="danger-ghost"
+                        disabled={f.policies.length <= 1}
+                        onClick={() => setPolicies((ps) => ps.filter((_, j) => j !== i))}
+                      >
+                        <TrashIcon size={16} />
+                      </IconButton>
+                    </div>
+                  </div>
+                  <Field
+                    label={
+                      <>
+                        Texto<span className="sr-only"> de la política {i + 1}</span>
+                      </>
+                    }
+                  >
+                    {(fp) => (
+                      <textarea
+                        {...fp}
+                        aria-invalid={errors.policies && !p.a.trim() ? true : undefined}
+                        rows={3}
+                        maxLength={2000}
+                        value={p.a}
+                        onChange={(e) => setPolicies((ps) => ps.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))}
+                        className={`${adminInput} resize-y leading-relaxed`}
+                      />
+                    )}
+                  </Field>
+                </div>
+              </li>
+            ))}
+          </ol>
+          {err("policies") && <FieldError>{err("policies")}</FieldError>}
+          {f.policies.length < 20 && (
+            <Button
+              icon={<PlusIcon size={14} />}
+              onClick={() => setPolicies((ps) => [...ps, { id: crypto.randomUUID(), q: "", a: "" }])}
+              className="self-start"
+            >
+              Agregar política
+            </Button>
+          )}
+        </Card>
+      )}
+
+      {id === "contacto" && (
+        <>
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-            <Card aria-labelledby="ct-social" className="flex flex-col gap-4 p-4 sm:p-5">
-              <CardHeader id="ct-social" icon={<ExternalLinkIcon size={17} />} title="Redes sociales" subtitle="Pega el enlace completo del perfil. Las vacías no se muestran." />
-              {(["instagram", "facebook", "tiktok"] as const).map((k) => (
-                <Field key={k} label={k === "tiktok" ? "TikTok" : k[0].toUpperCase() + k.slice(1)} error={err(k)}>
-                  {(p) => <input {...p} type="url" inputMode="url" maxLength={TEXT_LIMITS.url} value={f.t.social[k]} onChange={(e) => setT("social", { [k]: e.target.value })} placeholder={`https://www.${k}.com/…`} className={adminInput} />}
-                </Field>
-              ))}
+            <Card aria-labelledby="ct-contact" className="flex flex-col gap-4 p-4 sm:p-5">
+              <CardHeader id="ct-contact" icon={<PhoneIcon size={17} />} title="Contacto" />
+              <Field label="WhatsApp (con indicativo)" hint="Solo números, con el indicativo del país. Ej. 573144001279" error={err("whatsapp")}>
+                {(p) => (
+                  <input
+                    {...p}
+                    type="tel"
+                    inputMode="numeric"
+                    value={f.s.whatsapp}
+                    onChange={(e) => setS({ whatsapp: e.target.value })}
+                    placeholder="573144001279"
+                    className={adminInput}
+                  />
+                )}
+              </Field>
+              <fieldset className="flex min-w-0 flex-col gap-2">
+                <legend className="mb-1.5 text-[13px] font-semibold text-ink">Teléfonos</legend>
+                {f.s.phones.map((ph, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      type="tel"
+                      aria-label={`Teléfono ${i + 1}`}
+                      aria-invalid={errors.phones && !/^[\d\s()+-]{7,20}$/.test(ph.trim()) ? true : undefined}
+                      value={ph}
+                      onChange={(e) => setS({ phones: f.s.phones.map((x, j) => (j === i ? e.target.value : x)) })}
+                      className={`${adminInput} min-w-0 flex-1`}
+                    />
+                    <IconButton
+                      label={`Quitar teléfono ${i + 1}`}
+                      disabled={f.s.phones.length <= 1}
+                      onClick={() => setS({ phones: f.s.phones.filter((_, j) => j !== i) })}
+                    >
+                      <CloseIcon size={17} />
+                    </IconButton>
+                  </div>
+                ))}
+                {f.s.phones.length < 5 && (
+                  <Button size="sm" variant="ghost" icon={<PlusIcon size={14} />} onClick={() => setS({ phones: [...f.s.phones, ""] })} className="self-start">
+                    Agregar teléfono
+                  </Button>
+                )}
+                {err("phones") && <FieldError>{err("phones")}</FieldError>}
+              </fieldset>
             </Card>
-            <Card aria-labelledby="ct-legal" className="flex flex-col gap-4 p-4 sm:p-5">
-              <CardHeader id="ct-legal" icon={<ShieldIcon size={17} />} title="Datos legales" />
-              <Field label="Número de RNT (Registro Nacional de Turismo)" hint="Si lo dejas vacío, el RNT no se muestra en el pie de página.">
-                {(p) => <input {...p} type="text" value={f.s.rnt} onChange={(e) => setS({ rnt: e.target.value })} placeholder="Ej. 123456" className={adminInput} />}
+            <Card aria-labelledby="ct-loc" className="flex flex-col gap-4 p-4 sm:p-5">
+              <CardHeader id="ct-loc" icon={<PinIcon size={17} />} title="Ubicación" />
+              <div className="rounded-xl bg-canvas px-3.5 py-3 text-[13.5px]">
+                <p className="font-semibold text-ink">{config.address}</p>
+                <p className="mt-0.5 text-ink-muted">
+                  La dirección y el punto del mapa forman parte de la configuración del sitio; para cambiarlos se requiere un ajuste técnico.
+                </p>
+              </div>
+              <Field label="Nota de ubicación" hint="Se muestra bajo la dirección. Déjala vacía para ocultarla.">
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    maxLength={TEXT_LIMITS.note}
+                    value={f.t.location.note}
+                    onChange={(e) => setT("location", { note: e.target.value })}
+                    className={adminInput}
+                  />
+                )}
               </Field>
             </Card>
           </div>
-        )}
+          <PhotoGroups groups={["Contacto"]} />
+        </>
+      )}
+
+      {id === "pagos" && (
+        <Card aria-labelledby="ct-pay" className="flex max-w-[760px] flex-col gap-4 p-4 sm:p-5">
+          <CardHeader
+            id="ct-pay"
+            icon={<WalletIcon size={18} />}
+            title="Pago fuera de línea"
+            subtitle={`El abono (${config.depositPct} %) y el saldo se pagan en línea con Wompi. Si el huésped no paga el saldo dentro de la hora siguiente al check-in, ve estas instrucciones para pagarlo en recepción o por transferencia.`}
+          />
+          <Field label="Instrucciones de pago" hint="Banco, tipo y número de cuenta, titular, o llave de Bre-B / Nequi. Se muestran tal cual las escribas.">
+            {(p) => (
+              <textarea
+                {...p}
+                rows={4}
+                maxLength={TEXT_LIMITS.instructions}
+                value={f.t.payment.instructions}
+                onChange={(e) => setT("payment", { instructions: e.target.value })}
+                placeholder="Bancolombia · Ahorros 000-000000-00 · a nombre de …"
+                className={`${adminInput} resize-y leading-relaxed`}
+              />
+            )}
+          </Field>
+          {!f.t.payment.instructions.trim() && (
+            <Callout tone="warning">
+              Aún no hay instrucciones: si el saldo vence, el huésped solo verá que debe pagar en recepción o escribir por WhatsApp.
+            </Callout>
+          )}
+          <Callout>
+            Cuando recibas un pago por fuera de la pasarela, regístralo en la ficha de la reserva («Registrar abono» o «Registrar pago del saldo»): queda en el
+            historial de pagos y aplica las mismas reglas que un pago en línea.
+          </Callout>
+        </Card>
+      )}
+
+      {id === "redes" && (
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          <Card aria-labelledby="ct-social" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader
+              id="ct-social"
+              icon={<ExternalLinkIcon size={17} />}
+              title="Redes sociales"
+              subtitle="Pega el enlace completo del perfil. Las vacías no se muestran."
+            />
+            {(["instagram", "facebook", "tiktok"] as const).map((k) => (
+              <Field key={k} label={k === "tiktok" ? "TikTok" : k[0].toUpperCase() + k.slice(1)} error={err(k)}>
+                {(p) => (
+                  <input
+                    {...p}
+                    type="url"
+                    inputMode="url"
+                    maxLength={TEXT_LIMITS.url}
+                    value={f.t.social[k]}
+                    onChange={(e) => setT("social", { [k]: e.target.value })}
+                    placeholder={`https://www.${k}.com/…`}
+                    className={adminInput}
+                  />
+                )}
+              </Field>
+            ))}
+          </Card>
+          <Card aria-labelledby="ct-legal" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader id="ct-legal" icon={<ShieldIcon size={17} />} title="Datos legales" />
+            <Field label="Número de RNT (Registro Nacional de Turismo)" hint="Si lo dejas vacío, el RNT no se muestra en el pie de página.">
+              {(p) => (
+                <input {...p} type="text" value={f.s.rnt} onChange={(e) => setS({ rnt: e.target.value })} placeholder="Ej. 123456" className={adminInput} />
+              )}
+            </Field>
+          </Card>
+        </div>
+      )}
     </>
   );
 }
@@ -389,8 +611,16 @@ function HeroPreview({ t, theme }: { t: SiteTexts; theme: SiteTheme }) {
         Vista previa
       </h3>
       {/* La portada en pequeño: el cartel azul, el título en letras de cartel, la descripción y Fifí con su globo. */}
-      <div aria-hidden="true" style={themeStyle(theme)} className="relative flex flex-col gap-3 overflow-hidden rounded-[22px] border-[3px] border-on-dark bg-[color-mix(in_srgb,var(--color-accent)_62%,white)] p-5 text-on-dark">
-        {t.hero.badge && <span className="self-start rounded-full border-2 border-on-dark bg-highlight px-2.5 py-0.5 text-[.66rem] font-extrabold text-on-light">{t.hero.badge}</span>}
+      <div
+        aria-hidden="true"
+        style={themeStyle(theme)}
+        className="relative flex flex-col gap-3 overflow-hidden rounded-[22px] border-[3px] border-on-dark bg-[color-mix(in_srgb,var(--color-accent)_62%,white)] p-5 text-on-dark"
+      >
+        {t.hero.badge && (
+          <span className="self-start rounded-full border-2 border-on-dark bg-highlight px-2.5 py-0.5 text-[.66rem] font-extrabold text-on-light">
+            {t.hero.badge}
+          </span>
+        )}
         <p className="display text-[2.1rem] leading-[1]">
           <span className="poster-text text-card">{t.hero.title || "Título"}</span>{" "}
           {t.hero.highlight && <span className="poster-text text-highlight">{t.hero.highlight}</span>}
@@ -399,7 +629,11 @@ function HeroPreview({ t, theme }: { t: SiteTexts; theme: SiteTheme }) {
         <div className="flex items-end justify-between gap-3">
           <span className="btn btn-cta min-h-10 px-4 text-[.8rem]">Reservar cabaña</span>
           <span className="flex w-[42%] flex-col items-end gap-2">
-            {fifiPhrases(t.hero)[0] && <span className="rounded-xl border-2 border-on-dark bg-card px-2 py-1 font-display text-[.72rem] leading-tight text-on-light">{fifiPhrases(t.hero)[0]}</span>}
+            {fifiPhrases(t.hero)[0] && (
+              <span className="rounded-xl border-2 border-on-dark bg-card px-2 py-1 font-display text-[.72rem] leading-tight text-on-light">
+                {fifiPhrases(t.hero)[0]}
+              </span>
+            )}
             <Fifi className="w-full" />
           </span>
         </div>
@@ -437,7 +671,21 @@ function useNaturalSize(src?: string) {
 
 type SlotState = { busy: boolean; locked: boolean; error?: string };
 
-function PhotoCard({ s, src, st, onPick, onDrop, onRemove }: { s: PhotoSlotDef; src?: string; st: SlotState; onPick: () => void; onDrop: (f: File) => void; onRemove: () => void }) {
+function PhotoCard({
+  s,
+  src,
+  st,
+  onPick,
+  onDrop,
+  onRemove,
+}: {
+  s: PhotoSlotDef;
+  src?: string;
+  st: SlotState;
+  onPick: () => void;
+  onDrop: (f: File) => void;
+  onRemove: () => void;
+}) {
   const [over, setOver] = useState(false);
   const size = useNaturalSize(src);
   const low = size && isLow(s, size);
@@ -458,7 +706,10 @@ function PhotoCard({ s, src, st, onPick, onDrop, onRemove }: { s: PhotoSlotDef; 
       };
 
   return (
-    <li {...dragProps} className={`flex flex-col overflow-hidden rounded-2xl border bg-panel shadow-panel transition-[border-color,box-shadow] duration-150 ${over ? "border-focus ring-4 ring-focus/15" : "border-line"}`}>
+    <li
+      {...dragProps}
+      className={`flex flex-col overflow-hidden rounded-2xl border bg-panel shadow-panel transition-[border-color,box-shadow] duration-150 ${over ? "border-focus ring-4 ring-focus/15" : "border-line"}`}
+    >
       <div className="relative bg-canvas" style={{ aspectRatio: s.aspect }}>
         {src ? (
           <Image src={src} alt={s.alt} fill sizes="(min-width: 640px) 280px, 50vw" className="object-cover" />
@@ -470,13 +721,18 @@ function PhotoCard({ s, src, st, onPick, onDrop, onRemove }: { s: PhotoSlotDef; 
           </div>
         )}
         {src && (
-          <span className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-bold shadow-panel ${low ? "bg-warning-soft text-warning" : "bg-panel/95 text-success"}`}>
+          <span
+            className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-bold shadow-panel ${low ? "bg-warning-soft text-warning" : "bg-panel/95 text-success"}`}
+          >
             {low ? <WarningIcon size={13} /> : <CheckIcon size={12} />}
             {low ? "Resolución baja" : "Publicada"}
           </span>
         )}
         {(st.busy || over) && (
-          <div role={st.busy ? "status" : undefined} className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-panel/80 text-[13px] font-semibold text-ink backdrop-blur-[2px] motion-safe:animate-fade-in">
+          <div
+            role={st.busy ? "status" : undefined}
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-panel/80 text-[13px] font-semibold text-ink backdrop-blur-[2px] motion-safe:animate-fade-in"
+          >
             {st.busy ? <Spinner size={22} /> : <UploadIcon size={22} />}
             {st.busy ? "Optimizando y subiendo…" : "Suelta la foto para subirla"}
           </div>
@@ -557,7 +813,9 @@ function PhotoGroups({ groups }: { groups: string[] }) {
   return (
     <>
       <Callout tone="info">
-        Al elegir una foto puedes <strong>moverla y acercarla</strong> para encuadrarla: se recorta a la medida exacta de cada espacio, se optimiza y se publica. Usa el <strong>archivo original</strong> de la cámara o del celular: las capturas de pantalla y las fotos reenviadas por WhatsApp pierden resolución. También puedes arrastrar una foto sobre cada espacio.
+        Al elegir una foto puedes <strong>moverla y acercarla</strong> para encuadrarla: se recorta a la medida exacta de cada espacio, se optimiza y se
+        publica. Usa el <strong>archivo original</strong> de la cámara o del celular: las capturas de pantalla y las fotos reenviadas por WhatsApp pierden
+        resolución. También puedes arrastrar una foto sobre cada espacio.
         {isMockApi && <strong> En modo simulado la subida no está disponible.</strong>}
       </Callout>
       <input
