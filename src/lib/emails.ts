@@ -2,7 +2,6 @@
 // Los que se envían de verdad (confirmación de reserva y mensaje del equipo) se generan con funciones que reciben los datos;
 // el resto son plantillas de referencia con variables {{var}} que todavía no se envían.
 import { cop, fmtDate, nightsBetween, plural } from "@/lib/format";
-import { BALANCE_MINUTES } from "@/lib/payments";
 import { fmtTime, type SiteConfig } from "@/lib/site";
 
 type Cfg = SiteConfig;
@@ -137,7 +136,7 @@ export function reservationConfirmedEmail(c: Cfg, d: ConfirmedEmailData): Render
   const llegada = `${fmtDate(d.checkIn, true)}`;
   const salida = `${fmtDate(d.checkOut, true)}`;
   const checkInWindow = `de ${fmtTime(c.checkInStart)} a ${fmtTime(c.checkInEnd)}`;
-  const balanceNote = `Puedes pagarlo desde «Mi reserva» cuando quieras antes de llegar, o en línea en la hora siguiente al check-in (${BALANCE_MINUTES / 60} hora de plazo).`;
+  const balanceNote = "Puedes pagarlo por transferencia antes de llegar o en recepción el día del check-in.";
   const full = saldo === 0;
   const arrival = [
     "Presenta el <strong>documento de identidad físico</strong> de cada huésped.",
@@ -259,7 +258,7 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       preheader: confirmed.preheader,
       html: confirmed.html,
       text: confirmed.text,
-      vars: "Se envía una sola vez cuando se aprueba el abono o el pago total (en línea o registrado por el equipo). Adjunta el .ics de la estadía.",
+      vars: "Se envía una sola vez cuando el equipo registra el abono o el pago total. Adjunta el .ics de la estadía.",
     },
     {
       name: "Mensaje del equipo",
@@ -311,7 +310,7 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
           kv([
             ["Check-in", c.checkIn],
             ["Check-out", `hasta las ${c.checkOut}`],
-            ["Saldo pendiente", `{{saldo}} · en línea, antes de llegar o en la hora siguiente al check-in`],
+            ["Saldo pendiente", `{{saldo}} · por transferencia antes de llegar o en recepción`],
             ["Documento", "Documento de identidad físico de cada huésped"],
             ["Dirección", c.address],
           ]) +
@@ -323,7 +322,7 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
         "Recuerda tu documento físico.",
       ),
       text:
-        `Hola {{nombre}}, faltan 2 días para tu llegada.\nReserva {{codigo}} · {{cabana}}\nCheck-in: ${c.checkIn} · Check-out: hasta las ${c.checkOut}\nSaldo pendiente: {{saldo}} (en línea, dentro de la hora siguiente al check-in)\nCómo llegar: {{comoLlegarUrl}}` +
+        `Hola {{nombre}}, faltan 2 días para tu llegada.\nReserva {{codigo}} · {{cabana}}\nCheck-in: ${c.checkIn} · Check-out: hasta las ${c.checkOut}\nSaldo pendiente: {{saldo}} (en recepción o por transferencia)\nCómo llegar: {{comoLlegarUrl}}` +
         footText(c),
     },
     {
@@ -365,7 +364,7 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
             ["Ahora", "{{nuevoCheckIn}} → {{nuevoCheckOut}}"],
             ["Total", "{{total}}"],
             ["Pagado", "{{pagado}}"],
-            ["Saldo pendiente", "{{saldo}} · en línea, dentro de la hora siguiente al check-in"],
+            ["Saldo pendiente", "{{saldo}} · en recepción o por transferencia"],
           ]) +
           btn("Ver mi reserva", "{{miReservaUrl}}", X.brand, X.cream) +
           small("Con menos de 5 días (120 horas) antes de la llegada ya no se permiten nuevos cambios."),

@@ -39,3 +39,21 @@ export async function requireAdmin(): Promise<{ sb: Db; uid: string | null; erro
   if (role !== "admin") return { error: fail(403, "FORBIDDEN") };
   return { sb, uid: typeof data.claims.sub === "string" ? data.claims.sub : null };
 }
+
+// Errores de negocio que lanzan las funciones de la base de datos → respuesta HTTP.
+const BUSINESS: Record<string, number> = {
+  NOT_FOUND: 404,
+  ALREADY_PAID: 409,
+  NO_AVAILABILITY: 409,
+  DUPLICATE: 409,
+  NOT_APPLICABLE: 422,
+  BALANCE_PENDING: 422,
+  DEPOSIT_REQUIRED: 422,
+  FORBIDDEN: 403,
+};
+
+export function businessError(e: unknown): { status: number; error: string } | null {
+  const message = (e as { message?: string } | null)?.message ?? "";
+  const code = Object.keys(BUSINESS).find((k) => message === k || message.startsWith(k + " ") || message.includes(`"${k}"`));
+  return code ? { status: BUSINESS[code], error: code } : null;
+}

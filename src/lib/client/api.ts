@@ -8,26 +8,17 @@ import type {
   AdminNotification,
   ApiResult,
   Availability,
-  Beds24Room,
-  Beds24Status,
   Block,
   BlockInput,
   CabinInput,
   CabinType,
-  ChannelCalendar,
-  ChannelCalendarInput,
-  ChannelStay,
-  ChannelSyncResult,
   ClientProfile,
   ClientProfileInput,
   EmailRecord,
   FieldErrors,
   ManualReservationInput,
   ManualReservationResult,
-  PaymentKind,
   PaymentProof,
-  PaymentStart,
-  PaymentState,
   ProofReview,
   PublicReservation,
   RateSeason,
@@ -123,8 +114,6 @@ export const resetIdem = () => sessionStorage.removeItem("vf-idem");
 
 export type ValidationError = { error: "VALIDATION_ERROR"; fields: FieldErrors };
 export type ApiError = { error: string; fields?: FieldErrors };
-// Calendarios de Booking.com, sus fechas y la conexión con Beds24 (con el resultado de la lectura, si se leyó en esa solicitud).
-export type Channels = { calendars: ChannelCalendar[]; stays: ChannelStay[]; beds24: Beds24Status | null; results?: ChannelSyncResult[] };
 // Un dispositivo registrado para notificaciones push: qué grupos recibe y cómo se reconoce ("Chrome en Android").
 export type PushDevice = { groups: NotificationGroup[]; device: string; lastSuccessAt: string | null };
 
@@ -135,13 +124,7 @@ export const api = {
     request<{ unavailableDates: string[] }>("GET", "/availability/calendar", { query: q }),
   createReservation: (body: ReservationInput) =>
     request<PublicReservation | ValidationError>("POST", "/reservations", { body, headers: { "Idempotency-Key": idemKey() } }),
-  lookup: (q: { code: string; email: string } | { token: string }) => request<PublicReservation>("GET", "/reservations/lookup", { query: q }),
-  // Abre un intento de pago (abono o saldo) y devuelve a dónde llevar al huésped. Sin reintento automático: lo decide quien llama.
-  startPayment: (b: ({ code: string; email: string } | { ref: string } | { token: string; accept?: boolean }) & { kind?: PaymentKind }) =>
-    request<PaymentStart | ApiError>("POST", "/payments", { body: b }),
-  paymentStatus: (q: { ref: string; id?: string }) => request<PaymentState>("GET", "/payments/status", { query: q }),
-  simulatePayment: (b: { ref: string; outcome: "approve" | "decline" | "pending" | "error" }) =>
-    request<PaymentState | ApiError>("POST", "/payments/simulate", { body: b }),
+  lookup: (q: { code: string; email: string }) => request<PublicReservation>("GET", "/reservations/lookup", { query: q }),
   admin: {
     login: (b: { email: string; password: string }) => request<object>("POST", "/admin/login", { body: b }),
     logout: () => request<object>("POST", "/admin/logout"),
@@ -151,14 +134,6 @@ export const api = {
     addBlock: (b: BlockInput) => request<Block[]>("POST", "/admin/blocks", { body: b }),
     updateBlock: (b: BlockInput & { id: string }) => request<Block[]>("PUT", "/admin/blocks", { body: b }),
     deleteBlock: (id: string) => request<Block[]>("DELETE", "/admin/blocks", { query: { id } }),
-    channels: {
-      list: () => request<Channels>("GET", "/admin/channels"),
-      save: (b: ChannelCalendarInput) => request<Channels | ValidationError | ApiError>("PUT", "/admin/channels", { body: b }),
-      sync: () => request<Channels | ApiError>("POST", "/admin/channels", { body: { action: "sync" } }),
-      rotate: (id: string) => request<Channels | ApiError>("POST", "/admin/channels", { body: { action: "rotate", id } }),
-      connectBeds24: (code: string) => request<Channels | ValidationError | ApiError>("POST", "/admin/channels", { body: { action: "beds24-connect", code } }),
-      beds24Rooms: () => request<{ rooms: Beds24Room[] } | ApiError>("POST", "/admin/channels", { body: { action: "beds24-rooms" } }),
-    },
     saveRates: (b: Rates) => request<CabinType[]>("PUT", "/admin/cabin-types", { body: b }),
     createCabin: (b: CabinInput) => request<CabinType[] | ValidationError>("POST", "/admin/cabins", { body: b }),
     updateCabin: (b: CabinInput & { id: string }) => request<CabinType[] | ValidationError>("PUT", "/admin/cabins", { body: b }),

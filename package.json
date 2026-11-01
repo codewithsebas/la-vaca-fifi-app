@@ -16,7 +16,15 @@
     "format:check": "prettier --check .",
     "check": "pnpm lint && pnpm typecheck && pnpm format:check && pnpm test",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db": "node scripts/db.mjs",
+    "db:qa:status": "node scripts/db.mjs qa status",
+    "db:qa:migrate": "node scripts/db.mjs qa migrate",
+    "db:qa:new": "node scripts/db.mjs qa new",
+    "db:qa:diff": "node scripts/db.mjs qa diff",
+    "db:qa:types": "node scripts/db.mjs qa types",
+    "db:pdn:status": "node scripts/db.mjs pdn status",
+    "db:pdn:backup": "node scripts/db.mjs pdn backup"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

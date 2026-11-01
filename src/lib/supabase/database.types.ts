@@ -1,4 +1,4 @@
-// Generado desde el esquema de Supabase (MCP generate_typescript_types). No editar a mano.
+// Generado desde el esquema de Supabase de QA (pnpm db:qa:types). No editar a mano.
 export type Json =
   | string
   | number
@@ -12,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.18"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -153,223 +178,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      channel_bookings: {
-        Row: {
-          beds24_id: number | null
-          calendar_id: string
-          check_in: string
-          check_out: string
-          created_at: string
-          id: string
-          last_error: string
-          source: string
-          source_id: string
-          state: string
-          updated_at: string
-        }
-        Insert: {
-          beds24_id?: number | null
-          calendar_id: string
-          check_in: string
-          check_out: string
-          created_at?: string
-          id?: string
-          last_error?: string
-          source: string
-          source_id: string
-          state?: string
-          updated_at?: string
-        }
-        Update: {
-          beds24_id?: number | null
-          calendar_id?: string
-          check_in?: string
-          check_out?: string
-          created_at?: string
-          id?: string
-          last_error?: string
-          source?: string
-          source_id?: string
-          state?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "channel_bookings_calendar_id_fkey"
-            columns: ["calendar_id"]
-            isOneToOne: false
-            referencedRelation: "channel_calendars"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      channel_calendars: {
-        Row: {
-          beds24_room_id: number | null
-          cabin_type_id: string
-          channel: string
-          created_at: string
-          export_token: string
-          extra_units: number[]
-          id: string
-          import_url: string | null
-          label: string
-          last_error: string
-          last_event_count: number
-          last_fetched_at: string | null
-          last_status: string | null
-          last_synced_at: string | null
-          sync_started_at: string | null
-          unit: number
-          updated_at: string
-        }
-        Insert: {
-          beds24_room_id?: number | null
-          cabin_type_id: string
-          channel?: string
-          created_at?: string
-          export_token?: string
-          extra_units?: number[]
-          id?: string
-          import_url?: string | null
-          label?: string
-          last_error?: string
-          last_event_count?: number
-          last_fetched_at?: string | null
-          last_status?: string | null
-          last_synced_at?: string | null
-          sync_started_at?: string | null
-          unit: number
-          updated_at?: string
-        }
-        Update: {
-          beds24_room_id?: number | null
-          cabin_type_id?: string
-          channel?: string
-          created_at?: string
-          export_token?: string
-          extra_units?: number[]
-          id?: string
-          import_url?: string | null
-          label?: string
-          last_error?: string
-          last_event_count?: number
-          last_fetched_at?: string | null
-          last_status?: string | null
-          last_synced_at?: string | null
-          sync_started_at?: string | null
-          unit?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "channel_calendars_cabin_type_id_fkey"
-            columns: ["cabin_type_id"]
-            isOneToOne: false
-            referencedRelation: "cabin_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      channel_credentials: {
-        Row: {
-          access_expires_at: string | null
-          access_token: string | null
-          created_at: string
-          last_error: string
-          last_error_at: string | null
-          last_pull_at: string | null
-          last_push_at: string | null
-          last_webhook_at: string | null
-          provider: string
-          refresh_token: string
-          updated_at: string
-          webhook_key: string
-        }
-        Insert: {
-          access_expires_at?: string | null
-          access_token?: string | null
-          created_at?: string
-          last_error?: string
-          last_error_at?: string | null
-          last_pull_at?: string | null
-          last_push_at?: string | null
-          last_webhook_at?: string | null
-          provider: string
-          refresh_token: string
-          updated_at?: string
-          webhook_key?: string
-        }
-        Update: {
-          access_expires_at?: string | null
-          access_token?: string | null
-          created_at?: string
-          last_error?: string
-          last_error_at?: string | null
-          last_pull_at?: string | null
-          last_push_at?: string | null
-          last_webhook_at?: string | null
-          provider?: string
-          refresh_token?: string
-          updated_at?: string
-          webhook_key?: string
-        }
-        Relationships: []
-      }
-      channel_stays: {
-        Row: {
-          cabin_type_id: string
-          calendar_id: string
-          check_in: string
-          check_out: string
-          external_uid: string
-          first_seen_at: string
-          id: string
-          removed_at: string | null
-          summary: string
-          unit: number
-        }
-        Insert: {
-          cabin_type_id: string
-          calendar_id: string
-          check_in: string
-          check_out: string
-          external_uid: string
-          first_seen_at?: string
-          id?: string
-          removed_at?: string | null
-          summary?: string
-          unit: number
-        }
-        Update: {
-          cabin_type_id?: string
-          calendar_id?: string
-          check_in?: string
-          check_out?: string
-          external_uid?: string
-          first_seen_at?: string
-          id?: string
-          removed_at?: string | null
-          summary?: string
-          unit?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "channel_stays_cabin_type_id_fkey"
-            columns: ["cabin_type_id"]
-            isOneToOne: false
-            referencedRelation: "cabin_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "channel_stays_calendar_id_fkey"
-            columns: ["calendar_id"]
-            isOneToOne: false
-            referencedRelation: "channel_calendars"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       client_entries: {
         Row: {
@@ -570,44 +378,6 @@ export type Database = {
           },
         ]
       }
-      payment_transactions: {
-        Row: {
-          created_at: string
-          detail: string
-          id: string
-          method: string
-          payment_id: string
-          status: Database["public"]["Enums"]["payment_status"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          detail?: string
-          id: string
-          method?: string
-          payment_id: string
-          status: Database["public"]["Enums"]["payment_status"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          detail?: string
-          id?: string
-          method?: string
-          payment_id?: string
-          status?: Database["public"]["Enums"]["payment_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_transactions_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       payments: {
         Row: {
           amount: number
@@ -619,7 +389,6 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["payment_kind"]
           method: string
-          needs_refund: boolean
           provider: string
           reference: string
           reservation_code: string
@@ -637,7 +406,6 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["payment_kind"]
           method?: string
-          needs_refund?: boolean
           provider: string
           reference: string
           reservation_code: string
@@ -655,7 +423,6 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["payment_kind"]
           method?: string
-          needs_refund?: boolean
           provider?: string
           reference?: string
           reservation_code?: string
@@ -795,6 +562,7 @@ export type Database = {
           cabin_type_id: string
           check_in: string
           check_out: string
+          checked_in_at: string | null
           children: number
           client_key: string | null
           code: string
@@ -812,7 +580,7 @@ export type Database = {
           guest_phone: string
           idempotency_key: string | null
           live_key: string
-          pay_token: string | null
+          paid_amount: number
           pet: Json
           quote: Json
           source: string
@@ -820,10 +588,6 @@ export type Database = {
           status: Database["public"]["Enums"]["reservation_status"]
           unit: number
           updated_at: string
-          balance_due_at: string | null
-          balance_overdue_at: string | null
-          checked_in_at: string | null
-          paid_amount: number
         }
         Insert: {
           adults: number
@@ -831,6 +595,7 @@ export type Database = {
           cabin_type_id: string
           check_in: string
           check_out: string
+          checked_in_at?: string | null
           children?: number
           client_key?: string | null
           code: string
@@ -848,7 +613,7 @@ export type Database = {
           guest_phone: string
           idempotency_key?: string | null
           live_key?: string
-          pay_token?: string | null
+          paid_amount?: number
           pet?: Json
           quote: Json
           source?: string
@@ -856,10 +621,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["reservation_status"]
           unit: number
           updated_at?: string
-          balance_due_at?: string | null
-          balance_overdue_at?: string | null
-          checked_in_at?: string | null
-          paid_amount?: number
         }
         Update: {
           adults?: number
@@ -867,6 +628,7 @@ export type Database = {
           cabin_type_id?: string
           check_in?: string
           check_out?: string
+          checked_in_at?: string | null
           children?: number
           client_key?: string | null
           code?: string
@@ -884,7 +646,7 @@ export type Database = {
           guest_phone?: string
           idempotency_key?: string | null
           live_key?: string
-          pay_token?: string | null
+          paid_amount?: number
           pet?: Json
           quote?: Json
           source?: string
@@ -892,10 +654,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["reservation_status"]
           unit?: number
           updated_at?: string
-          balance_due_at?: string | null
-          balance_overdue_at?: string | null
-          checked_in_at?: string | null
-          paid_amount?: number
         }
         Relationships: [
           {
@@ -1029,24 +787,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_approved_payment: {
+        Args: { p_payment_id: string }
+        Returns: string
+      }
       register_manual_payment: {
-        Args: { p_code: string; p_kind: Database["public"]["Enums"]["payment_kind"]; p_note?: string }
+        Args: {
+          p_code: string
+          p_kind: Database["public"]["Enums"]["payment_kind"]
+          p_note?: string
+        }
         Returns: Json
       }
-      request_channel_sync: { Args: { mode?: string }; Returns: undefined }
       run_payment_deadlines: { Args: never; Returns: undefined }
-      settle_payment: {
-        Args: { p_detail?: string; p_method?: string; p_reference: string; p_status: Database["public"]["Enums"]["payment_status"]; p_tx_id: string }
-        Returns: Json
-      }
-      start_payment: {
-        Args: { p_code: string; p_kind: Database["public"]["Enums"]["payment_kind"]; p_provider: string; p_reference: string }
-        Returns: Database["public"]["Tables"]["payments"]["Row"]
-      }
     }
     Enums: {
       payment_kind: "deposit" | "balance" | "full"
-      payment_status: "initiated" | "pending" | "approved" | "declined" | "error" | "expired"
+      payment_status:
+        | "initiated"
+        | "pending"
+        | "approved"
+        | "declined"
+        | "error"
+        | "expired"
       reservation_status:
         | "pending_deposit"
         | "confirmed"
@@ -1062,6 +825,147 @@ export type Database = {
   }
 }
 
-export type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"]
-export type TablesInsert<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Insert"]
-export type TablesUpdate<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Update"]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      payment_kind: ["deposit", "balance", "full"],
+      payment_status: [
+        "initiated",
+        "pending",
+        "approved",
+        "declined",
+        "error",
+        "expired",
+      ],
+      reservation_status: [
+        "pending_deposit",
+        "confirmed",
+        "cancelled",
+        "expired",
+        "rescheduled",
+        "checked_in",
+        "completed",
+      ],
+    },
+  },
+} as const

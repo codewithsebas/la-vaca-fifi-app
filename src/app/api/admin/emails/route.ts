@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { toEmail } from "@/lib/server/db";
 import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
 import { mailConfigured, processOutbox } from "@/lib/server/mailer";
-import { siteUrl } from "@/lib/server/payments";
+import { siteUrl } from "@/lib/server/site";
 import { createServiceClient } from "@/lib/supabase/server";
 
 const KEY = /^(CC|CE|Pasaporte|PPT):[A-Z0-9]{5,15}$/;

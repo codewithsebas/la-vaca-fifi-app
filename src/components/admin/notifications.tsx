@@ -14,17 +14,15 @@ import {
   FileTextIcon,
   LoginIcon,
   MailIcon,
-  RefreshIcon,
   SlidersIcon,
   VolumeIcon,
   VolumeOffIcon,
   WalletIcon,
-  WarningIcon,
 } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";
-import { addDays, countdown, dateOf, fmtClock, fmtFullDate, plural, timeAgo } from "@/lib/format";
+import { addDays, dateOf, fmtClock, fmtFullDate, plural, timeAgo } from "@/lib/format";
 import type { AdminNotification, NotificationKind } from "@/lib/types";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { Popover } from "@/components/ui/floating";
@@ -84,7 +82,6 @@ export function useRealtime(handlers: { onNotification: (n: AdminNotification) =
         .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "email_outbox" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "blocks" }, changed)
-        .on("postgres_changes", { event: "*", schema: "public", table: "channel_stays" }, changed)
         .subscribe(
           (st) => alive && setStatus(st === "SUBSCRIBED" ? "live" : st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED" ? "offline" : "connecting"),
         );
@@ -173,25 +170,20 @@ const KIND: Record<NotificationKind, { icon: typeof BellIcon; tone: string; grou
   reservation_confirmed: { icon: LoginIcon, tone: "bg-success-soft text-success", group: "reservas" },
   reservation_cancelled: { icon: CloseIcon, tone: "bg-error-soft text-error", group: "cambios" },
   balance_paid: { icon: WalletIcon, tone: "bg-success-soft text-success", group: "pagos" },
-  payment_declined: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "pagos" },
-  payment_refund: { icon: WalletIcon, tone: "bg-error-soft text-error", group: "pagos" },
-  balance_overdue: { icon: ClockIcon, tone: "bg-warning-soft text-warning", group: "cambios" },
   email_failed: { icon: MailIcon, tone: "bg-error-soft text-error", group: "cambios" },
   reservation_expired: { icon: ClockIcon, tone: "bg-warning-soft text-warning", group: "cambios" },
   proof_uploaded: { icon: FileTextIcon, tone: "bg-info-soft text-info", group: "pagos" },
   proof_approved: { icon: CheckIcon, tone: "bg-success-soft text-success", group: "pagos" },
   proof_rejected: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "pagos" },
-  channel_conflict: { icon: WarningIcon, tone: "bg-error-soft text-error", group: "reservas" },
-  channel_moved: { icon: RefreshIcon, tone: "bg-info-soft text-info", group: "cambios" },
-  channel_sync_failed: { icon: RefreshIcon, tone: "bg-warning-soft text-warning", group: "cambios" },
 };
+// Un tipo que ya no existe (avisos antiguos de pagos en línea o de Booking.com) se muestra como aviso general.
 const kindOf = (n: AdminNotification) => KIND[n.kind] ?? KIND.reservation_created;
 
 type Reminder = { key: string; icon: typeof BellIcon; tone: string; title: string; body: string; code: string };
 
 // Situaciones que piden atención ahora (se calculan con los datos; no se guardan).
 function useReminders(): Reminder[] {
-  const { data, today, now } = useAdmin();
+  const { data, today } = useAdmin();
   const tomorrow = addDays(today, 1);
   const out: Reminder[] = [];
   for (const p of data.proofs.filter((p) => p.status === "pending")) {
@@ -205,15 +197,6 @@ function useReminders(): Reminder[] {
       code: p.reservationCode,
     });
   }
-  for (const p of data.payments.filter((p) => p.needsRefund))
-    out.push({
-      key: `r${p.id}`,
-      icon: WalletIcon,
-      tone: "bg-error-soft text-error",
-      title: `Pago por reembolsar · ${p.reservationCode}`,
-      body: p.detail,
-      code: p.reservationCode,
-    });
   for (const e of data.emails.filter((e) => e.status === "failed" && e.kind === "reservation_confirmed" && e.reservationCode))
     out.push({
       key: `e${e.id}`,
@@ -224,26 +207,15 @@ function useReminders(): Reminder[] {
       code: e.reservationCode!,
     });
   for (const r of data.reservations) {
-    if (r.status === "checked_in" && !r.balancePaidAt && r.balanceDueAt)
-      out.push(
-        r.balanceOverdueAt || Date.parse(r.balanceDueAt) <= now
-          ? {
-              key: `s${r.code}`,
-              icon: ClockIcon,
-              tone: "bg-error-soft text-error",
-              title: `Saldo vencido sin pagar · ${r.code}`,
-              body: `${r.guest.fullName} · registra el pago en recepción`,
-              code: r.code,
-            }
-          : {
-              key: `s${r.code}`,
-              icon: WalletIcon,
-              tone: "bg-warning-soft text-warning",
-              title: `Saldo por pagar · ${r.code}`,
-              body: `${r.guest.fullName} · vence en ${countdown(r.balanceDueAt)}`,
-              code: r.code,
-            },
-      );
+    if (r.status === "checked_in" && !r.balancePaidAt && r.paid < r.quote.total)
+      out.push({
+        key: `s${r.code}`,
+        icon: WalletIcon,
+        tone: "bg-warning-soft text-warning",
+        title: `Saldo por pagar · ${r.code}`,
+        body: `${r.guest.fullName} · registra el pago en recepción`,
+        code: r.code,
+      });
     if (r.checkIn === tomorrow && ["confirmed", "rescheduled", "pending_deposit"].includes(r.status))
       out.push({
         key: `a${r.code}`,

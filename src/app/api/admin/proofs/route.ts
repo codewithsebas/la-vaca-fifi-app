@@ -1,9 +1,9 @@
 import { after, type NextRequest } from "next/server";
 import { toProof } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { businessError, fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
-import { businessError, siteUrl } from "@/lib/server/payments";
+import { siteUrl } from "@/lib/server/site";
 import { PROOF_BUCKET } from "@/lib/server/proofs";
 import type { ProofReview } from "@/lib/types";
 
@@ -24,7 +24,7 @@ export const GET = route(async (req: NextRequest) => {
 
 // POST /api/admin/proofs { id, decision, note, confirmReservation } → aprueba o rechaza.
 // Aprobar con confirmReservation registra el abono como pago recibido y confirma la reserva (si estaba pendiente o vencida),
-// con las mismas reglas que un pago en línea (y el mismo correo de confirmación).
+// con las mismas reglas que un pago registrado desde la ficha (y el mismo correo de confirmación).
 export const POST = route(async (req: NextRequest) => {
   const { sb, uid, error } = await requireAdmin();
   if (error) return error;

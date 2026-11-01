@@ -299,7 +299,7 @@ export function BookingWidget() {
             Reserva tu cabaña
           </h2>
           <p className="max-w-[48ch] text-[.9rem] font-semibold">
-            Elige fechas, cabaña y huéspedes: ves el total al instante y reservas en línea con un abono del {config.depositPct} %.
+            Elige fechas, cabaña y huéspedes: ves el total al instante y apartas tus fechas con un abono del {config.depositPct} %.
           </p>
         </div>
 

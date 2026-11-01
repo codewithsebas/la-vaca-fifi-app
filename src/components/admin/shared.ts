@@ -1,7 +1,10 @@
-import { cop, fmtDate, mask, nightsBetween, plural } from "@/lib/format";
+import { cop, dateOf, fmtClock, fmtDate, mask, nightsBetween, plural } from "@/lib/format";
 import type { ApiResult, Reservation } from "@/lib/types";
 import type { DayMark } from "@/components/admin/date-picker";
 import type { Tone } from "@/components/admin/ui";
+
+// "sáb 13 oct, 3:45 p. m." (fecha límite de una retención).
+export const fmtDeadline = (iso: string) => `${fmtDate(dateOf(iso))}, ${fmtClock(iso)}`;
 
 // Confirmación previa a una acción. Puede pedir fechas nuevas, una nota o una casilla, que llegan a run().
 export type ConfirmCfg = {

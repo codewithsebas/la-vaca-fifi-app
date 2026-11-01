@@ -11,7 +11,7 @@ import type { ReservationInput } from "@/lib/types";
 const validation = (fields: Record<string, string>) => fail(422, "VALIDATION_ERROR", { fields });
 
 // POST /api/reservations (cabecera Idempotency-Key) → 201 con las fechas retenidas mientras se paga el abono.
-// Todavía no es una reserva confirmada: se confirma solo cuando la pasarela aprueba el abono (POST /api/payments).
+// Todavía no es una reserva confirmada: el huésped paga por transferencia, sube el comprobante y el equipo la confirma.
 // La restricción de exclusión de la base de datos impide que dos personas retengan la misma cabaña en las mismas noches.
 export const POST = route(async (req: NextRequest) => {
   const b = await readJson<ReservationInput>(req);
@@ -67,5 +67,5 @@ export const POST = route(async (req: NextRequest) => {
     const existing = await findByKey(idemKey);
     if (existing) return json(toPublic(existing), 201);
   }
-  return held.error === "CHANNEL_UNAVAILABLE" ? fail(503, "CHANNEL_UNAVAILABLE") : fail(409, "DATES_UNAVAILABLE");
+  return fail(409, "DATES_UNAVAILABLE");
 });

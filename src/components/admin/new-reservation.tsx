@@ -1,11 +1,11 @@
 "use client";
 
 // Nueva reserva tomada por el equipo (WhatsApp, teléfono, en persona). Retiene la cabaña con las mismas reglas que la web
-// y devuelve un enlace de pago con plazo para enviarle al huésped. Si no paga a tiempo, las fechas se liberan solas.
+// hasta el plazo elegido para recibir el abono. Si no se registra a tiempo, las fechas se liberan solas.
 import { useMemo, useState } from "react";
 import { CalendarIcon, CheckIcon, HomeIcon, UsersIcon, WalletIcon, WarningIcon } from "@/components/ui/icons";
 import { api, type ApiError, type ValidationError } from "@/lib/client/api";
-import { channelBlocks, computeQuote, findUnit, normalizePhone, unitFree, withTotal } from "@/lib/booking";
+import { computeQuote, findUnit, normalizePhone, unitFree, withTotal } from "@/lib/booking";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import { DEFAULT_HOLD, HOLD_OPTIONS, manualDueAt } from "@/lib/payments";
 import type { DocType, ManualReservationInput, ManualReservationResult, Reservation } from "@/lib/types";
@@ -13,9 +13,8 @@ import { Combobox } from "@/components/ui/combobox";
 import { typeMarks, unitMarks } from "@/lib/admin-metrics";
 import { useAdmin } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
-import { PayLinkShare, fmtDeadline } from "@/components/admin/pay-link-share";
 import { paths } from "@/components/admin/routes";
-import { adminInput } from "@/components/admin/shared";
+import { adminInput, fmtDeadline } from "@/components/admin/shared";
 import { Button, Callout, Field, FieldError, Modal, MoneyInput, Segmented, Stepper, Switch } from "@/components/admin/ui";
 
 // Lo que llega ya elegido (desde el calendario: una cabaña y unas fechas).
@@ -50,7 +49,6 @@ const DOCS: { value: DocType; label: string }[] = [
 
 const ERRORS: Record<string, string> = {
   DATES_UNAVAILABLE: "Esas fechas ya no están libres en esa cabaña. Elige otras o deja que el sistema asigne una unidad.",
-  CHANNEL_UNAVAILABLE: "No se pudo retener la cabaña en Booking.com (Beds24 no respondió). Inténtalo en un momento.",
 };
 
 export function NewReservationDialog({ draft, onClose }: { draft: NewReservationDraft; onClose: () => void }) {
@@ -86,7 +84,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   const type = cabins.find((c) => c.id === f.type);
   const units = type?.units ?? 0;
   const unit = f.unit ? Number(f.unit) : null;
-  const blocks = useMemo(() => [...data.blocks, ...channelBlocks(data.channelStays)], [data.blocks, data.channelStays]);
+  const blocks = data.blocks;
   const occ = { reservations: data.reservations, blocks };
   const range = f.checkIn && f.checkOut && f.checkOut > f.checkIn ? { ci: f.checkIn, co: f.checkOut } : null;
   const marks = useMemo(
@@ -387,7 +385,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
             </Field>
           )}
           <fieldset className="flex min-w-0 flex-col gap-1.5">
-            <legend className="mb-1.5 text-[13px] font-semibold text-ink">Plazo para pagar por el enlace</legend>
+            <legend className="mb-1.5 text-[13px] font-semibold text-ink">Plazo para pagar el abono</legend>
             <Segmented
               label="Plazo para pagar"
               size="sm"
@@ -398,7 +396,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
             />
             {due && !due.tooShort && (
               <p className="text-[12.5px] text-ink-muted">
-                {`El enlace vence el ${fmtDeadline(due.dueAt)}`}
+                {`Si no registras el abono antes del ${fmtDeadline(due.dueAt)}, las fechas se liberan`}
                 {due.capped ? " (no puede pasar del día de llegada)" : ""}
               </p>
             )}
@@ -429,17 +427,17 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
           icon={blocked && tried ? <WarningIcon size={14} /> : <CheckIcon size={14} />}
           onClick={save}
         >
-          Crear y obtener enlace de pago
+          Crear reserva
         </Button>
       </div>
     </Modal>
   );
 }
 
-// Reserva creada: el enlace listo para enviar.
+// Reserva creada: queda pendiente de abono hasta el plazo.
 function Created({ result, onClose, onOpen }: { result: ManualReservationResult; onClose: () => void; onOpen: () => void }) {
   const { data, cabinLabel } = useAdmin();
-  // La reserva puede actualizarse en vivo (p. ej. el huésped ya pagó): se muestra la versión más reciente.
+  // La reserva puede actualizarse en vivo (p. ej. otro miembro del equipo registró el abono): se muestra la versión más reciente.
   const r: Reservation = data.reservations.find((x) => x.code === result.reservation.code) ?? result.reservation;
   const paid = r.status !== "pending_deposit";
   return (
@@ -460,16 +458,13 @@ function Created({ result, onClose, onOpen }: { result: ManualReservationResult;
         </div>
         {paid ? (
           <Callout tone="success">
-            {r.status === "confirmed" ? "El huésped ya pagó: la reserva está confirmada." : "La reserva ya no está pendiente de pago."}
+            {r.status === "confirmed" ? "El abono ya está registrado: la reserva está confirmada." : "La reserva ya no está pendiente de pago."}
           </Callout>
         ) : (
-          <>
-            <p className="text-[14px] text-ink">
-              Envíale este enlace al huésped. Ahí ve su reserva y paga el abono de <strong>{cop(r.quote.deposit)}</strong> o el total de{" "}
-              <strong>{cop(r.quote.total)}</strong> con Wompi. Al pagar, la reserva se confirma sola y le llega el correo.
-            </p>
-            <PayLinkShare r={r} url={result.payUrl} />
-          </>
+          <p className="text-[14px] text-ink">
+            Queda pendiente del abono de <strong>{cop(r.quote.deposit)}</strong> (o el total de <strong>{cop(r.quote.total)}</strong>) hasta el{" "}
+            <strong>{fmtDeadline(r.depositDueAt)}</strong>. Cuando el huésped pague, regístralo en la reserva: se confirma y le llega el correo.
+          </p>
         )}
       </div>
       <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">

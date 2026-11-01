@@ -90,26 +90,24 @@ export type Note = { at: string; text: string };
 // De dónde vino la reserva: el sitio (el huésped) o el panel (el equipo, por WhatsApp, teléfono o en persona).
 export type ReservationSource = "web" | "panel";
 
-// Pagos en línea (Wompi; "simulado" en desarrollo) o registrados por el equipo ("manual").
-// deposit: abono (confirma) · full: pago total (confirma y salda) · balance: saldo (antes de llegar o en la hora siguiente al check-in).
+// Pagos registrados por el equipo (efectivo o transferencia).
+// deposit: abono (confirma) · full: pago total (confirma y salda) · balance: saldo.
 export type PaymentKind = "deposit" | "balance" | "full";
-// initiated: se abrió la pasarela · pending: la pasarela lo procesa · approved · declined · error · expired: venció o se reemplazó.
+// Estados de la tabla de pagos. Los registros del equipo nacen aprobados; los demás quedan de los pagos en línea anteriores.
 export type PaymentStatus = "initiated" | "pending" | "approved" | "declined" | "error" | "expired";
-export type PaymentProvider = "wompi" | "simulado" | "manual";
+export type PaymentProvider = string;
 
-// Un intento de pago (una referencia en la pasarela).
 export type PublicPayment = {
   reference: string;
   kind: PaymentKind;
   status: PaymentStatus;
   amount: number;
   provider: PaymentProvider;
-  method: string; // CARD, PSE, NEQUI…
-  detail: string; // motivo del rechazo u observación
+  method: string;
+  detail: string; // observación del equipo
   createdAt: string;
   expiresAt: string | null;
   approvedAt: string | null;
-  needsRefund: boolean; // el dinero llegó pero no se pudo aplicar (pago duplicado o fechas ya ocupadas)
 };
 
 export type PaymentRecord = PublicPayment & { id: string; reservationCode: string };
@@ -158,16 +156,13 @@ export type Reservation = ReservationInput & {
   balancePaidAt: string | null;
   paid: number; // suma de los pagos aprobados
   checkedInAt: string | null;
-  balanceDueAt: string | null; // check-in + 1 hora: límite para pagar el saldo (lo fija la base de datos)
-  balanceOverdueAt: string | null; // cuándo se registró que el saldo venció sin pagarse
   clientKey: string; // "CC:12345678": tipo y número de documento
   source?: ReservationSource; // sin valor: "web" (reservas anteriores)
-  payToken?: string | null; // enlace de pago /pagar/<token> (reservas del panel o enlaces enviados por el equipo)
   demo?: boolean;
 };
 
-// Cuerpo de POST /admin/reservations: reserva tomada por el equipo. Queda retenida hasta que el huésped pague por el
-// enlace (holdMinutes, como máximo hasta el día de llegada) o el equipo registre el pago.
+// Cuerpo de POST /admin/reservations: reserva tomada por el equipo. Queda retenida hasta que el equipo registre el abono
+// (holdMinutes, como máximo hasta el día de llegada).
 export type ManualReservationInput = {
   cabinTypeId: CabinTypeId;
   unit: number | null; // null: la primera libre (como en la web)
@@ -183,33 +178,15 @@ export type ManualReservationInput = {
   holdMinutes: number;
 };
 
-// Respuesta: la reserva creada y el enlace de pago para enviarle al huésped.
-export type ManualReservationResult = { reservation: Reservation; payUrl: string };
+export type ManualReservationResult = { reservation: Reservation };
 
-// Lo que ve el huésped. `payments`: sus intentos de pago, del más reciente al más antiguo.
-// `liveKey`: nombra el canal de avisos en tiempo real de la reserva (solo con código y correo, o con la referencia del pago).
+// Lo que ve el huésped. `payments`: sus pagos registrados, del más reciente al más antiguo.
+// `liveKey`: nombra el canal de avisos en tiempo real de la reserva (solo con código y correo).
 // `serverNow`: hora del servidor, para que las cuentas regresivas no dependan del reloj del dispositivo.
 export type PublicReservation = Pick<
   Reservation,
-  | "code"
-  | "status"
-  | "checkIn"
-  | "checkOut"
-  | "cabinTypeId"
-  | "quote"
-  | "depositDueAt"
-  | "depositPaidAt"
-  | "balancePaidAt"
-  | "paid"
-  | "checkedInAt"
-  | "balanceDueAt"
-  | "balanceOverdueAt"
-> & { guestFirstName?: string; payments?: PublicPayment[]; liveKey?: string; serverNow?: string; termsAccepted?: boolean };
-
-// Respuesta al abrir un pago: a dónde llevar al huésped.
-export type PaymentStart = { reference: string; checkoutUrl: string; expiresAt: string | null; provider: PaymentProvider };
-// Estado de un pago consultado por su referencia (página de confirmación).
-export type PaymentState = { payment: PublicPayment; reservation: PublicReservation };
+  "code" | "status" | "checkIn" | "checkOut" | "cabinTypeId" | "quote" | "depositDueAt" | "depositPaidAt" | "balancePaidAt" | "paid" | "checkedInAt"
+> & { guestFirstName?: string; payments?: PublicPayment[]; liveKey?: string; serverNow?: string };
 
 export type Block = {
   id: string;
@@ -222,68 +199,6 @@ export type Block = {
 };
 
 export type BlockInput = Omit<Block, "id" | "unit"> & { unit: number | "all" };
-
-// Calendario de Booking.com enlazado a una unidad: importUrl es el enlace de exportación de Booking (la app lo lee) y
-// exportUrl el que Booking importa (reservas de la web y bloqueos del panel). Sincronización por iCal, sin datos del huésped.
-export type ChannelCalendar = {
-  id: string;
-  channel: "booking";
-  label: string;
-  cabinTypeId: CabinTypeId;
-  unit: number;
-  // Cabañas de la app que cubre este tipo de Booking (el primero es `unit`). Booking vende uno por noche: se cierra allá
-  // cuando todos están ocupados, y cada reserva suya ocupa uno libre.
-  units: number[];
-  importUrl: string | null;
-  exportUrl: string;
-  lastSyncedAt: string | null;
-  // Última vez que Booking descargó exportUrl: desde ese momento ve cerradas las reservas de la web.
-  lastFetchedAt: string | null;
-  lastStatus: "ok" | "error" | null;
-  lastError: string;
-  lastEventCount: number;
-  // Habitación de Beds24 enlazada: la unidad se sincroniza en tiempo real por Beds24 y deja de usar el iCal.
-  beds24RoomId: number | null;
-};
-
-// Conexión con Beds24 (channel manager). webhookUrl: la que se pega en Beds24 → Properties → Access → Booking webhook.
-export type Beds24Status = {
-  webhookUrl: string;
-  lastPullAt: string | null;
-  lastPushAt: string | null;
-  lastWebhookAt: string | null;
-  lastError: string;
-  lastErrorAt: string | null;
-};
-export type Beds24Room = { id: number; propertyId: number; propertyName: string; name: string; qty: number };
-
-// Noches ocupadas en Booking (una reserva o un cierre: el iCal no los distingue). checkOut exclusivo, como en las reservas.
-// removedAt: dejó de venir en el calendario de Booking (se canceló).
-export type ChannelStay = {
-  id: string;
-  calendarId: string;
-  cabinTypeId: CabinTypeId;
-  unit: number;
-  checkIn: string;
-  checkOut: string;
-  summary: string;
-  firstSeenAt: string;
-  removedAt: string | null;
-};
-
-// Cuerpo de PUT /admin/channels: enlaza (o desenlaza, con importUrl vacío) una unidad con un tipo de Booking.
-export type ChannelCalendarInput = { cabinTypeId: string; unit: number; units?: number[]; label: string; importUrl: string; beds24RoomId?: number | null };
-// Resultado de una sincronización (por calendario).
-export type ChannelSyncResult = {
-  calendarId: string;
-  ok: boolean;
-  events: number;
-  added: number;
-  removed: number;
-  moved: string[];
-  conflicts: string[];
-  error?: string;
-};
 
 export type Rates = Partial<Record<CabinTypeId, { precioPareja: number; personaAdicional: number; maxPersonas: number }>>;
 
@@ -314,14 +229,8 @@ export type NotificationKind =
   | "proof_uploaded"
   | "proof_approved"
   | "proof_rejected"
-  | "payment_declined"
-  | "payment_refund"
   | "balance_paid"
-  | "balance_overdue"
-  | "email_failed"
-  | "channel_conflict"
-  | "channel_moved"
-  | "channel_sync_failed";
+  | "email_failed";
 
 export type AdminNotification = {
   id: number;
@@ -345,9 +254,6 @@ export type AdminData = {
   emails: EmailRecord[];
   clients: Record<string, ClientProfile>;
   notifications: AdminNotification[];
-  channelCalendars: ChannelCalendar[];
-  channelStays: ChannelStay[]; // vigentes y recientes (las canceladas también, para el historial)
-  beds24: Beds24Status | null; // null: Beds24 no está conectado
 };
 
 // Cuerpo de PUT /admin/site.
@@ -370,11 +276,11 @@ export type SeasonInput = Omit<RateSeason, "id"> & { id?: string };
 
 export type AdminAction =
   | { code: string; action: "cancel" | "checkin" | "checkout" }
-  // Pago recibido por fuera de la pasarela (efectivo o transferencia): "confirm" = abono, "balance" = saldo.
+  // Pago recibido (efectivo o transferencia): "confirm" = abono, "balance" = saldo.
   | { code: string; action: "confirm" | "balance"; note?: string; full?: boolean }
   | { code: string; action: "reschedule"; checkIn: string; checkOut: string }
   // Enlace de pago con un plazo nuevo: amplía (o reactiva, si venció) la retención de una reserva sin abono.
-  | { code: string; action: "payment_link"; holdMinutes: number }
+  | { code: string; action: "extend_hold"; holdMinutes: number }
   | { code: string; action: "note"; text: string };
 
 export type ProofReview = { id: string; decision: "approve" | "reject"; note: string; confirmReservation: boolean };

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { BanIcon, ClockIcon, LogoutIcon, PlusIcon } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/status-pill";
-import { isChannelBlock, nightlyRate } from "@/lib/booking";
+import { nightlyRate } from "@/lib/booking";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import { pendingOf } from "@/lib/admin-metrics";
 import { fmtTime } from "@/lib/site";
@@ -24,9 +24,7 @@ export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onN
         const block = calBlocks.find((b) => blocks(b, u) && b.from <= day && day <= b.to);
         const arriving = stay && stay.checkIn === day;
         const state = block
-          ? isChannelBlock(block)
-            ? { label: "Booking.com", tone: "bg-info-soft text-info" }
-            : { label: "Bloqueada", tone: "bg-ink/8 text-ink-muted" }
+          ? { label: "Bloqueada", tone: "bg-ink/8 text-ink-muted" }
           : arriving
             ? { label: "Llega hoy", tone: "bg-success-soft text-success" }
             : stay
@@ -86,12 +84,10 @@ export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onN
                 )}
               </Link>
             ) : block ? (
-              <Link href={blockHref(block)} className="flex flex-col gap-1 rounded-xl p-3 text-left" style={blockStyle(block)}>
-                <strong className="text-[14px] text-ink">{isChannelBlock(block) ? "Reserva o cierre en Booking.com" : block.reason}</strong>
+              <Link href={blockHref(block)} className="flex flex-col gap-1 rounded-xl p-3 text-left" style={blockStyle()}>
+                <strong className="text-[14px] text-ink">{block.reason}</strong>
                 <span className="text-[12.5px] text-ink-muted">
-                  {isChannelBlock(block)
-                    ? `${fmtDate(block.from)} → ${fmtDate(addDays(block.to, 1))} (salida)`
-                    : `${fmtDate(block.from)} → ${fmtDate(block.to)}`}
+                  {`${fmtDate(block.from)} → ${fmtDate(block.to)}`}
                   {block.notes ? ` · ${block.notes}` : ""}
                 </span>
               </Link>

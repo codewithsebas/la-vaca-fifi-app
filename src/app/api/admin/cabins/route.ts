@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { ACTIVE_STATUSES, slugify } from "@/lib/booking";
 import { todayISO } from "@/lib/format";
-import { type Db, isMissingTable, loadCabinTypes } from "@/lib/server/db";
+import { type Db, loadCabinTypes } from "@/lib/server/db";
 import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
 import { PHOTO_BUCKET } from "@/lib/server/site";
 import type { CabinInput } from "@/lib/types";
@@ -91,20 +91,6 @@ export const PUT = route(async (req: NextRequest) => {
       return fail(422, "VALIDATION_ERROR", {
         fields: {
           units: `Hay reservas o bloqueos vigentes en las unidades que quitarías${rs.length ? ` (${rs.map((r) => r.code).join(", ")})` : ""}. Reprográmalos primero.`,
-        },
-      });
-    // Una unidad enlazada con Booking seguiría recibiendo sus fechas: primero se desenlaza en el módulo Booking.com.
-    const { data: cals, error: le } = await sb
-      .from("channel_calendars")
-      .select("label, unit, extra_units")
-      .eq("cabin_type_id", id)
-      .or("import_url.not.is.null,beds24_room_id.not.is.null");
-    if (le && !isMissingTable(le)) throw le;
-    const linked = (cals ?? []).filter((c) => [c.unit, ...c.extra_units].some((u) => u > v.row.units));
-    if (linked.length)
-      return fail(422, "VALIDATION_ERROR", {
-        fields: {
-          units: `Alguna de las unidades que quitarías está enlazada con Booking.com (${linked.map((c) => c.label || `unidad ${c.unit}`).join(", ")}). Quita el enlace primero.`,
         },
       });
   }

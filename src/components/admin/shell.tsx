@@ -421,18 +421,14 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
       const r = await cf.run(cf);
       if (r.status === 401 || r.status === 403) return onLoggedOut();
       if (r.status >= 400) {
-        const { fields, error: code } = (r.data as { fields?: Record<string, string>; error?: string } | null) ?? {};
+        const { fields } = (r.data as { fields?: Record<string, string> } | null) ?? {};
         const msg = fields
           ? Object.values(fields)[0]
-          : code === "CHANNEL_CONFLICT"
-            ? "Booking.com ya vendió alguna de esas noches."
-            : code === "CHANNEL_UNAVAILABLE"
-              ? "No se pudo confirmar con Booking.com (Beds24 no respondió). Inténtalo en un momento."
-              : r.status === 409
-                ? "Esas fechas no están disponibles."
-                : r.status === 501
-                  ? "No disponible en modo simulado."
-                  : "No se pudo completar la acción.";
+          : r.status === 409
+            ? "Esas fechas no están disponibles."
+            : r.status === 501
+              ? "No disponible en modo simulado."
+              : "No se pudo completar la acción.";
         setConfirm({ ...cf, busy: false, error: msg });
         return;
       }
@@ -471,14 +467,8 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
 
   const badges: Badges = {
     reservas: { n: data.reservations.filter((r) => r.status === "pending_deposit").length, label: "pendientes de abono" },
-    // Lo que pide acción en Pagos: pagos por reembolsar, saldos vencidos sin pagar y comprobantes por revisar.
-    pagos: {
-      n:
-        data.payments.filter((p) => p.needsRefund).length +
-        data.reservations.filter((r) => r.status === "checked_in" && !r.balancePaidAt && r.balanceOverdueAt).length +
-        data.proofs.filter((p) => p.status === "pending").length,
-      label: "pagos que requieren atención",
-    },
+    // Lo que pide acción en Pagos: comprobantes por revisar.
+    pagos: { n: data.proofs.filter((p) => p.status === "pending").length, label: "comprobantes por revisar" },
     notificaciones: { n: unread, label: "sin leer" },
   };
   // El calendario usa todo el alto de la pantalla (si hay alto suficiente; si no, la página se desplaza).

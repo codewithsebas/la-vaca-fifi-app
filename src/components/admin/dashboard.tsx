@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/status-pill";
 import { balanceDue, delta, finance, pendingOf, previousRange } from "@/lib/admin-metrics";
-import { ACTIVE_STATUSES, channelBlocks } from "@/lib/booking";
+import { ACTIVE_STATUSES } from "@/lib/booking";
 import { addDays, cop, countdown, fmtDate, fmtFullDate, plural } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
@@ -121,7 +121,7 @@ function occupancy(d: ReturnType<typeof useAdmin>["data"], date: string) {
     total += c.units;
     const set = new Set<number>();
     d.reservations.forEach((r) => r.cabinTypeId === c.id && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut && set.add(r.unit));
-    [...d.blocks, ...channelBlocks(d.channelStays)].forEach((b) => b.cabinTypeId === c.id && b.from <= date && date <= b.to && set.add(b.unit));
+    d.blocks.forEach((b) => b.cabinTypeId === c.id && b.from <= date && date <= b.to && set.add(b.unit));
     busy += set.size;
   }
   return { busy, total };
@@ -142,9 +142,9 @@ export function Dashboard() {
   const upcoming = R.filter((r) => r.checkIn > today && r.checkIn <= addDays(today, 7) && ARRIVING.includes(r.status)).sort((a, b) =>
     a.checkIn < b.checkIn ? -1 : 1,
   );
-  // Pagos por completar: abonos de fechas retenidas y saldos de huéspedes en estadía (con su plazo), el más urgente primero.
-  const deadlineOf = (r: Reservation) => (r.status === "pending_deposit" ? r.depositDueAt : (r.balanceDueAt ?? ""));
-  const pend = R.filter((r) => r.status === "pending_deposit" || balanceDue(r, now)).sort((a, b) => (deadlineOf(a) < deadlineOf(b) ? -1 : 1));
+  // Pagos por completar: abonos de fechas retenidas (el plazo más cercano primero) y saldos de huéspedes en estadía.
+  const deadlineOf = (r: Reservation) => (r.status === "pending_deposit" ? r.depositDueAt : "");
+  const pend = R.filter((r) => r.status === "pending_deposit" || balanceDue(r)).sort((a, b) => (deadlineOf(a) < deadlineOf(b) ? -1 : 1));
   const proofFor = (code: string) => data.proofs.find((p) => p.reservationCode === code && p.status === "pending");
   const occToday = occupancy(data, today);
   const toCollect = R.reduce((s, r) => s + pendingOf(r).total, 0);
@@ -238,7 +238,7 @@ export function Dashboard() {
           >
             {pend.map((r) => {
               const x = rowOf(r, cabinLabel);
-              const bd = balanceDue(r, now);
+              const bd = balanceDue(r);
               const deadline = deadlineOf(r);
               const minutes = deadline ? (Date.parse(deadline) - now) / 6e4 : 0;
               const proof = proofFor(r.code);
@@ -248,18 +248,18 @@ export function Dashboard() {
                   r={r}
                   meta={bd ? `${x.code} · saldo ${cop(bd.amount)} · en estadía` : `${x.code} · abono ${x.deposit} · llega ${fmtDate(r.checkIn)}`}
                   right={
-                    bd?.overdue ? (
-                      <Badge tone="danger">Saldo vencido</Badge>
-                    ) : proof ? (
+                    proof ? (
                       <Badge tone="info" icon={<FileTextIcon size={12} />}>
                         Comprobante
                       </Badge>
+                    ) : bd ? (
+                      <Badge tone="warning">Saldo por cobrar</Badge>
                     ) : (
                       <span
                         className={`inline-flex flex-none items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold tabular-nums ${minutes < 10 ? "bg-error-soft text-error" : "bg-warning-soft text-warning"}`}
                       >
                         <ClockIcon size={13} />
-                        <span className="sr-only">{bd ? "El saldo vence en " : "La retención vence en "}</span>
+                        <span className="sr-only">La retención vence en </span>
                         {countdown(deadline)}
                       </span>
                     )
@@ -326,8 +326,8 @@ function FinanceBlock() {
   const period = usePeriod("30");
   const range = period.range;
   const prev = previousRange(range);
-  const now = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, range, "", data.channelStays), [data, range.from, range.to]); // eslint-disable-line react-hooks/exhaustive-deps
-  const before = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, prev, "", data.channelStays), [data, prev.from, prev.to]); // eslint-disable-line react-hooks/exhaustive-deps
+  const now = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, range, ""), [data, range.from, range.to]); // eslint-disable-line react-hooks/exhaustive-deps
+  const before = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, prev, ""), [data, prev.from, prev.to]); // eslint-disable-line react-hooks/exhaustive-deps
   const custom = period.preset === "personalizado";
   const same = { periodo: period.preset === "30" ? null : period.preset, desde: custom ? range.from : null, hasta: custom ? range.to : null };
 

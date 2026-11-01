@@ -36,48 +36,38 @@ export const env = {
   get vapidSubject() {
     return read("VAPID_SUBJECT");
   },
-  get channelSyncSecret() {
-    return read("CHANNEL_SYNC_SECRET");
-  },
-  get beds24ApiUrl() {
-    return read("BEDS24_API_URL");
-  },
   get turnstileSecretKey() {
     return read("TURNSTILE_SECRET_KEY");
-  },
-  get wompiPublicKey() {
-    return read("WOMPI_PUBLIC_KEY");
-  },
-  get wompiPrivateKey() {
-    return read("WOMPI_PRIVATE_KEY");
-  },
-  get wompiEventsSecret() {
-    return read("WOMPI_EVENTS_SECRET");
-  },
-  get wompiIntegritySecret() {
-    return read("WOMPI_INTEGRITY_SECRET");
-  },
-  get paymentsProvider() {
-    return read("PAYMENTS_PROVIDER");
-  },
-  get allowPaymentSimulator() {
-    return read("ALLOW_PAYMENT_SIMULATOR") === "1";
   },
   get isProduction() {
     return process.env.NODE_ENV === "production";
   },
 };
 
-// Sin estas la app no funciona; las demás activan integraciones opcionales (correo, push, pagos, Booking…).
+// Sin estas la app no funciona; las demás activan integraciones opcionales (correo, push).
 const REQUIRED = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY"];
 const OPTIONAL: Record<string, string[]> = {
   "correos (Resend)": ["RESEND_API_KEY"],
   "avisos push": ["NEXT_PUBLIC_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"],
-  "sincronización con Booking": ["CHANNEL_SYNC_SECRET"],
 };
 
-// Revisión al arrancar (src/instrumentation.ts): avisa en el log lo que falta, sin tumbar el servidor.
+// Proyecto de Supabase de cada entorno. APP_ENV dice dónde corre la app (qa | pdn); en desarrollo local es QA siempre.
+const SUPABASE_PROJECTS = { qa: "tknhymkjuxmohywwaxnv", pdn: "menpgghjhztsswnmpzjk" } as const;
+
+// Candado entre entornos: si la base no corresponde al entorno, el servidor no arranca (nunca QA contra PDN ni al revés).
+function assertEnvironment() {
+  const appEnv = read("APP_ENV") ?? (process.env.NODE_ENV === "production" ? undefined : "qa");
+  if (!appEnv) return console.warn("[env] APP_ENV no está definido (qa | pdn): no se puede comprobar que la base sea la del entorno.");
+  if (appEnv !== "qa" && appEnv !== "pdn") throw new Error(`[env] APP_ENV="${appEnv}" no es válido: usa qa o pdn.`);
+  const url = read("NEXT_PUBLIC_SUPABASE_URL") ?? "";
+  const other = appEnv === "qa" ? "pdn" : "qa";
+  if (url.includes(SUPABASE_PROJECTS[other]) || !url.includes(SUPABASE_PROJECTS[appEnv]))
+    throw new Error(`[env] Entorno ${appEnv.toUpperCase()} apuntando a una base que no es la suya. Revisa NEXT_PUBLIC_SUPABASE_URL.`);
+}
+
+// Revisión al arrancar (src/instrumentation.ts): el candado de entorno detiene el arranque; lo demás solo avisa en el log.
 export function checkEnv() {
+  assertEnvironment();
   const missing = REQUIRED.filter((n) => !read(n));
   if (missing.length) console.error(`[env] Faltan variables obligatorias: ${missing.join(", ")}. La app no podrá leer la base de datos.`);
   for (const [feature, names] of Object.entries(OPTIONAL)) {

@@ -1,44 +1,31 @@
 "use client";
 
-// Módulo de Pagos (/admin/pagos): la operación del dinero. Transacciones en línea, pagos recibidos y lo pendiente por cobrar.
+// Módulo de Pagos (/admin/pagos): la operación del dinero. Pagos recibidos, comprobantes y lo pendiente por cobrar.
 // El análisis (tendencias, comparaciones, distribución) vive en Finanzas.
 import Link from "next/link";
 import { useState } from "react";
-import { AlertIcon, ClockIcon, DownloadIcon, FileTextIcon, HomeIcon, TrendIcon, WalletIcon } from "@/components/ui/icons";
+import { ClockIcon, DownloadIcon, FileTextIcon, HomeIcon, TrendIcon, WalletIcon } from "@/components/ui/icons";
 import { balanceDue, finance, pendingOf, paymentsOf, type Payment } from "@/lib/admin-metrics";
-import { cop, countdown, download, fmtDate, plural, timeAgo } from "@/lib/format";
-import { PAYMENT_STATUS, kindLabel, methodLabel } from "@/lib/payments";
-import type { PaymentRecord, Reservation } from "@/lib/types";
+import { cop, countdown, download, fmtDate, plural } from "@/lib/format";
+import type { Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { PeriodFilter, usePeriod } from "@/components/admin/period";
 import { ProofCard } from "@/components/admin/proofs";
 import { MODULES, paths } from "@/components/admin/routes";
 import { csv } from "@/components/admin/shared";
-import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Segmented, StatCard, Tabs } from "@/components/admin/ui";
+import { Button, Card, CardHeader, EmptyState, PageHeader, Segmented, StatCard, Tabs } from "@/components/admin/ui";
 
-type Tab = "transacciones" | "comprobantes" | "recibidos" | "por-cobrar";
-type TxFilter = "todas" | "en-curso" | "aprobadas" | "rechazadas" | "reembolsar" | "sin-completar";
-const TX_FILTER: Record<TxFilter, (p: PaymentRecord) => boolean> = {
-  todas: () => true,
-  "en-curso": (p) => p.status === "initiated" || p.status === "pending",
-  aprobadas: (p) => p.status === "approved" && !p.needsRefund,
-  rechazadas: (p) => p.status === "declined" || p.status === "error",
-  reembolsar: (p) => p.needsRefund,
-  "sin-completar": (p) => p.status === "expired",
-};
+type Tab = "recibidos" | "por-cobrar" | "comprobantes";
 type ProofFilter = "por-revisar" | "aprobados" | "rechazados" | "todos";
 type Due = "todo" | "abonos" | "saldos";
 const PROOF_FILTER: Record<ProofFilter, string | null> = { "por-revisar": "pending", aprobados: "approved", rechazados: "rejected", todos: null };
 
 export function PaymentsView() {
   const { data, today } = useAdmin();
-  const [tabP, setTab] = useParam<Tab>("vista", "transacciones");
+  const [tabP, setTab] = useParam<Tab>("vista", "recibidos");
+  const tab: Tab = ["recibidos", "por-cobrar", "comprobantes"].includes(tabP) ? tabP : "recibidos";
   const pendingProofs = data.proofs.filter((p) => p.status === "pending");
-  // Los comprobantes son del flujo anterior (transferencia): la pestaña solo aparece si hay alguno.
-  const tab: Tab = tabP === "comprobantes" && !data.proofs.length ? "transacciones" : tabP;
-  const open = data.payments.filter(TX_FILTER["en-curso"]);
-  const refunds = data.payments.filter(TX_FILTER.reembolsar);
   const due = data.reservations.filter((r) => pendingOf(r).total > 0);
   const deposits = due.filter((r) => pendingOf(r).deposit > 0);
   const balances = due.filter((r) => pendingOf(r).balance > 0);
@@ -57,23 +44,13 @@ export function PaymentsView() {
         }
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {refunds.length ? (
-          <StatCard
-            label="Pagos por reembolsar"
-            value={refunds.length}
-            hint={cop(refunds.reduce((s, p) => s + p.amount, 0))}
-            icon={<AlertIcon size={15} />}
-            tone="danger"
-          />
-        ) : (
-          <StatCard
-            label="Pagos en curso"
-            value={open.length}
-            hint={open.length ? "en la pasarela o en el banco" : "Ninguno ahora"}
-            icon={<WalletIcon size={15} />}
-            tone={open.length ? "info" : undefined}
-          />
-        )}
+        <StatCard
+          label="Comprobantes por revisar"
+          value={pendingProofs.length}
+          hint={pendingProofs.length ? "transferencias por confirmar" : "Ninguno ahora"}
+          icon={<FileTextIcon size={15} />}
+          tone={pendingProofs.length ? "info" : undefined}
+        />
         <StatCard
           label="Abonos pendientes"
           value={cop(deposits.reduce((s, r) => s + pendingOf(r).deposit, 0))}
@@ -84,7 +61,7 @@ export function PaymentsView() {
         <StatCard
           label="Saldos por cobrar"
           value={cop(balances.reduce((s, r) => s + pendingOf(r).balance, 0))}
-          hint={`${plural(balances.length, "estadía", "estadías")} · se pagan tras el check-in`}
+          hint={plural(balances.length, "estadía", "estadías")}
           icon={<WalletIcon size={15} />}
         />
         <StatCard
@@ -101,103 +78,15 @@ export function PaymentsView() {
         value={tab}
         onChange={setTab}
         tabs={[
-          { value: "transacciones", label: "Transacciones", icon: <WalletIcon size={15} />, count: open.length + refunds.length },
           { value: "recibidos", label: "Pagos recibidos", icon: <TrendIcon size={15} /> },
           { value: "por-cobrar", label: "Por cobrar", icon: <ClockIcon size={15} /> },
-          ...(data.proofs.length
-            ? [{ value: "comprobantes" as const, label: "Comprobantes", icon: <FileTextIcon size={15} />, count: pendingProofs.length }]
-            : []),
+          { value: "comprobantes", label: "Comprobantes", icon: <FileTextIcon size={15} />, count: pendingProofs.length },
         ]}
       />
 
       <div key={tab} className="flex flex-col gap-4 motion-safe:animate-fade-in">
-        {tab === "transacciones" ? <TransactionsTab /> : tab === "comprobantes" ? <ProofsTab /> : tab === "recibidos" ? <ReceivedTab /> : <DueTab rows={due} />}
+        {tab === "comprobantes" ? <ProofsTab /> : tab === "recibidos" ? <ReceivedTab /> : <DueTab rows={due} />}
       </div>
-    </>
-  );
-}
-
-/* ───────────── Transacciones ───────────── */
-
-// Cada intento de pago (en línea o registrado por el equipo) con su estado: iniciado, en proceso, aprobado, rechazado, sin completar.
-function TransactionsTab() {
-  const { data, now } = useAdmin();
-  const [filterP, setFilter] = useParam<TxFilter>("estado", "todas");
-  const filter: TxFilter = filterP in TX_FILTER ? filterP : "todas";
-  const [limit, setLimit] = useState(30);
-  const byCode = new Map(data.reservations.map((r) => [r.code, r]));
-  const list = data.payments.filter(TX_FILTER[filter]);
-  const count = (k: TxFilter) => data.payments.filter(TX_FILTER[k]).length;
-  return (
-    <>
-      <Segmented
-        label="Estado del pago"
-        value={filter}
-        onChange={(v) => {
-          setFilter(v);
-          setLimit(30);
-        }}
-        options={[
-          { value: "todas", label: "Todas" },
-          { value: "en-curso", label: "En curso", count: count("en-curso") },
-          { value: "aprobadas", label: "Aprobadas" },
-          { value: "rechazadas", label: "Rechazadas", count: count("rechazadas") },
-          ...(count("reembolsar") ? [{ value: "reembolsar" as const, label: "Por reembolsar", count: count("reembolsar") }] : []),
-          { value: "sin-completar", label: "Sin completar" },
-        ]}
-      />
-      <Card aria-labelledby="pg-tx" className="flex flex-col gap-3 p-4 sm:p-5">
-        <CardHeader
-          id="pg-tx"
-          icon={<WalletIcon size={18} />}
-          title={plural(list.length, "transacción", "transacciones")}
-          subtitle="La reserva se confirma solo con el abono aprobado. Se actualiza en tiempo real."
-        />
-        {list.length ? (
-          <ul className="-mx-2 flex flex-col">
-            {list.slice(0, limit).map((p) => {
-              const r = byCode.get(p.reservationCode);
-              const st = PAYMENT_STATUS[p.status];
-              return (
-                <li key={p.id}>
-                  <Link
-                    href={paths.reserva(p.reservationCode)}
-                    className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas"
-                  >
-                    <span className="min-w-[200px] flex-1">
-                      <span className="block truncate text-[13.5px] font-semibold text-ink">
-                        {r?.guest.fullName ?? p.reservationCode} <span className="font-medium text-ink-muted">· {p.reservationCode}</span>
-                      </span>
-                      <span className="block truncate text-[12px] text-ink-muted">
-                        {kindLabel(p.kind)} · {p.provider === "manual" ? "registrado por el equipo" : p.provider === "wompi" ? "Wompi" : "pasarela simulada"}
-                        {p.method && p.provider !== "manual" ? ` · ${methodLabel(p.method)}` : ""} · {timeAgo(p.approvedAt ?? p.createdAt, now)}
-                        {p.detail && (p.status === "declined" || p.status === "error" || p.needsRefund) ? ` · ${p.detail}` : ""}
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      {p.needsRefund && <Badge tone="danger">Por reembolsar</Badge>}
-                      <Badge tone={st.tone}>{st.label}</Badge>
-                      <span className="w-[92px] text-right text-[13.5px] font-semibold text-ink tabular-nums">{cop(p.amount)}</span>
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <EmptyState
-            compact
-            icon={<WalletIcon size={18} />}
-            title="No hay transacciones en este filtro"
-            text={filter === "todas" ? "Cuando un huésped pague el abono o el saldo, aparecerá aquí." : undefined}
-          />
-        )}
-        {list.length > limit && (
-          <Button size="sm" variant="ghost" className="self-center" onClick={() => setLimit(limit + 50)}>
-            Ver más
-          </Button>
-        )}
-      </Card>
     </>
   );
 }
@@ -363,7 +252,6 @@ function PaymentsTable({ rows }: { rows: Payment[] }) {
 /* ───────────── Por cobrar ───────────── */
 
 function DueTab({ rows }: { rows: Reservation[] }) {
-  const { now } = useAdmin();
   const [kind, setKind] = useParam<Due>("tipo", "todo");
   const list = rows
     .filter((r) => kind === "todo" || (kind === "abonos" ? pendingOf(r).deposit > 0 : pendingOf(r).balance > 0))
@@ -394,7 +282,7 @@ function DueTab({ rows }: { rows: Reservation[] }) {
           <ul className="-mx-2 flex flex-col">
             {list.slice(0, limit).map((r) => {
               const p = pendingOf(r);
-              const bd = balanceDue(r, now);
+              const bd = balanceDue(r);
               return (
                 <li key={r.code}>
                   <Link
@@ -408,10 +296,8 @@ function DueTab({ rows }: { rows: Reservation[] }) {
                         {p.deposit
                           ? ` · retención vence en ${countdown(r.depositDueAt)}`
                           : bd
-                            ? bd.overdue
-                              ? " · saldo vencido sin pagar"
-                              : ` · saldo vence en ${countdown(bd.dueAt!)}`
-                            : " · saldo tras el check-in"}
+                            ? " · en estadía, saldo por cobrar"
+                            : " · saldo antes de llegar o en recepción"}
                       </span>
                     </span>
                     <span className="text-right">

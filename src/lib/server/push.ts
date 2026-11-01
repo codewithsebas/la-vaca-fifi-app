@@ -78,11 +78,7 @@ async function deliver(sb: ReturnType<typeof createServiceClient>, jobs: { sub: 
 const toPayload = (n: Note): PushPayload => ({
   title: n.title,
   body: n.body,
-  url: n.reservation_code
-    ? `/admin/reservas/${encodeURIComponent(n.reservation_code)}`
-    : n.kind === "channel_sync_failed"
-      ? "/admin/booking"
-      : "/admin/notificaciones",
+  url: n.reservation_code ? `/admin/reservas/${encodeURIComponent(n.reservation_code)}` : "/admin/notificaciones",
   tag: `aviso-${n.id}`,
 });
 

@@ -61,3 +61,6 @@ export async function getSite() {
   const content = await getSiteContent();
   return { ...content, c: mergeSite(content.settings, content.policies, content.texts) };
 }
+
+// URL base del sitio para los enlaces que salen de él (correos).
+export const siteUrl = (requestOrigin: string) => (env.siteUrl || requestOrigin).replace(/\/$/, "");

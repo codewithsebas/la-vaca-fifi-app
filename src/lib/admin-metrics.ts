@@ -1,5 +1,5 @@
 // Cálculos del panel (clientes y finanzas) sobre los datos ya cargados. Funciones puras: sin red ni estado.
-import { ACTIVE_STATUSES, type ChannelSpan } from "@/lib/booking";
+import { ACTIVE_STATUSES } from "@/lib/booking";
 import { MS, addDays, dateOf, nightsBetween, parseISO } from "@/lib/format";
 import type { Block, CabinType, ClientProfile, Reservation, ReservationStatus } from "@/lib/types";
 
@@ -33,19 +33,17 @@ export function pendingOf(r: Reservation) {
 }
 
 // Saldo de una estadía en curso: null si no aplica (aún sin check-in o ya pagado).
-export function balanceDue(r: Reservation, now = Date.now()): { amount: number; dueAt: string | null; overdue: boolean } | null {
+export function balanceDue(r: Reservation): { amount: number } | null {
   if (r.status !== "checked_in" || r.balancePaidAt) return null;
   const amount = Math.max(0, r.quote.total - r.paid);
-  if (!amount) return null;
-  return { amount, dueAt: r.balanceDueAt, overdue: !!r.balanceOverdueAt || (!!r.balanceDueAt && Date.parse(r.balanceDueAt) <= now) };
+  return amount ? { amount } : null;
 }
 
 // Estado del pago en una frase corta para listas.
-export function paymentState(r: Reservation, now = Date.now()): { label: string; tone: "success" | "warning" | "neutral" | "danger" } {
+export function paymentState(r: Reservation): { label: string; tone: "success" | "warning" | "neutral" | "danger" } {
   if (r.status === "expired") return { label: "Sin abono", tone: "danger" };
   if (r.status === "cancelled") return r.depositPaidAt ? { label: "Abono retenido", tone: "neutral" } : { label: "Sin pago", tone: "neutral" };
-  const due = balanceDue(r, now);
-  if (due) return due.overdue ? { label: "Saldo vencido", tone: "danger" } : { label: "Saldo por pagar", tone: "warning" };
+  if (balanceDue(r)) return { label: "Saldo por pagar", tone: "warning" };
   if (r.balancePaidAt || r.status === "completed" || r.status === "checked_in") return { label: "Pagada", tone: "success" };
   if (r.depositPaidAt || SECURED.includes(r.status)) return { label: "Abono recibido", tone: "success" };
   return { label: "Pago del abono en curso", tone: "warning" };
@@ -154,8 +152,7 @@ const overlapNights = (ci: string, coExclusive: string, r: Range) => {
 type GuestType = "Pareja" | "Familia" | "Grupo" | "Individual";
 const guestType = (r: Reservation): GuestType => (r.children > 0 ? "Familia" : r.adults >= 3 ? "Grupo" : r.adults === 1 ? "Individual" : "Pareja");
 
-// channelStays: noches ocupadas en Booking.com (cuentan como ocupadas en la ocupación; sus ingresos no pasan por la app).
-export function finance(reservations: Reservation[], blocks: Block[], cabins: CabinType[], range: Range, cabinId = "", channelStays: ChannelSpan[] = []) {
+export function finance(reservations: Reservation[], blocks: Block[], cabins: CabinType[], range: Range, cabinId = "") {
   const rs = cabinId ? reservations.filter((r) => r.cabinTypeId === cabinId) : reservations;
   const payments = rs.flatMap(paymentsOf).filter((p) => inRange(p.date, range));
   const deposits = payments.filter((p) => p.kind === "deposit");
@@ -182,9 +179,7 @@ export function finance(reservations: Reservation[], blocks: Block[], cabins: Ca
   const cabs = cabins.filter((c) => !cabinId || c.id === cabinId);
   const capacity = cabs.reduce((s, c) => s + c.units, 0) * daysIn(range);
   const blocked = blocks.filter((b) => !cabinId || b.cabinTypeId === cabinId).reduce((s, b) => s + overlapNights(b.from, addDays(b.to, 1), range), 0);
-  const occupied =
-    rs.filter((r) => [...ACTIVE_STATUSES, "completed"].includes(r.status)).reduce((s, r) => s + overlapNights(r.checkIn, r.checkOut, range), 0) +
-    channelStays.filter((x) => !x.removedAt && (!cabinId || x.cabinTypeId === cabinId)).reduce((s, x) => s + overlapNights(x.checkIn, x.checkOut, range), 0);
+  const occupied = rs.filter((r) => [...ACTIVE_STATUSES, "completed"].includes(r.status)).reduce((s, r) => s + overlapNights(r.checkIn, r.checkOut, range), 0);
   const available = Math.max(0, capacity - blocked);
 
   // Estadías del periodo (llegan dentro del rango): cuánto ya está cobrado y cuánto falta.

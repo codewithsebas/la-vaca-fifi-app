@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { ACTIVE_STATUSES, BLOCK_REASONS } from "@/lib/booking";
-import { addDays, isISO, nightsBetween } from "@/lib/format";
-import { type Hold, holdRoom } from "@/lib/server/beds24-sync";
+import { isISO, nightsBetween } from "@/lib/format";
 import { type Db, isExclusionViolation, loadCabinTypes, toBlock } from "@/lib/server/db";
 import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
 import type { BlockInput } from "@/lib/types";
@@ -42,36 +41,6 @@ async function clashes(sb: Db, cabinTypeId: string, units: number[], from: strin
   return data.map((r) => r.code);
 }
 
-// Cierra esas noches en Booking (por Beds24) en las unidades que se venden allá, antes de guardar el bloqueo.
-// error: Booking ya tiene una reserva en alguna (CHANNEL_CONFLICT) o Beds24 no respondió (CHANNEL_UNAVAILABLE).
-async function holdBlocks(items: { id: string; cabinTypeId: string; unit: number; from: string; to: string; reason: string }[]) {
-  const holds: Hold[] = [];
-  const undo = () => Promise.all(holds.map((h) => h.release()));
-  for (const x of items) {
-    try {
-      const h = await holdRoom({
-        source: "block",
-        sourceId: x.id,
-        cabinTypeId: x.cabinTypeId,
-        unit: x.unit,
-        checkIn: x.from,
-        checkOut: addDays(x.to, 1),
-        label: `Bloqueo · ${x.reason}`,
-      });
-      if (!h) {
-        await undo();
-        return { error: fail(409, "CHANNEL_CONFLICT") };
-      }
-      holds.push(h);
-    } catch (e) {
-      console.error(e);
-      await undo();
-      return { error: fail(503, "CHANNEL_UNAVAILABLE") };
-    }
-  }
-  return { commit: () => Promise.all(holds.map((h) => h.commit())), undo };
-}
-
 // POST /api/admin/blocks { cabinTypeId, unit | "all", from, to, reason, notes } → bloquea fechas (hasta `to` incluido).
 export const POST = route(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin();
@@ -90,18 +59,12 @@ export const POST = route(async (req: NextRequest) => {
     reason: b!.reason,
     notes: v.notes,
   }));
-  const held = await holdBlocks(
-    rows.map((r) => ({ id: r.id, cabinTypeId: r.cabin_type_id, unit: r.unit, from: r.from_date, to: r.to_date, reason: r.reason })),
-  );
-  if (held.error) return held.error;
   try {
     await sb.from("blocks").insert(rows).throwOnError();
   } catch (e) {
-    await held.undo();
     if (isExclusionViolation(e)) return fail(409, "BLOCK_OVERLAP");
     throw e;
   }
-  await held.commit();
   return json(await allBlocks(sb));
 });
 
@@ -115,8 +78,6 @@ export const PUT = route(async (req: NextRequest) => {
   if (v.error) return v.error;
   const conflicts = await clashes(sb, b.cabinTypeId, v.units, b.from, b.to);
   if (conflicts.length) return fail(409, "RESERVATION_CONFLICT", { conflicts });
-  const held = await holdBlocks([{ id: b.id, cabinTypeId: b.cabinTypeId, unit: v.units[0], from: b.from, to: b.to, reason: b.reason }]);
-  if (held.error) return held.error;
   try {
     const { data } = await sb
       .from("blocks")
@@ -124,16 +85,11 @@ export const PUT = route(async (req: NextRequest) => {
       .eq("id", b.id)
       .select("id")
       .throwOnError();
-    if (!data.length) {
-      await held.undo();
-      return fail(404, "NOT_FOUND");
-    }
+    if (!data.length) return fail(404, "NOT_FOUND");
   } catch (e) {
-    await held.undo();
     if (isExclusionViolation(e)) return fail(409, "BLOCK_OVERLAP");
     throw e;
   }
-  await held.commit();
   return json(await allBlocks(sb));
 });
 

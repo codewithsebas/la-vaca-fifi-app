@@ -528,8 +528,8 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
           <CardHeader
             id="ct-pay"
             icon={<WalletIcon size={18} />}
-            title="Pago fuera de línea"
-            subtitle={`El abono (${config.depositPct} %) y el saldo se pagan en línea con Wompi. Si el huésped no paga el saldo dentro de la hora siguiente al check-in, ve estas instrucciones para pagarlo en recepción o por transferencia.`}
+            title="Datos para pagar"
+            subtitle={`El abono (${config.depositPct} %) y el saldo se pagan por transferencia o en recepción. El huésped ve estas instrucciones en «Mi reserva».`}
           />
           <Field label="Instrucciones de pago" hint="Banco, tipo y número de cuenta, titular, o llave de Bre-B / Nequi. Se muestran tal cual las escribas.">
             {(p) => (
@@ -545,13 +545,11 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
             )}
           </Field>
           {!f.t.payment.instructions.trim() && (
-            <Callout tone="warning">
-              Aún no hay instrucciones: si el saldo vence, el huésped solo verá que debe pagar en recepción o escribir por WhatsApp.
-            </Callout>
+            <Callout tone="warning">Aún no hay instrucciones: el huésped solo verá que debe escribir por WhatsApp o pagar en recepción.</Callout>
           )}
           <Callout>
-            Cuando recibas un pago por fuera de la pasarela, regístralo en la ficha de la reserva («Registrar abono» o «Registrar pago del saldo»): queda en el
-            historial de pagos y aplica las mismas reglas que un pago en línea.
+            Cuando recibas un pago, regístralo en la ficha de la reserva («Registrar pago» o «Registrar pago del saldo»): la reserva se confirma y el pago queda
+            en el historial.
           </Callout>
         </Card>
       )}

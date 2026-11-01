@@ -1,14 +1,11 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ACTIVE_STATUSES, channelBlocks, type Occupancy, type Units } from "@/lib/booking";
+import { ACTIVE_STATUSES, type Occupancy, type Units } from "@/lib/booking";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import type {
   AdminNotification,
-  Beds24Status,
   Block,
   CabinType,
-  ChannelCalendar,
-  ChannelStay,
   ClientEntry,
   ClientProfile,
   DocType,
@@ -31,7 +28,6 @@ import type {
   Severity,
   Trust,
 } from "@/lib/types";
-import { addDays, todayISO } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/server";
 import { photoUrl } from "@/lib/server/site";
 
@@ -90,8 +86,7 @@ export async function loadPricing(sb: Db) {
   return { types, units, seasons };
 }
 
-// Reservas activas, bloqueos y fechas ocupadas en Booking que tocan alguna noche entre firstNight y lastNight (inclusive).
-// Las de Booking entran como bloqueos (channelBlocks): cuentan igual en toda la lógica de disponibilidad.
+// Reservas activas y bloqueos que tocan alguna noche entre firstNight y lastNight (inclusive).
 export async function loadOccupancy(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<Occupancy> {
   let rq = sb
     .from("reservations")
@@ -104,96 +99,15 @@ export async function loadOccupancy(sb: Db, firstNight: string, lastNight: strin
     rq = rq.eq("cabin_type_id", cabinTypeId);
     bq = bq.eq("cabin_type_id", cabinTypeId);
   }
-  const [{ data: rs }, { data: bs }, stays] = await Promise.all([
-    rq.throwOnError(),
-    bq.throwOnError(),
-    loadChannelStays(sb, firstNight, lastNight, cabinTypeId),
-  ]);
+  const [{ data: rs }, { data: bs }] = await Promise.all([rq.throwOnError(), bq.throwOnError()]);
   return {
     reservations: rs.map((r) => ({ code: r.code, cabinTypeId: r.cabin_type_id, unit: r.unit, checkIn: r.check_in, checkOut: r.check_out, status: r.status })),
-    blocks: [...bs.map((b) => ({ cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date })), ...channelBlocks(stays)],
+    blocks: bs.map((b) => ({ cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date })),
   };
 }
 
-/* ───────────── Booking.com (calendarios iCal) ───────────── */
-
-// Mientras la migración de canales no esté aplicada, las tablas no existen: se trata como «sin calendarios de Booking»
-// para que el sitio y el panel sigan funcionando. Cualquier otro error sí se propaga.
-export const isMissingTable = (e: unknown) => ["PGRST205", "42P01"].includes((e as { code?: string } | null)?.code ?? "");
-
-const toChannelStay = (s: Tables<"channel_stays">): ChannelStay => ({
-  id: s.id,
-  calendarId: s.calendar_id,
-  cabinTypeId: s.cabin_type_id,
-  unit: s.unit,
-  checkIn: s.check_in,
-  checkOut: s.check_out,
-  summary: s.summary,
-  firstSeenAt: s.first_seen_at,
-  removedAt: s.removed_at,
-});
-
-// `base`: dirección pública del sitio (siteUrl), para el enlace que Booking importa.
-const toChannelCalendar = (c: Tables<"channel_calendars">, base: string): ChannelCalendar => ({
-  id: c.id,
-  channel: "booking",
-  label: c.label,
-  cabinTypeId: c.cabin_type_id,
-  unit: c.unit,
-  units: [c.unit, ...c.extra_units],
-  importUrl: c.import_url,
-  exportUrl: `${base}/api/ical/${c.export_token}`,
-  lastSyncedAt: c.last_synced_at,
-  lastFetchedAt: c.last_fetched_at,
-  lastStatus: (c.last_status as ChannelCalendar["lastStatus"]) ?? null,
-  lastError: c.last_error,
-  lastEventCount: c.last_event_count,
-  beds24RoomId: c.beds24_room_id,
-});
-
-// Calendarios de Booking y sus fechas desde hace un año (las canceladas también, para el historial), y el estado de la
-// conexión con Beds24 (sin el token; la tabla solo la lee la clave de servicio). Para el panel.
-export async function loadChannels(sb: Db, base: string): Promise<{ calendars: ChannelCalendar[]; stays: ChannelStay[]; beds24: Beds24Status | null }> {
-  const [c, s, b] = await Promise.all([
-    sb.from("channel_calendars").select("*").order("cabin_type_id").order("unit"),
-    sb.from("channel_stays").select("*").gte("check_out", addDays(todayISO(), -400)).order("check_in"),
-    createServiceClient()
-      .from("channel_credentials")
-      .select("webhook_key, last_pull_at, last_push_at, last_webhook_at, last_error, last_error_at")
-      .eq("provider", "beds24")
-      .maybeSingle(),
-  ]);
-  const error = c.error ?? s.error ?? b.error;
-  if (error) {
-    if (isMissingTable(error)) return { calendars: [], stays: [], beds24: null };
-    throw error;
-  }
-  const cred = b.data;
-  const beds24: Beds24Status | null = cred && {
-    webhookUrl: `${base}/api/channels/beds24?key=${cred.webhook_key}`,
-    lastPullAt: cred.last_pull_at,
-    lastPushAt: cred.last_push_at,
-    lastWebhookAt: cred.last_webhook_at,
-    lastError: cred.last_error,
-    lastErrorAt: cred.last_error_at,
-  };
-  return { calendars: c.data!.map((x) => toChannelCalendar(x, base)), stays: s.data!.map(toChannelStay), beds24 };
-}
-
-// Fechas de Booking vigentes (sin removed_at) que tocan alguna noche entre firstNight y lastNight.
-async function loadChannelStays(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<ChannelStay[]> {
-  let q = sb.from("channel_stays").select("*").is("removed_at", null).lte("check_in", lastNight).gt("check_out", firstNight);
-  if (cabinTypeId) q = q.eq("cabin_type_id", cabinTypeId);
-  const { data, error } = await q;
-  if (error) {
-    if (isMissingTable(error)) return [];
-    throw error;
-  }
-  return data.map(toChannelStay);
-}
-
-// Plazos de pago (retenciones sin abono, intentos sin completar y saldos sin pagar tras el check-in).
-// pg_cron los aplica cada minuto; la API los aplica también antes de leer para no mostrar un estado de hace un minuto.
+// Plazo del abono: libera las retenciones que vencieron sin abono.
+// pg_cron lo aplica cada minuto; la API también antes de leer para no mostrar un estado de hace un minuto.
 export async function runDeadlines() {
   await createServiceClient().rpc("run_payment_deadlines").throwOnError();
 }
@@ -211,7 +125,6 @@ export const toPublicPayment = (p: PaymentRow): PublicPayment => ({
   createdAt: p.created_at,
   expiresAt: p.expires_at,
   approvedAt: p.approved_at,
-  needsRefund: p.needs_refund,
 });
 
 export const toPayment = (p: PaymentRow): PaymentRecord => ({ ...toPublicPayment(p), id: p.id, reservationCode: p.reservation_code });
@@ -230,7 +143,7 @@ export const toEmail = (e: Tables<"email_outbox">): EmailRecord => ({
   updatedAt: e.updated_at,
 });
 
-// Intentos de pago de una reserva para el huésped (los 8 más recientes; los manuales también cuentan como pagos).
+// Pagos de una reserva para el huésped (los 8 más recientes).
 async function loadPublicPayments(sb: Db, code: string) {
   const { data } = await sb.from("payments").select("*").eq("reservation_code", code).order("created_at", { ascending: false }).limit(8).throwOnError();
   return data.map(toPublicPayment);
@@ -249,8 +162,6 @@ export function toPublic(r: ReservationRow, payments?: PublicPayment[]): PublicR
     balancePaidAt: r.balance_paid_at,
     paid: r.paid_amount,
     checkedInAt: r.checked_in_at,
-    balanceDueAt: r.balance_due_at,
-    balanceOverdueAt: r.balance_overdue_at,
     ...(payments && { payments }),
   };
 }
@@ -286,7 +197,6 @@ export function toReservation(r: ReservationRow & { reservation_notes?: { text: 
     consents: r.consents as Reservation["consents"],
     createdAt: r.created_at,
     source: r.source as ReservationSource,
-    payToken: r.pay_token,
     clientKey: r.client_key ?? `${r.guest_doc_type}:${r.guest_doc_number.toUpperCase()}`,
     notes: (r.reservation_notes ?? []).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)).map((n) => ({ at: n.created_at, text: n.text })),
   };

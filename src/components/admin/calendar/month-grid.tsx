@@ -1,7 +1,6 @@
 "use client";
 
 import { LoginIcon } from "@/components/ui/icons";
-import { isChannelBlock } from "@/lib/booking";
 import { addDays, fmtDate, parseISO, plural, statusOf } from "@/lib/format";
 import { useAdmin } from "@/components/admin/context";
 import { useTip } from "@/components/ui/floating";
@@ -53,13 +52,7 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
                   {states.map(({ u, s }) => (
                     <span key={u.key}>
                       {u.label}:{" "}
-                      {s.kind === "res"
-                        ? `${s.r.guest.fullName} (${statusOf(s.r.status).label})`
-                        : s.kind === "block"
-                          ? isChannelBlock(s.b)
-                            ? "Booking.com"
-                            : `Bloqueada · ${s.b.reason}`
-                          : "Libre"}
+                      {s.kind === "res" ? `${s.r.guest.fullName} (${statusOf(s.r.status).label})` : s.kind === "block" ? `Bloqueada · ${s.b.reason}` : "Libre"}
                     </span>
                   ))}
                 </span>
@@ -96,11 +89,7 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
                             ? { background: `repeating-linear-gradient(90deg, ${statusOf(s.r.status).bg} 0 4px, transparent 4px 6px)` }
                             : { background: `color-mix(in srgb, ${statusOf(s.r.status).bg} 100%, black ${s.r.status === "completed" ? 30 : 12}%)` }
                           : s.kind === "block"
-                            ? {
-                                background: isChannelBlock(s.b)
-                                  ? "var(--color-status-booking)"
-                                  : "repeating-linear-gradient(135deg, var(--color-status-block) 0 3px, transparent 3px 5px)",
-                              }
+                            ? { background: "repeating-linear-gradient(135deg, var(--color-status-block) 0 3px, transparent 3px 5px)" }
                             : { background: "color-mix(in srgb, var(--color-ink) 7%, transparent)" }
                       }
                     />

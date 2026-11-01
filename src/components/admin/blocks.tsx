@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BanIcon, CalendarIcon, CheckIcon, ClockIcon, MoonIcon, PencilIcon, PlusIcon, TrashIcon, WarningIcon } from "@/components/ui/icons";
-import { BLOCK_REASONS, channelBlocks, clashingReservations } from "@/lib/booking";
+import { BLOCK_REASONS, clashingReservations } from "@/lib/booking";
 import { unitMarks } from "@/lib/admin-metrics";
 import { api } from "@/lib/client/api";
 import { addDays, fmtDate, isISO, nightsBetween, plural } from "@/lib/format";
@@ -238,16 +238,7 @@ function BlockEditor({ initial, onClose, onDelete }: { initial: Draft; onClose: 
       ? data.blocks.filter((b) => b.id !== d.id && b.cabinTypeId === d.type && unitList.includes(b.unit) && b.from <= d.to! && d.from! <= b.to)
       : [];
   const marks = useMemo(
-    () =>
-      unitMarks(
-        data.reservations,
-        [...data.blocks, ...channelBlocks(data.channelStays)],
-        d.type,
-        d.unit === "all" ? "all" : Number(d.unit),
-        today,
-        addDays(today, 400),
-        d.id,
-      ),
+    () => unitMarks(data.reservations, data.blocks, d.type, d.unit === "all" ? "all" : Number(d.unit), today, addDays(today, 400), d.id),
     [data, d.type, d.unit, today, d.id],
   );
 
@@ -279,11 +270,7 @@ function BlockEditor({ initial, onClose, onDelete }: { initial: Draft; onClose: 
             ? `Hay reservas activas en esas fechas (${err.conflicts?.join(", ")}). Reprográmalas o elige otras fechas.`
             : err?.error === "BLOCK_OVERLAP"
               ? "Ya existe un bloqueo que se cruza con estas fechas."
-              : err?.error === "CHANNEL_CONFLICT"
-                ? "Booking.com ya tiene una reserva en esas noches: no se pueden cerrar allá."
-                : err?.error === "CHANNEL_UNAVAILABLE"
-                  ? "No se pudo cerrar en Booking.com (Beds24 no respondió). Inténtalo en un momento."
-                  : "No se pudo guardar el bloqueo. Inténtalo de nuevo.",
+              : "No se pudo guardar el bloqueo. Inténtalo de nuevo.",
         );
         return;
       }

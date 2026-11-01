@@ -1,26 +1,25 @@
 import type { NextRequest } from "next/server";
 import { computeQuote, normalizePhone, validateManualReservation, withTotal } from "@/lib/booking";
 import { todayISO } from "@/lib/format";
-import { manualDueAt, payPath } from "@/lib/payments";
+import { manualDueAt } from "@/lib/payments";
 import { loadPricing, runDeadlines, toReservation } from "@/lib/server/db";
 import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
-import { siteUrl } from "@/lib/server/payments";
-import { holdReservation, newPayToken } from "@/lib/server/reservations";
+import { holdReservation } from "@/lib/server/reservations";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { ManualReservationInput, ManualReservationResult } from "@/lib/types";
 
 const validation = (fields: Record<string, string>) => fail(422, "VALIDATION_ERROR", { fields });
 
-// POST /api/admin/reservations → 201 { reservation, payUrl }. Reserva tomada por el equipo (WhatsApp, teléfono, en
-// persona): retiene la cabaña igual que una reserva de la web (mismas reglas de disponibilidad y de Booking) y queda
-// pendiente de abono hasta el plazo elegido. El huésped paga por el enlace; si no paga a tiempo, las fechas se liberan.
+// POST /api/admin/reservations → 201 { reservation }. Reserva tomada por el equipo (WhatsApp, teléfono, en persona):
+// retiene la cabaña con las mismas reglas de disponibilidad que la web y queda pendiente de abono hasta el plazo elegido.
+// El equipo registra el abono cuando lo recibe; si no llega a tiempo, las fechas se liberan solas.
 export const POST = route(async (req: NextRequest) => {
   const { error } = await requireAdmin();
   if (error) return error;
   const b = await readJson<ManualReservationInput>(req);
   if (!b || !b.guest) return fail(400, "INVALID_BODY");
 
-  // La retención y la inserción usan la misma conexión de servicio que la web: ven todas las reservas y los calendarios.
+  // La retención y la inserción usan la misma conexión de servicio que la web: ven todas las reservas.
   const sb = createServiceClient();
   await runDeadlines();
   const { types, units, seasons } = await loadPricing(sb);
@@ -34,13 +33,11 @@ export const POST = route(async (req: NextRequest) => {
   const type = types.find((t) => t.id === input.cabinTypeId)!;
   const { data: settings } = await sb.from("site_settings").select("check_in_start").maybeSingle().throwOnError();
   const quote = computeQuote(type, input.checkIn, input.checkOut, input.adults + input.children, seasons);
-  const token = newPayToken();
   const g = input.guest;
   const held = await holdReservation(
     sb,
     {
       source: "panel",
-      pay_token: token,
       cabin_type_id: type.id,
       check_in: input.checkIn,
       check_out: input.checkOut,
@@ -56,15 +53,15 @@ export const POST = route(async (req: NextRequest) => {
       guest_phone: g.phone,
       guest_city: (g.city ?? "").trim(),
       special_requests: (input.specialRequests ?? "").trim(),
-      // El huésped acepta las políticas y el tratamiento de datos en la página del enlace, antes de pagar.
+      // Reserva tomada por el equipo: el huésped no pasó por los consentimientos de la web.
       consents: { policies: false, dataProcessing: false, marketing: false },
       quote: input.total ? withTotal(quote, input.total) : quote,
       deposit_due_at: due.dueAt,
     },
     { units: units[type.id] ?? 0, unit: input.unit },
   );
-  if (!("row" in held)) return held.error === "CHANNEL_UNAVAILABLE" ? fail(503, "CHANNEL_UNAVAILABLE") : fail(409, "DATES_UNAVAILABLE");
+  if (!("row" in held)) return fail(409, "DATES_UNAVAILABLE");
 
-  const result: ManualReservationResult = { reservation: toReservation(held.row), payUrl: siteUrl(req.nextUrl.origin) + payPath(token) };
+  const result: ManualReservationResult = { reservation: toReservation(held.row) };
   return json(result, 201);
 });

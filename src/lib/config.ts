@@ -39,7 +39,7 @@ export const config = {
   correoReservas: "{CORREO_RESERVAS}",
   // Solo para el modo simulado: con Supabase, tarifas, capacidad y número de cabañas viven en la tabla cabin_types.
   unidades: { doble: 1, "dos-camas": 1, familiar: 1, "familiar-vista": 1 } as Record<CabinTypeId, number>,
-  // Para pagar en recepción o por transferencia cuando el pago en línea no es posible (se edita en el panel: Contenido → Pagos).
+  // Para pagar por transferencia o en recepción (se edita en el panel: Contenido → Pagos).
   datosPagoAbono: "{DATOS_DE_PAGO}",
   rnt: "208820",
   timeZone: "America/Bogota",

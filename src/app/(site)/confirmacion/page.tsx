@@ -1,20 +1,7 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { Confirmation } from "@/components/booking/confirmation";
-import { config } from "@/lib/config";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Estado de tu pago",
-  description: `Resultado del pago de tu reserva en ${config.name}.`,
-  robots: { index: false },
-};
-
-export default function ConfirmationPage() {
-  return (
-    <main className="flex flex-col gap-5 gutter-1000 pt-6 pb-[72px]">
-      <Suspense>
-        <Confirmation />
-      </Suspense>
-    </main>
-  );
+// Enlaces antiguos (/confirmacion?code=… o el retorno de la pasarela de pagos) → «Mi reserva».
+export default async function ConfirmationPage({ searchParams }: PageProps<"/confirmacion">) {
+  const code = (await searchParams).code;
+  redirect(typeof code === "string" && code ? `/mi-reserva?code=${encodeURIComponent(code)}` : "/mi-reserva");
 }

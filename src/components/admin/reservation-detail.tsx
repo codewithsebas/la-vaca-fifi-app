@@ -8,7 +8,6 @@ import {
   CheckIcon,
   ClockIcon,
   FileTextIcon,
-  LinkIcon,
   ListIcon,
   LockIcon,
   MailIcon,
@@ -21,16 +20,14 @@ import {
 import { KeyValues, StatusPill } from "@/components/ui/status-pill";
 import { balanceDue, buildClients, typeMarks } from "@/lib/admin-metrics";
 import { api } from "@/lib/client/api";
-import { channelBlocks } from "@/lib/booking";
 import { config } from "@/lib/config";
-import { addDays, cop, countdown, dateOf, fmtClock, fmtDate, fmtDateTime, nightsBetween, plural, timeAgo, waTo } from "@/lib/format";
-import { BALANCE_MINUTES, DEFAULT_HOLD, HOLD_OPTIONS, PAYMENT_STATUS, kindLabel, manualDueAt, methodLabel } from "@/lib/payments";
+import { addDays, cop, countdown, dateOf, fmtDate, fmtDateTime, nightsBetween, plural, timeAgo, waTo } from "@/lib/format";
+import { DEFAULT_HOLD, HOLD_OPTIONS, PAYMENT_STATUS, kindLabel, manualDueAt } from "@/lib/payments";
 import type { EmailRecord, PaymentRecord, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { ProofCard } from "@/components/admin/proofs";
-import { PayLinkShare, fmtDeadline, payUrlOf } from "@/components/admin/pay-link-share";
 import { paths } from "@/components/admin/routes";
-import { TRUST, type ConfirmCfg, adminInput } from "@/components/admin/shared";
+import { TRUST, type ConfirmCfg, adminInput, fmtDeadline } from "@/components/admin/shared";
 import { Badge, Button, Card, CardHeader, EmptyState, Field, FieldError, PageHeader, Segmented, Stars, buttonClass } from "@/components/admin/ui";
 
 const OCC: Record<string, string> = { aniversario: "Aniversario", cumpleanos: "Cumpleaños", propuesta: "Propuesta", otra: "Otra" };
@@ -39,7 +36,7 @@ type Action = { label: string; primary: boolean; danger: boolean; disabled?: str
 type ActionId = "confirm" | "balance" | "checkin" | "checkout" | "cancel" | "reschedule";
 
 export function ReservationDetail({ code }: { code: string }) {
-  const { data, ask, cabinLabel, today, now } = useAdmin();
+  const { data, ask, cabinLabel, today } = useAdmin();
   const r = data.reservations.find((x) => x.code === code);
 
   if (!r)
@@ -67,9 +64,7 @@ export function ReservationDetail({ code }: { code: string }) {
   const emails = data.emails.filter((e) => e.reservationCode === r.code);
   const pendingProof = proofs.some((p) => p.status === "pending");
   const units = data.cabinTypes.find((c) => c.id === r.cabinTypeId)?.units ?? 1;
-  const due = balanceDue(r, now);
-  const processing = payments.find((p) => p.status === "pending");
-  const refunds = payments.filter((p) => p.needsRefund);
+  const due = balanceDue(r);
 
   const act = (label: string, action: ActionId, opts: Partial<ConfirmCfg> & { primary?: boolean; disabled?: string } = {}): Action => ({
     label,
@@ -99,9 +94,8 @@ export function ReservationDetail({ code }: { code: string }) {
   const actions: Action[] = [];
   if (r.status === "pending_deposit" || r.status === "expired")
     actions.push(
-      act(r.status === "expired" ? "Registrar pago y reactivar" : "Registrar pago manual", "confirm", {
-        text: `Solo si recibiste el pago por fuera de la pasarela (efectivo o transferencia): el abono de ${cop(r.quote.deposit)} o el total de ${cop(r.quote.total)}. La reserva queda confirmada, el pago queda en el historial y se envía el correo de confirmación.`,
-        details: processing ? [{ k: "Atención", v: "Hay un pago en línea en proceso: si también se aprueba, quedará marcado para reembolso." }] : undefined,
+      act(r.status === "expired" ? "Registrar pago y reactivar" : "Registrar pago", "confirm", {
+        text: `Registra el pago recibido (efectivo o transferencia): el abono de ${cop(r.quote.deposit)} o el total de ${cop(r.quote.total)}. La reserva queda confirmada, el pago queda en el historial y se envía el correo de confirmación.`,
         optionLabel: `El huésped pagó el total (${cop(r.quote.total)}), no solo el abono`,
         ...manualNote,
       }),
@@ -112,7 +106,7 @@ export function ReservationDetail({ code }: { code: string }) {
       act("Marcar check-in", "checkin", {
         primary: true,
         text: earlyDue
-          ? `El huésped verá de inmediato en «Mi reserva» que debe pagar el saldo de ${cop(earlyDue)}. Tendrá ${BALANCE_MINUTES / 60} hora para pagarlo en línea.`
+          ? `Queda un saldo de ${cop(earlyDue)} por cobrar en recepción. El check-out se habilita cuando lo registres.`
           : "La estadía ya está pagada: no queda saldo por cobrar.",
       }),
     );
@@ -129,9 +123,6 @@ export function ReservationDetail({ code }: { code: string }) {
         act("Registrar pago del saldo", "balance", {
           primary: true,
           text: `Registra el saldo de ${cop(due.amount)} recibido en recepción (efectivo o transferencia). Después podrás hacer el check-out.`,
-          details: processing
-            ? [{ k: "Atención", v: "Hay un pago en línea del saldo en proceso: si también se aprueba, quedará marcado para reembolso." }]
-            : undefined,
           ...manualNote,
         }),
       );
@@ -143,7 +134,7 @@ export function ReservationDetail({ code }: { code: string }) {
         reschedule: true,
         ci: r.checkIn,
         co: r.checkOut,
-        marks: typeMarks(data.reservations, [...data.blocks, ...channelBlocks(data.channelStays)], r.cabinTypeId, units, today, addDays(today, 365), r.code),
+        marks: typeMarks(data.reservations, data.blocks, r.cabinTypeId, units, today, addDays(today, 365), r.code),
         text: "Elige las nuevas fechas. Se valida la disponibilidad de la misma cabaña y se recalcula el total con las tarifas vigentes (lo ya pagado se conserva).",
       }),
     );
@@ -199,25 +190,14 @@ export function ReservationDetail({ code }: { code: string }) {
               Comprobante por revisar
             </Badge>
           )}
-          {r.status === "pending_deposit" &&
-            (processing ? (
-              <Badge tone="warning">Pago del abono en proceso</Badge>
-            ) : (
-              <Badge tone="warning">{`Retención vence en ${countdown(r.depositDueAt)}`}</Badge>
-            ))}
-          {due &&
-            (due.overdue ? <Badge tone="danger">Saldo vencido sin pagar</Badge> : <Badge tone="warning">{`Saldo vence en ${countdown(due.dueAt!)}`}</Badge>)}
-          {refunds.length > 0 && (
-            <Badge tone="danger" icon={<AlertIcon size={12} />}>
-              {plural(refunds.length, "pago por reembolsar", "pagos por reembolsar")}
-            </Badge>
-          )}
+          {r.status === "pending_deposit" && <Badge tone="warning">{`Retención vence en ${countdown(r.depositDueAt)}`}</Badge>}
+          {due && <Badge tone="warning">{`Saldo por cobrar: ${cop(due.amount)}`}</Badge>}
         </div>
       </PageHeader>
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex min-w-0 flex-col gap-4">
-          {(r.status === "pending_deposit" || r.status === "expired") && !processing && <PayLinkCard r={r} />}
+          {(r.status === "pending_deposit" || r.status === "expired") && <HoldCard r={r} />}
           <PaymentSummary r={r} payments={payments} />
           <EmailsCard emails={emails} />
           {proofs.length > 0 && (
@@ -226,7 +206,7 @@ export function ReservationDetail({ code }: { code: string }) {
                 id="dt-proofs"
                 icon={<FileTextIcon size={18} />}
                 title="Comprobantes de pago"
-                subtitle="Enviados por el huésped antes de los pagos en línea."
+                subtitle="Transferencias que envió el huésped desde «Mi reserva»."
                 actions={
                   <span className="flex items-center gap-1 text-[12px] text-ink-subtle">
                     <LockIcon size={12} />
@@ -291,8 +271,8 @@ function DetailCard({ id, title, rows }: { id: string; title: string; rows: { k:
   );
 }
 
-// Enlace de pago para el huésped: compartirlo, darle un plazo nuevo o, si la retención venció, reactivarla con un plazo.
-function PayLinkCard({ r }: { r: Reservation }) {
+// Plazo para pagar el abono: cambiarlo o, si la retención venció, reactivarla con un plazo nuevo.
+function HoldCard({ r }: { r: Reservation }) {
   const { setData, toast, onAuthError, now } = useAdmin();
   const [hold, setHold] = useState(DEFAULT_HOLD);
   const [busy, setBusy] = useState(false);
@@ -300,32 +280,29 @@ function PayLinkCard({ r }: { r: Reservation }) {
   const [editing, setEditing] = useState(false);
   const expired = r.status === "expired" || Date.parse(r.depositDueAt) <= now;
   const due = manualDueAt(r.checkIn, hold, now);
-  const url = r.payToken ? payUrlOf(r.payToken) : null;
 
   async function apply() {
     if (busy) return;
     setBusy(true);
     setError("");
     try {
-      const res = await api.admin.action({ code: r.code, action: "payment_link", holdMinutes: hold });
+      const res = await api.admin.action({ code: r.code, action: "extend_hold", holdMinutes: hold });
       if (res.status === 401 || res.status === 403) return onAuthError();
       if (res.status !== 200 || !res.data) {
         const code = (res.data as { error?: string } | null)?.error;
         setError(
           code === "HOLD_TOO_SHORT"
-            ? "Ya no queda tiempo antes de la llegada: registra el pago manualmente."
+            ? "Ya no queda tiempo antes de la llegada: registra el pago directamente."
             : res.status === 409
               ? "Esas fechas ya no están libres: la reserva no se puede reactivar."
-              : code === "CHANNEL_UNAVAILABLE"
-                ? "No se pudo retener la cabaña en Booking.com (Beds24 no respondió). Inténtalo en un momento."
-                : "No se pudo actualizar el enlace. Inténtalo de nuevo.",
+              : "No se pudo cambiar el plazo. Inténtalo de nuevo.",
         );
         return;
       }
       const updated = res.data;
       setData((d) => ({ ...d, reservations: d.reservations.map((x) => (x.code === updated.code ? updated : x)) }));
       setEditing(false);
-      toast(r.status === "expired" ? "Reserva reactivada: envía el enlace al huésped" : `Nuevo plazo: hasta el ${fmtDeadline(updated.depositDueAt)}`);
+      toast(r.status === "expired" ? "Reserva reactivada" : `Nuevo plazo: hasta el ${fmtDeadline(updated.depositDueAt)}`);
     } catch {
       setError("Error de conexión. Inténtalo de nuevo.");
     } finally {
@@ -333,68 +310,62 @@ function PayLinkCard({ r }: { r: Reservation }) {
     }
   }
 
-  const picker = (
-    <div className="flex flex-col gap-2 rounded-xl bg-canvas p-3">
-      <Segmented
-        label="Plazo para pagar"
-        size="sm"
-        value={String(hold)}
-        onChange={(v) => setHold(Number(v))}
-        options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
-        className="flex-wrap"
-      />
-      <p className="text-[12.5px] text-ink-muted">
-        {due.tooShort
-          ? "Ya no queda tiempo antes de la llegada."
-          : `Vencerá el ${fmtDeadline(due.dueAt)}${due.capped ? " (no puede pasar del día de llegada)" : ""}`}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" size="sm" loading={busy} disabled={due.tooShort} onClick={apply}>
-          {r.status === "expired" ? "Reactivar y crear enlace" : url ? "Aplicar nuevo plazo" : "Crear enlace de pago"}
-        </Button>
-        {editing && (
-          <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-            Cancelar
-          </Button>
-        )}
-      </div>
-      {error && <FieldError>{error}</FieldError>}
-    </div>
-  );
-
   return (
-    <Card aria-labelledby="dt-paylink" className="flex flex-col gap-3 p-4 sm:p-5">
+    <Card aria-labelledby="dt-hold" className="flex flex-col gap-3 p-4 sm:p-5">
       <CardHeader
-        id="dt-paylink"
-        icon={<LinkIcon size={18} />}
-        title="Enlace de pago"
+        id="dt-hold"
+        icon={<ClockIcon size={18} />}
+        title="Plazo del abono"
         subtitle={
           r.status === "expired"
-            ? "La retención venció sin pago y las fechas se liberaron. Si siguen libres, puedes reactivarla con un plazo nuevo."
-            : "El huésped paga el abono o el total con Wompi sin escribir código ni correo. Al pagar, la reserva se confirma sola."
+            ? "La retención venció sin abono y las fechas se liberaron. Si siguen libres, puedes reactivarla con un plazo nuevo."
+            : `Las fechas quedan retenidas hasta el ${fmtDeadline(r.depositDueAt)}. Si no registras el abono antes, se liberan solas.`
         }
         actions={
-          url && r.status === "pending_deposit" && !editing ? (
+          r.status === "pending_deposit" && !expired && !editing ? (
             <Button size="sm" variant="ghost" icon={<ClockIcon size={14} />} onClick={() => setEditing(true)}>
               Cambiar plazo
             </Button>
           ) : undefined
         }
       />
-      {url && r.status === "pending_deposit" && !expired && <PayLinkShare r={r} url={url} compact />}
-      {(!url || r.status === "expired" || editing || expired) && picker}
+      {(editing || expired) && (
+        <div className="flex flex-col gap-2 rounded-xl bg-canvas p-3">
+          <Segmented
+            label="Plazo para pagar"
+            size="sm"
+            value={String(hold)}
+            onChange={(v) => setHold(Number(v))}
+            options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
+            className="flex-wrap"
+          />
+          <p className="text-[12.5px] text-ink-muted">
+            {due.tooShort
+              ? "Ya no queda tiempo antes de la llegada."
+              : `Vencerá el ${fmtDeadline(due.dueAt)}${due.capped ? " (no puede pasar del día de llegada)" : ""}`}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" size="sm" loading={busy} disabled={due.tooShort} onClick={apply}>
+              {r.status === "expired" ? "Reactivar con este plazo" : "Aplicar nuevo plazo"}
+            </Button>
+            {editing && (
+              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                Cancelar
+              </Button>
+            )}
+          </div>
+          {error && <FieldError>{error}</FieldError>}
+        </div>
+      )}
     </Card>
   );
 }
 
 function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentRecord[] }) {
-  const { now } = useAdmin();
   const q = r.quote;
   const pct = q.total ? Math.min(100, Math.round((r.paid / q.total) * 100)) : 0;
-  const due = balanceDue(r, now);
-  const depositPending = payments.find((p) => (p.kind === "deposit" || p.kind === "full") && p.status === "pending");
-  const balancePending = payments.find((p) => p.kind === "balance" && p.status === "pending");
-  const fullPayment = payments.some((p) => p.kind === "full" && p.status === "approved" && !p.needsRefund);
+  const due = balanceDue(r);
+  const fullPayment = payments.some((p) => p.kind === "full" && p.status === "approved");
   const line = (label: string, amount: number, state: ReactNode, tone: "ok" | "wait" | "bad" | "muted") => (
     <div className="flex items-center justify-between gap-3 py-2">
       <span className="flex items-center gap-2 text-[14px] text-ink">
@@ -440,13 +411,11 @@ function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentReco
           depositAmount,
           r.depositPaidAt
             ? `Recibido el ${fmtDate(dateOf(r.depositPaidAt))}${fullPayment ? " · pago total" : ""}`
-            : depositPending
-              ? "Pago en línea en proceso"
-              : r.status === "pending_deposit"
-                ? `Fechas retenidas · vence en ${countdown(r.depositDueAt)}`
-                : r.status === "expired"
-                  ? "No se pagó a tiempo"
-                  : "No recibido",
+            : r.status === "pending_deposit"
+              ? `Fechas retenidas · vence en ${countdown(r.depositDueAt)}`
+              : r.status === "expired"
+                ? "No se pagó a tiempo"
+                : "No recibido",
           r.depositPaidAt ? "ok" : r.status === "pending_deposit" ? "wait" : "muted",
         )}
         {line(
@@ -454,37 +423,33 @@ function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentReco
           balanceAmount,
           r.balancePaidAt
             ? `Pagado el ${fmtDate(dateOf(r.balancePaidAt))}${fullPayment ? " · pago total" : r.checkedInAt && r.balancePaidAt < r.checkedInAt ? " · antes de llegar" : ""}`
-            : balancePending
-              ? "Pago en línea en proceso"
-              : due
-                ? due.overdue
-                  ? `Venció a las ${due.dueAt ? fmtClock(due.dueAt) : "—"} sin pagarse · regístralo en recepción`
-                  : `El huésped debe pagarlo · vence en ${countdown(due.dueAt!)}`
-                : r.status === "confirmed" || r.status === "rescheduled"
-                  ? `El huésped puede pagarlo ya o dentro de ${BALANCE_MINUTES / 60} hora tras el check-in`
-                  : r.status === "cancelled"
-                    ? "No aplica (cancelada)"
-                    : "—",
-          r.balancePaidAt ? "ok" : due?.overdue ? "bad" : due || r.status === "confirmed" || r.status === "rescheduled" ? "wait" : "muted",
+            : due
+              ? "En estadía · regístralo cuando lo pague en recepción"
+              : r.status === "confirmed" || r.status === "rescheduled"
+                ? "Se paga antes de llegar o en recepción"
+                : r.status === "cancelled"
+                  ? "No aplica (cancelada)"
+                  : "—",
+          r.balancePaidAt ? "ok" : due || r.status === "confirmed" || r.status === "rescheduled" ? "wait" : "muted",
         )}
       </div>
       {q.seasonNights ? (
         <p className="mt-1 text-[12px] text-ink-muted">{`Incluye ${plural(q.seasonNights, "noche", "noches")} con tarifa de temporada.`}</p>
       ) : null}
-      <PaymentAttempts payments={payments} />
+      <PaymentHistory payments={payments} />
     </Card>
   );
 }
 
-// Intentos de pago (en línea y manuales): permite ver si un pago se inició, quedó en proceso, se aprobó o se rechazó.
-function PaymentAttempts({ payments }: { payments: PaymentRecord[] }) {
+// Pagos registrados de la reserva (también los de pagos en línea anteriores, si los hay).
+function PaymentHistory({ payments }: { payments: PaymentRecord[] }) {
   const { now } = useAdmin();
   const [all, setAll] = useState(false);
-  if (!payments.length) return <p className="mt-3 border-t border-line pt-3 text-[13px] text-ink-muted">Aún no hay intentos de pago.</p>;
+  if (!payments.length) return <p className="mt-3 border-t border-line pt-3 text-[13px] text-ink-muted">Aún no hay pagos registrados.</p>;
   const list = all ? payments : payments.slice(0, 4);
   return (
     <div className="mt-3 border-t border-line pt-3">
-      <h3 className="mb-1 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">Intentos de pago</h3>
+      <h3 className="mb-1 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">Pagos</h3>
       <ul className="divide-y divide-line">
         {list.map((p) => {
           const st = PAYMENT_STATUS[p.status];
@@ -494,16 +459,13 @@ function PaymentAttempts({ payments }: { payments: PaymentRecord[] }) {
                 <span className="flex flex-wrap items-center gap-1.5 text-[13.5px] font-semibold text-ink">
                   {kindLabel(p.kind)} · {cop(p.amount)}
                   <Badge tone={st.tone}>{st.label}</Badge>
-                  {p.needsRefund && <Badge tone="danger">Por reembolsar</Badge>}
                 </span>
                 <span className="block text-[12px] text-ink-muted">
-                  {p.provider === "manual" ? "Registrado por el equipo" : p.provider === "wompi" ? "Wompi" : "Pasarela simulada"}
-                  {p.method && p.provider !== "manual" ? ` · ${methodLabel(p.method)}` : ""} · {timeAgo(p.approvedAt ?? p.createdAt, now)} · {p.reference}
+                  {p.provider === "manual" ? "Registrado por el equipo" : "Pago en línea (anterior)"} · {timeAgo(p.approvedAt ?? p.createdAt, now)} ·{" "}
+                  {p.reference}
                 </span>
                 {p.detail && !(p.provider === "manual" && p.detail === "Registrado por el equipo") && (
-                  <span className={`block text-[12px] ${p.needsRefund || p.status === "declined" || p.status === "error" ? "text-error" : "text-ink-muted"}`}>
-                    {p.detail}
-                  </span>
+                  <span className={`block text-[12px] ${p.status === "declined" || p.status === "error" ? "text-error" : "text-ink-muted"}`}>{p.detail}</span>
                 )}
               </span>
             </li>
@@ -512,7 +474,7 @@ function PaymentAttempts({ payments }: { payments: PaymentRecord[] }) {
       </ul>
       {payments.length > 4 && (
         <Button size="sm" variant="ghost" onClick={() => setAll(!all)}>
-          {all ? "Ver menos" : `Ver los ${payments.length} intentos`}
+          {all ? "Ver menos" : `Ver los ${payments.length} pagos`}
         </Button>
       )}
     </div>

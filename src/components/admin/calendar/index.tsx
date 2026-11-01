@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { BanIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon, LoginIcon, LogoutIcon, MoonIcon, PlusIcon, WalletIcon } from "@/components/ui/icons";
-import { ACTIVE_STATUSES, isChannelBlock } from "@/lib/booking";
+import { ACTIVE_STATUSES } from "@/lib/booking";
 import { MONTHS, MS, addDays, fmtDate, fmtFullDate, isISO, monthStart, parseISO, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
@@ -14,7 +14,6 @@ import { paths } from "@/components/admin/routes";
 import { Button, EmptyState, IconButton, Segmented, Skeleton, buttonClass } from "@/components/admin/ui";
 import {
   BLOCK_BG,
-  BOOKING_STYLE,
   CALENDAR_VIEWS,
   type CalView,
   MONTH_TIMELINE_MIN,
@@ -85,10 +84,7 @@ export function CalendarView() {
   for (const d of days)
     for (const u of rows) {
       const b = calBlocks.find((x) => blocks(x, u) && x.from <= d && d <= x.to);
-      if (
-        data.reservations.some((r) => occupies(r, u) && ACTIVE_STATUSES.concat(["completed"]).includes(r.status) && r.checkIn <= d && d < r.checkOut) ||
-        (b && isChannelBlock(b))
-      )
+      if (data.reservations.some((r) => occupies(r, u) && ACTIVE_STATUSES.concat(["completed"]).includes(r.status) && r.checkIn <= d && d < r.checkOut))
         busyNights++;
       else if (b) blockedNights++;
     }
@@ -230,7 +226,6 @@ const LEGEND: { label: string; style: CSSProperties }[] = [
   { label: "En estadía", style: barStyle({ status: "checked_in" }) },
   { label: "Finalizada", style: barStyle({ status: "completed" }) },
   { label: "Bloqueo", style: { background: BLOCK_BG } },
-  { label: "Booking.com", style: BOOKING_STYLE },
 ];
 
 function Legend() {

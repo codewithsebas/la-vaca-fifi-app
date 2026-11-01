@@ -10,7 +10,6 @@ import {
   HomeIcon,
   ListIcon,
   ReceiptIcon,
-  RefreshIcon,
   SlidersIcon,
   TagIcon,
   TrendIcon,
@@ -24,7 +23,6 @@ export type ModuleId =
   | "pagos"
   | "clientes"
   | "bloqueos"
-  | "booking"
   | "finanzas"
   | "cabanas"
   | "tarifas"
@@ -49,7 +47,7 @@ export const MODULES: Record<ModuleId, Module> = {
     href: "/admin/pagos",
     icon: ReceiptIcon,
     group: "Operación",
-    description: "Transacciones en línea, pagos recibidos y lo que falta por cobrar.",
+    description: "Pagos recibidos, comprobantes y lo que falta por cobrar.",
   },
   clientes: {
     label: "Clientes",
@@ -64,13 +62,6 @@ export const MODULES: Record<ModuleId, Module> = {
     icon: BanIcon,
     group: "Operación",
     description: "Fechas cerradas por mantenimiento, uso propio u otros motivos.",
-  },
-  booking: {
-    label: "Booking.com",
-    href: "/admin/booking",
-    icon: RefreshIcon,
-    group: "Operación",
-    description: "Calendarios sincronizados con Booking.com: lo que se vende allá bloquea la web y lo que se vende aquí cierra Booking.",
   },
   finanzas: { label: "Finanzas", href: "/admin/finanzas", icon: TrendIcon, group: "Negocio", description: "Ingresos, ocupación y su evolución por periodo." },
   cabanas: {
@@ -201,7 +192,6 @@ export const paths = {
   clientes: (q?: Query) => withQuery("/admin/clientes", q),
   cliente: (key: string) => `/admin/clientes/${clientSlug(key)}`,
   bloqueos: (q?: Query) => withQuery("/admin/bloqueos", q),
-  booking: "/admin/booking",
   finanzas: (q?: Query) => withQuery("/admin/finanzas", q),
   cabanas: "/admin/cabanas",
   nuevaCabana: "/admin/cabanas/nueva",

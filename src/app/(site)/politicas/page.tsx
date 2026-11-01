@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/config";
 import { wa } from "@/lib/format";
-import { BALANCE_MINUTES, HOLD_MINUTES } from "@/lib/payments";
+import { WEB_HOLD_HOURS } from "@/lib/payments";
 import { getSite } from "@/lib/server/site";
 
 export const metadata: Metadata = {
@@ -27,13 +27,10 @@ export default async function PoliciesPage() {
         </p>
         <h2 className={h2}>Abono, confirmación y saldo</h2>
         <p>
-          La reserva se confirma cuando se aprueba el pago en línea del abono del {c.depositPct} % del valor total, o del valor total si prefieres pagarlo de
-          una vez. Mientras pagas, las fechas quedan apartadas durante {HOLD_MINUTES} minutos; si el pago no se aprueba en ese tiempo, se liberan.
+          La reserva se confirma cuando recibimos el abono del {c.depositPct} % del valor total, o el valor total si prefieres pagarlo de una vez. Mientras
+          pagas, las fechas quedan apartadas durante {WEB_HOLD_HOURS} horas; si el abono no llega en ese tiempo, se liberan.
         </p>
-        <p>
-          El saldo se puede pagar en línea en cualquier momento antes de llegar, o después del check-in con un plazo de {BALANCE_MINUTES / 60} hora desde que se
-          registra tu llegada. Si el plazo vence, el saldo se paga en recepción. El check-out se realiza con el saldo pagado.
-        </p>
+        <p>El saldo se puede pagar por transferencia antes de llegar o en recepción el día del check-in. El check-out se realiza con el saldo pagado.</p>
         {c.policies.map((p) => (
           <div key={p.id} className="contents">
             <h2 className={h2}>{p.q}</h2>

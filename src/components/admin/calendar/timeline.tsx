@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { BanIcon, ClockIcon, PlusIcon, RefreshIcon } from "@/components/ui/icons";
-import { computeQuote, isChannelBlock, nightlyRate } from "@/lib/booking";
+import { BanIcon, ClockIcon, PlusIcon } from "@/components/ui/icons";
+import { computeQuote, nightlyRate } from "@/lib/booking";
 import { addDays, cop, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { CabinType } from "@/lib/types";
@@ -294,7 +294,7 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                   );
                 })}
 
-                {/* Bloqueos y noches de Booking.com */}
+                {/* Bloqueos */}
                 {calBlocks
                   .filter((b) => blocks(b, u) && b.from <= to && b.to >= from)
                   .map((b) => {
@@ -306,18 +306,14 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                       <Link
                         key={b.id}
                         href={blockHref(b)}
-                        aria-label={`${isChannelBlock(b) ? "Booking.com" : `Bloqueo ${b.reason}`}, ${fmtDate(b.from)} a ${fmtDate(b.to)}`}
+                        aria-label={`Bloqueo ${b.reason}, ${fmtDate(b.from)} a ${fmtDate(b.to)}`}
                         {...tip(() => <BlockTip b={b} cabin={cabinLabel(b.cabinTypeId, b.unit)} />)}
                         className={`@container relative z-1 my-auto flex h-[calc(100%-12px)] min-w-0 items-center gap-1.5 overflow-hidden px-2 text-left text-[12px] font-semibold text-ink-muted transition-[filter,box-shadow] duration-150 hover:shadow-panel hover:brightness-95 ${
                           cut.l ? "rounded-l-none" : "ml-0.5 rounded-l-[7px]"
                         } ${cut.r ? "rounded-r-none" : "mr-0.5 rounded-r-[7px]"}`}
-                        style={{ gridRow, gridColumn: `${start} / ${end}`, ...blockStyle(b) }}
+                        style={{ gridRow, gridColumn: `${start} / ${end}`, ...blockStyle() }}
                       >
-                        {isChannelBlock(b) ? (
-                          <RefreshIcon size={13} className="hidden flex-none @min-[48px]:block" />
-                        ) : (
-                          <BanIcon size={13} className="hidden flex-none @min-[48px]:block" />
-                        )}
+                        <BanIcon size={13} className="hidden flex-none @min-[48px]:block" />
                         <span className="truncate">{b.reason}</span>
                       </Link>
                     );

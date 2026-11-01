@@ -23,8 +23,8 @@ export function FinanceView() {
   const [cabinId, setCabinId] = useParam("cabana", "");
   const range = period.range;
   const prev = previousRange(range);
-  const now = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, range, cabinId, data.channelStays), [data, range.from, range.to, cabinId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const before = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, prev, cabinId, data.channelStays), [data, prev.from, prev.to, cabinId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const now = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, range, cabinId), [data, range.from, range.to, cabinId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const before = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, prev, cabinId), [data, prev.from, prev.to, cabinId]); // eslint-disable-line react-hooks/exhaustive-deps
   const pending = data.reservations.filter((r) => (!cabinId || r.cabinTypeId === cabinId) && pendingOf(r).total > 0);
   const pendingTotal = pending.reduce((s, r) => s + pendingOf(r).total, 0);
   const awaiting = pending.filter((r) => r.status === "pending_deposit");

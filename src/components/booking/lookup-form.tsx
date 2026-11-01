@@ -26,17 +26,11 @@ function describeChange(a: PublicReservation, b: PublicReservation) {
   const sa = stageOf(a);
   const sb = stageOf(b);
   if (sa !== sb) {
-    if (sb === "confirmed") return "¡Pago aprobado! Tu reserva quedó confirmada.";
-    if (sb === "balance_due") return "Se registró tu check-in. Ya puedes pagar el saldo.";
+    if (sb === "confirmed") return "¡Recibimos tu pago! Tu reserva quedó confirmada.";
+    if (sb === "balance_due") return "Se registró tu check-in. Falta pagar el saldo.";
     if (sb === "paid_in_full") return "Recibimos el pago del saldo. ¡Todo pagado!";
-    if (sb === "balance_overdue") return "Venció el plazo para pagar el saldo en línea.";
-    if (sb === "deposit_processing" || sb === "balance_processing") return "Tu pago está en proceso.";
   }
   if (a.status !== b.status) return `Tu reserva se actualizó: ${statusOf(b.status).label.toLowerCase()}.`;
-  const lastA = a.payments?.[0];
-  const lastB = b.payments?.[0];
-  if (lastB && (lastB.reference !== lastA?.reference || lastB.status !== lastA?.status) && (lastB.status === "declined" || lastB.status === "error"))
-    return "Tu último pago no fue aprobado.";
   if (a.checkIn !== b.checkIn || a.checkOut !== b.checkOut || a.cabinTypeId !== b.cabinTypeId) return "Se actualizaron las fechas o la cabaña de tu reserva.";
   if (JSON.stringify(a.quote) !== JSON.stringify(b.quote) || a.paid !== b.paid) return "Se actualizaron los valores de tu reserva.";
   return null;
@@ -332,7 +326,7 @@ export function LookupForm() {
           </section>
 
           <div className="flex flex-col gap-5 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-            <PaymentStage r={r} access={found.code ? found : null} onRefresh={refresh} />
+            <PaymentStage r={r} onRefresh={refresh} />
             <PaymentHistory payments={r.payments} />
           </div>
 

@@ -3,19 +3,18 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, resetIdem, type ApiError, type ValidationError } from "@/lib/client/api";
+import { api, resetIdem, type ValidationError } from "@/lib/client/api";
 import { touches, useAvailabilitySync, type AvailabilityChanges } from "@/lib/client/availability-sync";
 import { config, isMockApi, type CabinTypeId } from "@/lib/config";
 import { addDays, cop, fmtDate, fmtLong, isISO, monthStart, nightsBetween, plural, todayISO, wa } from "@/lib/format";
 import { saveLastReservation } from "@/lib/client/last-reservation";
-import { HOLD_MINUTES } from "@/lib/payments";
-import type { Availability, CabinType, DocType, FieldErrors, PaymentStart, PublicReservation, ReservationInput } from "@/lib/types";
+import { WEB_HOLD_HOURS } from "@/lib/payments";
+import type { Availability, CabinType, DocType, FieldErrors, PublicReservation, ReservationInput } from "@/lib/types";
 import { GiftIcon, PawIcon, WhatsAppIcon } from "@/components/ui/icons";
 import { PhotoSlot } from "@/components/site/photo-slot";
 import { RangeCalendar } from "@/components/booking/range-calendar";
 import { CheckOption, ToggleCard } from "@/components/ui/choice";
 import { Combobox } from "@/components/ui/combobox";
-import { PlanChoice, payLabel, type Plan } from "@/components/booking/reservation-payments";
 import { useSite } from "@/components/site/site-provider";
 import { arrivalOptions } from "@/lib/site";
 import {
@@ -116,12 +115,11 @@ export function ReservationWizard() {
   const [showErrSummary, setShowErrSummary] = useState(false);
   const [errFromServer, setErrFromServer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<null | "network" | "429" | "server" | "expired">(null);
+  const [submitError, setSubmitError] = useState<null | "network" | "429" | "server">(null);
   const [modal409, setModal409] = useState(false);
   const [captcha, setCaptcha] = useState("");
   const [captchaError, setCaptchaError] = useState(false);
   // Para confirmar: el abono (y el saldo después) o el total de una vez.
-  const [plan, setPlan] = useState<Plan>("deposit");
   const [sumOpen, setSumOpen] = useState(false);
   const [waiting, setWaiting] = useState(false);
   // Aviso cuando la disponibilidad cambia en tiempo real y afecta lo que el huésped eligió.
@@ -400,27 +398,13 @@ export function ReservationWizard() {
     setSubmitError(null);
     const b = body();
     try {
-      // 1) Se retienen las fechas (la base de datos impide que otra persona tome la misma cabaña) y 2) se abre la pasarela.
-      // La reserva no queda confirmada aquí: se confirma solo cuando la pasarela aprueba el abono.
+      // Se retienen las fechas (la base de datos impide que otra persona tome la misma cabaña). La reserva no queda
+      // confirmada aquí: el huésped paga el abono por transferencia y el equipo la confirma.
       const r = await api.createReservation(b);
       if (r.status === 201) {
         const held = r.data as PublicReservation;
         saveLastReservation({ res: held, email: b.guest.email, name: b.guest.fullName, adults: b.adults, children: b.children });
-        const pay = await api.startPayment({ code: held.code, email: b.guest.email, kind: plan }).catch(() => null);
-        const start = pay?.data as PaymentStart | ApiError | null | undefined;
-        if (pay?.status === 201 && start && "checkoutUrl" in start) {
-          resetIdem();
-          window.location.assign(start.checkoutUrl);
-          return;
-        }
         resetIdem();
-        // La retención de un intento anterior ya venció: se puede volver a enviar (crea una nueva).
-        if ((start as ApiError | null)?.error === "HOLD_EXPIRED") {
-          setSubmitting(false);
-          setSubmitError("expired");
-          return;
-        }
-        // Las fechas quedaron apartadas pero la pasarela no abrió: el pago se reintenta desde «Mi reserva».
         router.push("/mi-reserva?code=" + encodeURIComponent(held.code));
         return;
       }
@@ -515,7 +499,6 @@ export function ReservationWizard() {
     network: "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
     "429": "Recibimos demasiados intentos seguidos. Espera un momento y vuelve a intentarlo.",
     server: "Ocurrió un error al iniciar tu reserva.",
-    expired: "El tiempo de tu intento anterior terminó. Vuelve a intentarlo para apartar las fechas de nuevo.",
   };
 
   return (
@@ -1151,19 +1134,9 @@ export function ReservationWizard() {
                   <dt className="dotted-top pt-2.5 font-extrabold">Total</dt>
                   <dd className="dotted-top display pt-2.5 text-right text-[2rem] leading-none">{cop(q?.total)}</dd>
                 </dl>
-                <div className="flex flex-col gap-2.5">
-                  <h3 className="text-[1.05rem] font-extrabold">¿Cuánto quieres pagar ahora?</h3>
-                  <PlanChoice
-                    wide
-                    value={plan}
-                    onChange={setPlan}
-                    deposit={q?.deposit ?? 0}
-                    total={q?.total ?? 0}
-                    pct={config.depositPct}
-                    disabled={submitting}
-                  />
-                  <p className="text-[.82rem]">Lo que pagues para confirmar no es reembolsable.</p>
-                </div>
+                <p className="text-[.92rem] font-semibold">
+                  {`Abono para confirmar (${config.depositPct} %): ${cop(q?.deposit)}. Lo que pagues para confirmar no es reembolsable.`}
+                </p>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-2.5 rounded-md bg-card-muted px-4 py-3.5 text-[.9rem]">
                   {[
                     { k: "Huésped", v: f.fullName },
@@ -1234,7 +1207,7 @@ export function ReservationWizard() {
                 )}
               </div>
               <p className="rounded-lg bg-surface px-5 py-4 text-[.92rem] font-semibold">
-                {`Te llevamos a la pasarela segura de Wompi (tarjeta, PSE, Nequi o Bancolombia). Tus fechas quedan apartadas ${HOLD_MINUTES} minutos mientras pagas; la reserva se confirma solo cuando el pago sea aprobado.`}
+                {`Al enviar, tus fechas quedan apartadas ${WEB_HOLD_HOURS} horas. Paga el abono por transferencia y envíanos el comprobante: la reserva se confirma cuando lo recibamos.`}
               </p>
               <div className="flex flex-wrap justify-between gap-3">
                 <button type="button" onClick={back} disabled={submitting} className={backBtn}>
@@ -1248,7 +1221,7 @@ export function ReservationWizard() {
                   className={`btn btn-highlight min-h-[60px] gap-3 px-[34px] text-[1.05rem] ${submitting ? "cursor-progress opacity-70" : ""}`}
                 >
                   {submitting && <span aria-hidden="true" className="size-5 animate-spin-fast rounded-full border-3 border-on-light border-r-transparent" />}
-                  {submitting ? "Abriendo el pago…" : payLabel(plan, (plan === "full" ? q?.total : q?.deposit) ?? 0)}
+                  {submitting ? "Apartando tus fechas…" : "Apartar mis fechas"}
                 </button>
               </div>
             </section>
@@ -1273,7 +1246,7 @@ export function ReservationWizard() {
             <strong className="display text-[2.6rem] leading-none">{sumTotal}</strong>
             <span className="text-[.86rem]">{depositLine}</span>
           </div>
-          <p className="text-[.8rem] text-on-dark-muted">{`Tus fechas se apartan ${HOLD_MINUTES} minutos mientras pagas el abono del ${config.depositPct} % o el total. La reserva se confirma cuando el pago es aprobado.`}</p>
+          <p className="text-[.8rem] text-on-dark-muted">{`Tus fechas se apartan ${WEB_HOLD_HOURS} horas mientras pagas el abono del ${config.depositPct} % o el total. La reserva se confirma cuando lo recibimos.`}</p>
         </aside>
       </div>
 

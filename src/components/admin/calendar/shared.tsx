@@ -1,7 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { channelBlocks, isChannelBlock } from "@/lib/booking";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { WD, WD_FULL, WD_MIN, addDays, cop, countdown, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { Block, CabinType, Reservation } from "@/lib/types";
@@ -29,18 +28,12 @@ export const lastOfMonth = (m: string) => {
 export const mondayOf = (d: string) => addDays(d, -((parseISO(d).getUTCDay() + 6) % 7));
 export const BLOCK_BG =
   "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-status-block) 32%, white) 0 5px, color-mix(in srgb, var(--color-status-block) 14%, white) 5px 10px)";
-// Noches ocupadas en Booking.com: azul de Booking. No se editan aquí (se gestionan en el extranet).
-export const BOOKING_STYLE: CSSProperties = {
-  background: "color-mix(in srgb, var(--color-status-booking) 20%, white)",
-  boxShadow: "inset 3px 0 0 var(--color-status-booking)",
-};
-export const blockStyle = (b: Block): CSSProperties => (isChannelBlock(b) ? BOOKING_STYLE : { background: BLOCK_BG });
-export const blockHref = (b: Block) => (isChannelBlock(b) ? paths.booking : paths.bloqueos({ editar: b.id }));
+export const blockStyle = (): CSSProperties => ({ background: BLOCK_BG });
+export const blockHref = (b: Block) => paths.bloqueos({ editar: b.id });
 
-// Bloqueos del panel y noches de Booking.com juntos: el calendario los dibuja igual (Booking con su color y sin editar).
+// Bloqueos que dibuja el calendario.
 export function useCalBlocks() {
-  const { data } = useAdmin();
-  return useMemo(() => [...data.blocks, ...channelBlocks(data.channelStays)], [data.blocks, data.channelStays]);
+  return useAdmin().data.blocks;
 }
 
 // Estilo de cada estado: relleno suave del color del estado + franja de acento a la izquierda. Pendiente de abono =
@@ -156,20 +149,13 @@ export function ReservationTip({ r, cabin }: { r: Reservation; cabin: string }) 
 }
 
 export function BlockTip({ b, cabin }: { b: Block; cabin: string }) {
-  const booking = isChannelBlock(b);
   return (
     <div className="flex flex-col gap-1">
-      <strong className="text-[13px]">{booking ? "Booking.com · reserva o cierre" : `Bloqueado · ${b.reason}`}</strong>
+      <strong className="text-[13px]">{`Bloqueado · ${b.reason}`}</strong>
       <span className="text-white/85">{cabin}</span>
-      <span>
-        {booking
-          ? `${fmtDate(b.from)} → ${fmtDate(addDays(b.to, 1))} · ${plural(nightsBetween(b.from, b.to) + 1, "noche", "noches")}`
-          : `${fmtDate(b.from)} → ${fmtDate(b.to)} · ${plural(nightsBetween(b.from, b.to) + 1, "día", "días")}`}
-      </span>
+      <span>{`${fmtDate(b.from)} → ${fmtDate(b.to)} · ${plural(nightsBetween(b.from, b.to) + 1, "día", "días")}`}</span>
       {b.notes && <span className="text-white/85">{b.notes}</span>}
-      <span className="mt-0.5 border-t border-white/15 pt-1.5 text-white/60">
-        {booking ? "Se gestiona en el extranet de Booking.com" : "Clic para editar el bloqueo"}
-      </span>
+      <span className="mt-0.5 border-t border-white/15 pt-1.5 text-white/60">Clic para editar el bloqueo</span>
     </div>
   );
 }
