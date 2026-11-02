@@ -30,6 +30,7 @@ import { Popover } from "@/components/ui/floating";
 import { PREF, readPref, usePref, writePref } from "@/components/admin/prefs";
 import { PushPrompt } from "@/components/admin/push";
 import { paths } from "@/components/admin/routes";
+import { EMAIL_KIND } from "@/components/admin/shared";
 import { Button, Card, CardHeader, EmptyState, IconButton, PageHeader, Segmented, buttonClass } from "@/components/admin/ui";
 
 /* ───────────── Tiempo real (Supabase Realtime) ───────────── */
@@ -221,12 +222,12 @@ function useReminders(): Reminder[] {
       code: p.reservationCode,
     });
   }
-  for (const e of data.emails.filter((e) => e.status === "failed" && e.kind === "reservation_confirmed" && e.reservationCode))
+  for (const e of data.emails.filter((e) => e.status === "failed" && e.kind !== "team_message" && e.reservationCode))
     out.push({
       key: `e${e.id}`,
       icon: MailIcon,
       tone: "bg-error-soft text-error",
-      title: `Confirmación sin enviar · ${e.reservationCode}`,
+      title: `${EMAIL_KIND[e.kind] ?? "Correo"} sin enviar · ${e.reservationCode}`,
       body: e.lastError,
       code: e.reservationCode!,
     });

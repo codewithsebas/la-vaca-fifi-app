@@ -119,6 +119,8 @@ export const POST = route(async (req: NextRequest) => {
         .throwOnError();
     } else {
       await sb.from("reservations").update({ status: rule.to! }).eq("code", current.code).throwOnError();
+      // Cancelar encola el correo al huésped (lo hace la base de datos): se envía después de responder.
+      if (b.action === "cancel") after(() => processOutbox(siteUrl(req.nextUrl.origin)));
     }
   } catch (e) {
     // Confirmar una retención vencida o reprogramar puede chocar con otra reserva activa.

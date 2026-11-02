@@ -1,20 +1,30 @@
 import "server-only";
-import { reservationConfirmedEmail, teamMessageEmail, type RenderedEmail } from "@/lib/emails";
+import {
+  arrivalReminderEmail,
+  reservationConfirmedEmail,
+  reservationEndedEmail,
+  reservationReceivedEmail,
+  teamMessageEmail,
+  type RenderedEmail,
+} from "@/lib/emails";
 import { dirHref, ics, wa } from "@/lib/format";
 import { mergeSite, type SiteConfig } from "@/lib/site";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { EmailRecord, Quote } from "@/lib/types";
 import { type Db, toEmail } from "@/lib/server/db";
+import { EMAIL_LOGO_CID, EMAIL_LOGO_PNG_BASE64 } from "@/lib/server/email-logo";
 import { loadSiteContent } from "@/lib/server/site";
 import { env } from "@/lib/server/env";
 
-// Bandeja de salida (tabla email_outbox): quien necesita un correo lo encola (la confirmación la encola la base de datos
-// al aprobarse el abono) y este módulo lo envía con Resend. El envío va aparte de la respuesta al huésped: si Resend falla,
+// Bandeja de salida (tabla email_outbox): quien necesita un correo lo encola (los de la reserva los encola la base de datos:
+// al crearse, al aprobarse el abono, al cancelarse o vencerse y dos días antes de llegar) y este módulo lo envía con Resend. El envío va aparte de la respuesta al huésped: si Resend falla,
 // la reserva sigue confirmada, el error queda registrado (y avisa al panel) y el correo se reintenta con espera creciente.
 
 type Row = Tables<"email_outbox">;
-type Attachment = { filename: string; content: string };
+// content_id: imagen en línea, la que el HTML usa como src="cid:…" (el logo).
+type Attachment = { filename: string; content: string; content_id?: string };
+const LOGO: Attachment = { filename: "la-vaca-fifi.png", content: EMAIL_LOGO_PNG_BASE64, content_id: EMAIL_LOGO_CID };
 
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MIN = [2, 10, 30, 120, 480]; // espera antes del siguiente intento automático
@@ -57,46 +67,75 @@ async function siteOf(ctx: Ctx) {
   return ctx.site;
 }
 
-async function render(ctx: Ctx, row: Row): Promise<{ email: RenderedEmail; attachments?: Attachment[] }> {
-  const c = await siteOf(ctx);
-  const logoUrl = `${ctx.base}/correo/logo.png`;
-  if (row.kind === "reservation_confirmed") {
-    if (!row.reservation_code) throw new Error("La reserva del correo ya no existe.");
-    const [{ data: r }, { data: deposit }] = await Promise.all([
-      ctx.sb.from("reservations").select("*").eq("code", row.reservation_code).single().throwOnError(),
-      ctx.sb
+type Rendered = { email: RenderedEmail; to: string; attachments?: Attachment[] };
+
+// Correos de la reserva: se leen la reserva y su cabaña al enviar (siempre con los datos vigentes).
+async function renderReservation(ctx: Ctx, row: Row, c: SiteConfig, logoUrl: string): Promise<Rendered> {
+  if (!row.reservation_code) throw new Error("La reserva del correo ya no existe.");
+  const { data: r } = await ctx.sb.from("reservations").select("*").eq("code", row.reservation_code).single().throwOnError();
+  const { data: cabin } = await ctx.sb.from("cabin_types").select("nombre").eq("id", r.cabin_type_id).maybeSingle().throwOnError();
+  const q = r.quote as Quote;
+  const cabana = cabin?.nombre ?? r.cabin_type_id;
+  const stay = {
+    nombre: r.guest_full_name,
+    codigo: r.code,
+    cabana,
+    checkIn: r.check_in,
+    checkOut: r.check_out,
+    adultos: r.adults,
+    ninos: r.children,
+    logoUrl,
+  };
+  const mascota = !!(r.pet as { hasPet?: boolean } | null)?.hasPet;
+  // Con el sitio público sin publicar (solo panel), los enlaces a «Mi reserva» y «Reservar» llevarían al ingreso del
+  // panel: el correo los omite y deja WhatsApp.
+  const site = !env.soloPanel;
+  const miReservaUrl = site ? `${ctx.base}/mi-reserva?code=${encodeURIComponent(r.code)}` : "";
+  const whatsappUrl = wa(c.whatsapp, `Hola, tengo una pregunta sobre mi reserva ${r.code}.`);
+  const guest = (email: RenderedEmail): Rendered => ({ email, to: row.to_email });
+
+  switch (row.kind) {
+    case "reservation_confirmed": {
+      const { data: deposit } = await ctx.sb
         .from("payments")
         .select("amount")
-        .eq("reservation_code", row.reservation_code)
+        .eq("reservation_code", r.code)
         .in("kind", ["deposit", "full"])
         .eq("status", "approved")
         .order("approved_at")
         .limit(1)
-        .throwOnError(),
-    ]);
-    const { data: cabin } = await ctx.sb.from("cabin_types").select("nombre").eq("id", r.cabin_type_id).maybeSingle().throwOnError();
-    const q = r.quote as Quote;
-    const cabana = cabin?.nombre ?? r.cabin_type_id;
-    const email = reservationConfirmedEmail(c, {
-      nombre: r.guest_full_name,
-      codigo: r.code,
-      cabana,
-      checkIn: r.check_in,
-      checkOut: r.check_out,
-      adultos: r.adults,
-      ninos: r.children,
-      mascota: !!(r.pet as { hasPet?: boolean } | null)?.hasPet,
-      total: q.total,
-      // Lo pagado al confirmar (abono o total), aunque el correo se reenvíe después de pagar el saldo.
-      pagado: deposit[0]?.amount ?? q.deposit,
-      miReservaUrl: `${ctx.base}/mi-reserva?code=${encodeURIComponent(r.code)}`,
-      comoLlegarUrl: dirHref(),
-      whatsappUrl: wa(c.whatsapp, `Hola, tengo una pregunta sobre mi reserva ${r.code}.`),
-      logoUrl,
-    });
-    const calendar = ics({ code: r.code, checkIn: r.check_in, checkOut: r.check_out, cabinTypeId: r.cabin_type_id }, c, cabana);
-    return { email, attachments: [{ filename: `reserva-${r.code}.ics`, content: Buffer.from(calendar).toString("base64") }] };
+        .throwOnError();
+      const email = reservationConfirmedEmail(c, {
+        ...stay,
+        mascota,
+        total: q.total,
+        // Lo pagado al confirmar (abono o total), aunque el correo se reenvíe después de pagar el saldo.
+        pagado: deposit[0]?.amount ?? q.deposit,
+        miReservaUrl,
+        comoLlegarUrl: dirHref(),
+        whatsappUrl,
+      });
+      const calendar = ics({ code: r.code, checkIn: r.check_in, checkOut: r.check_out, cabinTypeId: r.cabin_type_id }, c, cabana);
+      return { ...guest(email), attachments: [{ filename: `reserva-${r.code}.ics`, content: Buffer.from(calendar).toString("base64") }] };
+    }
+    case "reservation_received":
+      return guest(reservationReceivedEmail(c, { ...stay, mascota, total: q.total, abono: q.deposit, plazo: r.deposit_due_at, miReservaUrl, whatsappUrl }));
+    case "reservation_cancelled":
+    case "reservation_expired":
+      return guest(
+        reservationEndedEmail(c, { ...stay, vencida: row.kind === "reservation_expired", reservarUrl: site ? `${ctx.base}/reservar` : "", whatsappUrl }),
+      );
+    case "arrival_reminder":
+      return guest(arrivalReminderEmail(c, { ...stay, saldo: Math.max(0, q.total - r.paid_amount), comoLlegarUrl: dirHref(), miReservaUrl, whatsappUrl }));
+    default:
+      throw new Error(`Tipo de correo desconocido: ${row.kind}`);
   }
+}
+
+async function render(ctx: Ctx, row: Row): Promise<Rendered> {
+  const c = await siteOf(ctx);
+  const logoUrl = `cid:${EMAIL_LOGO_CID}`; // el logo va incrustado (LOGO), no enlazado
+  if (row.kind !== "team_message") return renderReservation(ctx, row, c, logoUrl);
   const d = row.payload as { nombre?: string; asunto?: string; mensaje?: string; codigo?: string | null };
   const email = teamMessageEmail(c, {
     nombre: d.nombre ?? "",
@@ -106,7 +145,7 @@ async function render(ctx: Ctx, row: Row): Promise<{ email: RenderedEmail; attac
     whatsappUrl: wa(c.whatsapp),
     logoUrl,
   });
-  return { email };
+  return { email, to: row.to_email };
 }
 
 // Toma el correo (concurrencia optimista sobre `attempts`): si otro proceso ya lo tomó, no se envía dos veces.
@@ -128,18 +167,18 @@ async function deliver(ctx: Ctx, row: Row): Promise<Row> {
   const taken = await claim(ctx.sb, row);
   if (!taken) return row;
   try {
-    const { email, attachments } = await render(ctx, taken);
+    const { email, to, attachments } = await render(ctx, taken);
     const id = await sendWithResend({
-      to: taken.to_email,
+      to,
       subject: email.subject,
       html: email.html,
       text: email.text,
-      attachments,
+      attachments: [LOGO, ...(attachments ?? [])],
       idempotencyKey: `${taken.id}:${taken.attempts}`,
     });
     const { data } = await ctx.sb
       .from("email_outbox")
-      .update({ status: "sent", provider_id: id, sent_at: new Date().toISOString(), subject: email.subject.slice(0, 200), last_error: "" })
+      .update({ status: "sent", provider_id: id, sent_at: new Date().toISOString(), subject: email.subject.slice(0, 200), to_email: to, last_error: "" })
       .eq("id", taken.id)
       .select("*")
       .single()

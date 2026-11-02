@@ -49,6 +49,16 @@ export function rowOf(r: Reservation, cabinLabel: (id: string, unit?: number) =>
 // Campo compacto del panel (misma pieza .field-input del sitio, variante de densidad).
 export const adminInput = "field-input field-compact";
 
+// Nombre de cada correo automático en el panel (el mensaje del equipo se muestra con su asunto).
+export const EMAIL_KIND: Record<string, string> = {
+  reservation_received: "Reserva recibida",
+  reservation_confirmed: "Confirmación de reserva",
+  new_reservation: "Aviso de reserva nueva",
+  reservation_cancelled: "Reserva cancelada",
+  reservation_expired: "Reserva vencida",
+  arrival_reminder: "Recordatorio de llegada",
+};
+
 // Reservas que activan acciones operativas (llegan hoy, salen hoy, etc.).
 export const ARRIVING = ["pending_deposit", "confirmed", "rescheduled"];
 export const DEPARTING = ["checked_in", "confirmed", "rescheduled"];

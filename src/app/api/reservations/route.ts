@@ -1,9 +1,11 @@
-import type { NextRequest } from "next/server";
+import { after, type NextRequest } from "next/server";
 import { computeQuote, depositDueAt, validateReservation } from "@/lib/booking";
 import { todayISO } from "@/lib/format";
 import { loadPricing, runDeadlines, toPublic } from "@/lib/server/db";
 import { fail, json, readJson, route } from "@/lib/server/http";
+import { processOutbox } from "@/lib/server/mailer";
 import { holdReservation } from "@/lib/server/reservations";
+import { siteUrl } from "@/lib/server/site";
 import { verifyTurnstile } from "@/lib/server/turnstile";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { ReservationInput } from "@/lib/types";
@@ -62,7 +64,11 @@ export const POST = route(async (req: NextRequest) => {
     },
     { units: units[type.id] ?? 0 },
   );
-  if ("row" in held) return json(toPublic(held.row), 201);
+  if ("row" in held) {
+    // La base de datos encoló la «Reserva recibida» para el huésped y el aviso al negocio: salen después de responder.
+    after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+    return json(toPublic(held.row), 201);
+  }
   if (held.error === "IDEMPOTENCY_CONFLICT" && idemKey) {
     const existing = await findByKey(idemKey);
     if (existing) return json(toPublic(existing), 201);

@@ -27,6 +27,10 @@ export const env = {
   get emailReplyTo() {
     return read("EMAIL_REPLY_TO");
   },
+  // Modo «solo panel» (proxy.ts): el sitio público no está publicado.
+  get soloPanel() {
+    return read("SOLO_PANEL") === "1";
+  },
   get vapidPublicKey() {
     return read("NEXT_PUBLIC_VAPID_PUBLIC_KEY");
   },

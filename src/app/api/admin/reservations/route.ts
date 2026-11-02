@@ -1,10 +1,12 @@
-import type { NextRequest } from "next/server";
+import { after, type NextRequest } from "next/server";
 import { computeQuote, normalizePhone, validateManualReservation, withTotal } from "@/lib/booking";
 import { todayISO } from "@/lib/format";
 import { manualDueAt } from "@/lib/payments";
 import { loadPricing, runDeadlines, toReservation } from "@/lib/server/db";
 import { fail, json, readJson, requireStaff, route } from "@/lib/server/http";
+import { processOutbox } from "@/lib/server/mailer";
 import { holdReservation } from "@/lib/server/reservations";
+import { siteUrl } from "@/lib/server/site";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { ManualReservationInput, ManualReservationResult } from "@/lib/types";
 
@@ -62,6 +64,8 @@ export const POST = route(async (req: NextRequest) => {
   );
   if (!("row" in held)) return fail(409, "DATES_UNAVAILABLE");
 
+  // La base de datos encoló la «Reserva recibida» para el huésped y el aviso al negocio: salen después de responder.
+  after(() => processOutbox(siteUrl(req.nextUrl.origin)));
   const result: ManualReservationResult = { reservation: toReservation(held.row) };
   return json(result, 201);
 });

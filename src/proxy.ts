@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 // Modo «solo panel» (SOLO_PANEL=1): mientras el sitio público no esté contratado, solo se publica el panel.
-// Las páginas del sitio redirigen a /admin y su API responde 404. Siguen abiertas las rutas del panel y el despachador de
-// avisos push (lo llama la base de datos).
-const ABIERTAS = ["/admin", "/api/admin", "/api/push", "/icon", "/apple-icon", "/icons", "/correo", "/manifest.webmanifest"];
+// Las páginas del sitio redirigen a /admin y su API responde 404. Siguen abiertas las rutas del panel y los despachadores de
+// avisos push y de correos (los llama la base de datos).
+const ABIERTAS = ["/admin", "/api/admin", "/api/push", "/api/email", "/icon", "/apple-icon", "/icons", "/correo", "/manifest.webmanifest"];
 
 const abierta = (path: string) => ABIERTAS.some((p) => path === p || path.startsWith(`${p}/`));
 

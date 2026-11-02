@@ -10,7 +10,7 @@ import { api, type ApiError } from "@/lib/client/api";
 import { fmtDate, timeAgo } from "@/lib/format";
 import type { EmailRecord, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
-import { adminInput } from "@/components/admin/shared";
+import { EMAIL_KIND, adminInput } from "@/components/admin/shared";
 import { Badge, Button, Callout, Field, IconButton, Modal } from "@/components/admin/ui";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -178,9 +178,7 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
             <ul className="flex flex-col gap-1">
               {history.map((e) => (
                 <li key={e.id} className="flex items-center justify-between gap-2 text-[13px]">
-                  <span className="min-w-0 truncate text-ink">
-                    {e.kind === "reservation_confirmed" ? `Confirmación ${e.reservationCode ?? ""}` : e.subject}
-                  </span>
+                  <span className="min-w-0 truncate text-ink">{EMAIL_KIND[e.kind] ? `${EMAIL_KIND[e.kind]} ${e.reservationCode ?? ""}` : e.subject}</span>
                   <span className="flex flex-none items-center gap-1.5 text-[12px] text-ink-muted">
                     {timeAgo(e.sentAt ?? e.createdAt, now)}
                     <Badge tone={e.status === "sent" ? "success" : e.status === "failed" ? "danger" : "info"}>

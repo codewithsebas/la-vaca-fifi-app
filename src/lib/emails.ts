@@ -1,74 +1,95 @@
 // Correos transaccionales: HTML de 600 px con tablas, estilos inline y colores hex (funciona en Gmail, Outlook y Apple Mail).
-// Los que se envían de verdad (confirmación de reserva y mensaje del equipo) se generan con funciones que reciben los datos;
-// el resto son plantillas de referencia con variables {{var}} que todavía no se envían.
-import { cop, fmtDate, nightsBetween, plural } from "@/lib/format";
+// Los que se envían de verdad (los automáticos de la reserva y el mensaje del equipo) se generan con funciones que reciben
+// los datos; la reprogramación sigue como plantilla de referencia con variables {{var}} que todavía no se envía.
+import { cop, fmtDate, fmtDateTime, nightsBetween, plural } from "@/lib/format";
 import { fmtTime, type SiteConfig } from "@/lib/site";
 
 type Cfg = SiteConfig;
 
+// Los colores del panel (globals.css): fondo crema, tarjetas blancas, cajas arena, tinta negra y los cuatro pasteles de
+// las tarjetas del dashboard. Hex fijos: los clientes de correo no leen variables CSS.
 const X = {
-  bg: "#FFF8EB",
-  card: "#FFFFFF",
-  box: "#FFF3DC",
-  ink: "#241A14",
-  muted: "#5E5550",
-  brand: "#241A14",
-  cream: "#FFF8EB",
-  hl: "#FFD23F",
-  line: "#F3E6D2",
-  accent: "#157AB8",
-  accentSoft: "#DDF0FA",
+  bg: "#F7F2E8", // fondo del panel
+  card: "#FFFDF9", // tarjetas
+  box: "#EFE9DD", // cajas de datos (las tarjetas arena del panel)
+  ink: "#171614",
+  muted: "#66615A",
+  line: "#E2DACB",
+  lineStrong: "#CEC5B3",
+  brand: "#171614", // botón principal y encabezado (negro, como la barra lateral)
+  cream: "#FFFDF9",
+  hl: "#FFFDF9", // botón secundario: blanco con borde
 };
-const FONT = "Arial, Helvetica, sans-serif";
-const DISPLAY = "'Lilita One', 'Arial Rounded MT Bold', 'Arial Black', Arial, sans-serif";
-// El nombre, en letras redondas y gruesas como las del letrero de Fifí (las fuentes web no llegan a todos los clientes
-// de correo: Lilita One si está, si no una gruesa del sistema).
+// Pasteles del dashboard: el código de reserva y la etiqueta toman el de cada correo.
+const ACCENTS = {
+  yellow: { bg: "#F5D462", soft: "#FBEDB5" },
+  green: { bg: "#A8B874", soft: "#E1E8C8" },
+  pink: { bg: "#F4B8D6", soft: "#F9DCEA" },
+  blue: { bg: "#B6C8EF", soft: "#DBE5F8" },
+};
+type EmailAccent = keyof typeof ACCENTS;
+
+// Plus Jakarta Sans es la letra del panel; donde el cliente de correo no carga fuentes web, Arial.
+const FONT = "'Plus Jakarta Sans', Arial, Helvetica, sans-serif";
+// El nombre, en letras redondas y gruesas como las del letrero de Fifí (Lilita One si está, si no una gruesa del sistema).
 const WORDMARK = "'Lilita One', 'Arial Rounded MT Bold', 'Arial Black', Arial, sans-serif";
+const FONTS_URL = "https://fonts.googleapis.com/css2?family=Lilita+One&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap";
 const DARK =
-  ".em-body{background:#120D0A!important}.em-card{background:#241A14!important}.em-text{color:#FFF8EB!important}.em-muted{color:#CFC6BD!important}.em-box{background:#33261D!important}.em-line{border-color:#4A382B!important}.em-code{color:#FFD23F!important}.em-ok{background:#33261D!important;color:#DDF0FA!important}";
+  ".em-body{background:#121110!important}.em-card{background:#272623!important}.em-text{color:#F3EFE6!important}.em-muted{color:#ABA59A!important}.em-box{background:#1D1C1A!important}.em-line{border-color:#3A3733!important}.em-btn1{background:#F3EFE6!important}.em-btn1 a{color:#171614!important}.em-btn2{background:#272623!important;border-color:#4A463F!important}.em-btn2 a{color:#F3EFE6!important}";
 
 // Todo dato del huésped o del equipo se escapa antes de entrar al HTML.
 const esc = (s: string | number) => String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 
 const h1 = (t: string) =>
-  `<h1 class="em-text em-h1" style="margin:0 0 12px;font-family:${DISPLAY};font-size:32px;line-height:36px;font-weight:400;color:${X.ink}">${t}</h1>`;
-const p = (t: string) => `<p class="em-text" style="margin:0 0 14px;font-family:${FONT};font-size:16px;line-height:24px;color:${X.ink}">${t}</p>`;
+  `<h1 class="em-text em-h1" style="margin:0 0 10px;font-family:${FONT};font-size:30px;line-height:36px;font-weight:700;letter-spacing:-1px;color:${X.ink}">${t}</h1>`;
+const p = (t: string) => `<p class="em-text" style="margin:0 0 14px;font-family:${FONT};font-size:15px;line-height:24px;color:${X.ink}">${t}</p>`;
 const small = (t: string) => `<p class="em-muted" style="margin:0 0 10px;font-family:${FONT};font-size:13px;line-height:20px;color:${X.muted}">${t}</p>`;
 const h2 = (t: string) =>
-  `<h2 class="em-text" style="margin:26px 0 10px;font-family:${FONT};font-size:13px;line-height:18px;font-weight:bold;text-transform:uppercase;letter-spacing:1.5px;color:${X.ink}">${t}</h2>`;
-const pill = (t: string) =>
-  `<p style="margin:0 0 14px"><span class="em-ok" style="display:inline-block;padding:5px 12px;border-radius:999px;background:${X.accentSoft};font-family:${FONT};font-size:12px;font-weight:bold;letter-spacing:.5px;color:${X.ink}">&#10003;&nbsp; ${t}</span></p>`;
+  `<h2 class="em-text" style="margin:28px 0 10px;font-family:${FONT};font-size:17px;line-height:22px;font-weight:700;letter-spacing:-0.3px;color:${X.ink}">${t}</h2>`;
+// Etiqueta de estado en píldora, en el pastel suave del correo.
+const pill = (t: string, accent: EmailAccent = "green") =>
+  `<p style="margin:0 0 16px"><span style="display:inline-block;padding:5px 12px;border-radius:999px;background:${ACCENTS[accent].soft};font-family:${FONT};font-size:12px;font-weight:700;color:${X.ink}">${t}</span></p>`;
 const kv = (rows: [string, string][]) =>
-  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="em-box" style="background:${X.box};border-radius:12px">${rows
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="em-box" style="background:${X.box};border-radius:18px">${rows
     .map(
       ([k, v], i) =>
-        `<tr><td class="em-muted em-line" style="padding:11px 16px;font-family:${FONT};font-size:13px;line-height:18px;color:${X.muted};${i ? `border-top:1px solid ${X.line};` : ""}width:36%;vertical-align:top">${k}</td><td class="em-text em-line" style="padding:11px 16px;font-family:${FONT};font-size:14px;line-height:20px;font-weight:bold;color:${X.ink};${i ? `border-top:1px solid ${X.line};` : ""}">${v}</td></tr>`,
+        `<tr><td class="em-muted em-line" style="padding:12px 18px;font-family:${FONT};font-size:13px;line-height:18px;color:${X.muted};${i ? `border-top:1px solid ${X.line};` : ""}width:36%;vertical-align:top">${k}</td><td class="em-text em-line" style="padding:12px 18px;font-family:${FONT};font-size:14px;line-height:20px;font-weight:700;color:${X.ink};${i ? `border-top:1px solid ${X.line};` : ""}">${v}</td></tr>`,
     )
     .join("")}</table>`;
-// Montos alineados a la derecha; la última fila (lo pendiente) se destaca.
+// Montos alineados a la derecha; la última fila (lo pendiente) se destaca en grande, como las cifras del dashboard.
 const amounts = (rows: [string, string, string?][]) =>
-  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="em-box" style="background:${X.box};border-radius:12px">${rows
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="em-box" style="background:${X.box};border-radius:18px">${rows
     .map(([k, v, note], i) => {
       const last = i === rows.length - 1;
       const top = i ? `border-top:1px solid ${X.line};` : "";
-      return `<tr><td class="em-text em-line" style="padding:12px 16px;font-family:${FONT};font-size:14px;line-height:20px;color:${X.ink};${top}${last ? "font-weight:bold;" : ""}">${k}${note ? `<br><span class="em-muted" style="font-size:12px;line-height:18px;font-weight:normal;color:${X.muted}">${note}</span>` : ""}</td><td align="right" class="em-text em-line" style="padding:12px 16px;font-family:${last ? DISPLAY : FONT};font-size:${last ? "28px" : "15px"};line-height:${last ? "30px" : "20px"};font-weight:${last ? "normal" : "bold"};color:${X.ink};white-space:nowrap;vertical-align:top;${top}">${v}</td></tr>`;
+      return `<tr><td class="em-text em-line" style="padding:13px 18px;font-family:${FONT};font-size:14px;line-height:20px;color:${X.ink};${top}${last ? "font-weight:700;" : ""}">${k}${note ? `<br><span class="em-muted" style="font-size:12px;line-height:18px;font-weight:400;color:${X.muted}">${note}</span>` : ""}</td><td align="right" class="em-text em-line" style="padding:13px 18px;font-family:${FONT};font-size:${last ? "26px" : "15px"};line-height:${last ? "30px" : "20px"};font-weight:700;letter-spacing:${last ? "-1px" : "0"};color:${X.ink};white-space:nowrap;vertical-align:top;${top}">${v}</td></tr>`;
     })
     .join("")}</table>`;
 const list = (items: string[]) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${items
     .map(
       (t) =>
-        `<tr><td width="22" valign="top" style="padding:3px 0;font-family:${FONT};font-size:15px;line-height:22px;color:${X.hl}">&#9679;</td><td class="em-text" style="padding:3px 0;font-family:${FONT};font-size:15px;line-height:22px;color:${X.ink}">${t}</td></tr>`,
+        `<tr><td width="22" valign="top" class="em-text" style="padding:4px 0;font-family:${FONT};font-size:14px;line-height:22px;color:${X.ink}">&#8226;</td><td class="em-text" style="padding:4px 0;font-family:${FONT};font-size:15px;line-height:22px;color:${X.ink}">${t}</td></tr>`,
     )
     .join("")}</table>`;
-const btn = (label: string, href: string, bg: string, fg: string) =>
-  `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 6px"><tr><td align="center" bgcolor="${bg}" style="border-radius:999px;background:${bg}"><a href="${href}" target="_blank" style="display:inline-block;padding:14px 26px;font-family:${FONT};font-size:15px;font-weight:bold;line-height:20px;color:${fg};text-decoration:none;border-radius:999px">${label}</a></td></tr></table>`;
+// Botones en píldora: negro el principal; blanco con borde el secundario (como en el panel).
+const btn = (label: string, href: string, bg: string, fg: string) => {
+  const secondary = bg === X.hl;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 6px"><tr><td align="center" bgcolor="${bg}" class="${secondary ? "em-btn2" : "em-btn1"}" style="border-radius:999px;background:${bg};${secondary ? `border:1px solid ${X.lineStrong};` : ""}"><a href="${href}" target="_blank" style="display:inline-block;padding:13px 24px;font-family:${FONT};font-size:15px;font-weight:700;line-height:20px;color:${fg};text-decoration:none;border-radius:999px">${label}</a></td></tr></table>`;
+};
+// Un botón con enlace vacío no se dibuja (sin el sitio público publicado no hay «Mi reserva» ni «Reservar»).
 const btns = (items: [string, string, string, string][]) =>
-  `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${items.map((b) => `<td class="em-col" style="padding:0 10px 0 0">${btn(...b)}</td>`).join("")}</tr></table>`;
-const codeBox = (code: string, status: string) =>
-  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 4px"><tr><td style="background:${X.brand};border-radius:14px;padding:18px 20px"><p style="margin:0;font-family:${FONT};font-size:12px;letter-spacing:1px;text-transform:uppercase;color:${X.cream}">Código de reserva</p><p class="em-code" style="margin:4px 0 0;font-family:${DISPLAY};font-size:40px;line-height:42px;letter-spacing:2px;color:${X.hl}">${code}</p>${
+  `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${items
+    .filter((b) => b[1])
+    .map((b) => `<td class="em-col" style="padding:0 10px 0 0">${btn(...b)}</td>`)
+    .join("")}</tr></table>`;
+// Línea del texto plano solo si hay enlace.
+const linkLine = (label: string, url: string) => (url ? `${label}: ${url}\n` : "");
+// Código de reserva en una tarjeta pastel, como las del dashboard: el pastel dice en qué va la reserva.
+const codeBox = (code: string, status: string, accent: EmailAccent = "green") =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 4px"><tr><td style="background:${ACCENTS[accent].bg};border-radius:22px;padding:20px 22px"><p style="margin:0;font-family:${FONT};font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${X.ink}">Código de reserva</p><p style="margin:6px 0 0;font-family:${FONT};font-size:36px;line-height:40px;font-weight:700;letter-spacing:-1px;color:${X.ink}">${code}</p>${
     status
-      ? `<p style="margin:8px 0 0"><span style="display:inline-block;padding:4px 12px;border-radius:999px;background:${X.hl};font-family:${FONT};font-size:12px;font-weight:bold;color:${X.ink}">${status}</span></p>`
+      ? `<p style="margin:10px 0 0"><span style="display:inline-block;padding:4px 12px;border-radius:999px;background:${X.card};font-family:${FONT};font-size:12px;font-weight:700;color:${X.ink}">${status}</span></p>`
       : ""
   }</td></tr></table>`;
 
@@ -80,19 +101,21 @@ function emailLayout(c: Cfg, { title, preheader, body }: { title: string; prehea
       .map((r) => prefix + r + "}")
       .join("");
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${title}</title>
-<style>@media (max-width:620px){.em-container{width:100%!important}.em-pad{padding:22px 18px!important}.em-col{display:block!important;width:100%!important}.em-h1{font-size:27px!important;line-height:31px!important}}
+<link href="${FONTS_URL}" rel="stylesheet">
+<style>@media (max-width:620px){.em-container{width:100%!important}.em-pad{padding:24px 20px!important}.em-col{display:block!important;width:100%!important}.em-h1{font-size:26px!important;line-height:31px!important}}
 @media (prefers-color-scheme:dark){${DARK}}
 ${darkRules("[data-ogsc] ")}
 ${darkRules(".dm ")}</style></head>
 <body class="em-body" style="margin:0;padding:0;background:${X.bg}">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${preheader}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="em-body" style="background:${X.bg}"><tr><td align="center" style="padding:24px 10px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="em-body" style="background:${X.bg}"><tr><td align="center" style="padding:28px 12px">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="em-container" style="width:600px;max-width:600px">
-<tr><td class="em-pad" style="background:${X.brand};border-radius:20px 20px 0 0;padding:22px 32px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right:12px"><img src="{{logoUrl}}" width="44" height="44" alt="${c.name}" style="display:block;border:0;width:44px;height:44px"></td><td style="font-family:${FONT};color:${X.cream}"><span style="display:block;font-family:${WORDMARK};font-size:24px;line-height:26px;font-weight:normal;color:${X.hl}">La Vaca Fifí</span><span style="display:block;font-size:11px;letter-spacing:3px;text-transform:uppercase">Cabañas · Restaurante · Café</span></td></tr></table></td></tr>
-<tr><td class="em-card em-pad" style="background:${X.card};padding:32px">${body}</td></tr>
-<tr><td class="em-pad" style="background:${X.brand};border-radius:0 0 20px 20px;padding:24px 32px;font-family:${FONT};font-size:12px;line-height:19px;color:${X.cream}">
-<p style="margin:0 0 6px;font-weight:bold">${c.name}</p><p style="margin:0 0 6px">${c.address}</p><p style="margin:0 0 6px">Tel. ${phones} · WhatsApp +${c.whatsapp}</p>${c.rnt ? `<p style="margin:0 0 10px">RNT ${c.rnt}</p>` : ""}
-<p style="margin:0;color:#CFC6BD">Ley 679 de 2001: rechazamos la explotación y el abuso sexual de niños, niñas y adolescentes. Recibes este correo por tu reserva con nosotros.</p></td></tr>
+<tr><td class="em-pad" style="background:${X.brand};border-radius:28px;padding:18px 24px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right:14px"><img src="{{logoUrl}}" width="56" height="56" alt="${c.name}" style="display:block;border:0;width:56px;height:56px;border-radius:50%"></td><td style="font-family:${FONT};color:${X.cream}"><span style="display:block;font-family:${WORDMARK};font-size:24px;line-height:28px;font-weight:normal;color:${X.cream}">La Vaca Fifí</span><span style="display:block;margin-top:2px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#CFC6BD">Cabañas · Restaurante · Café</span></td></tr></table></td></tr>
+<tr><td style="height:12px;line-height:12px;font-size:0">&nbsp;</td></tr>
+<tr><td class="em-card em-pad" style="background:${X.card};border-radius:28px;padding:34px 32px">${body}</td></tr>
+<tr><td class="em-pad" align="center" style="padding:24px 32px 8px;font-family:${FONT};font-size:12px;line-height:19px">
+<p class="em-text" style="margin:0 0 4px;font-weight:700;color:${X.ink}">${c.name}</p><p class="em-muted" style="margin:0 0 4px;color:${X.muted}">${c.address}</p><p class="em-muted" style="margin:0 0 4px;color:${X.muted}">Tel. ${phones} · WhatsApp +${c.whatsapp}${c.rnt ? ` · RNT ${c.rnt}` : ""}</p>
+<p class="em-muted" style="margin:10px 0 0;color:${X.muted}">Ley 679 de 2001: rechazamos la explotación y el abuso sexual de niños, niñas y adolescentes. Recibes este correo por tu reserva con nosotros.</p></td></tr>
 </table></td></tr></table></body></html>`;
 }
 
@@ -122,7 +145,7 @@ type ConfirmedEmailData = {
   mascota: boolean;
   total: number;
   pagado: number;
-  miReservaUrl: string;
+  miReservaUrl: string; // vacío: sin el sitio público
   comoLlegarUrl: string;
   whatsappUrl: string;
   logoUrl: string;
@@ -146,10 +169,10 @@ export function reservationConfirmedEmail(c: Cfg, d: ConfirmedEmailData): Render
     `Dirección: ${esc(c.address)}. El Nevado del Ruiz queda a aproximadamente 1 hora en carro.`,
   ];
   const body =
-    pill("Reserva confirmada") +
+    pill("&#10003;&nbsp; Reserva confirmada", "green") +
     h1(`¡Te esperamos, ${esc(first)}!`) +
     p(`Recibimos tu ${full ? "pago" : "abono"} y tu reserva quedó confirmada. Aquí tienes lo esencial para tu llegada.`) +
-    codeBox(esc(d.codigo), "Confirmada") +
+    codeBox(esc(d.codigo), "Confirmada", "green") +
     h2("Tu estadía") +
     kv([
       ["Cabaña", esc(d.cabana)],
@@ -178,7 +201,7 @@ export function reservationConfirmedEmail(c: Cfg, d: ConfirmedEmailData): Render
     `Código: ${d.codigo} (confirmada)\nCabaña: ${d.cabana}\nLlegada: ${llegada} · check-in ${checkInWindow}\nSalida: ${salida} · check-out hasta las ${c.checkOut}\nEstadía: ${nights} · ${guests}\n\n` +
     `PAGOS\nValor total: ${cop(d.total)}\n${full ? "Pagado" : "Abono pagado"}: ${cop(d.pagado)}\nSaldo pendiente: ${cop(saldo)}${saldo ? `\n${balanceNote}` : ""}\n\n` +
     `PARA TU LLEGADA\n- Presenta el documento de identidad físico de cada huésped.\n- Check-in ${checkInWindow.replace(/\.$/, "")}. Si llegas más tarde, avísanos por WhatsApp.\n- Trae ropa abrigada: las noches son frías.\n${d.mascota ? "- Tu mascota es bienvenida, sin costo adicional.\n" : ""}- Dirección: ${c.address}\n\n` +
-    `Ver mi reserva: ${d.miReservaUrl}\nCómo llegar: ${d.comoLlegarUrl}\nWhatsApp: ${d.whatsappUrl}\nAdjunto: reserva-${d.codigo}.ics` +
+    `${linkLine("Ver mi reserva", d.miReservaUrl)}Cómo llegar: ${d.comoLlegarUrl}\nWhatsApp: ${d.whatsappUrl}\nAdjunto: reserva-${d.codigo}.ics` +
     footText(c);
   return finish(c, d.logoUrl, {
     subject: `Reserva confirmada ${d.codigo} · ${fmtDate(d.checkIn)}`,
@@ -210,6 +233,165 @@ export function teamMessageEmail(c: Cfg, d: TeamMessageData): RenderedEmail {
     `Hola ${first},\n\n${d.mensaje.trim()}\n\nUn saludo,\nEquipo de ${c.name}${d.codigo ? `\n\nReferencia: reserva ${d.codigo}` : ""}\n\nWhatsApp: ${d.whatsappUrl}` +
     footText(c);
   return finish(c, d.logoUrl, { subject: d.asunto.trim(), preheader: d.mensaje.trim().slice(0, 90), body, text });
+}
+
+/* ───────────── Datos comunes de la reserva ───────────── */
+
+type StayData = {
+  nombre: string;
+  codigo: string;
+  cabana: string;
+  checkIn: string; // AAAA-MM-DD
+  checkOut: string;
+  adultos: number;
+  ninos: number;
+  logoUrl: string;
+};
+
+const firstName = (nombre: string) => nombre.trim().split(/\s+/)[0] || nombre;
+const guestsOf = (d: StayData) => `${plural(d.adultos, "adulto", "adultos")}${d.ninos ? ` · ${plural(d.ninos, "niño", "niños")}` : ""}`;
+const stayOf = (d: StayData) => `${fmtDate(d.checkIn, true)} → ${fmtDate(d.checkOut, true)}`;
+// Los datos de pago se editan en el panel (Contenido → Pagos); mientras sigan con el marcador no se muestran.
+const payInfo = (c: Cfg) => (c.datosPagoAbono.trim().startsWith("{") ? "" : c.datosPagoAbono.trim());
+
+/* ───────────── Reserva recibida (automático, al crearse con las fechas retenidas) ───────────── */
+
+type ReceivedEmailData = StayData & {
+  mascota: boolean;
+  total: number;
+  abono: number;
+  plazo: string; // ISO: hasta cuándo se retienen las fechas sin el abono
+  miReservaUrl: string; // vacío: sin el sitio público
+  whatsappUrl: string;
+};
+
+export function reservationReceivedEmail(c: Cfg, d: ReceivedEmailData): RenderedEmail {
+  const first = firstName(d.nombre);
+  const nights = plural(nightsBetween(d.checkIn, d.checkOut), "noche", "noches");
+  const plazo = fmtDateTime(d.plazo);
+  const datos = payInfo(c);
+  const payHtml = datos
+    ? p(esc(datos).replace(/\n/g, "<br>")) +
+      small(`Cuando transfieras, envíanos el comprobante por WhatsApp${d.miReservaUrl ? " o súbelo en «Mi reserva»" : ""}.`)
+    : p(`Escríbenos por WhatsApp y te enviamos los datos para transferir el abono.`);
+  const body =
+    pill("Reserva recibida", "yellow") +
+    h1(`¡Gracias, ${esc(first)}!`) +
+    p(`Recibimos tu reserva y <strong>retenemos tus fechas hasta el ${esc(plazo)}</strong>. Para confirmarla, paga el abono antes de ese momento.`) +
+    codeBox(esc(d.codigo), "Pendiente de abono", "yellow") +
+    h2("Tu estadía") +
+    kv([
+      ["Cabaña", esc(d.cabana)],
+      ["Fechas", `${esc(stayOf(d))}<br><span style="font-weight:normal">${nights}</span>`],
+      ["Huéspedes", `${guestsOf(d)}${d.mascota ? " · con mascota" : ""}`],
+    ]) +
+    h2("Para confirmar") +
+    amounts([
+      ["Valor total", cop(d.total)],
+      ["Saldo al llegar", cop(Math.max(0, d.total - d.abono))],
+      ["Abono para confirmar", cop(d.abono), `Antes del ${esc(plazo)}`],
+    ]) +
+    h2("Cómo pagar el abono") +
+    payHtml +
+    btns([
+      ["Ver mi reserva", d.miReservaUrl, X.hl, X.ink],
+      ["Escribir por WhatsApp", d.whatsappUrl, X.brand, X.cream],
+    ]) +
+    small("Si el abono no llega a tiempo, la reserva vence y las fechas quedan libres para otros huéspedes. El abono no es reembolsable.");
+  const text =
+    `¡Gracias, ${first}! Recibimos tu reserva.\n\n` +
+    `Código: ${d.codigo} (pendiente de abono)\nCabaña: ${d.cabana}\nFechas: ${stayOf(d)} · ${nights}\nHuéspedes: ${guestsOf(d)}${d.mascota ? " · con mascota" : ""}\n\n` +
+    `PARA CONFIRMAR\nValor total: ${cop(d.total)}\nAbono: ${cop(d.abono)} antes del ${plazo}\nSaldo al llegar: ${cop(Math.max(0, d.total - d.abono))}\n\n` +
+    `CÓMO PAGAR EL ABONO\n${datos || "Escríbenos por WhatsApp y te enviamos los datos para transferir."}\n\n` +
+    `${linkLine("Ver mi reserva", d.miReservaUrl)}WhatsApp: ${d.whatsappUrl}\n\nSi el abono no llega a tiempo, la reserva vence y las fechas quedan libres.` +
+    footText(c);
+  return finish(c, d.logoUrl, {
+    subject: `Recibimos tu reserva ${d.codigo} · paga el abono para confirmarla`,
+    preheader: `Retenemos tus fechas hasta el ${plazo}. Abono: ${cop(d.abono)}.`,
+    body,
+    text,
+  });
+}
+
+/* ───────────── Reserva cancelada o vencida (automático, al huésped) ───────────── */
+
+type EndedEmailData = StayData & { vencida: boolean; reservarUrl: string; whatsappUrl: string }; // reservarUrl vacío: sin el sitio público
+
+export function reservationEndedEmail(c: Cfg, d: EndedEmailData): RenderedEmail {
+  const first = firstName(d.nombre);
+  const what = d.vencida
+    ? "venció porque no recibimos el abono dentro del plazo, y las fechas quedaron libres."
+    : "fue cancelada y las fechas quedaron libres.";
+  const body =
+    pill(d.vencida ? "Reserva vencida" : "Reserva cancelada", "pink") +
+    h1(d.vencida ? "Tu reserva venció" : "Reserva cancelada") +
+    p(`Hola ${esc(first)}, tu reserva <strong>${esc(d.codigo)}</strong> para la ${esc(d.cabana)} (${esc(stayOf(d))}) ${what}`) +
+    (d.vencida
+      ? p(
+          d.reservarUrl
+            ? "Si todavía quieres venir, puedes reservar de nuevo: te mostramos la disponibilidad actual."
+            : "Si todavía quieres venir, escríbenos por WhatsApp y te contamos la disponibilidad actual.",
+        )
+      : small("Según nuestras políticas, el abono no es reembolsable. Si crees que es un error, escríbenos.")) +
+    btns([
+      ["Reservar de nuevo", d.reservarUrl, X.brand, X.cream],
+      ["Escribir por WhatsApp", d.whatsappUrl, X.hl, X.ink],
+    ]);
+  const text =
+    `Hola ${first}, tu reserva ${d.codigo} (${d.cabana}, ${stayOf(d)}) ${what}\n\n` +
+    (d.vencida ? "Si todavía quieres venir, puedes reservar de nuevo." : "Según nuestras políticas, el abono no es reembolsable.") +
+    `\n\n${linkLine("Reservar", d.reservarUrl)}WhatsApp: ${d.whatsappUrl}` +
+    footText(c);
+  return finish(c, d.logoUrl, {
+    subject: d.vencida ? `Tu reserva ${d.codigo} venció` : `Tu reserva ${d.codigo} fue cancelada`,
+    preheader: d.vencida ? "No recibimos el abono a tiempo y liberamos las fechas." : `Cancelamos tu reserva del ${fmtDate(d.checkIn)}.`,
+    body,
+    text,
+  });
+}
+
+/* ───────────── Recordatorio de llegada (automático, 2 días antes) ───────────── */
+
+type ReminderEmailData = StayData & { saldo: number; comoLlegarUrl: string; miReservaUrl: string; whatsappUrl: string };
+
+export function arrivalReminderEmail(c: Cfg, d: ReminderEmailData): RenderedEmail {
+  const first = firstName(d.nombre);
+  const checkInWindow = `de ${fmtTime(c.checkInStart)} a ${fmtTime(c.checkInEnd)}`;
+  const body =
+    pill("Faltan 2 días", "blue") +
+    h1(`¡Ya casi, ${esc(first)}!`) +
+    p(`El <strong>${esc(fmtDate(d.checkIn, true))}</strong> te esperamos en la ${esc(d.cabana)}. Te dejamos lo esencial para tu llegada.`) +
+    codeBox(esc(d.codigo), "Confirmada", "blue") +
+    h2("Tu llegada") +
+    kv([
+      ["Check-in", checkInWindow],
+      ["Check-out", `${esc(fmtDate(d.checkOut, true))}, hasta las ${c.checkOut}`],
+      ["Saldo pendiente", d.saldo ? `${cop(d.saldo)} · por transferencia antes de llegar o en recepción` : "Ninguno: tu estadía está pagada"],
+    ]) +
+    h2("Para tu llegada") +
+    list([
+      "Presenta el <strong>documento de identidad físico</strong> de cada huésped.",
+      "Trae ropa abrigada: las noches en Murillo son frías.",
+      `Dirección: ${esc(c.address)}.`,
+      "Si vas a llegar fuera del horario de check-in, avísanos por WhatsApp.",
+    ]) +
+    btns([
+      ["Cómo llegar", d.comoLlegarUrl, X.brand, X.cream],
+      ["Ver mi reserva", d.miReservaUrl, X.hl, X.ink],
+    ]) +
+    small(`¿Dudas? <a href="${d.whatsappUrl}" class="em-text" style="color:${X.ink};font-weight:bold;text-decoration:underline">Escríbenos por WhatsApp</a>.`);
+  const text =
+    `¡Ya casi, ${first}! El ${fmtDate(d.checkIn, true)} te esperamos en la ${d.cabana}.\n\n` +
+    `Reserva: ${d.codigo}\nCheck-in: ${checkInWindow}\nCheck-out: ${fmtDate(d.checkOut, true)}, hasta las ${c.checkOut}\nSaldo pendiente: ${d.saldo ? cop(d.saldo) : "ninguno"}\n\n` +
+    `PARA TU LLEGADA\n- Documento de identidad físico de cada huésped.\n- Ropa abrigada: las noches son frías.\n- Dirección: ${c.address}\n\n` +
+    `Cómo llegar: ${d.comoLlegarUrl}\n${linkLine("Ver mi reserva", d.miReservaUrl)}WhatsApp: ${d.whatsappUrl}` +
+    footText(c);
+  return finish(c, d.logoUrl, {
+    subject: `Faltan 2 días para tu llegada · ${d.codigo}`,
+    preheader: `Check-in ${checkInWindow}. Recuerda tu documento físico.`,
+    body,
+    text,
+  });
 }
 
 /* ───────────── Vista previa (/correos) ───────────── */
@@ -244,12 +426,31 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       mensaje:
         "Te escribimos para confirmar tu hora de llegada.\n\nSi necesitas indicaciones para llegar desde Murillo, cuéntanos y te enviamos la ubicación exacta.",
     });
-    return { confirmed, team };
+    const stay = { nombre: "Laura Gómez", codigo: "VF-7W9DX", cabana: "Cabaña Doble", ...SAMPLE, adultos: 2, ninos: 0, logoUrl: logo };
+    const received = reservationReceivedEmail(c, {
+      ...stay,
+      mascota: true,
+      total: 470000,
+      abono: 141000,
+      plazo: "2026-09-29T15:00:00Z",
+      miReservaUrl: "#",
+      whatsappUrl: "#",
+    });
+    const cancelled = reservationEndedEmail(c, { ...stay, vencida: false, reservarUrl: "#", whatsappUrl: "#" });
+    const expired = reservationEndedEmail(c, { ...stay, vencida: true, reservarUrl: "#", whatsappUrl: "#" });
+    const reminder = arrivalReminderEmail(c, { ...stay, saldo: 329000, comoLlegarUrl: "#", miReservaUrl: "#", whatsappUrl: "#" });
+    return { confirmed, team, received, cancelled, expired, reminder };
   };
-  const { confirmed, team } = preview("{{logoUrl}}");
+  const { confirmed, team, received, cancelled, expired, reminder } = preview("{{logoUrl}}");
+  const auto = (name: string, to: string, e: RenderedEmail, vars: string): EmailTemplate => ({ name, to, sent: "auto", vars, ...e });
   const ref = (body: string, title: string, preheader: string) => emailLayout(c, { title, preheader, body });
-  const pct = c.depositPct + " %";
   return [
+    auto(
+      "Reserva recibida",
+      "Huésped",
+      received,
+      "Se envía al crearse la reserva con las fechas retenidas (web o panel): abono, plazo y datos de pago (Contenido → Pagos).",
+    ),
     {
       name: "Reserva confirmada",
       to: "Huésped",
@@ -270,84 +471,9 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       text: team.text,
       vars: "Se envía desde la ficha del cliente (botón «Correo») con el asunto y el mensaje que escribe el equipo.",
     },
-    {
-      name: "Nueva reserva (negocio)",
-      to: `Negocio · ${c.correoReservas}`,
-      sent: null,
-      subject: "Nueva reserva {{codigo}} · {{checkIn}}–{{checkOut}}",
-      preheader: "{{nombre}} · {{cabana}} · abono {{abono}} pagado",
-      vars: "codigo, checkIn, checkOut, noches, cabana, adultos, ninos, nombre, email, celular, total, abono, saldo, panelUrl",
-      html: ref(
-        h1("Nueva reserva {{codigo}}") +
-          p(`El huésped pagó el abono del ${pct} y la reserva quedó confirmada.`) +
-          kv([
-            ["Cabaña", "{{cabana}}"],
-            ["Fechas", "{{checkIn}} → {{checkOut}} · {{noches}} noches"],
-            ["Huéspedes", "{{adultos}} adultos · {{ninos}} niños"],
-            ["Huésped", "{{nombre}} · {{celular}}"],
-            ["Total", "{{total}}"],
-            ["Abono pagado", "{{abono}}"],
-            ["Saldo", "{{saldo}}"],
-          ]) +
-          btn("Ver en el panel", "{{panelUrl}}", X.brand, X.cream),
-        "Nueva reserva",
-        "{{nombre}} · {{cabana}}",
-      ),
-      text:
-        "Nueva reserva {{codigo}} ({{checkIn}} → {{checkOut}})\n{{nombre}} · {{celular}}\nTotal {{total}} · abono pagado {{abono}} · saldo {{saldo}}\nPanel: {{panelUrl}}" +
-        footText(c),
-    },
-    {
-      name: "Recordatorio 2 días antes",
-      to: "Huésped · {{email}}",
-      sent: null,
-      subject: "Faltan 2 días para tu llegada, {{nombre}}",
-      preheader: `Check-in: ${c.checkIn}. Recuerda tu documento físico.`,
-      vars: "nombre, email, codigo, cabana, checkIn, checkOut, saldo, comoLlegarUrl, whatsappUrl",
-      html: ref(
-        h1("Faltan 2 días") +
-          p("Hola {{nombre}}, el {{checkIn}} te esperamos en la {{cabana}}. Te dejamos lo esencial para tu llegada.") +
-          kv([
-            ["Check-in", c.checkIn],
-            ["Check-out", `hasta las ${c.checkOut}`],
-            ["Saldo pendiente", `{{saldo}} · por transferencia antes de llegar o en recepción`],
-            ["Documento", "Documento de identidad físico de cada huésped"],
-            ["Dirección", c.address],
-          ]) +
-          btns([
-            ["Cómo llegar", "{{comoLlegarUrl}}", X.brand, X.cream],
-            ["Escribir por WhatsApp", "{{whatsappUrl}}", X.hl, X.ink],
-          ]),
-        "Faltan 2 días",
-        "Recuerda tu documento físico.",
-      ),
-      text:
-        `Hola {{nombre}}, faltan 2 días para tu llegada.\nReserva {{codigo}} · {{cabana}}\nCheck-in: ${c.checkIn} · Check-out: hasta las ${c.checkOut}\nSaldo pendiente: {{saldo}} (en recepción o por transferencia)\nCómo llegar: {{comoLlegarUrl}}` +
-        footText(c),
-    },
-    {
-      name: "Reserva cancelada",
-      to: "Huésped · {{email}}",
-      sent: null,
-      subject: "Tu reserva {{codigo}} fue cancelada",
-      preheader: "Cancelamos tu reserva del {{checkIn}}.",
-      vars: "nombre, email, codigo, cabana, checkIn, checkOut, motivo, reservarUrl, whatsappUrl",
-      html: ref(
-        h1("Reserva cancelada") +
-          p("Hola {{nombre}}, tu reserva {{codigo}} para la {{cabana}} del {{checkIn}} al {{checkOut}} fue cancelada.") +
-          kv([["Motivo", "{{motivo}}"]]) +
-          small("Según nuestras políticas, el abono no es reembolsable.") +
-          btns([
-            ["Hacer una nueva reserva", "{{reservarUrl}}", X.brand, X.cream],
-            ["Escribir por WhatsApp", "{{whatsappUrl}}", X.hl, X.ink],
-          ]),
-        "Reserva cancelada",
-        "Cancelamos tu reserva.",
-      ),
-      text:
-        "Hola {{nombre}}, tu reserva {{codigo}} ({{cabana}}, {{checkIn}} → {{checkOut}}) fue cancelada.\nMotivo: {{motivo}}\nSegún nuestras políticas, el abono no es reembolsable." +
-        footText(c),
-    },
+    auto("Recordatorio 2 días antes", "Huésped", reminder, "Se envía a las 9:00 dos días antes de la llegada a las reservas confirmadas."),
+    auto("Reserva cancelada", "Huésped", cancelled, "Se envía cuando el equipo cancela la reserva."),
+    auto("Reserva vencida", "Huésped", expired, "Se envía cuando vence el plazo del abono y las fechas se liberan."),
     {
       name: "Reserva reprogramada",
       to: "Huésped · {{email}}",
