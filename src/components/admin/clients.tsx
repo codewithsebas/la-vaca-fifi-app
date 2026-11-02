@@ -20,11 +20,13 @@ import {
 import { StatusPill } from "@/components/ui/status-pill";
 import { type ClientSummary, buildClients, valueOf } from "@/lib/admin-metrics";
 import { api } from "@/lib/client/api";
+import { can } from "@/lib/permissions";
 import { config } from "@/lib/config";
 import { cop, dateOf, fmtDate, fmtDateTime, mask, nightsBetween, plural, waTo } from "@/lib/format";
-import type { ClientProfile, ClientProfileInput, Severity, Trust } from "@/lib/types";
+import type { ClientProfile, ClientProfileInput, Reservation, Severity, Trust } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
+import { Paginator, usePaged } from "@/components/admin/paginator";
 import { EmailComposer, hasEmail } from "@/components/admin/email-composer";
 import { MODULES, paths } from "@/components/admin/routes";
 import { TRUST, adminInput, norm } from "@/components/admin/shared";
@@ -38,6 +40,7 @@ import {
   Field,
   FieldError,
   IconButton,
+  ModalPresence,
   PageHeader,
   Segmented,
   StatCard,
@@ -48,7 +51,6 @@ import {
 
 type Filter = "todos" | "nuevos" | "recurrentes" | "frecuentes" | "alertas";
 type Sort = "actividad" | "reservas" | "valor" | "nombre" | "nuevos";
-const PAGE = 40;
 
 function useClients() {
   const { data, today } = useAdmin();
@@ -61,11 +63,11 @@ const lastActivity = (c: ClientSummary) => c.reservations.reduce((m, r) => (r.cr
 
 export function ClientList() {
   const { data, cabinLabel } = useAdmin();
+  const money = can(data.me.role, "finance");
   const clients = useClients();
   const [q, setQ] = useParam("q", "");
   const [filterP, setFilter] = useParam<Filter>("filtro", "todos");
   const [sort, setSort] = useParam<Sort>("orden", "actividad");
-  const [limit, setLimit] = useState(PAGE);
 
   // "Frecuentes": el 20 % con más estadías (mínimo 2).
   const frequentMin = useMemo(() => {
@@ -98,6 +100,7 @@ export function ClientList() {
                 ? 1
                 : -1,
     );
+  const paged = usePaged(list, "clientes", [filter, nq, sort].join("|"));
 
   const total = clients.length;
   const recurring = clients.filter((c) => c.isRecurring).length;
@@ -111,21 +114,40 @@ export function ClientList() {
         description="Cada cliente se identifica por su documento. Su historial y la valoración interna del equipo están en su ficha."
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Clientes" value={total} hint={`${clients.filter((c) => c.isNew).length} nuevos en 30 días`} icon={<UsersIcon size={15} />} />
         <StatCard
+          accent="pink"
+          label="Clientes"
+          value={total}
+          hint={`${clients.filter((c) => c.isNew).length} nuevos en 30 días`}
+          icon={<UsersIcon size={15} />}
+        />
+        <StatCard
+          accent="green"
           label="Recurrentes"
           value={recurring}
           hint={total ? `${Math.round((recurring / total) * 100)} % volvió al menos una vez` : "—"}
           icon={<TrendIcon size={15} />}
           tone="success"
         />
+        {money ? (
+          <StatCard
+            accent="yellow"
+            label="Valor generado"
+            value={cop(value)}
+            hint={total ? `${cop(Math.round(value / total))} por cliente` : "—"}
+            icon={<TrendIcon size={15} />}
+          />
+        ) : (
+          <StatCard
+            accent="yellow"
+            label="Con estadías"
+            value={clients.filter((c) => c.stays > 0).length}
+            hint="se han hospedado al menos una vez"
+            icon={<TrendIcon size={15} />}
+          />
+        )}
         <StatCard
-          label="Valor generado"
-          value={cop(value)}
-          hint={total ? `${cop(Math.round(value / total))} por cliente` : "—"}
-          icon={<TrendIcon size={15} />}
-        />
-        <StatCard
+          accent="blue"
           label="Con alertas"
           value={clients.filter(test.alertas).length}
           hint="confianza baja o incidencias"
@@ -136,66 +158,69 @@ export function ClientList() {
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-4">
-          <Segmented
-            label="Mostrar"
-            value={filter}
-            onChange={(v) => {
-              setFilter(v);
-              setLimit(PAGE);
-            }}
-            options={[
-              { value: "todos", label: "Todos", count: total },
-              { value: "nuevos", label: "Nuevos", count: clients.filter(test.nuevos).length },
-              { value: "recurrentes", label: "Recurrentes", count: recurring },
-              { value: "frecuentes", label: "Más frecuentes" },
-              { value: "alertas", label: "Con alertas", count: clients.filter(test.alertas).length },
-            ]}
-          />
-          <Card className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_220px]">
-            <Field label="Buscar">
-              {(p) => (
-                <div className="relative">
-                  <SearchIcon size={17} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle" />
-                  <input
-                    {...p}
-                    type="search"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="Nombre, correo, celular, documento o ciudad"
-                    className={`${adminInput} pl-9`}
+          <Card className="flex flex-col gap-3 p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <Field label="Buscar">
+                {(p) => (
+                  <div className="relative">
+                    <SearchIcon size={17} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle" />
+                    <input
+                      {...p}
+                      type="search"
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Nombre, correo, celular, documento o ciudad"
+                      className={`${adminInput} pl-9`}
+                    />
+                  </div>
+                )}
+              </Field>
+              <Field label="Mostrar">
+                {(p) => (
+                  <Combobox
+                    id={p.id}
+                    value={filter}
+                    onChange={(v) => setFilter(v as Filter)}
+                    options={[
+                      { value: "todos", label: "Todos los clientes", description: plural(total, "cliente", "clientes") },
+                      { value: "nuevos", label: "Nuevos", description: `${clients.filter(test.nuevos).length} en los últimos 30 días` },
+                      { value: "recurrentes", label: "Recurrentes", description: plural(recurring, "cliente", "clientes") },
+                      { value: "frecuentes", label: "Más frecuentes", description: "El 20 % con más estadías" },
+                      { value: "alertas", label: "Con alertas", description: plural(clients.filter(test.alertas).length, "cliente", "clientes") },
+                    ]}
                   />
-                </div>
-              )}
-            </Field>
-            <Field label="Ordenar por">
-              {(p) => (
-                <Combobox
-                  id={p.id}
-                  value={sort}
-                  onChange={(v) => setSort(v as Sort)}
-                  options={[
-                    { value: "actividad", label: "Actividad más reciente" },
-                    { value: "nuevos", label: "Clientes más nuevos" },
-                    { value: "reservas", label: "Más reservas" },
-                    { value: "valor", label: "Mayor valor generado" },
-                    { value: "nombre", label: "Nombre (A–Z)" },
-                  ]}
-                />
-              )}
-            </Field>
+                )}
+              </Field>
+              <Field label="Ordenar por">
+                {(p) => (
+                  <Combobox
+                    id={p.id}
+                    value={sort}
+                    onChange={(v) => setSort(v as Sort)}
+                    options={[
+                      { value: "actividad", label: "Actividad más reciente" },
+                      { value: "nuevos", label: "Clientes más nuevos" },
+                      { value: "reservas", label: "Más reservas" },
+                      ...(money ? [{ value: "valor", label: "Mayor valor generado" }] : []),
+                      { value: "nombre", label: "Nombre (A–Z)" },
+                    ]}
+                  />
+                )}
+              </Field>
+            </div>
+            <p aria-live="polite" className="border-t border-line pt-3 text-[13px] font-medium text-ink-muted">
+              {plural(list.length, "cliente", "clientes")}
+              {filter !== "todos" || nq ? " con estos filtros" : ""}
+            </p>
           </Card>
-
-          <p aria-live="polite" className="-mb-1 text-[13px] font-medium text-ink-muted">
-            {plural(list.length, "cliente", "clientes")}
-          </p>
           {list.length ? (
             <Card className="overflow-hidden">
               <ul className="divide-y divide-line">
-                {list.slice(0, limit).map((c) => (
+                {paged.rows.map((c) => (
                   <li key={c.key}>
                     <Link
                       href={paths.cliente(c.key)}
-                      className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-canvas/70 md:grid-cols-[minmax(0,1.6fr)_90px_120px_minmax(0,1.1fr)_auto]"
+                      className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-canvas/60 md:grid-cols-[minmax(0,1.6fr)_90px_120px_minmax(0,1.1fr)_auto]"
                     >
                       <span className="min-w-0">
                         <span className="flex flex-wrap items-center gap-1.5 font-semibold text-ink">
@@ -215,7 +240,7 @@ export function ClientList() {
                       <span className="hidden text-[13px] text-ink md:block">
                         <strong className="tabular-nums">{c.stays}</strong> <span className="text-ink-muted">{c.stays === 1 ? "estadía" : "estadías"}</span>
                       </span>
-                      <span className="hidden text-right text-[13.5px] font-semibold text-ink tabular-nums md:block">{cop(c.value)}</span>
+                      <span className="hidden text-right text-[13.5px] font-semibold text-ink tabular-nums md:block">{money ? cop(c.value) : ""}</span>
                       <span className="hidden min-w-0 items-center gap-2 md:flex">
                         <Stars value={c.profile?.rating ?? null} size={13} />
                         {c.profile && c.profile.trust !== "sin_evaluar" && <Badge tone={TRUST[c.profile.trust].tone}>{TRUST[c.profile.trust].label}</Badge>}
@@ -223,13 +248,14 @@ export function ClientList() {
                       <ChevronRightIcon size={16} className="text-ink-subtle transition-transform duration-150 motion-safe:group-hover:translate-x-0.5" />
                       <span className="col-span-2 flex flex-wrap gap-x-3 text-[12.5px] text-ink-muted md:hidden">
                         <span>{plural(c.stays, "estadía", "estadías")}</span>
-                        <span className="font-semibold text-ink">{cop(c.value)}</span>
+                        {money && <span className="font-semibold text-ink">{cop(c.value)}</span>}
                         {c.profile?.rating ? <Stars value={c.profile.rating} size={12} /> : null}
                       </span>
                     </Link>
                   </li>
                 ))}
               </ul>
+              <Paginator p={paged} noun="clientes" className="border-t border-line px-4 py-3" />
             </Card>
           ) : (
             <Card className="p-4">
@@ -239,11 +265,6 @@ export function ClientList() {
                 text={clients.length ? "Prueba con otra búsqueda o filtro." : "Cada persona que reserve aparecerá aquí con su historial."}
               />
             </Card>
-          )}
-          {list.length > limit && (
-            <Button className="self-center" onClick={() => setLimit(limit + PAGE)}>
-              Mostrar {Math.min(PAGE, list.length - limit)} más
-            </Button>
           )}
         </div>
 
@@ -255,7 +276,7 @@ export function ClientList() {
                 <li key={r.code}>
                   <Link
                     href={paths.reserva(r.code)}
-                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-canvas"
+                    className="flex w-full items-center gap-3 rounded-[16px] px-2.5 py-2 text-left transition-colors hover:bg-canvas/70"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13.5px] font-semibold text-ink">{r.guest.fullName}</span>
@@ -297,7 +318,7 @@ const SEVERITY: Record<Severity, { label: string; tone: Tone }> = {
 };
 
 export function ClientDetail({ clientKey }: { clientKey: string }) {
-  const { today, cabinLabel } = useAdmin();
+  const { data, today } = useAdmin();
   const c = useClients().find((x) => x.key === clientKey);
   const [composing, setComposing] = useState(false);
   if (!c)
@@ -379,7 +400,11 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Reservas" value={c.reservations.length} hint={`${plural(c.stays, "concretada", "concretadas")}`} />
         <StatCard label="Noches" value={c.nights} hint={c.stays ? `${(c.nights / c.stays).toFixed(1)} por estadía` : "—"} />
-        <StatCard label="Valor generado" value={cop(c.value)} hint={c.stays ? `${cop(Math.round(c.value / Math.max(1, c.stays)))} por estadía` : "—"} />
+        {can(data.me.role, "finance") ? (
+          <StatCard label="Valor generado" value={cop(c.value)} hint={c.stays ? `${cop(Math.round(c.value / Math.max(1, c.stays)))} por estadía` : "—"} />
+        ) : (
+          <StatCard label="Estadías" value={c.stays} hint={c.isRecurring ? "cliente recurrente" : "—"} />
+        )}
         <StatCard
           label={upcoming ? "Próxima llegada" : "Última estadía"}
           value={upcoming ? fmtDate(upcoming.checkIn) : c.lastStay ? fmtDate(c.lastStay) : "—"}
@@ -400,39 +425,7 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
             title="Historial de reservas"
             subtitle={`${plural(c.reservations.length, "reserva", "reservas")} · de la más reciente a la más antigua`}
           />
-          <ol className="relative flex flex-col gap-2 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-px before:bg-line">
-            {c.reservations.map((r) => (
-              <li key={r.code} className="relative pl-8">
-                <span
-                  aria-hidden="true"
-                  className="absolute top-4 left-1.5 size-3 rounded-full border-2 border-panel ring-1 ring-line-strong"
-                  style={{
-                    background: `var(--color-status-${r.status === "pending_deposit" ? "pending" : r.status === "checked_in" ? "checked-in" : r.status})`,
-                  }}
-                />
-                <Link
-                  href={paths.reserva(r.code)}
-                  className="group flex w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line px-3.5 py-3 text-left transition-colors hover:bg-canvas"
-                >
-                  <span className="min-w-[180px] flex-1">
-                    <span className="block text-[14px] font-semibold text-ink">
-                      {fmtDate(r.checkIn, true)} → {fmtDate(r.checkOut)}
-                    </span>
-                    <span className="block text-[12.5px] text-ink-muted">
-                      {r.code} · {cabinLabel(r.cabinTypeId, r.unit)} · {plural(nightsBetween(r.checkIn, r.checkOut), "noche", "noches")} ·{" "}
-                      {plural(r.adults + r.children, "huésped", "huéspedes")}
-                    </span>
-                  </span>
-                  <span className="text-right">
-                    <span className="block text-[13.5px] font-semibold text-ink tabular-nums">{cop(r.quote.total)}</span>
-                    <span className="block text-[12px] text-ink-muted">{valueOf(r) ? "Concretada" : "Sin valor"}</span>
-                  </span>
-                  <StatusPill status={r.status} size="sm" />
-                  <ChevronRightIcon size={16} className="text-ink-subtle" />
-                </Link>
-              </li>
-            ))}
-          </ol>
+          <ClientHistory list={c.reservations} />
           <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 border-t border-line pt-3 text-[13px] text-ink-muted">
             <span className="flex items-center gap-1.5">
               <MailIcon size={14} /> {hasEmail(c.email) ? c.email : "Sin correo registrado"}
@@ -444,7 +437,9 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
         </Card>
         <InternalReview c={c} />
       </div>
-      {composing && <EmailComposer clientKey={c.key} name={c.name} email={c.email} reservations={c.reservations} onClose={() => setComposing(false)} />}
+      <ModalPresence>
+        {composing && <EmailComposer clientKey={c.key} name={c.name} email={c.email} reservations={c.reservations} onClose={() => setComposing(false)} />}
+      </ModalPresence>
     </>
   );
 }
@@ -452,7 +447,8 @@ export function ClientDetail({ clientKey }: { clientKey: string }) {
 /* ───────────── Valoración interna ───────────── */
 
 function InternalReview({ c }: { c: ClientSummary }) {
-  const { setData, toast, onAuthError, ask } = useAdmin();
+  const { data, setData, toast, onAuthError, ask } = useAdmin();
+  const canDelete = can(data.me.role, "delete");
   const p = c.profile;
   const base: ClientProfileInput = {
     rating: p?.rating ?? null,
@@ -534,7 +530,7 @@ function InternalReview({ c }: { c: ClientSummary }) {
   };
 
   return (
-    <section aria-labelledby="cl-int" className="flex flex-col gap-4 rounded-2xl border border-line bg-panel p-4 shadow-panel sm:p-5">
+    <section aria-labelledby="cl-int" className="flex flex-col gap-4 rounded-[22px] bg-panel p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="cl-int" className="flex items-center gap-2 text-[15px] font-bold text-ink">
@@ -543,11 +539,11 @@ function InternalReview({ c }: { c: ClientSummary }) {
           </h2>
           <p className="mt-0.5 text-[12.5px] text-ink-muted">Para decidir mejor en futuras visitas.</p>
         </div>
-        <Badge icon={<LockIcon size={11} />} className="bg-ink text-white">
+        <Badge icon={<LockIcon size={11} />} className="bg-ink text-paper">
           Privado
         </Badge>
       </div>
-      <p className="rounded-xl bg-canvas px-3.5 py-2.5 text-[12.5px] text-ink-muted">
+      <p className="rounded-[16px] bg-canvas/70 px-4 py-2.5 text-[12.5px] text-ink-muted">
         Solo la ve el equipo en este panel. <strong className="text-ink">Nunca se muestra al cliente</strong> ni aparece en el sitio, en sus correos o en
         «Consultar mi reserva». No tiene relación con reseñas públicas.
       </p>
@@ -675,7 +671,7 @@ function InternalReview({ c }: { c: ClientSummary }) {
         <h3 id="cl-log" className="text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
           Registro interno
         </h3>
-        <div className="flex flex-col gap-2.5 rounded-xl border border-line p-3">
+        <div className="flex flex-col gap-2.5 rounded-[18px] bg-canvas/60 p-3.5">
           <Segmented
             size="sm"
             label="Tipo de registro"
@@ -724,7 +720,7 @@ function InternalReview({ c }: { c: ClientSummary }) {
         {p?.entries.length ? (
           <ol className="flex flex-col gap-2">
             {p.entries.map((e) => (
-              <li key={e.id} className={`flex gap-3 rounded-xl px-3.5 py-2.5 ${e.kind === "incident" ? "bg-error-soft/50" : "bg-canvas"}`}>
+              <li key={e.id} className={`flex gap-3 rounded-[16px] px-4 py-2.5 ${e.kind === "incident" ? "bg-error-soft" : "bg-canvas/70"}`}>
                 <span aria-hidden="true" className="mt-0.5 flex-none text-ink-muted">
                   {e.kind === "incident" ? <AlertIcon size={15} className="text-error" /> : <NoteIcon size={15} />}
                 </span>
@@ -736,9 +732,11 @@ function InternalReview({ c }: { c: ClientSummary }) {
                   </p>
                   <p className="mt-0.5 text-[13.5px] whitespace-pre-wrap text-ink">{e.text}</p>
                 </div>
-                <IconButton label="Eliminar registro" size="sm" variant="danger-ghost" onClick={() => removeEntry(e.id)}>
-                  <TrashIcon size={14} />
-                </IconButton>
+                {canDelete && (
+                  <IconButton label="Eliminar registro" size="sm" variant="danger-ghost" onClick={() => removeEntry(e.id)}>
+                    <TrashIcon size={14} />
+                  </IconButton>
+                )}
               </li>
             ))}
           </ol>
@@ -747,5 +745,49 @@ function InternalReview({ c }: { c: ClientSummary }) {
         )}
       </section>
     </section>
+  );
+}
+
+// Historial de reservas del cliente, de la más reciente a la más antigua, con paginador.
+function ClientHistory({ list }: { list: Reservation[] }) {
+  const { cabinLabel } = useAdmin();
+  const paged = usePaged(list, "historial-cliente", "", 10);
+  return (
+    <>
+      <ol className="relative flex flex-col gap-2 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-px before:bg-line">
+        {paged.rows.map((r) => (
+          <li key={r.code} className="relative pl-8">
+            <span
+              aria-hidden="true"
+              className="absolute top-4 left-1.5 size-3 rounded-full border-2 border-panel ring-1 ring-line-strong"
+              style={{
+                background: `var(--color-status-${r.status === "pending_deposit" ? "pending" : r.status === "checked_in" ? "checked-in" : r.status})`,
+              }}
+            />
+            <Link
+              href={paths.reserva(r.code)}
+              className="group flex w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-[16px] bg-canvas/60 px-4 py-3 text-left transition-colors hover:bg-canvas"
+            >
+              <span className="min-w-[180px] flex-1">
+                <span className="block text-[14px] font-semibold text-ink">
+                  {fmtDate(r.checkIn, true)} → {fmtDate(r.checkOut)}
+                </span>
+                <span className="block text-[12.5px] text-ink-muted">
+                  {r.code} · {cabinLabel(r.cabinTypeId, r.unit)} · {plural(nightsBetween(r.checkIn, r.checkOut), "noche", "noches")} ·{" "}
+                  {plural(r.adults + r.children, "huésped", "huéspedes")}
+                </span>
+              </span>
+              <span className="text-right">
+                <span className="block text-[13.5px] font-semibold text-ink tabular-nums">{cop(r.quote.total)}</span>
+                <span className="block text-[12px] text-ink-muted">{valueOf(r) ? "Concretada" : "Sin valor"}</span>
+              </span>
+              <StatusPill status={r.status} size="sm" />
+              <ChevronRightIcon size={16} className="text-ink-subtle" />
+            </Link>
+          </li>
+        ))}
+      </ol>
+      <Paginator p={paged} noun="reservas" />
+    </>
   );
 }

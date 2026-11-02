@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { WD, WD_FULL, WD_MIN, addDays, cop, countdown, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { Block, CabinType, Reservation } from "@/lib/types";
@@ -27,7 +27,7 @@ export const lastOfMonth = (m: string) => {
 };
 export const mondayOf = (d: string) => addDays(d, -((parseISO(d).getUTCDay() + 6) % 7));
 export const BLOCK_BG =
-  "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-status-block) 32%, white) 0 5px, color-mix(in srgb, var(--color-status-block) 14%, white) 5px 10px)";
+  "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-status-block) 32%, var(--color-panel)) 0 5px, color-mix(in srgb, var(--color-status-block) 14%, var(--color-panel)) 5px 10px)";
 export const blockStyle = (): CSSProperties => ({ background: BLOCK_BG });
 export const blockHref = (b: Block) => paths.bloqueos({ editar: b.id });
 
@@ -36,20 +36,44 @@ export function useCalBlocks() {
   return useAdmin().data.blocks;
 }
 
-// Estilo de cada estado: relleno suave del color del estado + franja de acento a la izquierda. Pendiente de abono =
-// rayado y contorno (aún no asegurada: si no se paga a tiempo, se libera).
+// Color de la barra de cada estado (app/globals.css: el pastel pleno en claro y su tono profundo en oscuro, para que la
+// tinta se lea encima en los dos modos).
+const BAR: Partial<Record<Reservation["status"], string>> = {
+  pending_deposit: "var(--bar-pending)",
+  confirmed: "var(--bar-confirmed)",
+  rescheduled: "var(--bar-rescheduled)",
+  checked_in: "var(--bar-checked-in)",
+  completed: "var(--bar-completed)",
+};
+export const barColor = (status: Reservation["status"]) => BAR[status] ?? "var(--bar-completed)";
+
+// Estilo de cada estado: píldora del color del estado. Pendiente de abono = rayado y contorno (aún no asegurada: si no se
+// paga a tiempo, se libera).
 export function barStyle(r: Pick<Reservation, "status">): CSSProperties {
-  const c = statusOf(r.status).bg;
+  const c = barColor(r.status);
   if (r.status === "pending_deposit")
     return {
-      background: `repeating-linear-gradient(135deg, color-mix(in srgb, ${c} 32%, white) 0 6px, color-mix(in srgb, ${c} 18%, white) 6px 12px)`,
-      boxShadow: `inset 0 0 0 1.5px color-mix(in srgb, ${c} 100%, black 20%)`,
+      background: `repeating-linear-gradient(135deg, ${c} 0 7px, color-mix(in srgb, ${c} 50%, var(--color-panel)) 7px 14px)`,
+      boxShadow: `inset 0 0 0 1.5px color-mix(in srgb, ${c} 70%, var(--bar-mix))`,
     };
-  return {
-    background: `color-mix(in srgb, ${c} ${r.status === "completed" ? 30 : 42}%, white)`,
-    boxShadow: `inset 3px 0 0 color-mix(in srgb, ${c} 100%, black 28%)`,
-  };
+  return { background: c };
 }
+
+// Clic en una reserva del calendario: se abre en un modal. Con Ctrl, ⌘ o la rueda, el enlace abre la página, como siempre.
+export const openInModal = (onOpen: (code: string) => void, code: string) => (e: MouseEvent) => {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+  e.preventDefault();
+  onOpen(code);
+};
+
+export const initialsOf = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
 
 // "35 min", "5 h", "2 d": lo que le queda a una retención (cabe en una barra angosta).
 export function shortLeft(iso: string, now: number) {
@@ -79,14 +103,14 @@ export function DayName({ wd, className = "" }: { wd: number; className?: string
 }
 
 // Ancho real del contenedor (ResizeObserver): con él se eligen vista, columnas y etiquetas.
-// Arranca con una estimación según la ventana (menú lateral desde 1024 px, márgenes del panel, máximo 1400 px):
-// el observador avisa en el siguiente pintado, y una pestaña en segundo plano puede tardar en pintar.
+// Arranca con una estimación según la ventana (menú lateral desde 1024 px y márgenes del panel; el calendario usa todo
+// el ancho): el observador avisa en el siguiente pintado, y una pestaña en segundo plano puede tardar en pintar.
 export function useWidth() {
   const ref = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(() => {
     if (typeof window === "undefined") return 0;
     const desk = innerWidth >= 1024;
-    return Math.min(1400, desk ? innerWidth - 248 : innerWidth) - (desk ? 64 : 32);
+    return (desk ? innerWidth - 280 : innerWidth) - (desk ? 64 : 32);
   });
   useLayoutEffect(() => {
     const el = ref.current;
@@ -125,24 +149,24 @@ export function ReservationTip({ r, cabin }: { r: Reservation; cabin: string }) 
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-3">
         <strong className="text-[13px]">{r.guest.fullName}</strong>
-        <span className="text-white/70">{r.code}</span>
+        <span className="text-paper/70">{r.code}</span>
       </div>
-      <span className="text-white/85">{cabin}</span>
+      <span className="text-paper/85">{cabin}</span>
       <span>
         {fmtDate(r.checkIn)} → {fmtDate(r.checkOut)} · {plural(nightsBetween(r.checkIn, r.checkOut), "noche", "noches")} ·{" "}
         {plural(r.adults + r.children, "huésped", "huéspedes")}
       </span>
       <span className="flex flex-wrap gap-x-3">
         <span>Total {cop(r.quote.total)}</span>
-        {p.total > 0 && <span className="text-highlight">Pendiente {cop(p.total)}</span>}
+        {p.total > 0 && <span className="text-yellow">Pendiente {cop(p.total)}</span>}
       </span>
-      {r.status === "pending_deposit" && <span className="text-highlight">{`Sin pagar · la retención vence en ${countdown(r.depositDueAt)}`}</span>}
-      {r.source === "panel" && <span className="text-white/70">Creada por el equipo</span>}
-      <span className="mt-0.5 flex items-center justify-between gap-2 border-t border-white/15 pt-1.5">
-        <span className="rounded-full px-2 py-px text-[11px] font-bold text-on-light" style={{ background: statusOf(r.status).bg }}>
+      {r.status === "pending_deposit" && <span className="text-yellow">{`Sin pagar · la retención vence en ${countdown(r.depositDueAt)}`}</span>}
+      {r.source === "panel" && <span className="text-paper/70">Creada por el equipo</span>}
+      <span className="mt-0.5 flex items-center justify-between gap-2 border-t border-paper/15 pt-1.5">
+        <span className="rounded-full px-2 py-px text-[11px] font-bold text-ink" style={{ background: statusOf(r.status).bg }}>
           {statusOf(r.status).label}
         </span>
-        <span className="text-white/60">Clic para ver el detalle</span>
+        <span className="text-paper/60">Clic para ver el detalle</span>
       </span>
     </div>
   );
@@ -152,10 +176,10 @@ export function BlockTip({ b, cabin }: { b: Block; cabin: string }) {
   return (
     <div className="flex flex-col gap-1">
       <strong className="text-[13px]">{`Bloqueado · ${b.reason}`}</strong>
-      <span className="text-white/85">{cabin}</span>
+      <span className="text-paper/85">{cabin}</span>
       <span>{`${fmtDate(b.from)} → ${fmtDate(b.to)} · ${plural(nightsBetween(b.from, b.to) + 1, "día", "días")}`}</span>
-      {b.notes && <span className="text-white/85">{b.notes}</span>}
-      <span className="mt-0.5 border-t border-white/15 pt-1.5 text-white/60">Clic para editar el bloqueo</span>
+      {b.notes && <span className="text-paper/85">{b.notes}</span>}
+      <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Clic para editar el bloqueo</span>
     </div>
   );
 }

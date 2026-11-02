@@ -87,11 +87,11 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
       labelledBy="em-title"
       describedBy="em-to"
       initialFocus="#em-subject"
-      className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+      className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-[26px] p-0"
     >
       <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
         <div className="min-w-0">
-          <h2 id="em-title" className="flex items-center gap-2 text-[17px] font-bold text-ink">
+          <h2 id="em-title" className="flex items-center gap-2 text-[18px] font-bold tracking-[-0.02em] text-ink">
             <MailIcon size={18} />
             Enviar correo a {name}
           </h2>
@@ -194,7 +194,7 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
         )}
       </div>
 
-      <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:justify-end">
         <Button onClick={onClose}>Cancelar</Button>
         <Button variant="primary" loading={busy} onClick={send} icon={<MailIcon size={15} />}>
           {busy ? "Enviando…" : error ? "Reintentar envío" : "Enviar correo"}

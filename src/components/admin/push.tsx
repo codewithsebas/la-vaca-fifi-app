@@ -212,7 +212,7 @@ export function PushSettingsCard() {
       )}
       {on && (
         <>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-success-soft px-3.5 py-3 text-[13.5px] font-semibold text-success">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[16px] bg-success-soft px-4 py-3 text-[13.5px] font-semibold text-success">
             <CheckIcon size={15} />
             Activas en este dispositivo{on.device.device ? ` · ${on.device.device}` : ""}
             {on.device.lastSuccessAt && <span className="font-medium text-ink-muted">· último aviso {timeAgo(on.device.lastSuccessAt, now)}</span>}

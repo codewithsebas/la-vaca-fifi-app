@@ -5,7 +5,7 @@
 // cuenta regresiva usa su hora (serverNow); cuando llega a cero se vuelve a consultar la API, que es la que decide.
 import { useEffect, useRef, useState } from "react";
 import { cop, dateOf, fmtClock, fmtDate, fmtDateTime, todayISO, wa } from "@/lib/format";
-import { PAYMENT_STATUS, kindLabel, moneyOf, stageOf, type Stage } from "@/lib/payments";
+import { PAYMENT_STATUS, depositPctOf, kindLabel, moneyOf, stageOf, type Stage } from "@/lib/payments";
 import type { PublicPayment, PublicReservation } from "@/lib/types";
 import { CheckIcon, ClockIcon, WhatsAppIcon } from "@/components/ui/icons";
 import { useSite } from "@/components/site/site-provider";
@@ -87,7 +87,7 @@ export function PaymentStage({ r, onRefresh }: { r: PublicReservation; onRefresh
   const now = useServerNow(r.serverNow, live);
   const stage: Stage = live ? stageOf(r, now) : stage0;
   const m = moneyOf(r);
-  // Datos para la transferencia (Contenido del sitio → Pagos); mientras no se configuren, solo se ofrece WhatsApp.
+  // Datos para la transferencia (Condiciones de pago, en el panel); mientras no se configuren, solo se ofrece WhatsApp.
   const transfer = c.datosPagoAbono && !c.datosPagoAbono.includes("{") ? c.datosPagoAbono : "";
 
   // Al llegar el plazo a cero, el servidor decide (registra el vencimiento) y la página se actualiza con su respuesta.
@@ -126,7 +126,7 @@ export function PaymentStage({ r, onRefresh }: { r: PublicReservation; onRefresh
           <Amounts
             rows={[
               { k: "Valor total", v: m.total },
-              { k: `Abono para confirmar (${c.depositPct} %)`, v: m.deposit, strong: true },
+              { k: `Abono para confirmar (${depositPctOf(r.quote)} %)`, v: m.deposit, strong: true },
             ]}
           />
           <p className="text-[.92rem] font-semibold">

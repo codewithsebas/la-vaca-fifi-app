@@ -6,19 +6,23 @@ import {
   computeQuote,
   depositDueAt,
   findUnit,
+  importDocNumber,
+  invalidImportRow,
   newReservationCode,
   normalizePhone,
   slugify,
   unavailableDates,
   unitFree,
+  validateGuest,
   validateManualReservation,
   validateReservation,
   withTotal,
 } from "@/lib/booking";
 import { config } from "@/lib/config";
+import { can, type Permission } from "@/lib/permissions";
 import { MOCK_DB_KEY } from "@/lib/mock/keys";
 import { addDays, sleep, todayISO } from "@/lib/format";
-import { HOLD_OPTIONS, manualDueAt } from "@/lib/payments";
+import { HOLD_OPTIONS, manualDueAt, manualPaymentNote } from "@/lib/payments";
 import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "@/lib/site";
 import { mergeTheme } from "@/lib/theme";
 import type {
@@ -29,8 +33,19 @@ import type {
   CabinInput,
   CabinType,
   ClientProfile,
+  Bathroom,
+  BathroomBlock,
+  BathroomBlockInput,
+  BathroomInput,
+  Employee,
+  EmployeeInput,
+  ImportRow,
+  ImportResult,
+  PanelUser,
   EmailRecord,
   NotificationKind,
+  PayMethod,
+  PaymentTerms,
   PaymentKind,
   PaymentRecord,
   PaymentStatus,
@@ -62,6 +77,10 @@ type Db = {
   emails: EmailRecord[];
   idem: Record<string, string>;
   site?: SiteContent;
+  // Se agregan al cargar si la base simulada se creó antes de existir.
+  bathrooms?: Bathroom[];
+  bathroomBlocks?: BathroomBlock[];
+  employees?: Employee[];
 };
 
 // Escenarios de prueba para el envío: localStorage.setItem('vf-mock-settings', '{"post":"409"}')
@@ -98,6 +117,7 @@ const quoteFor = (db: Db, typeId: string, ci: string, co: string, guests: number
     co,
     guests,
     db.seasons,
+    siteOf(db).settings.depositPct ?? config.depositPct,
   );
 const keyOf = (r: Pick<Reservation, "guest">) => `${r.guest.docType}:${r.guest.docNumber.toUpperCase()}`;
 
@@ -247,14 +267,26 @@ function mockPayment(r: Reservation, kind: PaymentKind, status: PaymentStatus, a
   };
 }
 
-// Mismas reglas que apply_approved_payment en la base de datos.
-function applyPayment(db: Db, p: PaymentRecord): "confirmed" | "balance_paid" | "duplicate" | "not_applicable" {
-  const r = db.reservations.find((x) => x.code === p.reservationCode)!;
+// Mismas reglas que register_manual_payment en la base de datos: cualquier pago confirma una reserva pendiente; el primero
+// es el abono (o el pago total, si cubre todo) y los demás, saldo; el saldo queda pagado cuando lo cobrado llega al total.
+function registerPayment(db: Db, r: Reservation, amount: number, detail: string): "ALREADY_PAID" | "NOT_APPLICABLE" | "INVALID_AMOUNT" | null {
+  const owed = r.quote.total - r.paid;
+  if (owed <= 0 || r.balancePaidAt) return "ALREADY_PAID";
+  const pending = r.status === "pending_deposit" || r.status === "expired";
+  if (!pending && !["confirmed", "rescheduled", "checked_in"].includes(r.status)) return "NOT_APPLICABLE";
+  if (!Number.isInteger(amount) || amount <= 0 || amount > owed) return "INVALID_AMOUNT";
+  const covered = amount >= owed;
   const now = new Date().toISOString();
-  if (p.kind === "deposit" || p.kind === "full") {
-    if (r.depositPaidAt) return "duplicate";
-    if (r.status !== "pending_deposit" && r.status !== "expired") return "not_applicable";
-    Object.assign(r, { status: "confirmed", depositPaidAt: now, paid: r.paid + p.amount, ...(p.kind === "full" && { balancePaidAt: now }) });
+  db.payments.push({ ...mockPayment(r, r.depositPaidAt ? "balance" : covered ? "full" : "deposit", "approved", now, amount), detail });
+  Object.assign(r, {
+    status: pending ? "confirmed" : r.status,
+    depositPaidAt: r.depositPaidAt ?? now,
+    paid: r.paid + amount,
+    ...(covered && { balancePaidAt: now }),
+  });
+  if (!pending) {
+    if (covered) notify(db, "balance_paid", `Saldo pagado · ${r.code}`, r.guest.fullName, r.code, true);
+  } else {
     notify(
       db,
       "reservation_confirmed",
@@ -277,19 +309,83 @@ function applyPayment(db: Db, p: PaymentRecord): "confirmed" | "balance_paid" | 
         createdAt: now,
         updatedAt: now,
       });
-  } else {
-    if (r.balancePaidAt || r.paid >= r.quote.total) return "duplicate";
-    if (!["confirmed", "rescheduled", "checked_in"].includes(r.status)) return "not_applicable";
-    Object.assign(r, { balancePaidAt: now, paid: r.paid + p.amount });
-    notify(db, "balance_paid", `Saldo pagado · ${r.code}`, r.guest.fullName, r.code, true);
   }
-  return p.kind === "balance" ? "balance_paid" : "confirmed";
+  return null;
 }
 
-// Contenido del sitio simulado; los datos guardados antes de existir los servicios o los colores toman los de por defecto.
+const ME_KEY = "vf-admin-me";
+function meOf(): PanelUser {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(ME_KEY) || "null");
+    if (v?.role) return v;
+  } catch {}
+  return { id: "demo-admin", email: "demo@lavacafifi.test", name: "Equipo de prueba", role: "admin" };
+}
+
+// Baños de la demo: uno por cabaña y uno compartido, con un bloqueo de mantenimiento.
+function bathroomsOf(d: Db): { bathrooms: Bathroom[]; blocks: BathroomBlock[] } {
+  if (!d.bathrooms) {
+    const now = new Date().toISOString();
+    d.bathrooms = [
+      ...d.cabins.map((c) => ({
+        id: crypto.randomUUID(),
+        name: `Baño ${c.nombre.replace(/^Cabaña\s+/i, "")}`,
+        status: "available" as const,
+        cabinTypeId: c.id,
+        unit: 1,
+        notes: "",
+        statusUpdatedAt: now,
+      })),
+      {
+        id: crypto.randomUUID(),
+        name: "Baño compartido del kiosco",
+        status: "maintenance" as const,
+        cabinTypeId: null,
+        unit: null,
+        notes: "Cambio de la ducha",
+        statusUpdatedAt: now,
+      },
+    ];
+    const shared = d.bathrooms[d.bathrooms.length - 1];
+    d.bathroomBlocks = [
+      {
+        id: crypto.randomUUID(),
+        bathroomId: shared.id,
+        from: addDays(todayISO(), 2),
+        to: addDays(todayISO(), 4),
+        reason: "Reparación",
+        notes: "Cambio de la ducha",
+      },
+    ];
+  }
+  return { bathrooms: d.bathrooms, blocks: d.bathroomBlocks ?? [] };
+}
+
+// Empleados de la demo: quien está en la sesión y una persona de recepción.
+function employeesOf(d: Db, me: PanelUser): Employee[] {
+  if (!d.employees)
+    d.employees = [
+      {
+        id: "demo-recepcion",
+        email: "recepcion@lavacafifi.test",
+        name: "Laura Recepción",
+        role: "recepcion",
+        createdAt: new Date(Date.now() - 20 * 864e5).toISOString(),
+        lastSignInAt: new Date(Date.now() - 864e5).toISOString(),
+        active: true,
+      },
+    ];
+  if (!d.employees.some((e) => e.id === me.id))
+    d.employees = [{ ...me, createdAt: new Date().toISOString(), lastSignInAt: new Date().toISOString(), active: true }, ...d.employees];
+  return d.employees;
+}
+
+// Contenido del sitio simulado; los datos guardados antes de existir los servicios, los colores o el abono configurable toman
+// los de por defecto.
 const siteOf = (d: Db): SiteContent => ({
   ...defaultContent,
   ...d.site,
+  settings: { ...defaultContent.settings, ...d.site?.settings },
   services: d.site?.services ?? defaultContent.services,
   theme: mergeTheme(d.site?.theme),
 });
@@ -440,13 +536,24 @@ export async function mockRequest(method: string, path: string, opts: MockReques
   if (method === "POST" && path === "/admin/login") {
     if (!body.email || !body.password) return { status: 401, data: { error: "INVALID_CREDENTIALS" } };
     sessionStorage.setItem(AUTH_KEY, "1");
+    const email = String(body.email).trim().toLowerCase();
+    const me: PanelUser = {
+      id: "demo-" + email,
+      email,
+      name: email.split("@")[0].replace(/[._-]+/g, " "),
+      role: email.includes("recepcion") ? "recepcion" : "admin",
+    };
+    sessionStorage.setItem(ME_KEY, JSON.stringify(me));
     return ok({});
   }
   if (method === "POST" && path === "/admin/logout") {
     sessionStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(ME_KEY);
     return ok({});
   }
   if (isAdmin && sessionStorage.getItem(AUTH_KEY) !== "1") return { status: 401, data: { error: "UNAUTHORIZED" } };
+  const me = meOf();
+  const deny = (perm: Permission) => (can(me.role, perm) ? null : { status: 403, data: { error: "FORBIDDEN" } });
   if (method === "GET" && path === "/admin/data")
     return ok({
       reservations: db.reservations,
@@ -460,15 +567,35 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       emails: db.emails,
       clients: db.clients,
       notifications: db.notifications,
+      me,
+      bathrooms: bathroomsOf(db).bathrooms,
+      bathroomBlocks: bathroomsOf(db).blocks,
     });
   // En modo simulado el contenido se guarda solo en este navegador y no cambia las páginas públicas.
+  if (method === "PUT" && path === "/admin/payment-terms") {
+    const no = deny("rates");
+    if (no) return no;
+    const b = opts.body as PaymentTerms;
+    const pct = Number(b.depositPct);
+    if (!Number.isInteger(pct) || pct < 1 || pct > 100) return invalid({ depositPct: "El abono debe ser un porcentaje entero entre 1 y 100." });
+    const site = siteOf(db);
+    db.site = {
+      ...site,
+      settings: { ...site.settings, depositPct: pct },
+      texts: { ...site.texts, payment: { instructions: String(b.instructions ?? "").trim() } },
+    };
+    save(db);
+    return ok(db.site);
+  }
+
   if (method === "PUT" && path === "/admin/site") {
     const b = opts.body as SiteInput;
+    const prev = siteOf(db);
     db.site = {
-      settings: b.settings,
+      settings: { ...b.settings, depositPct: prev.settings.depositPct },
       policies: b.policies,
       photos: {},
-      texts: mergeTexts(b.content ?? defaultTexts),
+      texts: { ...mergeTexts(b.content ?? defaultTexts), payment: prev.texts.payment },
       services: siteOf(db).services,
       theme: mergeTheme(b.theme),
     };
@@ -576,11 +703,11 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       return ok(r);
     }
     if (body.action === "confirm" || body.action === "balance") {
-      const kind: PaymentKind = body.action === "balance" ? "balance" : (opts.body as { full?: boolean }).full ? "full" : "deposit";
-      const p = mockPayment(r, kind, "approved", undefined, kind === "full" ? r.quote.total - r.paid : undefined);
-      const out = applyPayment(db, p);
-      if (out !== "confirmed" && out !== "balance_paid") return { status: out === "duplicate" ? 409 : 422, data: { error: out.toUpperCase() } };
-      db.payments.push(p);
+      const b = opts.body as { full?: boolean; amount?: number; method?: PayMethod; note?: string };
+      const owed = r.quote.total - r.paid;
+      const amount = b.full ? owed : b.amount !== undefined ? Number(b.amount) : body.action === "confirm" ? Math.min(r.quote.deposit, owed) : owed;
+      const refused = registerPayment(db, r, amount, manualPaymentNote(b.method, b.note) || "Registrado por el equipo");
+      if (refused) return { status: refused === "ALREADY_PAID" ? 409 : 422, data: { error: refused } };
       save(db);
       return ok(r);
     }
@@ -596,6 +723,19 @@ export async function mockRequest(method: string, path: string, opts: MockReques
         status: r.status === "pending_deposit" ? "pending_deposit" : "rescheduled",
         quote: quoteFor(db, r.cabinTypeId, body.checkIn, body.checkOut, r.adults + r.children),
       });
+    } else if (body.action === "guest") {
+      const g = (opts.body as { guest: Reservation["guest"] }).guest;
+      const fields = validateGuest(g);
+      if (Object.keys(fields).length) return invalid(Object.fromEntries(Object.entries(fields).map(([k, v]) => [`guest.${k}`, v])));
+      const phone = normalizePhone(g.phone);
+      r.guest = {
+        ...g,
+        fullName: g.fullName.trim(),
+        docNumber: g.docType === "SD" ? phone.replace(/\D/g, "") : g.docNumber.trim().toUpperCase(),
+        phone,
+        city: (g.city ?? "").trim(),
+      };
+      r.clientKey = keyOf(r);
     } else if (body.action === "note") r.notes.push({ at: now, text: body.text });
     else {
       r.status = map[body.action] || r.status;
@@ -779,6 +919,231 @@ export async function mockRequest(method: string, path: string, opts: MockReques
   if (method === "POST" && path === "/admin/reset") {
     save(seed());
     return ok({});
+  }
+
+  // ----- Baños (mismas reglas que /api/admin/bathrooms y /api/admin/bathroom-blocks) -----
+  if (path === "/admin/bathrooms") {
+    const all = bathroomsOf(db);
+    const b = (opts.body ?? {}) as BathroomInput;
+    if (method === "POST" || (method === "PUT" && (b.name !== undefined || b.cabinTypeId !== undefined || b.unit !== undefined))) {
+      const no = deny("bathrooms");
+      if (no) return no;
+    }
+    if (method === "DELETE") {
+      const no = deny("delete");
+      if (no) return no;
+      db.bathrooms = all.bathrooms.filter((x) => x.id !== q.id);
+      db.bathroomBlocks = all.blocks.filter((x) => x.bathroomId !== q.id);
+    } else {
+      if ((method === "POST" || b.name !== undefined) && !String(b.name ?? "").trim()) return invalid({ name: "Escribe un nombre de hasta 60 caracteres." });
+      const now = new Date().toISOString();
+      if (method === "POST")
+        db.bathrooms = [
+          ...all.bathrooms,
+          {
+            id: crypto.randomUUID(),
+            name: String(b.name).trim(),
+            status: b.status ?? "available",
+            cabinTypeId: b.cabinTypeId || null,
+            unit: b.cabinTypeId && b.unit ? b.unit : null,
+            notes: (b.notes ?? "").trim(),
+            statusUpdatedAt: now,
+          },
+        ];
+      else
+        db.bathrooms = all.bathrooms.map((x) =>
+          x.id !== b.id
+            ? x
+            : {
+                ...x,
+                ...(b.name !== undefined && { name: String(b.name).trim() }),
+                ...(b.status !== undefined && { status: b.status, statusUpdatedAt: now }),
+                ...(b.notes !== undefined && { notes: String(b.notes).trim() }),
+                ...((b.cabinTypeId !== undefined || b.unit !== undefined) && {
+                  cabinTypeId: b.cabinTypeId || null,
+                  unit: b.cabinTypeId && b.unit ? b.unit : null,
+                }),
+              },
+        );
+    }
+    save(db);
+    return ok(bathroomsOf(db));
+  }
+  if (path === "/admin/bathroom-blocks") {
+    const all = bathroomsOf(db);
+    if (method === "DELETE") {
+      const no = deny("delete");
+      if (no) return no;
+      db.bathroomBlocks = all.blocks.filter((x) => x.id !== q.id);
+    } else {
+      const b = opts.body as BathroomBlockInput;
+      if (!b?.bathroomId || !b.from || !b.to || b.to < b.from) return { status: 400, data: { error: "INVALID_BODY" } };
+      if (b.reason === "Otro" && !String(b.notes ?? "").trim()) return { status: 400, data: { error: "INVALID_NOTES" } };
+      const others = all.blocks.filter((x) => x.id !== b.id);
+      if (others.some((x) => x.bathroomId === b.bathroomId && x.from <= b.to && b.from <= x.to)) return { status: 409, data: { error: "BLOCK_OVERLAP" } };
+      const row: BathroomBlock = {
+        id: b.id ?? crypto.randomUUID(),
+        bathroomId: b.bathroomId,
+        from: b.from,
+        to: b.to,
+        reason: b.reason,
+        notes: String(b.notes ?? "").trim(),
+      };
+      db.bathroomBlocks = [...others, row].sort((a, c) => (a.from < c.from ? -1 : 1));
+    }
+    save(db);
+    return ok(bathroomsOf(db));
+  }
+
+  // ----- Empleados (en modo simulado, solo en este navegador) -----
+  if (path === "/admin/employees") {
+    const no = deny("employees");
+    if (no) return no;
+    const list = employeesOf(db, me);
+    const b = (opts.body ?? {}) as EmployeeInput;
+    const admins = list.filter((e) => e.role === "admin" && e.active);
+    if (method === "POST") {
+      const email = String(b.email ?? "")
+        .trim()
+        .toLowerCase();
+      const fields: Record<string, string> = {};
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fields.email = "Escribe un correo válido.";
+      else if (list.some((e) => e.email === email)) fields.email = "Ya existe una cuenta con ese correo.";
+      if (String(b.name ?? "").trim().length < 2) fields.name = "Escribe el nombre (2 a 80 caracteres).";
+      if (String(b.password ?? "").length < 8) fields.password = "Mínimo 8 caracteres.";
+      if (Object.keys(fields).length) return invalid(fields);
+      db.employees = [
+        ...list,
+        {
+          id: crypto.randomUUID(),
+          email,
+          name: String(b.name).trim(),
+          role: b.role ?? "recepcion",
+          createdAt: new Date().toISOString(),
+          lastSignInAt: null,
+          active: true,
+        },
+      ];
+    } else if (method === "PUT") {
+      const t = list.find((e) => e.id === b.id);
+      if (!t) return { status: 404, data: { error: "NOT_FOUND" } };
+      const losesAdmin = t.role === "admin" && t.active && ((b.role !== undefined && b.role !== "admin") || b.active === false);
+      if (t.id === me.id && (losesAdmin || b.active === false)) return { status: 409, data: { error: "SELF_LOCKOUT" } };
+      if (losesAdmin && admins.length <= 1) return { status: 409, data: { error: "LAST_ADMIN" } };
+      if (b.password !== undefined && String(b.password).length < 8) return invalid({ password: "Mínimo 8 caracteres." });
+      db.employees = list.map((e) =>
+        e.id !== t.id
+          ? e
+          : {
+              ...e,
+              ...(b.name !== undefined && { name: String(b.name).trim() }),
+              ...(b.role !== undefined && { role: b.role }),
+              ...(b.active !== undefined && { active: b.active }),
+            },
+      );
+    } else if (method === "DELETE") {
+      const t = list.find((e) => e.id === q.id);
+      if (!t) return { status: 404, data: { error: "NOT_FOUND" } };
+      if (t.id === me.id) return { status: 409, data: { error: "SELF_LOCKOUT" } };
+      if (t.role === "admin" && t.active && admins.length <= 1) return { status: 409, data: { error: "LAST_ADMIN" } };
+      db.employees = list.filter((e) => e.id !== t.id);
+    }
+    save(db);
+    return { status: method === "POST" ? 201 : 200, data: employeesOf(db, me) };
+  }
+
+  // ----- Perfil propio -----
+  if (method === "PUT" && path === "/admin/profile") {
+    const b = (opts.body ?? {}) as { name?: string; password?: string };
+    if (b.name !== undefined && String(b.name).trim().length < 2) return invalid({ name: "Escribe tu nombre (2 a 80 caracteres)." });
+    if (b.password !== undefined && String(b.password).length < 8) return invalid({ password: "Mínimo 8 caracteres." });
+    const updated: PanelUser = { ...me, ...(b.name !== undefined && { name: String(b.name).trim() }) };
+    sessionStorage.setItem(ME_KEY, JSON.stringify(updated));
+    db.employees = employeesOf(db, me).map((e) => (e.id === me.id ? { ...e, name: updated.name } : e));
+    save(db);
+    return ok({ me: updated });
+  }
+
+  // ----- Importar reservas (mismas reglas que /api/admin/import) -----
+  if (method === "POST" && path === "/admin/import") {
+    const no = deny("import");
+    if (no) return no;
+    const rows = ((opts.body as { rows?: ImportRow[] })?.rows ?? []).slice(0, 500);
+    const results: ImportResult[] = [];
+    for (const r of rows) {
+      const why = invalidImportRow(r, unitsOf(db));
+      if (why) {
+        results.push({ ref: String(r?.ref ?? ""), ok: false, error: why });
+        continue;
+      }
+      const units = unitsOf(db)[r.cabinTypeId] ?? 0;
+      if (db.reservations.some((x) => x.externalRef === r.ref)) {
+        results.push({ ref: r.ref, ok: false, error: "Ya se había importado." });
+        continue;
+      }
+      const active = r.status !== "cancelled";
+      if (active && !unitFree(occ(db), units, r.cabinTypeId, r.unit, r.checkIn, r.checkOut)) {
+        results.push({ ref: r.ref, ok: false, error: "Las fechas ya están ocupadas en esa cabaña." });
+        continue;
+      }
+      const total = Math.round(r.total);
+      const deposit = Math.round((total * (siteOf(db).settings.depositPct ?? config.depositPct)) / 100);
+      const nights = Math.max(1, Math.round((Date.parse(r.checkOut) - Date.parse(r.checkIn)) / 864e5));
+      const phone = String(r.phone ?? "")
+        .replace(/\D/g, "")
+        .slice(0, 15);
+      const res: Reservation = {
+        cabinTypeId: r.cabinTypeId as Reservation["cabinTypeId"],
+        checkIn: r.checkIn,
+        checkOut: r.checkOut,
+        adults: 2,
+        children: 0,
+        pet: { hasPet: false, smallBreedConfirmed: false },
+        decoration: { requested: false, occasion: "", notes: "" },
+        estimatedArrival: siteOf(db).settings.checkInStart,
+        guest: {
+          fullName: r.guest.trim(),
+          docType: "SD",
+          docNumber: importDocNumber(r),
+          email: (r.email ?? "").trim(),
+          phone: phone ? "+" + phone : "",
+          city: "",
+        },
+        specialRequests: r.notes ?? "",
+        consents: { policies: false, dataProcessing: false, marketing: false },
+        code: newReservationCode(),
+        unit: r.unit,
+        status: r.status,
+        quote: {
+          base: total,
+          extraGuests: 0,
+          extraAmount: 0,
+          total,
+          deposit,
+          balance: total - deposit,
+          pricePerNight: Math.round(total / nights),
+          extraPerNight: 0,
+          nights,
+        },
+        depositDueAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        notes: [],
+        depositPaidAt: null,
+        balancePaidAt: null,
+        clientKey: "",
+        paid: 0,
+        checkedInAt: null,
+        source: "import",
+        externalRef: r.ref,
+        channel: r.channel,
+        commission: Math.round(r.commission),
+      };
+      res.clientKey = keyOf(res);
+      db.reservations.push(res);
+      results.push({ ref: r.ref, ok: true, code: res.code });
+    }
+    save(db);
+    return ok({ results });
   }
   return { status: 404, data: { error: "NOT_FOUND" } };
 }

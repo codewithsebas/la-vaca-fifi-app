@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { ACTIVE_STATUSES, BLOCK_REASONS } from "@/lib/booking";
 import { isISO, nightsBetween } from "@/lib/format";
 import { type Db, isExclusionViolation, loadCabinTypes, toBlock } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { fail, json, readJson, requireAdmin, requireStaff, route } from "@/lib/server/http";
 import type { BlockInput } from "@/lib/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -43,7 +43,7 @@ async function clashes(sb: Db, cabinTypeId: string, units: number[], from: strin
 
 // POST /api/admin/blocks { cabinTypeId, unit | "all", from, to, reason, notes } → bloquea fechas (hasta `to` incluido).
 export const POST = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<BlockInput>(req);
   const v = await validate(sb, b);
@@ -70,7 +70,7 @@ export const POST = route(async (req: NextRequest) => {
 
 // PUT /api/admin/blocks { id, cabinTypeId, unit, from, to, reason, notes } → edita un bloqueo.
 export const PUT = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<BlockInput & { id: string }>(req);
   if (!b || !UUID.test(String(b.id)) || b.unit === "all") return fail(400, "INVALID_BODY");
@@ -95,7 +95,7 @@ export const PUT = route(async (req: NextRequest) => {
 
 // DELETE /api/admin/blocks?id=<uuid>
 export const DELETE = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("delete");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id") ?? "";
   if (!UUID.test(id)) return fail(400, "INVALID_ID");

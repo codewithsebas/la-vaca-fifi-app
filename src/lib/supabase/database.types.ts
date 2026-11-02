@@ -81,6 +81,88 @@ export type Database = {
           },
         ]
       }
+      bathroom_blocks: {
+        Row: {
+          bathroom_id: string
+          created_at: string
+          from_date: string
+          id: string
+          notes: string
+          reason: string
+          to_date: string
+        }
+        Insert: {
+          bathroom_id: string
+          created_at?: string
+          from_date: string
+          id?: string
+          notes?: string
+          reason: string
+          to_date: string
+        }
+        Update: {
+          bathroom_id?: string
+          created_at?: string
+          from_date?: string
+          id?: string
+          notes?: string
+          reason?: string
+          to_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bathroom_blocks_bathroom_id_fkey"
+            columns: ["bathroom_id"]
+            isOneToOne: false
+            referencedRelation: "bathrooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bathrooms: {
+        Row: {
+          cabin_type_id: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string
+          status: string
+          status_updated_at: string
+          unit: number | null
+          updated_at: string
+        }
+        Insert: {
+          cabin_type_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string
+          status?: string
+          status_updated_at?: string
+          unit?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cabin_type_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string
+          status?: string
+          status_updated_at?: string
+          unit?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bathrooms_cabin_type_id_fkey"
+            columns: ["cabin_type_id"]
+            isOneToOne: false
+            referencedRelation: "cabin_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocks: {
         Row: {
           cabin_type_id: string
@@ -560,18 +642,21 @@ export type Database = {
           adults: number
           balance_paid_at: string | null
           cabin_type_id: string
+          channel: string
           check_in: string
           check_out: string
           checked_in_at: string | null
           children: number
           client_key: string | null
           code: string
+          commission: number
           consents: Json
           created_at: string
           decoration: Json
           deposit_due_at: string
           deposit_paid_at: string | null
           estimated_arrival: string
+          external_ref: string | null
           guest_city: string
           guest_doc_number: string
           guest_doc_type: string
@@ -593,18 +678,21 @@ export type Database = {
           adults: number
           balance_paid_at?: string | null
           cabin_type_id: string
+          channel?: string
           check_in: string
           check_out: string
           checked_in_at?: string | null
           children?: number
           client_key?: string | null
           code: string
+          commission?: number
           consents: Json
           created_at?: string
           decoration?: Json
           deposit_due_at: string
           deposit_paid_at?: string | null
           estimated_arrival: string
+          external_ref?: string | null
           guest_city: string
           guest_doc_number: string
           guest_doc_type: string
@@ -626,18 +714,21 @@ export type Database = {
           adults?: number
           balance_paid_at?: string | null
           cabin_type_id?: string
+          channel?: string
           check_in?: string
           check_out?: string
           checked_in_at?: string | null
           children?: number
           client_key?: string | null
           code?: string
+          commission?: number
           consents?: Json
           created_at?: string
           decoration?: Json
           deposit_due_at?: string
           deposit_paid_at?: string | null
           estimated_arrival?: string
+          external_ref?: string | null
           guest_city?: string
           guest_doc_number?: string
           guest_doc_type?: string
@@ -749,6 +840,7 @@ export type Database = {
           check_in_start: string
           check_out_time: string
           content: Json
+          deposit_pct: number
           id: boolean
           phones: string[]
           rnt: string
@@ -761,6 +853,7 @@ export type Database = {
           check_in_start: string
           check_out_time: string
           content?: Json
+          deposit_pct?: number
           id?: boolean
           phones: string[]
           rnt?: string
@@ -773,6 +866,7 @@ export type Database = {
           check_in_start?: string
           check_out_time?: string
           content?: Json
+          deposit_pct?: number
           id?: boolean
           phones?: string[]
           rnt?: string
@@ -791,8 +885,12 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: string
       }
+      is_admin: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
+      panel_role: { Args: never; Returns: string }
       register_manual_payment: {
         Args: {
+          p_amount?: number
           p_code: string
           p_kind: Database["public"]["Enums"]["payment_kind"]
           p_note?: string

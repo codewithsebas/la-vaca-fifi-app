@@ -9,7 +9,7 @@ const money = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as
 // PUT /api/admin/cabin-types { [id]: { precioPareja, personaAdicional, maxPersonas } } → tarifas base (una o varias cabañas).
 // Las reservas existentes conservan su cotización; el sitio se regenera con los precios nuevos.
 export const PUT = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("rates");
   if (error) return error;
   const b = await readJson<Rates>(req);
   if (!b) return fail(400, "INVALID_BODY");

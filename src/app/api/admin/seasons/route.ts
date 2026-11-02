@@ -52,7 +52,7 @@ const done = async (sb: Db) => {
 };
 
 async function save(req: NextRequest, mode: "create" | "update") {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("rates");
   if (error) return error;
   const b = await readJson<SeasonInput>(req);
   if (mode === "update" && !UUID.test(String(b?.id))) return fail(400, "INVALID_ID");
@@ -78,7 +78,7 @@ export const PUT = route((req: NextRequest) => save(req, "update"));
 
 // DELETE /api/admin/seasons?id= → elimina. Las reservas ya hechas conservan su cotización.
 export const DELETE = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("rates");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id") ?? "";
   if (!UUID.test(id)) return fail(400, "INVALID_ID");

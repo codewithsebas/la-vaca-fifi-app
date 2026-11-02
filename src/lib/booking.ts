@@ -2,12 +2,66 @@
 import { config, type CabinTypeId } from "@/lib/config";
 import { DEFAULT_HOLD, HOLD_OPTIONS } from "@/lib/payments";
 import { addDays, isISO, nightsBetween } from "@/lib/format";
-import type { Availability, CabinType, FieldErrors, ManualReservationInput, Quote, RateSeason, ReservationInput, ReservationStatus } from "@/lib/types";
+import type {
+  Availability,
+  CabinType,
+  FieldErrors,
+  ImportRow,
+  ManualReservationInput,
+  Quote,
+  RateSeason,
+  ReservationInput,
+  ReservationStatus,
+} from "@/lib/types";
 
 export const ACTIVE_STATUSES: ReservationStatus[] = ["pending_deposit", "confirmed", "rescheduled", "checked_in"];
 
 // Motivos de bloqueo ("Otro" exige una descripción).
 export const BLOCK_REASONS = ["Mantenimiento", "Uso propio", "Evento privado", "Otro"];
+// Motivos de bloqueo de un baño ("Otro" exige una descripción).
+export const BATHROOM_BLOCK_REASONS = ["Mantenimiento", "Reparación", "Limpieza profunda", "Otro"];
+
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Datos del huésped editados por el equipo. Sin documento (SD): el número es el teléfono.
+export function validateGuest(g: { fullName?: string; docType?: string; docNumber?: string; email?: string; phone?: string; city?: string }) {
+  const f: Record<string, string> = {};
+  if ((g.fullName ?? "").trim().length < 3 || (g.fullName ?? "").length > 120) f.fullName = "Escribe el nombre completo.";
+  if (!["CC", "CE", "Pasaporte", "PPT", "SD"].includes(g.docType ?? "")) f.docType = "Elige el tipo de documento.";
+  else if (g.docType !== "SD" && !/^[A-Za-z0-9]{5,15}$/.test((g.docNumber ?? "").trim()))
+    f.docNumber = "Entre 5 y 15 letras o números, sin espacios ni puntos.";
+  if (g.email && (!EMAIL_RE.test(g.email.trim()) || g.email.length > 160)) f.email = "Escribe un correo válido.";
+  const phone = String(g.phone ?? "").replace(/\D/g, "");
+  if (phone.length < 7 || phone.length > 15) f.phone = "Escribe un celular válido.";
+  if ((g.city ?? "").length > 60) f.city = "Máximo 60 caracteres.";
+  return f;
+}
+
+const IMPORT_STATUSES: ImportRow["status"][] = ["confirmed", "completed", "cancelled"];
+
+// Motivo por el que una fila importada no se puede crear (o null si está bien).
+export function invalidImportRow(r: ImportRow, units: Partial<Record<string, number>>): string | null {
+  if (!r || typeof r.ref !== "string" || !r.ref.trim() || r.ref.length > 80) return "Falta la referencia de la reserva.";
+  if (!String(r.guest ?? "").trim() || r.guest.length > 120) return "Falta el nombre del huésped.";
+  if (r.email && (!EMAIL_RE.test(r.email.trim()) || r.email.length > 160)) return "El correo no es válido.";
+  if (!isISO(r.checkIn) || !isISO(r.checkOut) || r.checkOut <= r.checkIn) return "Las fechas no son válidas.";
+  if (nightsBetween(r.checkIn, r.checkOut) > 60) return "La estadía supera 60 noches.";
+  const max = units[r.cabinTypeId];
+  if (!max) return "La cabaña no existe en el panel.";
+  if (!Number.isInteger(r.unit) || r.unit < 1 || r.unit > max) return "Esa unidad no existe en la cabaña.";
+  if (!Number.isFinite(r.total) || r.total < 0 || r.total > 100_000_000) return "El valor no es válido.";
+  if (!Number.isFinite(r.commission) || r.commission < 0) return "La comisión no es válida.";
+  if (!IMPORT_STATUSES.includes(r.status)) return "El estado no es válido.";
+  return null;
+}
+
+// Documento de una reserva importada sin documento: el teléfono (agrupa al cliente); sin teléfono, la referencia.
+export function importDocNumber(r: Pick<ImportRow, "ref" | "phone">) {
+  const phone = String(r.phone ?? "")
+    .replace(/\D/g, "")
+    .slice(0, 15);
+  return (phone.length >= 5 ? phone : r.ref.replace(/[^A-Za-z0-9]/g, "")).slice(0, 15).toUpperCase().padEnd(5, "0");
+}
 
 // Lo mínimo para saber qué unidades están ocupadas.
 export type Occupancy = {
@@ -26,7 +80,8 @@ export function nightlyRate(t: Priced, seasons: RateSeason[], night: string) {
 }
 
 // Cotización noche a noche (cada noche puede caer en una temporada distinta).
-export function computeQuote(t: Priced, checkIn: string, checkOut: string, guests: number, seasons: RateSeason[] = []): Quote {
+// depositPct: abono para confirmar (Condiciones de pago); por defecto, el de lib/config.
+export function computeQuote(t: Priced, checkIn: string, checkOut: string, guests: number, seasons: RateSeason[] = [], depositPct = config.depositPct): Quote {
   const nights = nightsBetween(checkIn, checkOut);
   const extraGuests = Math.max(0, guests - 2);
   let base = 0;
@@ -39,7 +94,7 @@ export function computeQuote(t: Priced, checkIn: string, checkOut: string, guest
     if (r.season) seasonNights++;
   }
   const total = base + extraAmount;
-  const deposit = Math.round((total * config.depositPct) / 100);
+  const deposit = Math.round((total * depositPct) / 100);
   return {
     base,
     extraGuests,
@@ -56,8 +111,8 @@ export function computeQuote(t: Priced, checkIn: string, checkOut: string, guest
 
 // Precio especial acordado por el equipo: el total cambia, el abono se recalcula con el mismo porcentaje y la diferencia
 // con la tarifa queda en `adjustment` (negativo = descuento).
-export function withTotal(q: Quote, total: number): Quote {
-  const deposit = Math.round((total * config.depositPct) / 100);
+export function withTotal(q: Quote, total: number, depositPct = config.depositPct): Quote {
+  const deposit = Math.round((total * depositPct) / 100);
   return { ...q, total, deposit, balance: total - deposit, adjustment: total - (q.base + q.extraAmount) };
 }
 
@@ -78,7 +133,7 @@ export function normalizePhone(p: string) {
 const SPECIAL_TOTAL = { min: 10_000, max: 100_000_000 };
 
 // Reserva tomada por el equipo: los datos del huésped que exige la base de datos (nombre, documento, correo y celular)
-// y el plazo del enlace de pago. No pide casilla de políticas: el huésped las acepta en la página del enlace antes de pagar.
+// y el plazo para pagar el abono. No pide casilla de políticas: la reserva la toma el equipo, no la web.
 export function validateManualReservation(b: ManualReservationInput, types: CabinType[], units: Partial<Record<string, number>>, today: string): FieldErrors {
   const f: FieldErrors = {};
   const g = b.guest ?? ({} as ManualReservationInput["guest"]);
@@ -146,6 +201,7 @@ export function availability(
   co: string,
   guests: number,
   seasons: RateSeason[] = [],
+  depositPct = config.depositPct,
 ): Availability {
   const nights = nightsBetween(ci, co);
   return {
@@ -160,7 +216,7 @@ export function availability(
         available: left > 0 && fits,
         unitsLeft: left,
         reason: !fits ? "capacity" : left > 0 ? null : "dates",
-        quote: computeQuote(t, ci, co, guests, seasons),
+        quote: computeQuote(t, ci, co, guests, seasons, depositPct),
       };
     }),
   };

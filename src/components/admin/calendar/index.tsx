@@ -9,9 +9,10 @@ import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { DatePicker } from "@/components/admin/date-picker";
 import { NewReservationDialog, type NewReservationDraft } from "@/components/admin/new-reservation";
+import { ReservationModal } from "@/components/admin/reservation-detail";
 import { PREF, usePref } from "@/components/admin/prefs";
 import { paths } from "@/components/admin/routes";
-import { Button, EmptyState, IconButton, Segmented, Skeleton, buttonClass } from "@/components/admin/ui";
+import { Button, EmptyState, IconButton, ModalPresence, Segmented, Skeleton, buttonClass } from "@/components/admin/ui";
 import {
   BLOCK_BG,
   CALENDAR_VIEWS,
@@ -39,6 +40,8 @@ export function CalendarView() {
   const [viewParam, setViewParam] = useParam<CalView | "">("vista", "");
   const [dateParam, setDateParam] = useParam("fecha", "");
   const [filter, setFilter] = useParam("cabana", "");
+  // Reserva abierta en el modal (?reserva=CODIGO): se conserva al recargar y se puede compartir.
+  const [openCode, setOpenCode] = useParam("reserva", "");
   const [draft, setDraft] = useState<NewReservationDraft | null>(null);
   const rows = useMemo(() => units(data.cabinTypes, filter), [data.cabinTypes, filter]);
 
@@ -107,18 +110,18 @@ export function CalendarView() {
           <h1 id="ad-title" tabIndex={-1} className="sr-only">
             Calendario
           </h1>
-          <div className="flex items-center rounded-xl border border-line bg-panel p-0.5 shadow-panel">
+          <div className="flex items-center gap-0.5 rounded-full border border-line-strong p-0.5">
             <IconButton label={`${unitName} anterior`} size="sm" onClick={() => step(-1)}>
               <ChevronLeftIcon size={17} />
             </IconButton>
-            <Button size="sm" variant="ghost" onClick={() => setAnchor(today)} disabled={today >= from && today <= to} className="px-2.5">
+            <Button size="sm" variant="ghost" onClick={() => setAnchor(today)} disabled={today >= from && today <= to} className="px-3">
               Hoy
             </Button>
             <IconButton label={`${unitName} siguiente`} size="sm" onClick={() => step(1)}>
               <ChevronRightIcon size={17} />
             </IconButton>
           </div>
-          <p aria-live="polite" className="text-[clamp(1.15rem,1.9vw,1.5rem)] leading-tight font-extrabold tracking-[-0.01em] text-ink first-letter:uppercase">
+          <p aria-live="polite" className="text-[clamp(1.3rem,2.1vw,1.75rem)] leading-tight font-bold tracking-[-0.03em] text-ink first-letter:uppercase">
             {title}
           </p>
         </div>
@@ -156,7 +159,7 @@ export function CalendarView() {
       </header>
 
       {!rows.length ? (
-        <div className="rounded-2xl border border-line bg-panel p-4 shadow-panel">
+        <div className="rounded-[22px] bg-panel p-4">
           <EmptyState
             icon={<HomeIcon size={18} />}
             title="No hay cabañas para mostrar"
@@ -188,16 +191,17 @@ export function CalendarView() {
             {!width ? (
               <Skeleton className="min-h-[360px] flex-1" />
             ) : view === "dia" ? (
-              <DayAgenda day={anchor} rows={rows} onNew={setDraft} />
+              <DayAgenda day={anchor} rows={rows} onNew={setDraft} onOpen={setOpenCode} />
             ) : monthGrid ? (
               <MonthGrid month={from} rows={rows} today={today} onPick={showDay} />
             ) : (
-              <Timeline days={days} rows={rows} view={view} today={today} width={width} onDay={showDay} onNew={setDraft} />
+              <Timeline days={days} rows={rows} view={view} today={today} width={width} onDay={showDay} onNew={setDraft} onOpen={setOpenCode} />
             )}
           </div>
         </>
       )}
-      {draft && <NewReservationDialog draft={draft} onClose={() => setDraft(null)} />}
+      <ModalPresence>{draft && <NewReservationDialog draft={draft} onClose={() => setDraft(null)} />}</ModalPresence>
+      <ModalPresence>{openCode && <ReservationModal key={openCode} code={openCode} onClose={() => setOpenCode("")} />}</ModalPresence>
     </div>
   );
 }
@@ -205,13 +209,13 @@ export function CalendarView() {
 function Chip({ label, value, icon, meter, tone }: { label: string; value: ReactNode; icon?: ReactNode; meter?: number; tone?: "warning" }) {
   return (
     <li
-      className={`inline-flex flex-none items-center gap-1.5 rounded-full border px-2.5 py-1 ${tone === "warning" ? "border-warning/30 bg-warning-soft text-warning" : "border-line bg-panel text-ink-muted"}`}
+      className={`inline-flex flex-none items-center gap-1.5 rounded-full border px-2.5 py-1 ${tone === "warning" ? "border-warning/30 bg-warning-soft text-warning" : "border-transparent bg-panel text-ink-muted"}`}
     >
       {icon && <span aria-hidden="true">{icon}</span>}
       {label}
       {meter !== undefined && (
         <span aria-hidden="true" className="h-1.5 w-10 overflow-hidden rounded-full bg-ink/8">
-          <span className="block h-full rounded-full bg-success" style={{ width: `${Math.min(100, meter)}%` }} />
+          <span className="block h-full rounded-full bg-ink" style={{ width: `${Math.min(100, meter)}%` }} />
         </span>
       )}
       <strong className={`font-bold tabular-nums ${tone === "warning" ? "" : "text-ink"}`}>{value}</strong>
@@ -236,7 +240,7 @@ function Legend() {
     >
       {LEGEND.map((l) => (
         <li key={l.label} className="inline-flex flex-none items-center gap-1.5 whitespace-nowrap">
-          <span aria-hidden="true" className="h-3 w-4 rounded-[4px]" style={l.style} />
+          <span aria-hidden="true" className="h-3 w-5 rounded-full" style={l.style} />
           {l.label}
         </li>
       ))}

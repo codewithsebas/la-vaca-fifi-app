@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { BanIcon, ClockIcon, PlusIcon } from "@/components/ui/icons";
+import { BanIcon, BathIcon, ClockIcon, PlusIcon } from "@/components/ui/icons";
 import { computeQuote, nightlyRate } from "@/lib/booking";
 import { addDays, cop, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
 import { pendingOf } from "@/lib/admin-metrics";
@@ -10,6 +10,7 @@ import type { CabinType } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { Popover, useTip } from "@/components/ui/floating";
 import { type NewReservationDraft } from "@/components/admin/new-reservation";
+import { bathroomIssues } from "@/components/admin/bathrooms";
 import { paths } from "@/components/admin/routes";
 import { Button, buttonClass } from "@/components/admin/ui";
 import {
@@ -22,8 +23,10 @@ import {
   blockHref,
   blockStyle,
   blocks,
+  initialsOf,
   kfmt,
   occupies,
+  openInModal,
   shortLeft,
   units,
   useCalBlocks,
@@ -37,13 +40,14 @@ type TimelineProps = {
   width: number;
   onDay: (d: string) => void;
   onNew: (d: NewReservationDraft) => void;
+  onOpen: (code: string) => void;
 };
 type Line = { kind: "group"; cabin: CabinType; units: Unit[] } | { kind: "unit"; u: Unit };
 
 // Agrupada por tipo de cabaña: cada tipo muestra por día cuántas unidades quedan libres y su tarifa (lo que se necesita
 // para vender por WhatsApp); debajo, una fila por unidad con sus reservas, bloqueos y noches de Booking.
 // Arrastrar sobre noches libres de una unidad (con el mouse) abre «Nueva reserva» con esa cabaña y esas fechas.
-export function Timeline({ days, rows, view, today, width, onDay, onNew }: TimelineProps) {
+export function Timeline({ days, rows, view, today, width, onDay, onNew, onOpen }: TimelineProps) {
   const { data, cabinLabel, now } = useAdmin();
   const calBlocks = useCalBlocks();
   const tip = useTip();
@@ -149,7 +153,7 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
   const rate = cell ? nightlyRate(cell.u.cabin, data.seasons, cell.d) : null;
 
   return (
-    <div className="flex min-h-[300px] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-panel">
+    <div className="flex min-h-[300px] flex-col overflow-hidden rounded-[22px] bg-panel">
       <div ref={scroller} className={`relative min-h-0 flex-1 overflow-auto overscroll-x-contain ${sel ? "cursor-col-resize select-none" : ""}`}>
         <div role="grid" aria-label="Ocupación por cabaña" aria-rowcount={lines.length + 1} className="grid" style={gridStyle}>
           {/* Encabezado de días */}
@@ -178,7 +182,7 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                     className={`max-w-full truncate text-[10.5px] font-semibold tracking-[.04em] uppercase ${isToday ? "text-ink" : "text-ink-subtle"}`}
                   />
                   <span
-                    className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-[12.5px] font-bold tabular-nums ${isToday ? "bg-ink text-white" : "text-ink"}`}
+                    className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-[12.5px] font-bold tabular-nums ${isToday ? "bg-ink text-paper" : "text-ink"}`}
                   >
                     {dt.getUTCDate()}
                   </span>
@@ -213,7 +217,7 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                         role="gridcell"
                         aria-label={text}
                         {...tip(() => text)}
-                        className={`@container flex items-center justify-center gap-1 border-b border-line bg-canvas px-0.5 ${i ? "border-l border-l-line/70" : ""} ${d === today ? "bg-highlight/12" : ""}`}
+                        className={`@container flex items-center justify-center gap-1 border-b border-line bg-canvas px-0.5 ${i ? "border-l border-l-line/70" : ""} ${d === today ? "bg-pink/30" : ""}`}
                         style={{ gridRow, gridColumn: `${2 + i * 2} / span 2` }}
                       >
                         <span className={`text-[11.5px] font-bold tabular-nums ${tone}`}>
@@ -239,6 +243,7 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
             }
 
             const { u } = line;
+            const bath = bathroomIssues(data, u.cabin.id, u.unit, from, to);
             return (
               <div key={u.key} role="row" className="contents">
                 <div
@@ -248,6 +253,25 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                 >
                   <span aria-hidden="true" className="h-5 w-[3px] flex-none rounded-full bg-line-strong" />
                   <span className="truncate text-[12.5px] font-semibold text-ink sm:text-[13px]">{compact ? u.short : u.label}</span>
+                  {bath.length > 0 && (
+                    <span
+                      tabIndex={0}
+                      role="img"
+                      aria-label={`Aviso de baño: ${bath.map((x) => x.text).join("; ")}`}
+                      {...tip(() => (
+                        <span className="flex flex-col gap-1">
+                          <strong className="text-[13px]">Aviso de baño</strong>
+                          {bath.map((x, k) => (
+                            <span key={k}>{x.text}</span>
+                          ))}
+                          <span className="opacity-70">La cabaña sigue disponible.</span>
+                        </span>
+                      ))}
+                      className="ml-auto grid size-6 flex-none place-items-center rounded-full bg-yellow text-ink ring-2 ring-panel"
+                    >
+                      <BathIcon size={13} />
+                    </span>
+                  )}
                 </div>
                 {days.map((d, i) => {
                   const wd = parseISO(d).getUTCDay();
@@ -257,7 +281,7 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                       key={d}
                       role="gridcell"
                       aria-label={isFree ? `${fmtDate(d)} libre` : undefined}
-                      className={`group relative border-b border-line ${i ? "border-l border-l-line/60" : ""} ${d === today ? "bg-highlight/10" : wd === 0 || wd === 6 ? "bg-canvas/60" : ""}`}
+                      className={`group relative border-b border-line ${i ? "border-l border-l-line/60" : ""} ${d === today ? "bg-pink/15" : wd === 0 || wd === 6 ? "bg-canvas/60" : ""}`}
                       style={{ gridRow, gridColumn: `${2 + i * 2} / span 2` }}
                     >
                       {isFree && d >= today && (
@@ -285,7 +309,7 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                             cellAnchor.current = e.currentTarget;
                             setCell({ u, d });
                           }}
-                          className="absolute inset-1 grid place-items-center rounded-lg text-ink-subtle opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-success-soft hover:text-success focus-visible:opacity-100 pointer-coarse:active:bg-ink/6 pointer-coarse:active:opacity-100"
+                          className="absolute inset-1 grid place-items-center rounded-[10px] text-ink-subtle opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-success-soft hover:text-success focus-visible:opacity-100 pointer-coarse:active:bg-ink/6 pointer-coarse:active:opacity-100"
                         >
                           <PlusIcon size={13} />
                         </button>
@@ -308,9 +332,9 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                         href={blockHref(b)}
                         aria-label={`Bloqueo ${b.reason}, ${fmtDate(b.from)} a ${fmtDate(b.to)}`}
                         {...tip(() => <BlockTip b={b} cabin={cabinLabel(b.cabinTypeId, b.unit)} />)}
-                        className={`@container relative z-1 my-auto flex h-[calc(100%-12px)] min-w-0 items-center gap-1.5 overflow-hidden px-2 text-left text-[12px] font-semibold text-ink-muted transition-[filter,box-shadow] duration-150 hover:shadow-panel hover:brightness-95 ${
-                          cut.l ? "rounded-l-none" : "ml-0.5 rounded-l-[7px]"
-                        } ${cut.r ? "rounded-r-none" : "mr-0.5 rounded-r-[7px]"}`}
+                        className={`@container relative z-1 my-auto flex h-[calc(100%-14px)] min-w-0 items-center gap-1.5 overflow-hidden px-2.5 text-left text-[12px] font-semibold text-ink-muted transition-[filter,box-shadow] duration-150 hover:shadow-panel hover:brightness-95 ${
+                          cut.l ? "rounded-l-none" : "ml-0.5 rounded-l-full"
+                        } ${cut.r ? "rounded-r-none" : "mr-0.5 rounded-r-full"}`}
                         style={{ gridRow, gridColumn: `${start} / ${end}`, ...blockStyle() }}
                       >
                         <BanIcon size={13} className="hidden flex-none @min-[48px]:block" />
@@ -318,6 +342,31 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                       </Link>
                     );
                   })}
+
+                {/* Bloqueos de los baños de esta unidad: franja al pie de la fila; la cabaña se sigue pudiendo reservar. */}
+                {(data.bathroomBlocks ?? []).map((k) => {
+                  const b = (data.bathrooms ?? []).find((x) => x.id === k.bathroomId);
+                  if (!b || b.cabinTypeId !== u.cabin.id || (b.unit !== null && b.unit !== u.unit) || k.to < from || k.from > to) return null;
+                  const start = k.from < from ? 2 : 2 + idx(k.from) * 2;
+                  const end = k.to > to ? 2 + n * 2 : 2 + (idx(k.to) + 1) * 2;
+                  const text = `${b.name}: bloqueado del ${fmtDate(k.from)} al ${fmtDate(k.to)} · ${k.notes ? `${k.reason}, ${k.notes}` : k.reason}`;
+                  return (
+                    <span
+                      key={`bath-${k.id}`}
+                      role="img"
+                      aria-label={text}
+                      {...tip(() => (
+                        <span className="flex flex-col gap-1">
+                          <strong className="text-[13px]">Aviso de baño</strong>
+                          <span>{text}</span>
+                          <span className="opacity-70">La cabaña sigue disponible.</span>
+                        </span>
+                      ))}
+                      className="relative z-3 mx-1 mb-[3px] h-[5px] self-end rounded-full bg-[repeating-linear-gradient(90deg,var(--color-yellow-deep)_0_7px,transparent_7px_10px)]"
+                      style={{ gridRow, gridColumn: `${start} / ${end}` }}
+                    />
+                  );
+                })}
 
                 {/* Reservas: de la tarde de llegada a la mañana de salida */}
                 {visible
@@ -336,26 +385,33 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                         key={r.code}
                         href={paths.reserva(r.code)}
                         aria-label={`${r.guest.fullName}, ${r.code}, ${statusOf(r.status).label}, ${fmtDate(r.checkIn)} a ${fmtDate(r.checkOut)}`}
+                        onClick={openInModal(onOpen, r.code)}
                         {...tip(() => <ReservationTip r={r} cabin={cabinLabel(r.cabinTypeId, r.unit)} />)}
-                        className={`@container relative z-2 my-auto flex h-[calc(100%-12px)] min-w-0 items-center gap-1.5 overflow-hidden text-left text-ink transition-[filter,box-shadow,transform] duration-150 hover:z-3 hover:shadow-panel hover:brightness-[.97] motion-safe:hover:-translate-y-px ${narrowBar ? "px-1" : "pr-1.5 pl-2.5"} ${
-                          cut.l ? "rounded-l-none" : "rounded-l-[7px]"
-                        } ${cut.r ? "rounded-r-none" : "rounded-r-[7px]"} ${r.status === "completed" ? "opacity-75" : ""}`}
+                        className={`@container relative z-2 my-auto flex h-[calc(100%-14px)] min-w-0 items-center gap-1.5 overflow-hidden text-left text-ink transition-[filter,box-shadow,transform] duration-150 hover:z-3 hover:shadow-panel hover:brightness-[.97] motion-safe:hover:-translate-y-px ${narrowBar ? "px-1" : "pr-1.5 pl-1.5"} ${
+                          cut.l ? "rounded-l-none" : "rounded-l-full"
+                        } ${cut.r ? "rounded-r-none" : "rounded-r-full"} ${r.status === "completed" ? "opacity-80" : ""}`}
                         style={{ gridRow, gridColumn: `${start} / ${end}`, ...barStyle(r) }}
                       >
-                        {/* El contenido crece con el ancho de la barra: nombre → noches y código → lo que falta por cobrar o el plazo. */}
-                        <span className="flex min-w-0 flex-1 flex-col justify-center">
+                        {/* El contenido crece con el ancho de la barra: iniciales y nombre → noches y código → lo que falta por cobrar o el plazo. */}
+                        <span
+                          aria-hidden="true"
+                          className="hidden size-7 flex-none place-items-center rounded-full bg-paper/80 text-[10.5px] font-bold text-ink @min-[104px]:grid"
+                        >
+                          {initialsOf(r.guest.fullName)}
+                        </span>
+                        <span className={`flex min-w-0 flex-1 flex-col justify-center ${narrowBar ? "" : "pl-1 @min-[104px]:pl-0"}`}>
                           <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] leading-tight font-bold">
                             {r.status === "checked_in" && <span aria-hidden="true" className="size-1.5 flex-none rounded-full bg-success" />}
                             <span className="truncate @min-[120px]:hidden">{first}</span>
                             <span className="hidden truncate @min-[120px]:inline">{r.guest.fullName}</span>
                           </span>
-                          <span className="hidden truncate text-[11px] leading-tight text-ink-muted @min-[96px]:block">
+                          <span className="hidden truncate text-[11px] leading-tight text-ink/70 @min-[96px]:block">
                             {plural(nightsBetween(r.checkIn, r.checkOut), "noche", "noches")} · {r.code}
                             {!pending && owed > 0 ? <span className="hidden @min-[200px]:inline">{` · debe ${cop(owed)}`}</span> : null}
                           </span>
                         </span>
                         {pending && (
-                          <span className="hidden flex-none items-center gap-0.5 rounded-full bg-white/80 px-1.5 py-px text-[10.5px] font-bold text-warning tabular-nums @min-[86px]:inline-flex">
+                          <span className="hidden flex-none items-center gap-0.5 rounded-full bg-paper/85 px-1.5 py-px text-[10.5px] font-bold text-warning tabular-nums @min-[86px]:inline-flex">
                             <ClockIcon size={11} />
                             {shortLeft(r.depositDueAt, now)}
                           </span>
@@ -369,7 +425,7 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew }: Timel
                   (() => {
                     const [lo, hi] = sel.a < sel.b ? [sel.a, sel.b] : [sel.b, sel.a];
                     const nights = nightsBetween(lo, hi) + 1;
-                    const q = computeQuote(u.cabin, lo, addDays(hi, 1), 2, data.seasons);
+                    const q = computeQuote(u.cabin, lo, addDays(hi, 1), 2, data.seasons, data.site.settings.depositPct);
                     return (
                       <div
                         aria-hidden="true"

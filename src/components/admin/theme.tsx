@@ -64,7 +64,7 @@ export function ThemeEditor({ theme, saved, onChange }: { theme: SiteTheme; save
                     type="button"
                     aria-pressed={on}
                     onClick={() => onChange({ ...p.theme })}
-                    className={`flex h-full w-full flex-col gap-2 rounded-xl border p-2 text-left transition-[border-color,box-shadow] duration-150 ${on ? "border-focus ring-4 ring-focus/15" : "border-line hover:border-ink-subtle"}`}
+                    className={`flex h-full w-full flex-col gap-2 rounded-[18px] border p-2 text-left transition-[border-color,box-shadow,background-color] duration-150 ${on ? "border-ink bg-paper ring-4 ring-ink/10" : "border-transparent bg-canvas/60 hover:border-line-strong"}`}
                   >
                     <Swatches t={p.theme} />
                     <span className="flex flex-col gap-0.5 px-0.5 pb-0.5">
@@ -146,7 +146,7 @@ function ContrastIssues({ theme, issues, className = "" }: { theme: SiteTheme; i
 function Swatches({ t }: { t: SiteTheme }) {
   const keys: ThemeKey[] = ["bg", "surface", "card", "accent", "highlight"];
   return (
-    <span aria-hidden="true" className="flex h-8 overflow-hidden rounded-lg ring-1 ring-black/10">
+    <span aria-hidden="true" className="flex h-8 overflow-hidden rounded-[12px] ring-1 ring-black/10">
       {keys.map((k) => (
         <span key={k} className="flex-1" style={{ background: t[k] }} />
       ))}
@@ -168,9 +168,9 @@ function ColorField({ k, value, onChange }: { k: ThemeKey; value: string; onChan
   const changed = value !== DEFAULT_THEME[k];
 
   return (
-    <div className="flex min-w-0 gap-3 rounded-xl border border-line p-3">
+    <div className="flex min-w-0 gap-3 rounded-[16px] bg-canvas/60 p-3">
       <label
-        className="relative size-11 flex-none cursor-pointer overflow-hidden rounded-lg ring-1 ring-black/15 focus-within:ring-2 focus-within:ring-focus"
+        className="relative size-11 flex-none cursor-pointer overflow-hidden rounded-full ring-1 ring-black/15 focus-within:ring-2 focus-within:ring-focus"
         style={{ background: value }}
       >
         <span className="sr-only">{`Elegir color: ${f.label}`}</span>
@@ -316,7 +316,7 @@ function ThemePreview({ theme, issues, unpublished }: { theme: SiteTheme; issues
       >
         {scale > 0 && (
           <div
-            className="mx-auto overflow-hidden rounded-xl bg-panel shadow-panel ring-1 ring-line-strong"
+            className="mx-auto overflow-hidden rounded-[16px] bg-panel shadow-panel ring-1 ring-line-strong"
             style={{ width: Math.floor(d.width * scale), height: shown }}
           >
             {/* Es una ruta de este mismo sitio: el panel puede escribir en su documento. Al navegar dentro del marco se

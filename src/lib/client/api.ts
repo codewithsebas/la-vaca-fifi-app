@@ -7,6 +7,16 @@ import type {
   AdminData,
   AdminNotification,
   ApiResult,
+  Bathroom,
+  BathroomBlock,
+  BathroomBlockInput,
+  BathroomInput,
+  Employee,
+  EmployeeInput,
+  ImportResult,
+  ImportRow,
+  PanelUser,
+  ProfileInput,
   Availability,
   Block,
   BlockInput,
@@ -26,6 +36,7 @@ import type {
   Reservation,
   ReservationInput,
   SeasonInput,
+  PaymentTerms,
   SiteInput,
 } from "@/lib/types";
 import type { NotificationGroup } from "@/lib/notification-groups";
@@ -158,6 +169,7 @@ export const api = {
     retryEmail: (id: string) => request<EmailRecord | ApiError>("POST", "/admin/emails", { body: { action: "retry", id } }),
     reset: () => request<object>("POST", "/admin/reset"),
     saveSite: (b: SiteInput) => request<SiteContent>("PUT", "/admin/site", { body: b }),
+    savePaymentTerms: (b: PaymentTerms) => request<SiteContent>("PUT", "/admin/payment-terms", { body: b }),
     uploadPhoto: (slot: string, file: Blob, name: string) => upload<Record<string, string>>("/admin/photos", formOf({ slot, file }, name)),
     deletePhoto: (slot: string) => request<Record<string, string>>("DELETE", "/admin/photos", { query: { slot } }),
     // Servicios del sitio: cada operación responde con la lista completa en orden.
@@ -177,5 +189,27 @@ export const api = {
       test: (endpoint: string) => request<{ ok: true } | ApiError>("POST", "/admin/push", { body: { action: "test", endpoint } }),
       unsubscribe: (endpoint: string) => request<{ ok: true } | ApiError>("DELETE", "/admin/push", { query: { endpoint } }),
     },
+    // Baños y sus bloqueos: cada operación responde con las dos listas completas.
+    bathrooms: {
+      create: (b: BathroomInput) => request<Bathrooms | ValidationError>("POST", "/admin/bathrooms", { body: b }),
+      update: (b: BathroomInput) => request<Bathrooms | ValidationError>("PUT", "/admin/bathrooms", { body: b }),
+      remove: (id: string) => request<Bathrooms>("DELETE", "/admin/bathrooms", { query: { id } }),
+    },
+    bathroomBlocks: {
+      create: (b: BathroomBlockInput) => request<Bathrooms | ApiError>("POST", "/admin/bathroom-blocks", { body: b }),
+      update: (b: BathroomBlockInput) => request<Bathrooms | ApiError>("PUT", "/admin/bathroom-blocks", { body: b }),
+      remove: (id: string) => request<Bathrooms>("DELETE", "/admin/bathroom-blocks", { query: { id } }),
+    },
+    // Empleados (solo administradores): cada operación responde con la lista completa.
+    employees: {
+      list: () => request<Employee[]>("GET", "/admin/employees"),
+      create: (b: EmployeeInput) => request<Employee[] | ValidationError | ApiError>("POST", "/admin/employees", { body: b }),
+      update: (b: EmployeeInput) => request<Employee[] | ValidationError | ApiError>("PUT", "/admin/employees", { body: b }),
+      remove: (id: string) => request<Employee[] | ApiError>("DELETE", "/admin/employees", { query: { id } }),
+    },
+    profile: (b: ProfileInput) => request<{ me: PanelUser } | ValidationError>("PUT", "/admin/profile", { body: b }),
+    importReservations: (rows: ImportRow[]) => request<{ results: ImportResult[] } | ApiError>("POST", "/admin/import", { body: { rows } }),
   },
 };
+
+export type Bathrooms = { bathrooms: Bathroom[]; blocks: BathroomBlock[] };

@@ -4,7 +4,7 @@ import { LoginIcon } from "@/components/ui/icons";
 import { addDays, fmtDate, parseISO, plural, statusOf } from "@/lib/format";
 import { useAdmin } from "@/components/admin/context";
 import { useTip } from "@/components/ui/floating";
-import { DayName, type Unit, blocks, lastOfMonth, mondayOf, occupies, useCalBlocks } from "@/components/admin/calendar/shared";
+import { DayName, type Unit, barColor, blocks, lastOfMonth, mondayOf, occupies, useCalBlocks } from "@/components/admin/calendar/shared";
 
 // Cada día muestra una franja por unidad (reserva, bloqueo o libre) y cuántas quedan libres. Tocar un día abre su agenda.
 export function MonthGrid({ month, rows, today, onPick }: { month: string; rows: Unit[]; today: string; onPick: (d: string) => void }) {
@@ -25,7 +25,7 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-panel">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] bg-panel">
       <div role="row" className="grid grid-cols-7 border-b border-line bg-canvas/70">
         {[1, 2, 3, 4, 5, 6, 0].map((wd) => (
           <div key={wd} role="columnheader" className="@container py-2 text-center">
@@ -61,7 +61,7 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
             >
               <span className="flex items-center justify-between gap-1">
                 <span
-                  className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-[12.5px] font-bold tabular-nums ${d === today ? "bg-ink text-white" : inMonth ? "text-ink" : "text-ink-subtle"}`}
+                  className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-[12.5px] font-bold tabular-nums ${d === today ? "bg-ink text-paper" : inMonth ? "text-ink" : "text-ink-subtle"}`}
                 >
                   {parseISO(d).getUTCDate()}
                 </span>
@@ -86,8 +86,8 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
                       style={
                         s.kind === "res"
                           ? s.r.status === "pending_deposit"
-                            ? { background: `repeating-linear-gradient(90deg, ${statusOf(s.r.status).bg} 0 4px, transparent 4px 6px)` }
-                            : { background: `color-mix(in srgb, ${statusOf(s.r.status).bg} 100%, black ${s.r.status === "completed" ? 30 : 12}%)` }
+                            ? { background: `repeating-linear-gradient(90deg, ${barColor(s.r.status)} 0 4px, transparent 4px 6px)` }
+                            : { background: barColor(s.r.status) }
                           : s.kind === "block"
                             ? { background: "repeating-linear-gradient(135deg, var(--color-status-block) 0 3px, transparent 3px 5px)" }
                             : { background: "color-mix(in srgb, var(--color-ink) 7%, transparent)" }

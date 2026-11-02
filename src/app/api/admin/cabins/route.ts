@@ -45,7 +45,7 @@ const done = async (sb: Db) => {
 
 // POST /api/admin/cabins → crea una cabaña (el id sale del nombre y no cambia después).
 export const POST = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const b = await readJson<CabinInput>(req);
   const v = clean(b);
@@ -65,7 +65,7 @@ export const POST = route(async (req: NextRequest) => {
 
 // PUT /api/admin/cabins { id, ...datos } → edita. No deja reducir unidades que tienen reservas o bloqueos vigentes.
 export const PUT = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const b = await readJson<CabinInput & { id: string }>(req);
   const v = clean(b);
@@ -100,7 +100,7 @@ export const PUT = route(async (req: NextRequest) => {
 
 // PATCH /api/admin/cabins { order: [ids] } → nuevo orden en el sitio y en el panel.
 export const PATCH = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const b = await readJson<{ order: string[] }>(req);
   const { rows } = await loadCabinTypes(sb);
@@ -117,7 +117,7 @@ export const PATCH = route(async (req: NextRequest) => {
 
 // DELETE /api/admin/cabins?id= → solo si nunca tuvo reservas (si las tuvo, se desactiva en su lugar).
 export const DELETE = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id") ?? "";
   const { data: current } = await sb.from("cabin_types").select("fotos").eq("id", id).maybeSingle().throwOnError();

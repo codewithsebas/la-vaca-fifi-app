@@ -1,32 +1,83 @@
 "use client";
 
-// Piezas reutilizables del panel. Se apoyan en las clases base del sitio (.btn, .field-input) para no duplicarlas.
+// Piezas reutilizables del panel: el sistema de diseño del panel (fondo crema, tarjetas arena, negro para las acciones
+// principales y pasteles para destacar). Todas las páginas del panel se arman con ellas.
 import Link from "next/link";
-import { useEffect, useId, useRef, type ButtonHTMLAttributes, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { AlertIcon, CheckIcon, CloseIcon, InfoIcon, WarningIcon } from "@/components/ui/icons";
+import { useLabelTip } from "@/components/ui/floating";
+
+/* ───────────── Acentos ───────────── */
+
+// Los cuatro pasteles del panel: fondo pleno (tarjetas destacadas, iconos), suave (etiquetas) y profundo (decoración).
+export type Accent = "pink" | "yellow" | "green" | "blue";
+export const ACCENT: Record<Accent, { bg: string; soft: string; deep: string }> = {
+  pink: { bg: "bg-pink", soft: "bg-pink-soft", deep: "fill-pink-deep" },
+  yellow: { bg: "bg-yellow", soft: "bg-yellow-soft", deep: "fill-yellow-deep" },
+  green: { bg: "bg-green", soft: "bg-green-soft", deep: "fill-green-deep" },
+  blue: { bg: "bg-blue", soft: "bg-blue-soft", deep: "fill-blue-deep" },
+};
+
+// Formas grandes y suaves en la esquina de las tarjetas destacadas (decoración: no llevan información).
+const BURST = Array.from({ length: 16 }, (_, i) => {
+  const r = i % 2 ? 6.4 : 11.6;
+  const a = (Math.PI / 8) * i - Math.PI / 2;
+  return `${(12 + r * Math.cos(a)).toFixed(2)},${(12 + r * Math.sin(a)).toFixed(2)}`;
+}).join(" ");
+const SHAPE: Record<Accent, ReactNode> = {
+  yellow: (
+    <path d="M9 2h6a1 1 0 0 1 1 1v5h5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-5v5a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-5H3a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5V3a1 1 0 0 1 1-1z" />
+  ),
+  pink: <path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4 6.4 4c2.3 0 3.9 1.3 5.6 3.4C13.7 5.3 15.3 4 17.6 4 21.7 4 23.6 8.4 22 11.7 19.5 16.4 12 21 12 21z" />,
+  green: <path d="M12 3.5c.6 0 1.1.3 1.4.8l8.4 14.6c.6 1.1-.2 2.4-1.4 2.4H3.6c-1.2 0-2-1.3-1.4-2.4L10.6 4.3c.3-.5.8-.8 1.4-.8z" />,
+  blue: <polygon points={BURST} />,
+};
+
+export function Deco({ accent, className = "" }: { accent: Accent; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={`pointer-events-none absolute -z-10 ${ACCENT[accent].deep} opacity-70 ${className}`}>
+      {SHAPE[accent]}
+    </svg>
+  );
+}
 
 /* ───────────── Botones ───────────── */
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "danger-ghost";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "danger-ghost" | "accent";
 type Size = "sm" | "md" | "lg";
 
 const VARIANT: Record<Variant, string> = {
-  primary: "btn-cta",
-  secondary: "bg-panel text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] hover:not-disabled:bg-canvas",
+  primary: "bg-ink text-paper hover:not-disabled:bg-ink/85",
+  secondary: "bg-paper/55 text-ink ring-1 ring-line-strong ring-inset hover:not-disabled:bg-paper hover:not-disabled:ring-ink-subtle",
   ghost: "bg-transparent text-ink hover:not-disabled:bg-ink/6",
-  danger: "bg-error text-white hover:not-disabled:bg-[color-mix(in_srgb,var(--color-error)_86%,#000)]",
+  danger: "bg-error text-paper hover:not-disabled:bg-[color-mix(in_srgb,var(--color-error)_86%,#000)]",
   "danger-ghost": "bg-transparent text-error hover:not-disabled:bg-error-soft",
+  accent: "bg-pink text-ink hover:not-disabled:bg-pink-deep",
 };
 const SIZE: Record<Size, string> = {
-  sm: "h-8 gap-1.5 px-3 text-[13px] pointer-coarse:h-10",
-  md: "h-10 gap-2 px-4 text-[14px] pointer-coarse:h-11",
-  lg: "h-12 gap-2.5 px-5 text-[15px]",
+  sm: "h-8 gap-1.5 px-3.5 text-[13px] pointer-coarse:h-10",
+  md: "h-10 gap-2 px-5 text-[14px] pointer-coarse:h-11",
+  lg: "h-12 gap-2.5 px-6 text-[15px]",
 };
 const ICON_SIZE: Record<Size, string> = { sm: "size-8 pointer-coarse:size-10", md: "size-10 pointer-coarse:size-11", lg: "size-12" };
+const PRESS = "transition-[background-color,color,box-shadow,transform] duration-150 motion-safe:active:not-disabled:scale-[.97]";
 
-// Clases de botón para usar también en enlaces (<a>).
+// Clases de botón para usar también en enlaces (<a>): píldora, sin borde salvo la variante secundaria.
 export const buttonClass = (variant: Variant = "secondary", size: Size = "md", extra = "") =>
-  `btn ${VARIANT[variant]} ${SIZE[size]} font-semibold whitespace-nowrap transition-[background-color,color,box-shadow,transform] duration-150 motion-safe:active:not-disabled:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50 ${extra}`;
+  `inline-flex items-center justify-center rounded-full ${VARIANT[variant]} ${SIZE[size]} font-semibold whitespace-nowrap select-none ${PRESS} disabled:cursor-not-allowed disabled:opacity-45 ${extra}`;
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; loading?: boolean; icon?: ReactNode };
 
@@ -57,7 +108,11 @@ export function Button({
   );
 }
 
-// Botón solo con icono: siempre con nombre accesible.
+// Clases de un botón redondo solo con icono (también para enlaces).
+export const iconButtonClass = (variant: Variant = "ghost", size: Size = "md", extra = "") =>
+  `inline-grid flex-none place-items-center rounded-full ${VARIANT[variant]} ${ICON_SIZE[size]} ${PRESS} disabled:cursor-not-allowed disabled:opacity-40 ${extra}`;
+
+// Botón solo con icono: siempre con nombre accesible y, al pasar el ratón o con el teclado, el tooltip del panel.
 export function IconButton({
   label,
   variant = "ghost",
@@ -65,16 +120,16 @@ export function IconButton({
   className = "",
   children,
   type = "button",
+  onPointerEnter,
+  onPointerLeave,
+  onPointerDown,
+  onFocus,
+  onBlur,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; variant?: Variant; size?: Size }) {
+  const tip = useLabelTip(label, { onPointerEnter, onPointerLeave, onPointerDown, onFocus, onBlur } as Parameters<typeof useLabelTip>[1]);
   return (
-    <button
-      type={type}
-      aria-label={label}
-      title={label}
-      className={`btn-icon ${VARIANT[variant]} ${ICON_SIZE[size]} transition-[background-color,color,box-shadow,transform] duration-150 disabled:cursor-not-allowed disabled:opacity-40 motion-safe:active:not-disabled:scale-95 ${className}`}
-      {...rest}
-    >
+    <button type={type} aria-label={label} className={iconButtonClass(variant, size, className)} {...tip} {...rest}>
       {children}
     </button>
   );
@@ -139,20 +194,22 @@ export function FieldError({ id, children }: { id?: string; children: ReactNode 
 
 /* ───────────── Contenedores ───────────── */
 
+// Tarjeta del panel: arena sobre el fondo crema, sin borde ni sombra.
 export function Card({ className = "", children, ...rest }: HTMLAttributes<HTMLElement>) {
   return (
-    <section className={`rounded-2xl border border-line bg-panel shadow-panel ${className}`} {...rest}>
+    <section className={`rounded-[22px] bg-panel ${className}`} {...rest}>
       {children}
     </section>
   );
 }
 
-// Cabecera de tarjeta: icono opcional, título, subtítulo y acciones a la derecha.
+// Cabecera de tarjeta: icono opcional (en un círculo; de color con `accent`), título, subtítulo y acciones a la derecha.
 export function CardHeader({
   id,
   title,
   subtitle,
   icon,
+  accent,
   actions,
   className = "",
 }: {
@@ -160,6 +217,7 @@ export function CardHeader({
   title: ReactNode;
   subtitle?: ReactNode;
   icon?: ReactNode;
+  accent?: Accent;
   actions?: ReactNode;
   className?: string;
 }) {
@@ -167,12 +225,12 @@ export function CardHeader({
     <div className={`flex flex-wrap items-start justify-between gap-x-4 gap-y-2 ${className}`}>
       <div className={`flex min-w-0 gap-3 ${subtitle ? "items-start" : "items-center"}`}>
         {icon && (
-          <span aria-hidden="true" className="grid size-9 flex-none place-items-center rounded-xl bg-canvas text-ink">
+          <span aria-hidden="true" className={`grid size-10 flex-none place-items-center rounded-full text-ink ${accent ? ACCENT[accent].bg : "bg-paper"}`}>
             {icon}
           </span>
         )}
-        <div className="min-w-0">
-          <h2 id={id} className="text-[15px] leading-tight font-bold text-ink">
+        <div className={`min-w-0 ${icon && subtitle ? "pt-0.5" : ""}`}>
+          <h2 id={id} className="text-[16px] leading-tight font-bold tracking-[-0.01em] text-ink">
             {title}
           </h2>
           {subtitle && <p className="mt-0.5 text-[13px] text-ink-muted">{subtitle}</p>}
@@ -198,9 +256,9 @@ export function EmptyState({
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong text-center ${compact ? "px-4 py-6" : "px-6 py-12"}`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-[18px] border border-dashed border-line-strong text-center ${compact ? "px-4 py-6" : "px-6 py-12"}`}
     >
-      <span aria-hidden="true" className="mb-1 grid size-10 place-items-center rounded-full bg-canvas text-ink-muted">
+      <span aria-hidden="true" className="mb-1 grid size-11 place-items-center rounded-full bg-paper text-ink-muted">
         {icon}
       </span>
       <p className="text-[14px] font-semibold text-ink">{title}</p>
@@ -223,8 +281,8 @@ export function ErrorState({
   action?: ReactNode;
 }) {
   return (
-    <div role="alert" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-error/25 bg-error-soft/40 px-6 py-12 text-center">
-      <span aria-hidden="true" className="mb-1 grid size-10 place-items-center rounded-full bg-error-soft text-error">
+    <div role="alert" className="flex flex-col items-center justify-center gap-2 rounded-[22px] bg-error-soft/55 px-6 py-12 text-center">
+      <span aria-hidden="true" className="mb-1 grid size-11 place-items-center rounded-full bg-paper text-error">
         <AlertIcon size={19} />
       </span>
       <p className="text-[15px] font-bold text-ink">{title}</p>
@@ -248,21 +306,21 @@ export function PageSkeleton() {
   return (
     <div role="status" aria-label="Cargando la página" className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
-        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-9 w-64" />
         <Skeleton className="h-4 w-80 max-w-full" />
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-[104px]" />
+          <Skeleton key={i} className="h-[120px] rounded-[22px]" />
         ))}
       </div>
-      <Skeleton className="h-[320px]" />
+      <Skeleton className="h-[320px] rounded-[22px]" />
     </div>
   );
 }
 
 const CALLOUT = {
-  info: { cls: "bg-canvas text-ink", icon: <InfoIcon size={17} /> },
+  info: { cls: "bg-paper/70 text-ink ring-1 ring-line ring-inset", icon: <InfoIcon size={17} /> },
   warning: { cls: "bg-warning-soft text-warning", icon: <WarningIcon size={17} /> },
   error: { cls: "bg-error-soft text-error", icon: <AlertIcon size={17} /> },
   success: { cls: "bg-success-soft text-success", icon: <CheckIcon size={17} /> },
@@ -280,7 +338,7 @@ export function Callout({
   role?: "alert" | "status";
 }) {
   return (
-    <div role={role} className={`flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-[13.5px] leading-snug ${CALLOUT[tone].cls} ${className}`}>
+    <div role={role} className={`flex items-start gap-2.5 rounded-[16px] px-4 py-3 text-[13.5px] leading-snug ${CALLOUT[tone].cls} ${className}`}>
       <span aria-hidden="true" className="mt-px flex-none">
         {CALLOUT[tone].icon}
       </span>
@@ -294,7 +352,7 @@ export function Callout({
 export function CountBadge({ n, tone = "muted", label }: { n: number; tone?: "muted" | "attention"; label?: string }) {
   return (
     <span
-      className={`inline-grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11.5px] font-bold tabular-nums ${tone === "attention" ? "bg-highlight text-on-light" : "bg-ink/7 text-ink-muted"}`}
+      className={`inline-grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11.5px] font-bold tabular-nums ${tone === "attention" ? "bg-pink text-ink" : "bg-ink/8 text-ink-muted"}`}
     >
       <span>
         {n}
@@ -324,15 +382,15 @@ export function SaveBar({ dirty, onDiscard, onSave, saveLabel }: { dirty: boolea
     };
   }, []);
   return (
-    // lg:left-[248px]: ancho de la barra lateral del panel (shell.tsx).
+    // --admin-sidebar: lo que ocupa la barra lateral del panel en escritorio (shell.tsx).
     <div
       ref={bar}
       data-savebar
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/92 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-panel/80 lg:left-[248px]"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/92 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-canvas/80 lg:left-[var(--admin-sidebar,264px)]"
     >
-      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8">
         <p aria-live="polite" className="flex items-center gap-2 text-[13.5px] font-medium text-ink-muted">
-          <span aria-hidden="true" className={`size-2 rounded-full transition-colors ${dirty ? "bg-highlight" : "bg-line-strong"}`} />
+          <span aria-hidden="true" className={`size-2 rounded-full transition-colors ${dirty ? "bg-pink-deep" : "bg-line-strong"}`} />
           {dirty ? "Tienes cambios sin guardar" : "Sin cambios pendientes"}
         </p>
         <div className="flex gap-2">
@@ -352,6 +410,27 @@ export function SaveBar({ dirty, onDiscard, onSave, saveLabel }: { dirty: boolea
 
 /* ───────────── Ventanas modales ───────────── */
 
+// Entrada y salida: cada ventana se cierra con la misma animación con la que se abrió, al revés (globals.css).
+const MOTION = {
+  pop: "motion-safe:open:not-data-closing:animate-pop-in motion-safe:data-closing:animate-pop-out",
+  drawer: "motion-safe:open:not-data-closing:animate-slide-in-left motion-safe:data-closing:animate-slide-out-left",
+};
+// Respaldo por si el navegador no avisa el fin de la salida (pestaña en segundo plano).
+const EXIT_FALLBACK_MS = 420;
+
+const Presence = createContext<{ leaving: boolean; done: () => void } | null>(null);
+
+// Envuelve una ventana que se muestra y se quita ({abierta && <Editor />}): al quitarla la deja montada mientras sale y
+// después la retira. Así sale animada con cualquier cierre: Escape, clic en el fondo, Cancelar o después de guardar.
+export function ModalPresence({ children }: { children: ReactNode }) {
+  const [shown, setShown] = useState(children);
+  if (children && children !== shown) setShown(children);
+  const leaving = !children && !!shown;
+  const done = useCallback(() => setShown(null), []);
+  const value = useMemo(() => ({ leaving, done }), [leaving, done]);
+  return <Presence value={value}>{children || shown}</Presence>;
+}
+
 type ModalProps = {
   onClose: () => void;
   labelledBy: string;
@@ -359,14 +438,28 @@ type ModalProps = {
   role?: "dialog" | "alertdialog";
   initialFocus?: string; // selector del elemento que recibe el foco al abrir
   dismissOnBackdrop?: boolean;
+  motion?: keyof typeof MOTION; // pop: ventana centrada · drawer: cajón desde la izquierda
   className?: string;
   children: ReactNode;
 };
 
 // <dialog> nativo: atrapa el foco, Escape lo cierra y deja inerte el fondo. Al cerrarse devuelve el foco a quien lo abrió.
-export function Modal({ onClose, labelledBy, describedBy, role = "dialog", initialFocus, dismissOnBackdrop, className = "", children }: ModalProps) {
+// Dentro de <ModalPresence> sale animada antes de desmontarse.
+export function Modal({
+  onClose,
+  labelledBy,
+  describedBy,
+  role = "dialog",
+  initialFocus,
+  dismissOnBackdrop,
+  motion = "pop",
+  className = "",
+  children,
+}: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const close = useRef(onClose);
+  const presence = useContext(Presence);
+  const leaving = !!presence?.leaving;
   useEffect(() => {
     close.current = onClose;
   });
@@ -380,6 +473,13 @@ export function Modal({ onClose, labelledBy, describedBy, role = "dialog", initi
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, [initialFocus]);
+  // Al salir se retira cuando termina la animación (onAnimationEnd); sin animación (ya cerrada o movimiento reducido), enseguida.
+  useEffect(() => {
+    if (!leaving || !presence) return;
+    const still = !ref.current?.open || matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t = setTimeout(presence.done, still ? 0 : EXIT_FALLBACK_MS);
+    return () => clearTimeout(t);
+  }, [leaving, presence]);
   return (
     <dialog
       ref={ref}
@@ -387,9 +487,17 @@ export function Modal({ onClose, labelledBy, describedBy, role = "dialog", initi
       aria-modal="true"
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
+      data-closing={leaving || undefined}
+      // Escape: el mismo cierre animado (se evita el cierre inmediato del navegador, cuando lo permite).
+      onCancel={(e) => {
+        if (!e.cancelable) return;
+        e.preventDefault();
+        close.current();
+      }}
       onClose={() => close.current()}
       onClick={(e) => dismissOnBackdrop && e.target === e.currentTarget && close.current()}
-      className={`admin-surface bg-panel text-ink shadow-overlay backdrop:bg-[rgb(10_28_20/0.45)] motion-safe:backdrop:animate-fade-in ${className}`}
+      onAnimationEnd={(e) => leaving && e.target === e.currentTarget && !e.pseudoElement && presence?.done()}
+      className={`admin-surface bg-paper text-ink shadow-overlay backdrop:bg-[rgb(23_22_20/0.42)] backdrop:backdrop-blur-[2px] data-closing:pointer-events-none motion-safe:backdrop:animate-fade-in motion-safe:data-closing:backdrop:animate-fade-out ${MOTION[motion]} ${className}`}
     >
       {children}
     </dialog>
@@ -410,11 +518,11 @@ export function Toasts({ toast, onDismiss }: { toast: ToastMsg | null; onDismiss
         <div
           key={toast.id}
           role={toast.kind === "error" ? "alert" : "status"}
-          className="pointer-events-auto flex max-w-[420px] items-center gap-3 rounded-xl bg-ink py-2.5 pr-2 pl-3.5 text-[14px] font-medium text-white shadow-overlay motion-safe:animate-slide-up"
+          className="pointer-events-auto flex max-w-[420px] items-center gap-3 rounded-[18px] bg-ink py-2.5 pr-2 pl-3 text-[14px] font-medium text-paper shadow-overlay motion-safe:animate-slide-up"
         >
           <span
             aria-hidden="true"
-            className={`grid size-6 flex-none place-items-center rounded-full ${toast.kind === "error" ? "bg-status-cancelled text-on-light" : "bg-accent text-on-light"}`}
+            className={`grid size-7 flex-none place-items-center rounded-full text-ink ${toast.kind === "error" ? "bg-status-cancelled" : "bg-pink"}`}
           >
             {toast.kind === "error" ? <AlertIcon size={15} /> : <CheckIcon size={14} />}
           </span>
@@ -426,7 +534,7 @@ export function Toasts({ toast, onDismiss }: { toast: ToastMsg | null; onDismiss
                 toast.action!.onClick();
                 onDismiss();
               }}
-              className="rounded-lg px-2.5 py-1 text-[13px] font-bold text-highlight transition-colors [--ring:var(--color-highlight)] hover:bg-white/10"
+              className="rounded-full px-3 py-1 text-[13px] font-bold text-pink transition-colors [--ring:var(--color-pink)] hover:bg-paper/12"
             >
               {toast.action.label}
             </button>
@@ -435,7 +543,7 @@ export function Toasts({ toast, onDismiss }: { toast: ToastMsg | null; onDismiss
             type="button"
             onClick={onDismiss}
             aria-label="Cerrar aviso"
-            className="btn-icon size-8 text-white/70 transition-colors [--ring:var(--color-highlight)] hover:bg-white/10 hover:text-white"
+            className="grid size-8 flex-none place-items-center rounded-full text-paper/70 transition-colors [--ring:var(--color-pink)] hover:bg-paper/12 hover:text-paper"
           >
             <CloseIcon size={16} />
           </button>
@@ -469,7 +577,7 @@ export function Breadcrumbs({ items, className = "" }: { items: Crumb[]; classNa
                   {c.label}
                 </span>
               ) : (
-                <Link href={c.href} className="truncate rounded-[6px] px-1 py-0.5 transition-colors hover:bg-ink/6 hover:text-ink">
+                <Link href={c.href} className="truncate rounded-full px-1.5 py-0.5 transition-colors hover:bg-ink/6 hover:text-ink">
                   <span aria-hidden="true" className="mr-0.5 sm:hidden">
                     ‹
                   </span>
@@ -488,14 +596,10 @@ export function PageHeader({ title, description, actions, children }: { title: s
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
-        <h1
-          id="ad-title"
-          tabIndex={-1}
-          className="text-[clamp(1.45rem,2.2vw,1.8rem)] leading-tight font-extrabold tracking-[-0.015em] text-ink focus:outline-none"
-        >
+        <h1 id="ad-title" tabIndex={-1} className="text-[clamp(1.6rem,2.5vw,2.1rem)] leading-[1.12] font-bold tracking-[-0.03em] text-ink focus:outline-none">
           {title}
         </h1>
-        {description && <p className="mt-1 max-w-[70ch] text-[14px] text-ink-muted">{description}</p>}
+        {description && <p className="mt-1.5 max-w-[72ch] text-[14.5px] leading-relaxed text-ink-muted">{description}</p>}
         {children}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -505,7 +609,8 @@ export function PageHeader({ title, description, actions, children }: { title: s
 
 type Opt<T extends string> = { value: T; label: ReactNode; icon?: ReactNode; count?: number };
 
-// Opción única entre pocas alternativas (vista del calendario, filtros rápidos). Flechas para moverse.
+// Opción única entre pocas alternativas (vista del calendario, filtros rápidos): píldoras, la elegida en negro y las
+// demás con borde punteado. Flechas para moverse.
 export function Segmented<T extends string>({
   options,
   value,
@@ -530,7 +635,7 @@ export function Segmented<T extends string>({
     (e.currentTarget.parentElement?.children[j] as HTMLElement | undefined)?.focus();
   };
   return (
-    <div role="radiogroup" aria-label={label} className={`no-scrollbar inline-flex max-w-full gap-0.5 overflow-x-auto rounded-xl bg-ink/6 p-0.5 ${className}`}>
+    <div role="radiogroup" aria-label={label} className={`no-scrollbar inline-flex max-w-full items-center gap-1.5 overflow-x-auto p-0.5 ${className}`}>
       {options.map((o, i) => {
         const on = o.value === value;
         return (
@@ -542,13 +647,13 @@ export function Segmented<T extends string>({
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => move(e, i)}
-            className={`inline-flex flex-none items-center gap-1.5 rounded-[10px] font-semibold whitespace-nowrap transition-[background-color,color,box-shadow] duration-150 ${
-              size === "sm" ? "h-7 px-2.5 text-[12.5px]" : "h-8 px-3 text-[13px] pointer-coarse:h-9"
-            } ${on ? "bg-panel text-ink shadow-panel" : "text-ink-muted hover:text-ink"}`}
+            className={`inline-flex flex-none items-center gap-1.5 rounded-full border font-semibold whitespace-nowrap transition-[background-color,color,border-color] duration-150 ${
+              size === "sm" ? "h-7 px-3 text-[12.5px]" : "h-8 px-3.5 text-[13px] pointer-coarse:h-9"
+            } ${on ? "border-ink bg-ink text-paper" : "border-dashed border-line-strong text-ink-muted hover:border-ink-subtle hover:text-ink"}`}
           >
             {o.icon}
             {o.label}
-            {o.count !== undefined && <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${on ? "bg-ink/8" : "bg-ink/6"}`}>{o.count}</span>}
+            {o.count !== undefined && <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${on ? "bg-paper/20" : "bg-ink/7"}`}>{o.count}</span>}
           </button>
         );
       })}
@@ -556,10 +661,10 @@ export function Segmented<T extends string>({
   );
 }
 
-// Pestañas de sub-secciones (subrayado). Se desplazan en horizontal en móvil.
+// Pestañas de sub-secciones: píldoras (la actual en negro). Se desplazan en horizontal en móvil.
 export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: Opt<T>[]; value: T; onChange: (v: T) => void; label: string }) {
   return (
-    <div role="tablist" aria-label={label} className="-mx-4 no-scrollbar flex gap-1 overflow-x-auto border-b border-line px-4 lg:mx-0 lg:px-0">
+    <div role="tablist" aria-label={label} className="-mx-4 no-scrollbar flex gap-1.5 overflow-x-auto px-4 py-0.5 lg:mx-0 lg:px-0">
       {tabs.map((t) => {
         const on = t.value === value;
         return (
@@ -569,12 +674,11 @@ export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs:
             role="tab"
             aria-selected={on}
             onClick={() => onChange(t.value)}
-            className={`relative inline-flex h-10 flex-none items-center gap-1.5 rounded-t-lg px-3 text-[13.5px] font-semibold whitespace-nowrap transition-colors ${on ? "text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`inline-flex h-9 flex-none items-center gap-2 rounded-full px-4 text-[13.5px] font-semibold whitespace-nowrap transition-colors duration-150 ${on ? "bg-ink text-paper" : "text-ink-muted hover:bg-panel hover:text-ink"}`}
           >
             {t.icon}
             {t.label}
-            {t.count !== undefined && t.count > 0 && <span className="rounded-full bg-highlight px-1.5 text-[11px] text-on-light tabular-nums">{t.count}</span>}
-            <span aria-hidden="true" className={`absolute inset-x-2 -bottom-px h-0.5 rounded-full transition-colors ${on ? "bg-ink" : "bg-transparent"}`} />
+            {t.count !== undefined && t.count > 0 && <span className="rounded-full bg-pink px-1.5 text-[11px] text-ink tabular-nums">{t.count}</span>}
           </button>
         );
       })}
@@ -607,10 +711,10 @@ export function GroupedNavTabs({
     <nav ref={nav} aria-label={label} className="-mx-4 no-scrollbar flex gap-x-4 gap-y-3 overflow-x-auto px-4 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0">
       {groups.map((g, i) => (
         <div key={g.label} role="group" aria-labelledby={`${uid}-${i}`} className="flex flex-none flex-col gap-1.5">
-          <p id={`${uid}-${i}`} className="px-1 text-[11px] font-bold tracking-[.08em] text-ink-muted uppercase">
+          <p id={`${uid}-${i}`} className="px-1 text-[12px] font-semibold text-ink-muted">
             {g.label}
           </p>
-          <div className="flex gap-0.5 rounded-xl bg-ink/6 p-0.5">
+          <div className="flex gap-1 rounded-full bg-panel p-1">
             {g.tabs.map((t) => {
               const on = t.id === current;
               return (
@@ -618,13 +722,11 @@ export function GroupedNavTabs({
                   key={t.id}
                   href={t.href}
                   aria-current={on ? "page" : undefined}
-                  className={`inline-flex h-8 flex-none items-center gap-1.5 rounded-[10px] px-2.5 text-[13px] font-semibold whitespace-nowrap transition-[background-color,color,box-shadow] duration-150 pointer-coarse:h-9 ${on ? "bg-panel text-ink shadow-panel" : "text-ink-muted hover:text-ink"}`}
+                  className={`inline-flex h-8 flex-none items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold whitespace-nowrap transition-[background-color,color] duration-150 pointer-coarse:h-9 ${on ? "bg-ink text-paper" : "text-ink-muted hover:bg-paper/70 hover:text-ink"}`}
                 >
                   {t.icon}
                   {t.label}
-                  {t.count !== undefined && t.count > 0 && (
-                    <span className="rounded-full bg-highlight px-1.5 text-[11px] text-on-light tabular-nums">{t.count}</span>
-                  )}
+                  {t.count !== undefined && t.count > 0 && <span className="rounded-full bg-pink px-1.5 text-[11px] text-ink tabular-nums">{t.count}</span>}
                 </Link>
               );
             })}
@@ -664,11 +766,11 @@ export function Switch({
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 flex-none rounded-full transition-colors duration-150 disabled:opacity-50 ${checked ? "bg-success" : "bg-line-strong"}`}
+        className={`relative h-6 w-11 flex-none rounded-full transition-colors duration-150 disabled:opacity-50 ${checked ? "bg-ink" : "bg-line-strong"}`}
       >
         <span
           aria-hidden="true"
-          className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-panel transition-transform duration-150 ${checked ? "translate-x-5" : ""}`}
+          className={`absolute top-0.5 left-0.5 size-5 rounded-full shadow-panel transition-[transform,background-color] duration-150 ${checked ? "translate-x-5 bg-pink" : "bg-paper"}`}
         />
       </button>
     </div>
@@ -676,22 +778,23 @@ export function Switch({
 }
 
 export const Skeleton = ({ className = "" }: { className?: string }) => (
-  <span aria-hidden="true" className={`block animate-pulse-soft rounded-xl bg-line/70 ${className}`} />
+  <span aria-hidden="true" className={`block animate-pulse-soft rounded-[14px] bg-ink/7 ${className}`} />
 );
 
 const TONE = {
-  neutral: "bg-ink/6 text-ink",
+  neutral: "bg-ink/7 text-ink",
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",
   danger: "bg-error-soft text-error",
   info: "bg-info-soft text-info",
+  accent: "bg-pink-soft text-ink",
 };
 export type Tone = keyof typeof TONE;
 
 export function Badge({ tone = "neutral", children, icon, className = "" }: { tone?: Tone; children: ReactNode; icon?: ReactNode; className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] leading-[1.5] font-semibold whitespace-nowrap ${TONE[tone]} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] leading-[1.5] font-semibold whitespace-nowrap ${TONE[tone]} ${className}`}
     >
       {icon}
       {children}
@@ -699,40 +802,52 @@ export function Badge({ tone = "neutral", children, icon, className = "" }: { to
   );
 }
 
-// Indicador clave: valor grande, etiqueta y, si aplica, variación contra el periodo anterior.
+// Indicador clave: valor grande, etiqueta y, si aplica, variación contra el periodo anterior (en %, o en puntos
+// porcentuales con `deltaUnit="pp"` cuando el valor ya es un porcentaje, como la ocupación).
+// `accent`: tarjeta pastel con su forma decorativa (indicadores principales); sin él, tarjeta arena.
 export function StatCard({
   label,
   value,
   hint,
   delta,
+  deltaUnit = "%",
   icon,
   tone,
+  accent,
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   delta?: number | null;
+  deltaUnit?: "%" | "pp";
   icon?: ReactNode;
   tone?: Tone;
+  accent?: Accent;
 }) {
   const up = (delta ?? 0) >= 0;
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 rounded-2xl border border-line bg-panel p-4 shadow-panel">
+    <div className={`relative isolate flex min-w-0 flex-col gap-1.5 overflow-hidden rounded-[22px] p-4 sm:p-5 ${accent ? ACCENT[accent].bg : "bg-panel"}`}>
+      {accent && <Deco accent={accent} className="-top-5 -right-5 size-[104px] rotate-12" />}
       <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-[13px] font-medium text-ink-muted">{label}</p>
+        <p className={`truncate text-[13.5px] font-semibold ${accent ? "text-ink" : "text-ink-muted"}`}>{label}</p>
         {icon && (
-          <span aria-hidden="true" className={`grid size-7 flex-none place-items-center rounded-lg ${tone ? TONE[tone] : "bg-canvas text-ink-muted"}`}>
+          <span
+            aria-hidden="true"
+            className={`grid size-8 flex-none place-items-center rounded-full ${accent ? "bg-paper/70 text-ink" : tone ? TONE[tone] : "bg-paper text-ink-muted"}`}
+          >
             {icon}
           </span>
         )}
       </div>
-      <p className="text-[clamp(1.35rem,2vw,1.6rem)] leading-tight font-extrabold tracking-[-0.01em] text-ink tabular-nums">{value}</p>
+      <p className="text-[clamp(1.45rem,2.1vw,1.85rem)] leading-tight font-bold tracking-[-0.025em] text-ink tabular-nums">{value}</p>
       {(delta !== undefined || hint) && (
-        <p className="flex flex-wrap items-center gap-x-2 text-[12.5px] text-ink-muted">
+        <p className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] ${accent ? "text-ink/75" : "text-ink-muted"}`}>
           {delta !== undefined && delta !== null && (
-            <span className={`font-semibold tabular-nums ${up ? "text-success" : "text-error"}`}>
+            <span className={`inline-flex items-center rounded-full bg-paper/75 px-1.5 font-semibold tabular-nums ${up ? "text-success" : "text-error"}`}>
               <span aria-hidden="true">{up ? "▲" : "▼"}</span>
-              <span className="sr-only">{up ? "Sube" : "Baja"}</span> {Math.abs(delta).toFixed(Math.abs(delta) < 10 ? 1 : 0)} %
+              <span className="sr-only">{up ? "Sube" : "Baja"}</span>&nbsp;
+              {Math.abs(delta).toLocaleString("es-CO", { maximumFractionDigits: deltaUnit === "pp" || Math.abs(delta) >= 10 ? 0 : 1 })}
+              {deltaUnit === "pp" ? " p. p." : " %"}
             </span>
           )}
           {delta === null && <span className="font-semibold">Sin datos previos</span>}
@@ -752,7 +867,7 @@ export function Stars({ value, onChange, size = 16 }: { value: number | null; on
     return (
       <span role="img" aria-label={value ? `${value} de 5` : "Sin valoración"} className="inline-flex gap-0.5">
         {[1, 2, 3, 4, 5].map((n) => (
-          <svg key={n} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={n <= v ? "fill-highlight" : "fill-line-strong"}>
+          <svg key={n} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={n <= v ? "fill-[#e9bf38]" : "fill-line-strong"}>
             <path d={STAR} />
           </svg>
         ))}
@@ -780,7 +895,7 @@ export function Stars({ value, onChange, size = 16 }: { value: number | null; on
             height={size}
             viewBox="0 0 24 24"
             aria-hidden="true"
-            className={`transition-colors ${n <= v ? "fill-highlight" : "fill-line-strong"}`}
+            className={`transition-colors ${n <= v ? "fill-[#e9bf38]" : "fill-line-strong"}`}
           >
             <path d={STAR} />
           </svg>
@@ -798,7 +913,7 @@ type NumProps = { id?: string; value: number; onChange: (v: number) => void; inv
 export function MoneyInput({ id, value, onChange, invalid, describedBy, className = "" }: NumProps) {
   return (
     <div className={`relative ${className}`}>
-      <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[15px] text-ink-muted">
+      <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[15px] text-ink-muted">
         $
       </span>
       <input
@@ -814,9 +929,9 @@ export function MoneyInput({ id, value, onChange, invalid, describedBy, classNam
           const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
           onChange(digits ? parseInt(digits, 10) : 0);
         }}
-        className={`field-input field-compact pr-14 pl-7 tabular-nums`}
+        className={`field-input field-compact pr-14 pl-8 tabular-nums`}
       />
-      <span aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[12px] font-semibold text-ink-subtle">
+      <span aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-[12px] font-semibold text-ink-subtle">
         COP
       </span>
     </div>
@@ -826,13 +941,13 @@ export function MoneyInput({ id, value, onChange, invalid, describedBy, classNam
 // Número pequeño con botones − / + (capacidad, unidades, huéspedes).
 export function Stepper({ id, value, onChange, min = 0, max = 99, unit, describedBy }: NumProps & { min?: number; max?: number; unit?: string }) {
   return (
-    <div className="flex h-10 items-center rounded-xl border border-line-strong bg-panel transition-[border-color,box-shadow] focus-within:border-focus focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus)_20%,transparent)] pointer-coarse:h-11">
+    <div className="flex h-[42px] items-center rounded-[14px] border border-line-strong bg-paper px-0.5 transition-[border-color,box-shadow] focus-within:border-focus focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus)_12%,transparent)] pointer-coarse:h-11">
       <button
         type="button"
         aria-label="Restar"
         disabled={value <= min}
         onClick={() => onChange(Math.max(min, value - 1))}
-        className="btn-icon size-9 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink disabled:opacity-35"
+        className="grid size-9 flex-none place-items-center rounded-full text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink disabled:opacity-35"
       >
         −
       </button>
@@ -854,7 +969,7 @@ export function Stepper({ id, value, onChange, min = 0, max = 99, unit, describe
         aria-label="Sumar"
         disabled={value >= max}
         onClick={() => onChange(Math.min(max, value + 1))}
-        className="btn-icon size-9 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink disabled:opacity-35"
+        className="grid size-9 flex-none place-items-center rounded-full text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink disabled:opacity-35"
       >
         +
       </button>

@@ -20,7 +20,6 @@ import {
   ShieldIcon,
   TrashIcon,
   UploadIcon,
-  WalletIcon,
   WarningIcon,
 } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
@@ -36,7 +35,20 @@ import { PhotoCropper } from "@/components/admin/photo-cropper";
 import { ServicesManager } from "@/components/admin/services";
 import { ThemeEditor, themeStyle } from "@/components/admin/theme";
 import { adminInput } from "@/components/admin/shared";
-import { Button, Callout, Card, CardHeader, Field, FieldError, GroupedNavTabs, IconButton, PageHeader, SaveBar, Spinner } from "@/components/admin/ui";
+import {
+  Button,
+  Callout,
+  Card,
+  CardHeader,
+  Field,
+  FieldError,
+  GroupedNavTabs,
+  IconButton,
+  ModalPresence,
+  PageHeader,
+  SaveBar,
+  Spinner,
+} from "@/components/admin/ui";
 
 /* ───────────── Una ruta por zona del sitio, un solo formulario ───────────── */
 
@@ -47,7 +59,6 @@ const ICONS: Record<ContentSectionId, ReactNode> = {
   horarios: <ClockIcon size={15} />,
   politicas: <FileTextIcon size={15} />,
   contacto: <PhoneIcon size={15} />,
-  pagos: <WalletIcon size={15} />,
   redes: <ShieldIcon size={15} />,
   colores: <PaletteIcon size={15} />,
 };
@@ -171,7 +182,7 @@ export function ContentLayout({ children }: { children: ReactNode }) {
         }))}
       />
       {meta && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-panel/60 px-4 py-3 text-[13.5px] text-ink-muted">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] bg-panel px-4 py-3 text-[13.5px] text-ink-muted">
           <p>
             <span className="font-semibold text-ink">Dónde aparece: </span>
             {meta.where}
@@ -364,10 +375,10 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
           />
           <ol className="flex flex-col gap-3">
             {f.policies.map((p, i) => (
-              <li key={p.id} className="flex gap-3 rounded-xl border border-line p-3 sm:p-4">
+              <li key={p.id} className="flex gap-3 rounded-[18px] bg-canvas/60 p-3 sm:p-4">
                 <span
                   aria-hidden="true"
-                  className="mt-7 grid size-6 flex-none place-items-center rounded-full bg-canvas text-[12px] font-bold text-ink-muted tabular-nums max-sm:hidden"
+                  className="mt-7 grid size-6 flex-none place-items-center rounded-full bg-paper text-[12px] font-bold text-ink-muted tabular-nums max-sm:hidden"
                 >
                   {i + 1}
                 </span>
@@ -499,7 +510,7 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
             </Card>
             <Card aria-labelledby="ct-loc" className="flex flex-col gap-4 p-4 sm:p-5">
               <CardHeader id="ct-loc" icon={<PinIcon size={17} />} title="Ubicación" />
-              <div className="rounded-xl bg-canvas px-3.5 py-3 text-[13.5px]">
+              <div className="rounded-[16px] bg-canvas/70 px-4 py-3 text-[13.5px]">
                 <p className="font-semibold text-ink">{config.address}</p>
                 <p className="mt-0.5 text-ink-muted">
                   La dirección y el punto del mapa forman parte de la configuración del sitio; para cambiarlos se requiere un ajuste técnico.
@@ -521,37 +532,6 @@ export function ContentSection({ id }: { id: ContentSectionId }) {
           </div>
           <PhotoGroups groups={["Contacto"]} />
         </>
-      )}
-
-      {id === "pagos" && (
-        <Card aria-labelledby="ct-pay" className="flex max-w-[760px] flex-col gap-4 p-4 sm:p-5">
-          <CardHeader
-            id="ct-pay"
-            icon={<WalletIcon size={18} />}
-            title="Datos para pagar"
-            subtitle={`El abono (${config.depositPct} %) y el saldo se pagan por transferencia o en recepción. El huésped ve estas instrucciones en «Mi reserva».`}
-          />
-          <Field label="Instrucciones de pago" hint="Banco, tipo y número de cuenta, titular, o llave de Bre-B / Nequi. Se muestran tal cual las escribas.">
-            {(p) => (
-              <textarea
-                {...p}
-                rows={4}
-                maxLength={TEXT_LIMITS.instructions}
-                value={f.t.payment.instructions}
-                onChange={(e) => setT("payment", { instructions: e.target.value })}
-                placeholder="Bancolombia · Ahorros 000-000000-00 · a nombre de …"
-                className={`${adminInput} resize-y leading-relaxed`}
-              />
-            )}
-          </Field>
-          {!f.t.payment.instructions.trim() && (
-            <Callout tone="warning">Aún no hay instrucciones: el huésped solo verá que debe escribir por WhatsApp o pagar en recepción.</Callout>
-          )}
-          <Callout>
-            Cuando recibas un pago, regístralo en la ficha de la reserva («Registrar pago» o «Registrar pago del saldo»): la reserva se confirma y el pago queda
-            en el historial.
-          </Callout>
-        </Card>
       )}
 
       {id === "redes" && (
@@ -706,7 +686,7 @@ function PhotoCard({
   return (
     <li
       {...dragProps}
-      className={`flex flex-col overflow-hidden rounded-2xl border bg-panel shadow-panel transition-[border-color,box-shadow] duration-150 ${over ? "border-focus ring-4 ring-focus/15" : "border-line"}`}
+      className={`flex flex-col overflow-hidden rounded-[20px] border bg-panel transition-[border-color,box-shadow] duration-150 ${over ? "border-focus ring-4 ring-focus/15" : "border-transparent"}`}
     >
       <div className="relative bg-canvas" style={{ aspectRatio: s.aspect }}>
         {src ? (
@@ -835,7 +815,7 @@ function PhotoGroups({ groups }: { groups: string[] }) {
         return (
           <section key={g} aria-labelledby={`g-${gi}`} className="flex flex-col gap-3">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-line pb-2">
-              <h2 id={`g-${gi}`} className="text-[15px] font-bold text-ink">
+              <h2 id={`g-${gi}`} className="text-[18px] font-semibold tracking-[-0.015em] text-ink">
                 {g}
               </h2>
               <p className="text-[12.5px] font-medium text-ink-muted">{`${filled} de ${slots.length} con foto`}</p>
@@ -865,26 +845,28 @@ function PhotoGroups({ groups }: { groups: string[] }) {
           </section>
         );
       })}
-      {cropping && (
-        <PhotoCropper
-          key={`${cropping.s.id}:${cropping.file.name}:${cropping.file.lastModified}`}
-          file={cropping.file}
-          title={cropping.s.label}
-          aspect={cropping.s.aspect}
-          hint={cropping.s.hint}
-          min={cropping.s.min}
-          onCancel={() => setCropping(null)}
-          onChooseOther={() => {
-            const id = cropping.s.id;
-            setCropping(null);
-            pick(id);
-          }}
-          onConfirm={(crop, size) => {
-            setCropping(null);
-            upload(cropping.s, cropping.file, crop, size);
-          }}
-        />
-      )}
+      <ModalPresence>
+        {cropping && (
+          <PhotoCropper
+            key={`${cropping.s.id}:${cropping.file.name}:${cropping.file.lastModified}`}
+            file={cropping.file}
+            title={cropping.s.label}
+            aspect={cropping.s.aspect}
+            hint={cropping.s.hint}
+            min={cropping.s.min}
+            onCancel={() => setCropping(null)}
+            onChooseOther={() => {
+              const id = cropping.s.id;
+              setCropping(null);
+              pick(id);
+            }}
+            onConfirm={(crop, size) => {
+              setCropping(null);
+              upload(cropping.s, cropping.file, crop, size);
+            }}
+          />
+        )}
+      </ModalPresence>
     </>
   );
 }

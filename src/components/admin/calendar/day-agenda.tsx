@@ -11,9 +11,19 @@ import { useAdmin } from "@/components/admin/context";
 import { type NewReservationDraft } from "@/components/admin/new-reservation";
 import { paths } from "@/components/admin/routes";
 import { Button, buttonClass } from "@/components/admin/ui";
-import { type Unit, barStyle, blockHref, blockStyle, blocks, occupies, shortLeft, useCalBlocks } from "@/components/admin/calendar/shared";
+import { type Unit, barStyle, blockHref, blockStyle, blocks, occupies, openInModal, shortLeft, useCalBlocks } from "@/components/admin/calendar/shared";
 
-export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onNew: (d: NewReservationDraft) => void }) {
+export function DayAgenda({
+  day,
+  rows,
+  onNew,
+  onOpen,
+}: {
+  day: string;
+  rows: Unit[];
+  onNew: (d: NewReservationDraft) => void;
+  onOpen: (code: string) => void;
+}) {
   const { data, cabinLabel, today, now } = useAdmin();
   const calBlocks = useCalBlocks();
   return (
@@ -34,7 +44,7 @@ export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onN
         const total = stay ? nightsBetween(stay.checkIn, stay.checkOut) : 0;
         const rate = nightlyRate(u.cabin, data.seasons, day);
         return (
-          <article key={u.key} className="flex flex-col gap-3 rounded-2xl border border-line bg-panel p-4 shadow-panel">
+          <article key={u.key} className="flex flex-col gap-3 rounded-[22px] bg-panel p-4">
             <header className="flex items-center justify-between gap-2">
               <h2 className="text-[15px] font-bold text-ink">{cabinLabel(u.cabin.id, u.unit)}</h2>
               <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${state.tone}`}>{state.label}</span>
@@ -42,7 +52,8 @@ export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onN
             {leaving && (
               <Link
                 href={paths.reserva(leaving.code)}
-                className="flex items-center gap-2.5 rounded-xl bg-canvas px-3 py-2 text-left text-[13px] transition-colors hover:bg-ink/6"
+                onClick={openInModal(onOpen, leaving.code)}
+                className="flex items-center gap-2.5 rounded-[14px] bg-canvas/70 px-3 py-2 text-left text-[13px] transition-colors hover:bg-canvas"
               >
                 <LogoutIcon size={15} className="text-ink-muted" />
                 <span className="min-w-0 flex-1 truncate">
@@ -53,7 +64,8 @@ export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onN
             {stay ? (
               <Link
                 href={paths.reserva(stay.code)}
-                className="flex flex-col gap-2 rounded-xl p-3 text-left transition-[filter] hover:brightness-[.97]"
+                onClick={openInModal(onOpen, stay.code)}
+                className="flex flex-col gap-2 rounded-[16px] p-3 text-left transition-[filter] hover:brightness-[.97]"
                 style={barStyle(stay)}
               >
                 <span className="flex items-center justify-between gap-2">
@@ -65,7 +77,7 @@ export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onN
                   {arriving && stay.estimatedArrival ? ` · llega ${stay.estimatedArrival}` : ""}
                 </span>
                 <span className="flex items-center gap-2">
-                  <span aria-hidden="true" className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/70">
+                  <span aria-hidden="true" className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper/70">
                     <span className="block h-full rounded-full bg-ink/60" style={{ width: `${(night / total) * 100}%` }} />
                   </span>
                   <span className="text-[12px] font-semibold text-ink tabular-nums">
@@ -84,7 +96,7 @@ export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onN
                 )}
               </Link>
             ) : block ? (
-              <Link href={blockHref(block)} className="flex flex-col gap-1 rounded-xl p-3 text-left" style={blockStyle()}>
+              <Link href={blockHref(block)} className="flex flex-col gap-1 rounded-[16px] p-3 text-left" style={blockStyle()}>
                 <strong className="text-[14px] text-ink">{block.reason}</strong>
                 <span className="text-[12.5px] text-ink-muted">
                   {`${fmtDate(block.from)} → ${fmtDate(block.to)}`}
@@ -92,7 +104,7 @@ export function DayAgenda({ day, rows, onNew }: { day: string; rows: Unit[]; onN
                 </span>
               </Link>
             ) : (
-              <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line-strong px-3 py-3 text-[13px] text-ink-muted">
+              <div className="flex flex-col gap-2 rounded-[16px] border border-dashed border-line-strong px-3 py-3 text-[13px] text-ink-muted">
                 <span>{`Disponible esta noche · ${cop(rate.couple)} para 2${rate.season ? ` (${rate.season.nombre})` : ""}`}</span>
                 {day >= today && (
                   <span className="flex flex-wrap gap-1.5">

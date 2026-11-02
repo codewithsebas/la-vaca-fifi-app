@@ -176,11 +176,11 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
       labelledBy="crop-title"
       describedBy="crop-help"
       initialFocus="#crop-frame"
-      className="m-auto w-[calc(100%-32px)] max-w-[600px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+      className="m-auto w-[calc(100%-32px)] max-w-[600px] rounded-[26px] p-0"
     >
       <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div>
-          <h2 id="crop-title" className="text-[17px] font-bold text-ink">
+          <h2 id="crop-title" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
             Encuadra la foto · {title}
           </h2>
           <p id="crop-help" className="text-[13.5px] text-ink-muted">
@@ -205,7 +205,7 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             onKeyDown={onKeyDown}
-            className={`relative mx-auto touch-none overflow-hidden rounded-xl bg-[repeating-conic-gradient(var(--color-line)_0_25%,transparent_0_50%)] bg-[length:16px_16px] select-none ${img ? (dragging ? "cursor-grabbing" : "cursor-grab") : ""}`}
+            className={`relative mx-auto touch-none overflow-hidden rounded-[16px] bg-[repeating-conic-gradient(var(--color-line)_0_25%,transparent_0_50%)] bg-[length:16px_16px] select-none ${img ? (dragging ? "cursor-grabbing" : "cursor-grab") : ""}`}
             style={{ aspectRatio: aspect, width: `min(100%, calc(min(50dvh, 520px) * ${ratio}))` }}
           >
             {img && region && k > 0 ? (
@@ -234,7 +234,7 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
                 <span key={c} className={`absolute inset-x-0 ${c} h-px bg-white/70 shadow-[0_0_2px_rgb(0_0_0/0.5)]`} />
               ))}
             </div>
-            <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-black/15 ring-inset" />
+            <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[16px] ring-1 ring-black/15 ring-inset" />
           </div>
         )}
 
@@ -256,7 +256,7 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
               disabled={!img}
               aria-valuetext={`${zoomPct} %`}
               onChange={(e) => zoom(() => Number(e.target.value))}
-              className="h-10 min-w-0 flex-1 accent-[var(--color-cta)]"
+              className="h-10 min-w-0 flex-1 accent-[var(--color-ink)]"
             />
             <IconButton label="Acercar" size="sm" variant="secondary" disabled={!img || view.z >= MAX_ZOOM} onClick={() => zoom((z) => z * 1.25)}>
               <PlusIcon size={15} />
@@ -287,7 +287,7 @@ export function PhotoCropper({ file, title, aspect, hint, min, onCancel, onChoos
           </Callout>
         )}
       </div>
-      <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:items-center sm:px-6">
+      <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:items-center sm:px-6">
         <Button variant="ghost" icon={<UploadIcon size={14} />} onClick={onChooseOther} className="sm:mr-auto">
           Elegir otra foto
         </Button>

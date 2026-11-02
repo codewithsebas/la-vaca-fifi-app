@@ -15,6 +15,7 @@ function Stroke({ size = 18, stroke = 2.2, className, style, children }: IconPro
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      data-icon=""
       className={className}
       style={style}
     >
@@ -382,5 +383,52 @@ export const SmartphoneIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
     <rect x="6.5" y="2" width="11" height="20" rx="2.5" />
     <path d="M11 18.5h2" />
+  </Stroke>
+);
+export const UserIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </Stroke>
+);
+export const SettingsIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+  </Stroke>
+);
+export const SunIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+  </Stroke>
+);
+export const BathIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <path d="M2 12h20M4 12v3a5 5 0 0 0 5 5h6a5 5 0 0 0 5-5v-3M6 12V5.5A2.5 2.5 0 0 1 8.5 3c1.2 0 2.2.8 2.4 2M7 20l-1 2M17 20l1 2" />
+  </Stroke>
+);
+export const UserPlusIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <circle cx="9" cy="8" r="4" />
+    <path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6" />
+  </Stroke>
+);
+export const IdCardIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2.5" />
+    <circle cx="9" cy="11" r="2" />
+    <path d="M5.5 16a3.5 3.5 0 0 1 7 0M15 10h3M15 14h3" />
+  </Stroke>
+);
+export const SpreadsheetIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6M8 12h8v6H8zM8 15h8M12 12v6" />
+  </Stroke>
+);
+export const WrenchIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z" />
   </Stroke>
 );

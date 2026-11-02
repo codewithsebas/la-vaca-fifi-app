@@ -3,41 +3,85 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#FFF8EB" />
+    <meta name="theme-color" content="#f7f2e8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)" />
     <meta name="robots" content="noindex" />
     <title>Sin conexión · La Vaca Fifí</title>
-    <!-- Página autocontenida (sin CSS ni JS externos): el service worker la muestra cuando no hay internet. -->
+    <!-- Página autocontenida (sin CSS, fuentes ni JS externos): el service worker la muestra cuando no hay internet.
+         Mismo estilo que el panel: fondo crema, tarjeta pastel con su forma decorativa y botón negro en píldora. -->
     <style>
-      :root { color-scheme: light; }
+      :root {
+        color-scheme: light dark;
+        --canvas: #f7f2e8;
+        --paper: #fffdf9;
+        --ink: #171614;
+        --ink-muted: #66615a;
+        --card: #f4b8d6;
+        --card-deep: #e994c0;
+        --error: #c43c2e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --canvas: #121110;
+          --paper: #272623;
+          --ink: #f3efe6;
+          --ink-muted: #aba59a;
+          --card: #4f2a40;
+          --card-deep: #7d4766;
+          --error: #f08a7d;
+        }
+      }
       * { box-sizing: border-box; }
       html, body { height: 100%; margin: 0; }
       body {
-        display: flex; align-items: center; justify-content: center;
-        padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
-        background: #fff8eb; color: #241a14;
-        font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-        text-align: center;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+        padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+        background: var(--canvas); color: var(--ink);
+        font: 15px/1.5 "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
-      main { display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 26rem; }
-      .mark { display: block; width: 84px; height: 84px; border-radius: 50%; }
-      h1 { margin: 6px 0 0; font-size: 2rem; line-height: 1.05; letter-spacing: .02em; text-transform: uppercase; font-weight: 800; }
-      p { margin: 0; color: color-mix(in srgb, #241a14 85%, #fff8eb); }
+      main {
+        position: relative; isolation: isolate; overflow: hidden;
+        display: flex; flex-direction: column; align-items: flex-start; gap: 16px;
+        width: 100%; max-width: 420px; padding: 28px; border-radius: 28px; background: var(--card);
+      }
+      .deco { position: absolute; z-index: -1; top: -26px; right: -26px; width: 130px; height: 130px; fill: var(--card-deep); opacity: .75; transform: rotate(12deg); }
+      .mark { display: block; width: 64px; height: 64px; border-radius: 50%; }
+      .status {
+        display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+        background: var(--paper); font-size: 12.5px; font-weight: 600;
+      }
+      .dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--error); }
+      .dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--error); animation: ping 1.6s ease-out infinite; }
+      @keyframes ping { 75%, 100% { transform: scale(2.4); opacity: 0; } }
+      h1 { margin: 4px 0 0; font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -0.03em; }
+      p { margin: 0; color: color-mix(in srgb, var(--ink) 78%, transparent); }
       button {
-        margin-top: 6px; min-height: 48px; padding: 0 28px; border: 0; border-radius: 999px;
-        background: #d2283f; color: #ffffff; border: 2.5px solid #241a14; box-shadow: 3px 3px 0 #241a14; font: inherit; font-weight: 800; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; height: 44px; margin-top: 4px; padding: 0 22px;
+        border: 0; border-radius: 999px; background: var(--ink); color: var(--canvas);
+        font: inherit; font-weight: 600; cursor: pointer; transition: transform .15s, opacity .15s;
       }
-      button:focus-visible { outline: 3px solid #157ab8; outline-offset: 3px; }
-      small { color: color-mix(in srgb, #241a14 70%, #fff8eb); font-size: .85rem; }
+      button:hover { opacity: .88; }
+      button:active { transform: scale(.97); }
+      button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+      button svg { width: 16px; height: 16px; }
+      small { color: var(--ink-muted); font-size: 12.5px; }
+      @media (prefers-reduced-motion: reduce) { .dot::after { animation: none; } button { transition: none; } }
     </style>
   </head>
   <body>
-    <main>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="mark" width="96" height="96" aria-hidden="true"><defs><clipPath id="disc"><circle cx="256" cy="256" r="248"/></clipPath></defs><g clip-path="url(#disc)"><rect class="mark" width="96" height="96" aria-hidden="true" fill="#2fa8e0"/><path d="M-20 330C70 296 150 326 236 308C322 290 410 318 532 294V540H-20Z" fill="#ffffff"/><g transform="translate(256 268) scale(1.22) translate(-179 -155)"><g stroke="#221a16" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"><path d="M246 104C266 74 306 58 338 64C332 94 300 116 258 124Z" fill="#bcc6d2"/><path d="M262 106C280 88 304 78 324 76C318 94 298 108 272 114Z" fill="#9aa6b5" stroke="none"/><path d="M150 98C136 78 128 54 136 28C150 46 166 66 184 88Z" fill="#efcfa4"/><path d="M212 84C220 62 228 40 242 22C252 46 250 72 238 94Z" fill="#efcfa4"/><path d="M124 142C100 128 72 130 52 144C70 162 100 168 126 160Z" fill="#f2c4ae"/><path d="M106 170C98 120 140 84 196 80C248 76 288 100 296 148C302 190 292 232 256 254L150 262C122 250 110 210 106 170Z" fill="#ffffff"/><path d="M108 136C112 102 150 80 196 78C244 76 282 98 294 138C296 160 290 176 278 182C266 186 256 176 252 160C246 136 222 124 204 124C186 124 168 122 150 124C132 126 118 132 108 136Z" fill="#221a16" stroke="none"/><ellipse cx="156" cy="172" rx="26" ry="29" fill="#ffffff"/><circle cx="166" cy="176" r="15" fill="#5cb236" stroke-width="3"/><circle cx="168" cy="177" r="8" fill="#221a16" stroke="none"/><circle cx="172" cy="172" r="3.5" fill="#ffffff" stroke="none"/><ellipse cx="228" cy="154" rx="24" ry="27" fill="#ffffff"/><circle cx="237" cy="158" r="14" fill="#5cb236" stroke-width="3"/><circle cx="239" cy="159" r="7.5" fill="#221a16" stroke="none"/><circle cx="243" cy="154" r="3.2" fill="#ffffff" stroke="none"/><path d="M135 160L124 154M140 152L132 143M148 147L145 137" fill="none" stroke-width="4"/><path d="M66 230C64 206 88 196 120 198L232 206C264 208 280 226 276 252C272 278 250 290 222 288L104 282C78 280 66 260 66 230Z" fill="#efcca2"/><ellipse cx="100" cy="244" rx="21" ry="12" transform="rotate(-8 100 244)" fill="#2c2420" stroke="none"/><path d="M150 276C176 282 204 284 226 282" fill="none" stroke-width="4"/><path d="M232 282C272 288 300 266 302 234C304 204 284 184 260 186C240 188 232 206 240 220C248 234 258 246 250 262C244 272 236 276 232 282Z" fill="#e8344a"/><path d="M262 200C276 210 282 228 278 246" fill="none" stroke="#b81e33" stroke-width="4"/><path d="M248 200C254 194 264 194 270 198" fill="none" stroke="#ff8a97" stroke-width="5"/><path d="M56 148C54 156 50 164 46 170" fill="none" stroke-width="3"/><path d="M20 172L46 161L72 172V214C72 219 68 222 64 222H28C23 222 20 219 20 214Z" fill="#ffd23f"/><circle cx="46" cy="174" r="4" fill="#ffffff" stroke-width="3"/><text x="46" y="202" text-anchor="middle" fill="#221a16" stroke="none" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="9.5">MURILLO</text></g></g></g><circle cx="256" cy="256" r="248" fill="none" stroke="#221a16" stroke-width="16"/></svg>
-      <h1>Sin conexión</h1>
+    <main aria-labelledby="titulo">
+      <svg class="deco" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4 6.4 4c2.3 0 3.9 1.3 5.6 3.4C13.7 5.3 15.3 4 17.6 4 21.7 4 23.6 8.4 22 11.7 19.5 16.4 12 21 12 21z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="mark" width="64" height="64" aria-hidden="true"><defs><clipPath id="disc"><circle cx="256" cy="256" r="248"/></clipPath></defs><g clip-path="url(#disc)"><rect width="512" height="512" fill="#2fa8e0"/><path d="M-20 330C70 296 150 326 236 308C322 290 410 318 532 294V540H-20Z" fill="#ffffff"/><g transform="translate(256 268) scale(1.22) translate(-179 -155)"><g stroke="#221a16" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"><path d="M246 104C266 74 306 58 338 64C332 94 300 116 258 124Z" fill="#bcc6d2"/><path d="M262 106C280 88 304 78 324 76C318 94 298 108 272 114Z" fill="#9aa6b5" stroke="none"/><path d="M150 98C136 78 128 54 136 28C150 46 166 66 184 88Z" fill="#efcfa4"/><path d="M212 84C220 62 228 40 242 22C252 46 250 72 238 94Z" fill="#efcfa4"/><path d="M124 142C100 128 72 130 52 144C70 162 100 168 126 160Z" fill="#f2c4ae"/><path d="M106 170C98 120 140 84 196 80C248 76 288 100 296 148C302 190 292 232 256 254L150 262C122 250 110 210 106 170Z" fill="#ffffff"/><path d="M108 136C112 102 150 80 196 78C244 76 282 98 294 138C296 160 290 176 278 182C266 186 256 176 252 160C246 136 222 124 204 124C186 124 168 122 150 124C132 126 118 132 108 136Z" fill="#221a16" stroke="none"/><ellipse cx="156" cy="172" rx="26" ry="29" fill="#ffffff"/><circle cx="166" cy="176" r="15" fill="#5cb236" stroke-width="3"/><circle cx="168" cy="177" r="8" fill="#221a16" stroke="none"/><circle cx="172" cy="172" r="3.5" fill="#ffffff" stroke="none"/><ellipse cx="228" cy="154" rx="24" ry="27" fill="#ffffff"/><circle cx="237" cy="158" r="14" fill="#5cb236" stroke-width="3"/><circle cx="239" cy="159" r="7.5" fill="#221a16" stroke="none"/><circle cx="243" cy="154" r="3.2" fill="#ffffff" stroke="none"/><path d="M135 160L124 154M140 152L132 143M148 147L145 137" fill="none" stroke-width="4"/><path d="M66 230C64 206 88 196 120 198L232 206C264 208 280 226 276 252C272 278 250 290 222 288L104 282C78 280 66 260 66 230Z" fill="#efcca2"/><ellipse cx="100" cy="244" rx="21" ry="12" transform="rotate(-8 100 244)" fill="#2c2420" stroke="none"/><path d="M150 276C176 282 204 284 226 282" fill="none" stroke-width="4"/><path d="M232 282C272 288 300 266 302 234C304 204 284 184 260 186C240 188 232 206 240 220C248 234 258 246 250 262C244 272 236 276 232 282Z" fill="#e8344a"/><path d="M262 200C276 210 282 228 278 246" fill="none" stroke="#b81e33" stroke-width="4"/><path d="M248 200C254 194 264 194 270 198" fill="none" stroke="#ff8a97" stroke-width="5"/><path d="M56 148C54 156 50 164 46 170" fill="none" stroke-width="3"/><path d="M20 172L46 161L72 172V214C72 219 68 222 64 222H28C23 222 20 219 20 214Z" fill="#ffd23f"/><circle cx="46" cy="174" r="4" fill="#ffffff" stroke-width="3"/><text x="46" y="202" text-anchor="middle" fill="#221a16" stroke="none" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="9.5">MURILLO</text></g></g></g><circle cx="256" cy="256" r="248" fill="none" stroke="#221a16" stroke-width="16"/></svg>
+      <span class="status" role="status"><span class="dot" aria-hidden="true"></span>Sin señal</span>
+      <h1 id="titulo">Sin conexión</h1>
       <p>No hay internet en este momento. Revisa tu conexión: la página se abrirá sola apenas vuelva la señal.</p>
-      <button type="button" onclick="location.reload()">Reintentar</button>
-      <small>La Vaca Fifí · Murillo, Tolima</small>
+      <button type="button" onclick="location.reload()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+        Reintentar
+      </button>
     </main>
+    <small>La Vaca Fifí · Murillo, Tolima</small>
     <script>
       addEventListener("online", () => location.reload());
     </script>

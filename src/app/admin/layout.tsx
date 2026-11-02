@@ -1,20 +1,25 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { AdminShell } from "@/components/admin/shell";
-import { siteViewport } from "@/components/site/site-theme";
 import { config } from "@/lib/config";
+
+// Tipografía del panel: geométrica y legible en tamaños pequeños (tablas, etiquetas). El sitio conserva la suya.
+const adminFont = Plus_Jakarta_Sans({ variable: "--font-admin", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { absolute: `Panel de reservas | ${config.name}` },
   robots: { index: false, follow: false },
   manifest: "/admin/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Panel Vaca Fifí", statusBarStyle: "black" },
+  appleWebApp: { capable: true, title: "Panel Vaca Fifí", statusBarStyle: "default" },
 };
 
-// El panel usa los colores del sitio: la barra del navegador en el celular toma el del encabezado.
-export function generateViewport() {
-  return siteViewport();
-}
+// La barra del navegador en el celular toma el crema del fondo del panel.
+export const viewport: Viewport = { themeColor: "#f7f2e8" };
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
-  return <AdminShell>{children}</AdminShell>;
+  return (
+    <div className={`${adminFont.variable} admin-theme`}>
+      <AdminShell>{children}</AdminShell>
+    </div>
+  );
 }

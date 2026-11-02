@@ -6,7 +6,7 @@
    (estados) se usan desde JS.
    Los colores del sitio (fondos, tarjetas, textos, acentos y botón principal) se pueden cambiar desde el panel:
    lib/theme.ts los vuelve a declarar en :root, en las páginas públicas (components/site/site-theme.tsx) y en el panel
-   (PanelTheme, components/admin/shell.tsx), que además deriva de ellos su zona de trabajo. */
+   (PanelTheme, components/admin/shell.tsx: para sus vistas previas del sitio; el panel tiene sus propios colores). */
 @theme static {
   --color-bg: #fff8eb;
   --color-surface: #fcebcb;
@@ -42,31 +42,46 @@
   --shadow-card: 0 22px 44px -20px rgb(0 0 0 / 0.35);
   --shadow-pop: 0 30px 60px -24px rgb(0 0 0 / 0.35), 0 0 0 1px #f3e6d2;
 
-  /* Panel de administración: superficie clara para trabajar con datos; la marca queda en la barra lateral.
-     Del lienzo a las series, los valores salen de la paleta del sitio: son los que da panelVars() (lib/theme.ts) con
-     "Fifí"; con otra paleta, el panel los vuelve a declarar. Los colores de estado (éxito, aviso, error) son fijos. */
-  --color-canvas: #f9f8f7;
-  --color-panel: #ffffff;
-  --color-line: #ece5db;
-  --color-line-strong: #d6cdbf;
-  --color-ink: #241a14;
-  --color-ink-muted: #625e5c;
-  --color-ink-subtle: #8e8b89;
-  --color-focus: #0375b3;
-  --color-chart: #0a83c8;
-  /* Dos series (abonos y saldos): contraste ≥ 3:1 sobre blanco y separadas también con daltonismo (ΔE ≥ 8). */
-  --color-series-1: #0375b3;
-  --color-series-2: #a98703;
-  --color-success: #2f7d52;
-  --color-success-soft: #e5f1e8;
-  --color-warning: #8a5a00;
-  --color-warning-soft: #fbf1dc;
-  --color-error-soft: #fbeae6;
-  --color-info: #2c5566;
-  --color-info-soft: #e6eef2;
+  /* Panel de administración: identidad propia, independiente de la paleta del sitio. Fondo crema, tarjetas arena, papel
+     para campos y ventanas, negro para la navegación y las acciones principales, y cuatro pasteles (rosa, amarillo,
+     verde y azul) para indicadores, estados y acentos. Los textos cumplen 4.5:1 sobre el fondo y las tarjetas; los
+     tonos «-deep» son decorativos y los «-soft», fondos de etiquetas y avisos. */
+  --color-canvas: #f7f2e8;
+  --color-panel: #efe9dd;
+  --color-paper: #fffdf9;
+  --color-line: #e2dacb;
+  --color-line-strong: #cec5b3;
+  --color-ink: #171614;
+  --color-ink-muted: #66615a;
+  --color-ink-subtle: #857f75;
+  --color-sidebar: #171614;
+  --color-focus: #171614;
+  --color-chart: #171614;
+  /* Dos series (abonos y saldos): negro y rosa oscuro, ≥ 3:1 sobre las tarjetas y distintas también con daltonismo. */
+  --color-series-1: #171614;
+  --color-series-2: #c2588f;
+  --color-pink: #f4b8d6;
+  --color-pink-soft: #f9dcea;
+  --color-pink-deep: #e994c0;
+  --color-yellow: #f5d462;
+  --color-yellow-soft: #fbedb5;
+  --color-yellow-deep: #e9bf38;
+  --color-green: #a8b874;
+  --color-green-soft: #e1e8c8;
+  --color-green-deep: #8b9b56;
+  --color-blue: #b6c8ef;
+  --color-blue-soft: #dbe5f8;
+  --color-blue-deep: #91a9e0;
+  --color-success: #4b6420;
+  --color-success-soft: #e1e8c8;
+  --color-warning: #7a5900;
+  --color-warning-soft: #f8e9ad;
+  --color-error-soft: #f7d6cf;
+  --color-info: #2e4c8a;
+  --color-info-soft: #dbe5f8;
 
-  --shadow-panel: 0 1px 2px color-mix(in srgb, var(--color-ink) 5%, transparent), 0 1px 1px color-mix(in srgb, var(--color-ink) 3%, transparent);
-  --shadow-overlay: 0 24px 48px -12px color-mix(in srgb, var(--color-ink) 30%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --shadow-panel: 0 1px 2px rgb(23 22 20 / 0.06);
+  --shadow-overlay: 0 28px 60px -20px rgb(23 22 20 / 0.32), 0 0 0 1px rgb(23 22 20 / 0.06);
 
   --animate-pulse-soft: ec-pulse 1.2s ease-in-out infinite;
   --animate-spin-fast: ec-spin 0.8s linear infinite;
@@ -74,6 +89,10 @@
   --animate-pop-in: ec-pop-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-slide-up: ec-slide-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-slide-in-left: ec-slide-in-left 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Salidas de las ventanas del panel: la misma animación de entrada, al revés (se cierran como se abrieron). */
+  --animate-fade-out: ec-fade-out 0.18s ease-out reverse both;
+  --animate-pop-out: ec-pop-out 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) reverse both;
+  --animate-slide-out-left: ec-slide-out-left 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) reverse both;
   --animate-glide: ec-glide 3.6s ease-in-out infinite;
   --animate-loader-bar: ec-loader-bar 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 
@@ -360,6 +379,25 @@
       transform: translateY(10px);
     }
   }
+  /* Copias de las entradas con otro nombre: al cerrar, el navegador arranca una animación nueva en vez de dar por
+     terminada la de entrada. */
+  @keyframes ec-fade-out {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ec-pop-out {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+  }
+  @keyframes ec-slide-out-left {
+    from {
+      transform: translateX(-32px);
+      opacity: 0;
+    }
+  }
 }
 
 @theme inline {
@@ -418,17 +456,105 @@
     scrollbar-gutter: stable;
     background: var(--color-canvas);
   }
+  html:has(.admin-theme) body {
+    background: var(--color-canvas);
+  }
+
+  /* Panel: su tipografía (Plus Jakarta Sans, app/admin/layout.tsx), sus colores de estado (los pasteles del panel; el
+     sitio conserva los suyos) y un solo grosor de trazo para todos los iconos. */
+  .admin-theme {
+    font-family: var(--font-admin), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    --color-status-pending: var(--color-yellow);
+    --color-status-confirmed: var(--color-green);
+    --color-status-rescheduled: var(--color-blue);
+    --color-status-checked-in: var(--color-pink);
+    --color-status-completed: #ddd5c3;
+    --color-status-cancelled: #f0a693;
+    --color-status-expired: #d3ccbd;
+    --color-status-block: #8a857b;
+    /* Barras del calendario (calendar/shared.tsx): el pastel pleno de cada estado; --bar-mix oscurece los contornos. */
+    --bar-pending: var(--color-yellow);
+    --bar-confirmed: var(--color-green);
+    --bar-rescheduled: var(--color-blue);
+    --bar-checked-in: var(--color-pink);
+    --bar-completed: #e3dccb;
+    --bar-mix: #000;
+  }
+  .admin-theme [data-icon] {
+    stroke-width: 1.75px;
+  }
+  /* Los chips de estado (components/ui/status-pill.tsx) usan la tinta del panel, también en modo oscuro. */
+  .admin-theme {
+    --status-text: var(--color-ink);
+  }
+
+  /* Modo oscuro del panel (data-admin-theme en <html>: components/admin/appearance.tsx). Mismos papeles, invertidos:
+     fondo casi negro, tarjetas y campos un poco más claros, tinta crema y los pasteles en tonos profundos, para que el
+     texto crema se lea sobre ellos (≥ 4.5:1). La barra lateral sigue negra y conserva sus acentos rosa claro. */
+  :root[data-admin-theme="dark"] {
+    color-scheme: dark;
+    --color-canvas: #121110;
+    --color-panel: #1d1c1a;
+    --color-paper: #272623;
+    --color-line: #302e2a;
+    --color-line-strong: #46433e;
+    --color-ink: #f3efe6;
+    --color-ink-muted: #aba59a;
+    --color-ink-subtle: #847e74;
+    --color-sidebar: #1b1a18;
+    --color-focus: #f3efe6;
+    --color-chart: #f3efe6;
+    --color-series-1: #f3efe6;
+    --color-series-2: #e994c0;
+    --color-pink: #4f2a40;
+    --color-pink-soft: #3a2230;
+    --color-pink-deep: #7d4766;
+    --color-yellow: #4a3d14;
+    --color-yellow-soft: #3a3112;
+    --color-yellow-deep: #7a6421;
+    --color-green: #343d1f;
+    --color-green-soft: #283016;
+    --color-green-deep: #5a6a33;
+    --color-blue: #26314f;
+    --color-blue-soft: #1f2840;
+    --color-blue-deep: #3f5288;
+    --color-success: #b9cc85;
+    --color-success-soft: #2b3419;
+    --color-warning: #e9c35f;
+    --color-warning-soft: #3a3014;
+    --color-error: #f08a76;
+    --color-error-soft: #3f221d;
+    --color-info: #a9bdf0;
+    --color-info-soft: #1f2a44;
+    --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.45);
+    --shadow-overlay: 0 28px 60px -20px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.07);
+  }
+  :root[data-admin-theme="dark"] .admin-theme {
+    --color-status-completed: #3a362f;
+    --color-status-cancelled: #5c2e25;
+    --color-status-expired: #312e29;
+    --color-status-block: #6f6a61;
+    /* En oscuro, las barras toman el tono profundo de cada pastel: se distinguen del fondo y la tinta crema se lee. */
+    --bar-pending: var(--color-yellow-deep);
+    --bar-confirmed: var(--color-green-deep);
+    --bar-rescheduled: var(--color-blue-deep);
+    --bar-checked-in: var(--color-pink-deep);
+    --bar-completed: #48433b;
+    --bar-mix: #fff;
+  }
 
   /* Barras de desplazamiento del panel: finas, redondeadas, sin flechas y en sus colores (tinta translúcida sobre el
-     fondo claro; crema translúcido en la barra lateral oscura). Chrome, Edge y Safari usan ::-webkit-scrollbar;
+     fondo claro; papel translúcido en la barra lateral negra). Chrome, Edge y Safari usan ::-webkit-scrollbar;
      Firefox, las propiedades estándar. Van en la capa base: la utilidad no-scrollbar sigue ocultándolas. */
   html:has(.admin-surface) {
     --sb-thumb: color-mix(in srgb, var(--color-ink) 24%, transparent);
     --sb-thumb-hover: color-mix(in srgb, var(--color-ink) 42%, transparent);
   }
   .admin-dark {
-    --sb-thumb: color-mix(in srgb, var(--color-on-dark) 22%, transparent);
-    --sb-thumb-hover: color-mix(in srgb, var(--color-on-dark) 42%, transparent);
+    --sb-thumb: color-mix(in srgb, var(--color-paper) 22%, transparent);
+    --sb-thumb-hover: color-mix(in srgb, var(--color-paper) 42%, transparent);
   }
   html:has(.admin-surface)::-webkit-scrollbar,
   html:has(.admin-surface) *::-webkit-scrollbar {
@@ -685,19 +811,20 @@
     color: var(--color-error);
   }
 
-  /* Variante compacta del mismo campo, para el panel (densidad de herramienta, fondo blanco). */
+  /* Variante compacta del mismo campo, para el panel (densidad de herramienta, campo de papel sobre la tarjeta arena). */
   .field-input.field-compact {
-    min-height: 40px;
-    padding: 7px 12px;
+    min-height: 42px;
+    padding: 8px 14px;
     border-width: 1px;
     border-color: var(--color-line-strong);
-    border-radius: 12px;
-    background-color: var(--color-panel);
+    border-radius: 14px;
+    background-color: var(--color-paper);
     color: var(--color-ink);
-    font-size: 15px;
+    font-size: 14.5px;
     transition:
       border-color 0.15s ease,
-      box-shadow 0.15s ease;
+      box-shadow 0.15s ease,
+      background-color 0.15s ease;
   }
   .field-input.field-compact::placeholder {
     color: var(--color-ink-subtle);
@@ -707,7 +834,7 @@
   }
   .field-input.field-compact:focus-visible {
     border-color: var(--color-focus);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 20%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 12%, transparent);
     outline: none !important;
   }
   .field-input.field-compact[aria-invalid="true"],
@@ -718,7 +845,7 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 18%, transparent);
   }
   .field-input.field-compact:disabled {
-    background-color: var(--color-canvas);
+    background-color: color-mix(in srgb, var(--color-panel) 60%, var(--color-canvas));
     color: var(--color-ink-muted);
     cursor: not-allowed;
   }
@@ -734,9 +861,9 @@
   select.field-input.field-compact {
     appearance: none;
     padding-right: 36px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235d6b63' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2366615a' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: right 14px center;
   }
   @media (pointer: coarse) {
     .field-input.field-compact {
@@ -745,14 +872,18 @@
     }
   }
 
-  /* Zona clara del panel: anillo de foco del color de la marca, más fino que en el sitio. */
+  /* Zona clara del panel: anillo de foco negro, más fino que en el sitio. En la barra lateral negra, rosa. */
   .admin-surface {
     --ring: var(--color-focus);
     --ring-width: 2px;
     --ring-offset: 2px;
   }
+  /* Barra lateral negra (en los dos modos): rosa claro para lo activo y tinta oscura sobre él. */
   .admin-dark {
-    --ring: var(--color-highlight);
+    --color-pink: #f4b8d6;
+    --color-pink-deep: #e994c0;
+    --color-ink: #171614;
+    --ring: #f4b8d6;
     --ring-width: 2px;
     --ring-offset: 2px;
   }

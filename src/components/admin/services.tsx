@@ -10,7 +10,7 @@ import { SERVICE_LIMITS, type SiteService } from "@/lib/site";
 import { useAdmin } from "@/components/admin/context";
 import { adminInput } from "@/components/admin/shared";
 import { themeStyle } from "@/components/admin/theme";
-import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, IconButton, Modal, Switch } from "@/components/admin/ui";
+import { Badge, Button, Callout, Card, CardHeader, EmptyState, Field, IconButton, Modal, ModalPresence, Switch } from "@/components/admin/ui";
 
 // Servicios de «Servicios incluidos»: crear, editar, mostrar u ocultar, ordenar y eliminar. Cada cambio se publica
 // de inmediato en el sitio (no usa la barra de guardado).
@@ -112,12 +112,12 @@ export function ServicesManager() {
             }
           />
           {services.length ? (
-            <ul className="flex flex-col divide-y divide-line rounded-xl border border-line">
+            <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-[18px] bg-canvas/60">
               {services.map((s, i) => (
-                <li key={s.id} className={`flex items-center gap-3 px-3 py-2.5 transition-opacity sm:px-4 ${s.visible ? "" : "bg-canvas/60"}`}>
+                <li key={s.id} className={`flex items-center gap-3 px-3 py-2.5 transition-opacity sm:px-4 ${s.visible ? "" : "bg-ink/4"}`}>
                   <span
                     aria-hidden="true"
-                    className={`grid size-10 flex-none place-items-center rounded-xl ${s.note ? "bg-warning-soft text-warning" : "bg-success-soft text-success"} ${s.visible ? "" : "opacity-50"}`}
+                    className={`grid size-10 flex-none place-items-center rounded-full ${s.note ? "bg-warning-soft text-warning" : "bg-success-soft text-success"} ${s.visible ? "" : "opacity-50"}`}
                   >
                     <Icon icon={s.icon} />
                   </span>
@@ -189,18 +189,20 @@ export function ServicesManager() {
         </section>
       </div>
 
-      {editing && (
-        <ServiceEditor
-          draft={editing}
-          onClose={() => setEditing(null)}
-          onSaved={(list, title, isNew) => {
-            apply(list);
-            setEditing(null);
-            toast(isNew ? `«${title}» agregado al sitio` : "Cambios publicados");
-          }}
-          onAuthError={onAuthError}
-        />
-      )}
+      <ModalPresence>
+        {editing && (
+          <ServiceEditor
+            draft={editing}
+            onClose={() => setEditing(null)}
+            onSaved={(list, title, isNew) => {
+              apply(list);
+              setEditing(null);
+              toast(isNew ? `«${title}» agregado al sitio` : "Cambios publicados");
+            }}
+            onAuthError={onAuthError}
+          />
+        )}
+      </ModalPresence>
     </>
   );
 }
@@ -242,15 +244,10 @@ function ServiceEditor({
   }
 
   return (
-    <Modal
-      onClose={onClose}
-      labelledBy="sv-ed-title"
-      initialFocus="[data-autofocus]"
-      className="m-auto w-[calc(100%-32px)] max-w-[860px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
-    >
+    <Modal onClose={onClose} labelledBy="sv-ed-title" initialFocus="[data-autofocus]" className="m-auto w-[calc(100%-32px)] max-w-[860px] rounded-[26px] p-0">
       <div className="grid grid-cols-1 gap-5 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_260px]">
         <div className="flex min-w-0 flex-col gap-4">
-          <h2 id="sv-ed-title" className="text-[17px] font-bold text-ink">
+          <h2 id="sv-ed-title" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
             {isNew ? "Nuevo servicio" : "Editar servicio"}
           </h2>
           <Field label="Nombre" error={errors.title} hint={`${d.title.length}/${SERVICE_LIMITS.title}`}>
@@ -332,7 +329,7 @@ function ServiceEditor({
           <p className="text-[12px] text-ink-muted">Pasa el mouse por el servicio para ver la animación.</p>
         </div>
       </div>
-      <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
+      <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
         <Button onClick={onClose}>Cancelar</Button>
         <Button variant="primary" loading={busy} icon={<CheckIcon size={14} />} onClick={save}>
           {isNew ? "Agregar servicio" : "Guardar cambios"}

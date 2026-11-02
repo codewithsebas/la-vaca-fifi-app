@@ -1,10 +1,10 @@
 import type { NextRequest } from "next/server";
 import { toNotification } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { fail, json, readJson, requireStaff, route } from "@/lib/server/http";
 
 // POST /api/admin/notifications { ids: number[] } | { all: true } → marca como leídas.
 export const POST = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<{ ids?: number[]; all?: boolean }>(req);
   const ids = Array.isArray(b?.ids) ? b.ids.filter((n) => Number.isInteger(n) && n > 0).slice(0, 200) : [];

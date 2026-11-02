@@ -2,16 +2,32 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BanIcon, CalendarIcon, CheckIcon, ClockIcon, MoonIcon, PencilIcon, PlusIcon, TrashIcon, WarningIcon } from "@/components/ui/icons";
+import {
+  BanIcon,
+  BathIcon,
+  CalendarIcon,
+  CheckIcon,
+  ClockIcon,
+  HomeIcon,
+  MoonIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  WarningIcon,
+  WrenchIcon,
+} from "@/components/ui/icons";
 import { BLOCK_REASONS, clashingReservations } from "@/lib/booking";
 import { unitMarks } from "@/lib/admin-metrics";
 import { api } from "@/lib/client/api";
 import { addDays, fmtDate, isISO, nightsBetween, plural } from "@/lib/format";
+import { can } from "@/lib/permissions";
 import type { Block, BlockInput } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam, useSetParams } from "@/components/admin/context";
 import { MODULES } from "@/components/admin/routes";
 import { DateRangePicker } from "@/components/admin/date-picker";
+import { BathroomsPanel } from "@/components/admin/bathrooms";
+import { Paginator, usePaged } from "@/components/admin/paginator";
 import { adminInput } from "@/components/admin/shared";
 import {
   Badge,
@@ -23,13 +39,16 @@ import {
   FieldError,
   IconButton,
   Modal,
+  ModalPresence,
   PageHeader,
   Segmented,
   StatCard,
+  Tabs,
   type Tone,
 } from "@/components/admin/ui";
 
 type Filter = "vigentes" | "finalizados" | "todos";
+type View = "cabanas" | "banos";
 type Draft = { id?: string; type: string; unit: string; from: string | null; to: string | null; reason: string; notes: string };
 
 const BG =
@@ -47,6 +66,8 @@ export function BlocksView() {
   const params = useSearchParams();
   const setParams = useSetParams();
   const [filter, setFilter] = useParam<Filter>("mostrar", "vigentes");
+  const [view, setView] = useParam<View>("ver", "cabanas");
+  const canDelete = can(data.me.role, "delete");
 
   // El editor se abre desde la URL: ?editar=<bloqueo> o ?nuevo=1[&cabana=&unidad=&fecha=] (atajo desde el calendario).
   const editId = params.get("editar");
@@ -79,6 +100,9 @@ export function BlocksView() {
     [data.blocks, today],
   );
   const list = sorted.filter((b) => filter === "todos" || (filter === "finalizados" ? b.to < today : b.to >= today));
+  const paged = usePaged(list, "bloqueos", filter);
+  const baths = data.bathrooms ?? [];
+  const bathBlocksToday = (data.bathroomBlocks ?? []).filter((k) => k.from <= today && today <= k.to);
   const inCourse = data.blocks.filter((b) => b.from <= today && b.to >= today).length;
   const next30 = addDays(today, 30);
   const upcoming = data.blocks.filter((b) => b.from > today && b.from <= next30).length;
@@ -111,106 +135,164 @@ export function BlocksView() {
     <>
       <PageHeader
         title={MODULES.bloqueos.label}
-        description="Fechas cerradas por mantenimiento, uso propio u otros motivos. No se pueden reservar en el sitio."
+        description={
+          view === "banos"
+            ? "Estado de cada baño y fechas en que no se puede usar. Es un aviso: la cabaña se sigue pudiendo reservar."
+            : "Fechas cerradas por mantenimiento, uso propio u otros motivos. No se pueden reservar en el sitio."
+        }
         actions={
-          <Button variant="primary" icon={<PlusIcon size={14} />} onClick={openNew}>
-            Nuevo bloqueo
-          </Button>
+          view === "cabanas" ? (
+            <Button variant="primary" icon={<PlusIcon size={14} />} onClick={openNew}>
+              Nuevo bloqueo
+            </Button>
+          ) : undefined
         }
       />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard
-          label="En curso hoy"
-          value={inCourse}
-          hint={inCourse ? "cabañas cerradas ahora" : "Todo abierto"}
-          icon={<BanIcon size={15} />}
-          tone={inCourse ? "warning" : undefined}
-        />
-        <StatCard label="Próximos 30 días" value={upcoming} hint="bloqueos programados" icon={<CalendarIcon size={15} />} />
-        <StatCard label="Noches bloqueadas" value={nights} hint="en los próximos 30 días" icon={<MoonIcon size={15} />} />
-      </div>
+      <Tabs
+        label="Qué bloquear"
+        value={view === "banos" ? "banos" : "cabanas"}
+        onChange={setView}
+        tabs={[
+          { value: "cabanas", label: "Cabañas", icon: <HomeIcon size={15} />, count: inCourse },
+          {
+            value: "banos",
+            label: "Baños",
+            icon: <BathIcon size={15} />,
+            count: baths.filter((b) => b.status !== "available").length + bathBlocksToday.length,
+          },
+        ]}
+      />
+      {view === "banos" ? (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard
+              accent="green"
+              label="Baños disponibles"
+              value={`${baths.filter((b) => b.status === "available").length}/${baths.length}`}
+              hint="en servicio ahora"
+              icon={<BathIcon size={15} />}
+            />
+            <StatCard
+              accent="yellow"
+              label="En mantenimiento o fuera"
+              value={baths.filter((b) => b.status !== "available").length}
+              hint="con aviso en sus cabañas"
+              icon={<WrenchIcon size={15} />}
+            />
+            <StatCard accent="pink" label="Bloqueados hoy" value={bathBlocksToday.length} hint="por fechas" icon={<BanIcon size={15} />} />
+          </div>
+          <BathroomsPanel />
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard
+              accent="yellow"
+              label="En curso hoy"
+              value={inCourse}
+              hint={inCourse ? "cabañas cerradas ahora" : "Todo abierto"}
+              icon={<BanIcon size={15} />}
+              tone={inCourse ? "warning" : undefined}
+            />
+            <StatCard accent="blue" label="Próximos 30 días" value={upcoming} hint="bloqueos programados" icon={<CalendarIcon size={15} />} />
+            <StatCard accent="pink" label="Noches bloqueadas" value={nights} hint="en los próximos 30 días" icon={<MoonIcon size={15} />} />
+          </div>
 
-      <Card className="flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Segmented
-            label="Mostrar"
-            value={filter}
-            onChange={setFilter}
-            options={[
-              { value: "vigentes", label: "Vigentes y próximos", count: data.blocks.filter((b) => b.to >= today).length },
-              { value: "finalizados", label: "Finalizados" },
-              { value: "todos", label: "Todos" },
-            ]}
-          />
-        </div>
-        {list.length ? (
-          <ul className="flex flex-col gap-2">
-            {list.map((b) => {
-              const st = stateOf(b, today);
-              const days = nightsBetween(b.from, b.to) + 1;
-              return (
-                <li
-                  key={b.id}
-                  className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border px-4 py-3 transition-colors ${st.order === 0 ? "border-highlight/50 bg-warning-soft/40" : "border-line"} ${st.order === 2 ? "opacity-75" : ""}`}
-                >
-                  <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-xl text-ink-muted" style={{ background: BG }}>
-                    <BanIcon size={17} />
-                  </span>
-                  <div className="min-w-[200px] flex-1">
-                    <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-ink">
-                      {cabinLabel(b.cabinTypeId, b.unit)}
-                      <Badge tone={st.tone} icon={st.order === 0 ? <ClockIcon size={11} /> : undefined}>
-                        {st.label}
-                      </Badge>
-                    </p>
-                    <p className="text-[13px] text-ink-muted">
-                      {fmtDate(b.from, true)} → {fmtDate(b.to, true)} · {plural(days, "día", "días")}
-                    </p>
-                    <p className="mt-1 text-[13px] text-ink">
-                      <strong className="font-semibold">{b.reason}</strong>
-                      {b.notes ? <span className="text-ink-muted"> · {b.notes}</span> : null}
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" icon={<PencilIcon size={13} />} onClick={() => setParams({ editar: b.id, nuevo: null })}>
-                      Editar
+          <Card className="flex flex-col gap-4 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Segmented
+                label="Mostrar"
+                value={filter}
+                onChange={setFilter}
+                options={[
+                  { value: "vigentes", label: "Vigentes y próximos", count: data.blocks.filter((b) => b.to >= today).length },
+                  { value: "finalizados", label: "Finalizados" },
+                  { value: "todos", label: "Todos" },
+                ]}
+              />
+            </div>
+            {list.length ? (
+              <>
+                <ul className="flex flex-col gap-2">
+                  {paged.rows.map((b) => {
+                    const st = stateOf(b, today);
+                    const days = nightsBetween(b.from, b.to) + 1;
+                    return (
+                      <li
+                        key={b.id}
+                        className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[18px] px-4 py-3 transition-colors ${st.order === 0 ? "bg-yellow-soft" : "bg-canvas/60"} ${st.order === 2 ? "opacity-75" : ""}`}
+                      >
+                        <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full text-ink-muted" style={{ background: BG }}>
+                          <BanIcon size={17} />
+                        </span>
+                        <div className="min-w-[200px] flex-1">
+                          <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-ink">
+                            {cabinLabel(b.cabinTypeId, b.unit)}
+                            <Badge tone={st.tone} icon={st.order === 0 ? <ClockIcon size={11} /> : undefined}>
+                              {st.label}
+                            </Badge>
+                          </p>
+                          <p className="text-[13px] text-ink-muted">
+                            {fmtDate(b.from, true)} → {fmtDate(b.to, true)} · {plural(days, "día", "días")}
+                          </p>
+                          <p className="mt-1 text-[13px] text-ink">
+                            <strong className="font-semibold">{b.reason}</strong>
+                            {b.notes ? <span className="text-ink-muted"> · {b.notes}</span> : null}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="sm" icon={<PencilIcon size={13} />} onClick={() => setParams({ editar: b.id, nuevo: null })}>
+                            Editar
+                          </Button>
+                          {canDelete && (
+                            <IconButton
+                              label={`Eliminar bloqueo de ${cabinLabel(b.cabinTypeId, b.unit)}`}
+                              size="sm"
+                              variant="danger-ghost"
+                              onClick={() => remove(b)}
+                            >
+                              <TrashIcon size={15} />
+                            </IconButton>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <Paginator p={paged} noun="bloqueos" />
+              </>
+            ) : (
+              <EmptyState
+                icon={<CalendarIcon size={18} />}
+                title={filter === "finalizados" ? "No hay bloqueos finalizados" : "No hay fechas bloqueadas"}
+                text={
+                  filter === "finalizados"
+                    ? undefined
+                    : "Bloquea fechas por mantenimiento o uso propio. También puedes hacerlo desde el calendario, con un clic en un día libre."
+                }
+                action={
+                  filter !== "finalizados" ? (
+                    <Button icon={<PlusIcon size={14} />} onClick={openNew}>
+                      Nuevo bloqueo
                     </Button>
-                    <IconButton label={`Eliminar bloqueo de ${cabinLabel(b.cabinTypeId, b.unit)}`} size="sm" variant="danger-ghost" onClick={() => remove(b)}>
-                      <TrashIcon size={15} />
-                    </IconButton>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <EmptyState
-            icon={<CalendarIcon size={18} />}
-            title={filter === "finalizados" ? "No hay bloqueos finalizados" : "No hay fechas bloqueadas"}
-            text={
-              filter === "finalizados"
-                ? undefined
-                : "Bloquea fechas por mantenimiento o uso propio. También puedes hacerlo desde el calendario, con un clic en un día libre."
-            }
-            action={
-              filter !== "finalizados" ? (
-                <Button icon={<PlusIcon size={14} />} onClick={openNew}>
-                  Nuevo bloqueo
-                </Button>
-              ) : undefined
-            }
+                  ) : undefined
+                }
+              />
+            )}
+          </Card>
+        </>
+      )}
+
+      <ModalPresence>
+        {editing && (
+          <BlockEditor
+            key={editing.id ?? `nuevo-${params.toString()}`}
+            initial={editing}
+            onClose={close}
+            onDelete={editing.id && canDelete ? () => remove(data.blocks.find((b) => b.id === editing.id)!) : undefined}
           />
         )}
-      </Card>
-
-      {editing && (
-        <BlockEditor
-          key={editing.id ?? `nuevo-${params.toString()}`}
-          initial={editing}
-          onClose={close}
-          onDelete={editing.id ? () => remove(data.blocks.find((b) => b.id === editing.id)!) : undefined}
-        />
-      )}
+      </ModalPresence>
     </>
   );
 }
@@ -289,19 +371,14 @@ function BlockEditor({ initial, onClose, onDelete }: { initial: Draft; onClose: 
   const cabins = data.cabinTypes.filter((c) => c.units > 0);
 
   return (
-    <Modal
-      onClose={onClose}
-      labelledBy="bk-title"
-      initialFocus="#bk-dates"
-      className="m-auto w-[calc(100%-32px)] max-w-[540px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
-    >
+    <Modal onClose={onClose} labelledBy="bk-title" initialFocus="#bk-dates" className="m-auto w-[calc(100%-32px)] max-w-[540px] rounded-[26px] p-0">
       <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex items-start gap-3.5">
           <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full text-ink" style={{ background: BG }}>
             <BanIcon size={18} />
           </span>
           <div className="pt-1">
-            <h2 id="bk-title" className="text-[17px] font-bold text-ink">
+            <h2 id="bk-title" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
               {d.id ? "Editar bloqueo" : "Nuevo bloqueo"}
             </h2>
             <p className="text-[13.5px] text-ink-muted">Las fechas bloqueadas no se pueden reservar en el sitio.</p>
@@ -394,7 +471,7 @@ function BlockEditor({ initial, onClose, onDelete }: { initial: Draft; onClose: 
           ))}
         {error && <FieldError>{error}</FieldError>}
       </div>
-      <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:items-center sm:px-6">
+      <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:items-center sm:px-6">
         {onDelete && (
           <Button variant="danger-ghost" icon={<TrashIcon size={14} />} onClick={onDelete} className="sm:mr-auto">
             Eliminar

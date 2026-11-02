@@ -29,7 +29,7 @@ export const POST = route(async (req: NextRequest) => {
   }
 
   await runDeadlines();
-  const { types, units, seasons } = await loadPricing(sb);
+  const { types, units, seasons, depositPct } = await loadPricing(sb);
   const fields = validateReservation(b, types, todayISO());
   if (Object.keys(fields).length) return validation(fields);
 
@@ -56,7 +56,7 @@ export const POST = route(async (req: NextRequest) => {
       guest_city: b.guest.city.trim(),
       special_requests: (b.specialRequests ?? "").trim(),
       consents: { policies: true, dataProcessing: true, marketing: !!b.consents.marketing },
-      quote: computeQuote(type, b.checkIn, b.checkOut, guests, seasons),
+      quote: computeQuote(type, b.checkIn, b.checkOut, guests, seasons, depositPct),
       idempotency_key: idemKey,
       deposit_due_at: depositDueAt(),
     },

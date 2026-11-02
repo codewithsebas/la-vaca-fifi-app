@@ -1,7 +1,7 @@
 // Cálculos del panel (clientes y finanzas) sobre los datos ya cargados. Funciones puras: sin red ni estado.
 import { ACTIVE_STATUSES } from "@/lib/booking";
 import { MS, addDays, dateOf, nightsBetween, parseISO } from "@/lib/format";
-import type { Block, CabinType, ClientProfile, Reservation, ReservationStatus } from "@/lib/types";
+import type { Block, CabinType, ClientProfile, PaymentRecord, Reservation, ReservationStatus } from "@/lib/types";
 
 // Reservas que se concretaron (el abono se pagó).
 const SECURED: ReservationStatus[] = ["confirmed", "rescheduled", "checked_in", "completed"];
@@ -10,8 +10,17 @@ const SECURED: ReservationStatus[] = ["confirmed", "rescheduled", "checked_in", 
 
 export type Payment = { date: string; amount: number; kind: "deposit" | "balance"; r: Reservation };
 
-// Pagos recibidos: el abono (confirma la reserva) y el saldo (después del check-in). `paid` es la suma registrada en la base de datos.
-export function paymentsOf(r: Reservation): Payment[] {
+// Pagos registrados aprobados, agrupados por reserva (para los reportes).
+export function recordsByCode(records: PaymentRecord[]) {
+  const by = new Map<string, PaymentRecord[]>();
+  for (const p of records) if (p.status === "approved" && p.approvedAt) by.set(p.reservationCode, [...(by.get(p.reservationCode) ?? []), p]);
+  return by;
+}
+
+// Pagos recibidos de una reserva: sus pagos registrados (fecha y valor reales, también los parciales; el primero es el abono)
+// o, si no tiene registros (reservas anteriores a los pagos registrados), los que se deducen de sus fechas de abono y saldo.
+export function paymentsOf(r: Reservation, own?: PaymentRecord[]): Payment[] {
+  if (own?.length) return own.map((p) => ({ date: dateOf(p.approvedAt!), amount: p.amount, kind: p.kind === "balance" ? "balance" : "deposit", r }));
   const out: Payment[] = [];
   const deposit = r.depositPaidAt ? Math.min(r.quote.deposit, r.paid || r.quote.deposit) : 0;
   if (r.depositPaidAt) out.push({ date: dateOf(r.depositPaidAt), amount: deposit, kind: "deposit", r });
@@ -19,7 +28,7 @@ export function paymentsOf(r: Reservation): Payment[] {
   return out;
 }
 
-const receivedOf = (r: Reservation) => paymentsOf(r).reduce((s, p) => s + p.amount, 0);
+const receivedOf = (r: Reservation, own?: PaymentRecord[]) => paymentsOf(r, own).reduce((s, p) => s + p.amount, 0);
 
 // Valor de la reserva para el negocio: el total si se concretó; si se canceló con abono, el abono (no es reembolsable).
 export const valueOf = (r: Reservation) => (SECURED.includes(r.status) ? r.quote.total : r.status === "cancelled" && r.depositPaidAt ? r.quote.deposit : 0);
@@ -46,7 +55,7 @@ export function paymentState(r: Reservation): { label: string; tone: "success" |
   if (balanceDue(r)) return { label: "Saldo por pagar", tone: "warning" };
   if (r.balancePaidAt || r.status === "completed" || r.status === "checked_in") return { label: "Pagada", tone: "success" };
   if (r.depositPaidAt || SECURED.includes(r.status)) return { label: "Abono recibido", tone: "success" };
-  return { label: "Pago del abono en curso", tone: "warning" };
+  return { label: "Esperando el abono", tone: "warning" };
 }
 
 /* ───────────── Clientes ───────────── */
@@ -152,9 +161,16 @@ const overlapNights = (ci: string, coExclusive: string, r: Range) => {
 type GuestType = "Pareja" | "Familia" | "Grupo" | "Individual";
 const guestType = (r: Reservation): GuestType => (r.children > 0 ? "Familia" : r.adults >= 3 ? "Grupo" : r.adults === 1 ? "Individual" : "Pareja");
 
-export function finance(reservations: Reservation[], blocks: Block[], cabins: CabinType[], range: Range, cabinId = "") {
+export function finance(
+  reservations: Reservation[],
+  blocks: Block[],
+  cabins: CabinType[],
+  range: Range,
+  cabinId = "",
+  records: Map<string, PaymentRecord[]> = new Map(),
+) {
   const rs = cabinId ? reservations.filter((r) => r.cabinTypeId === cabinId) : reservations;
-  const payments = rs.flatMap(paymentsOf).filter((p) => inRange(p.date, range));
+  const payments = rs.flatMap((r) => paymentsOf(r, records.get(r.code))).filter((p) => inRange(p.date, range));
   const deposits = payments.filter((p) => p.kind === "deposit");
   const received = payments.reduce((s, p) => s + p.amount, 0);
   const confirmed = deposits.map((p) => p.r);
@@ -175,17 +191,24 @@ export function finance(reservations: Reservation[], blocks: Block[], cabins: Ca
     .map((t) => ({ id: t, label: t, value: payments.filter((p) => guestType(p.r) === t).reduce((s, p) => s + p.amount, 0) }))
     .sort((a, b) => b.value - a.value);
 
-  // Ocupación: noches ocupadas / noches disponibles (las bloqueadas no cuentan como disponibles).
+  // Ocupación: noches ocupadas / noches disponibles (las bloqueadas no cuentan como disponibles). Cada unidad cuenta una sola
+  // vez por noche, aunque haya registros que se crucen (p. ej. reservas importadas ya finalizadas).
   const cabs = cabins.filter((c) => !cabinId || c.id === cabinId);
   const capacity = cabs.reduce((s, c) => s + c.units, 0) * daysIn(range);
   const blocked = blocks.filter((b) => !cabinId || b.cabinTypeId === cabinId).reduce((s, b) => s + overlapNights(b.from, addDays(b.to, 1), range), 0);
-  const occupied = rs.filter((r) => [...ACTIVE_STATUSES, "completed"].includes(r.status)).reduce((s, r) => s + overlapNights(r.checkIn, r.checkOut, range), 0);
   const available = Math.max(0, capacity - blocked);
+  const taken = new Set<string>();
+  const end = addDays(range.to, 1);
+  for (const r of rs) {
+    if (![...ACTIVE_STATUSES, "completed"].includes(r.status)) continue;
+    for (let d = r.checkIn > range.from ? r.checkIn : range.from; d < r.checkOut && d < end; d = addDays(d, 1)) taken.add(`${r.cabinTypeId}:${r.unit}:${d}`);
+  }
+  const occupied = Math.min(taken.size, available);
 
   // Estadías del periodo (llegan dentro del rango): cuánto ya está cobrado y cuánto falta.
   const stays = rs.filter((r) => inRange(r.checkIn, range) && (SECURED.includes(r.status) || r.status === "pending_deposit"));
   const stayValue = stays.reduce((s, r) => s + r.quote.total, 0);
-  const stayReceived = stays.reduce((s, r) => s + receivedOf(r), 0);
+  const stayReceived = stays.reduce((s, r) => s + receivedOf(r, records.get(r.code)), 0);
 
   return {
     received,

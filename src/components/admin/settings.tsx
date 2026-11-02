@@ -1,6 +1,6 @@
 "use client";
 
-import { BellIcon, CalendarIcon, ExternalLinkIcon, LogoutIcon, RefreshIcon, VolumeIcon } from "@/components/ui/icons";
+import { BellIcon, CalendarIcon, ExternalLinkIcon, LogoutIcon, MoonIcon, RefreshIcon, VolumeIcon } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { useAdmin } from "@/components/admin/context";
@@ -8,6 +8,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { LIVE_LABEL, LiveDot, SOUND_GROUPS, chime, unlockAudio, useSound } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
 import { PushSettingsCard } from "@/components/admin/push";
+import { ThemeSwitch } from "@/components/admin/appearance";
 import { Button, Callout, Card, CardHeader, Field, PageHeader, Switch, buttonClass } from "@/components/admin/ui";
 import { CALENDAR_VIEWS } from "@/components/admin/calendar/shared";
 
@@ -35,7 +36,7 @@ export function SettingsView() {
     <>
       <PageHeader
         title="Configuración"
-        description="Preferencias de este navegador: notificaciones, sonido de los avisos, vista del calendario y sesión. No cambian nada en el sitio."
+        description="Preferencias de este navegador: apariencia, notificaciones, sonido de los avisos, vista del calendario y sesión. No cambian nada en el sitio."
       />
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
@@ -73,6 +74,18 @@ export function SettingsView() {
         </Card>
 
         <div className="flex flex-col gap-4">
+          <Card aria-labelledby="st-theme" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader
+              id="st-theme"
+              icon={<MoonIcon size={18} />}
+              title="Apariencia"
+              subtitle="Claro, oscuro o el mismo modo del sistema de este dispositivo. También se cambia desde la barra lateral."
+            />
+            <div className="max-w-[380px]">
+              <ThemeSwitch />
+            </div>
+          </Card>
+
           <PushSettingsCard />
 
           <Card aria-labelledby="st-live" className="flex flex-col gap-3 p-4 sm:p-5">
@@ -82,7 +95,7 @@ export function SettingsView() {
               title="Tiempo real"
               subtitle="Reservas, comprobantes y bloqueos se actualizan sin recargar la página."
             />
-            <p className="flex items-center gap-2.5 rounded-xl bg-canvas px-3.5 py-3 text-[13.5px] font-semibold text-ink">
+            <p className="flex items-center gap-2.5 rounded-[16px] bg-canvas/70 px-4 py-3 text-[13.5px] font-semibold text-ink">
               <LiveDot status={live} />
               {LIVE_LABEL[live]}
             </p>

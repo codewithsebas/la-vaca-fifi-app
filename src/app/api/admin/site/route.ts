@@ -12,8 +12,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const URL_OK = /^https:\/\/[^\s]+$/;
 
 // PUT /api/admin/site { settings, policies, content, theme } → horarios, contacto, RNT, políticas, textos y colores. Regenera todo el sitio.
+// El abono y las instrucciones de pago no se tocan aquí: tienen su página (Condiciones de pago, /api/admin/payment-terms).
 export const PUT = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const b = await readJson<SiteInput>(req);
   const s = b?.settings;
@@ -58,7 +59,6 @@ export const PUT = route(async (req: NextRequest) => {
   if (texts.hero.badge.length > TEXT_LIMITS.badge || texts.hero.description.length > TEXT_LIMITS.description)
     errors.heroText = "La etiqueta o la descripción de la portada es demasiado larga.";
   if (texts.location.note.length > TEXT_LIMITS.note) errors.location = "La nota de ubicación es demasiado larga.";
-  if (texts.payment.instructions.length > TEXT_LIMITS.instructions) errors.payment = "Las instrucciones de pago son demasiado largas.";
   if (Object.values(texts.social).some((u) => u && (!URL_OK.test(u) || u.length > TEXT_LIMITS.url)))
     errors.social = "Las redes sociales deben ser enlaces completos que empiecen por https://";
   // Colores: cada clave conocida debe ser un color #rrggbb (el contraste se advierte en el panel, no se bloquea).
@@ -67,6 +67,10 @@ export const PUT = route(async (req: NextRequest) => {
   if (THEME_KEYS.some((k) => k in rawTheme && !normalizeHex(rawTheme[k]))) errors.theme = "Los colores deben tener el formato #RRGGBB.";
   const theme = mergeTheme(rawTheme);
   if (Object.keys(errors).length) return fail(422, "VALIDATION_ERROR", { fields: errors });
+
+  // Las instrucciones de pago guardadas se conservan (las edita Condiciones de pago).
+  const { data: current } = await sb.from("site_settings").select("content").maybeSingle().throwOnError();
+  texts.payment = mergeTexts(current?.content).payment;
 
   await sb
     .from("site_settings")

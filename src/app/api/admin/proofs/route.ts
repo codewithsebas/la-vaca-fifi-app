@@ -1,6 +1,6 @@
 import { after, type NextRequest } from "next/server";
 import { toProof } from "@/lib/server/db";
-import { businessError, fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { businessError, fail, json, readJson, requireStaff, route } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
 import { siteUrl } from "@/lib/server/site";
@@ -11,7 +11,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // GET /api/admin/proofs?id= → URL firmada de 5 minutos (bucket privado; la firma usa la sesión del admin y su política de lectura).
 export const GET = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireStaff();
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id") ?? "";
   if (!UUID.test(id)) return fail(400, "INVALID_ID");
@@ -26,7 +26,7 @@ export const GET = route(async (req: NextRequest) => {
 // Aprobar con confirmReservation registra el abono como pago recibido y confirma la reserva (si estaba pendiente o vencida),
 // con las mismas reglas que un pago registrado desde la ficha (y el mismo correo de confirmación).
 export const POST = route(async (req: NextRequest) => {
-  const { sb, uid, error } = await requireAdmin();
+  const { sb, uid, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<ProofReview>(req);
   if (!b || !UUID.test(String(b.id)) || !["approve", "reject"].includes(b.decision)) return fail(400, "INVALID_BODY");

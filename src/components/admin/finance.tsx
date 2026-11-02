@@ -1,33 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { CalendarIcon, ClockIcon, HomeIcon, ReceiptIcon, TrendIcon, UsersIcon, WalletIcon } from "@/components/ui/icons";
-import { delta, finance, pendingOf, previousRange } from "@/lib/admin-metrics";
+import { useMemo, type ReactNode } from "react";
+import { ArrowRightIcon, CalendarIcon, ClockIcon, HomeIcon, ReceiptIcon, TrendIcon, UsersIcon, WalletIcon } from "@/components/ui/icons";
+import { delta, finance, pendingOf, previousRange, recordsByCode } from "@/lib/admin-metrics";
 import { cop, fmtDate, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { useTip } from "@/components/ui/floating";
 import { PeriodFilter, usePeriod } from "@/components/admin/period";
 import { MODULES, paths } from "@/components/admin/routes";
-import { Card, CardHeader, EmptyState, PageHeader, StatCard, buttonClass } from "@/components/admin/ui";
+import { ACCENT, Card, CardHeader, EmptyState, PageHeader, StatCard, buttonClass, type Accent } from "@/components/admin/ui";
 
 // "$1.250.000" → "$1,3 M" para ejes y etiquetas compactas.
 const short = (n: number) =>
   n >= 1e6 ? `$${(n / 1e6).toLocaleString("es-CO", { maximumFractionDigits: 1 })} M` : n >= 1e3 ? `$${Math.round(n / 1e3)} mil` : cop(n);
 
-// Análisis del negocio por periodo. Los movimientos (pagos uno a uno, pendientes, comprobantes) se gestionan en Pagos.
+// Variación contra el periodo anterior; sin base para comparar no se muestra.
+const vs = (now: number, before: number) => delta(now, before) ?? undefined;
+
+// Análisis del negocio por periodo: arriba los filtros y cuatro indicadores; luego el ingreso en el tiempo junto a lo que
+// falta por cobrar, y al final de dónde viene el ingreso. Los movimientos uno a uno se gestionan en Pagos.
 export function FinanceView() {
   const { data } = useAdmin();
   const period = usePeriod("30");
   const [cabinId, setCabinId] = useParam("cabana", "");
   const range = period.range;
   const prev = previousRange(range);
-  const now = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, range, cabinId), [data, range.from, range.to, cabinId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const before = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, prev, cabinId), [data, prev.from, prev.to, cabinId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const pending = data.reservations.filter((r) => (!cabinId || r.cabinTypeId === cabinId) && pendingOf(r).total > 0);
-  const pendingTotal = pending.reduce((s, r) => s + pendingOf(r).total, 0);
-  const awaiting = pending.filter((r) => r.status === "pending_deposit");
+  const records = useMemo(() => recordsByCode(data.payments), [data.payments]);
+  const now = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, range, cabinId, records), [data, range.from, range.to, cabinId, records]); // eslint-disable-line react-hooks/exhaustive-deps
+  const before = useMemo(() => finance(data.reservations, data.blocks, data.cabinTypes, prev, cabinId, records), [data, prev.from, prev.to, cabinId, records]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Lo pendiente hoy (no depende del periodo): abonos de fechas retenidas y saldos de estadías confirmadas o en curso.
+  const due = data.reservations.filter((r) => (!cabinId || r.cabinTypeId === cabinId) && pendingOf(r).total > 0);
+  const awaiting = due.filter((r) => pendingOf(r).deposit > 0);
+  const balances = due.filter((r) => pendingOf(r).balance > 0);
   // Los enlaces a Pagos conservan el periodo y la cabaña elegida aquí.
   const same = {
     periodo: period.preset === "30" ? null : period.preset,
@@ -35,17 +41,12 @@ export function FinanceView() {
     hasta: period.preset === "personalizado" ? range.to : null,
     cabana: cabinId || null,
   };
-  const toPagos = (q: Record<string, string | null>, text: string) => (
-    <Link href={paths.pagos(q)} className="font-semibold text-ink underline-offset-2 hover:underline">
-      {text}
-    </Link>
-  );
 
   return (
     <>
       <PageHeader
         title={MODULES.finanzas.label}
-        description="Ingresos según la fecha en que se recibió cada pago: el abono al confirmar y el saldo después del check-in."
+        description="Cuánto entró, qué falta por cobrar y cómo se ocupan las cabañas."
         actions={
           <Link href={paths.pagos({ vista: "recibidos", ...same })} className={buttonClass()}>
             <ReceiptIcon size={15} />
@@ -53,7 +54,9 @@ export function FinanceView() {
           </Link>
         }
       />
-      <div className="flex flex-wrap items-end gap-3">
+
+      {/* Filtros en una sola barra: periodo y cabaña a la izquierda, las fechas que se están viendo a la derecha. */}
+      <Card className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
         <PeriodFilter period={period} />
         <div className="w-full sm:w-[220px]">
           <Combobox
@@ -64,119 +67,183 @@ export function FinanceView() {
           />
         </div>
         <p className="text-[13px] text-ink-muted lg:ml-auto">
-          {period.label} · {period.daysLabel} · comparado con los {period.daysLabel} anteriores
+          <span className="font-semibold text-ink">{period.label}</span> · {period.daysLabel}
+          <span className="max-sm:hidden"> · frente a los {period.daysLabel} anteriores</span>
         </p>
-      </div>
+      </Card>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 xl:grid-cols-4">
         <StatCard
+          accent="pink"
           label="Ingresos recibidos"
           value={cop(now.received)}
-          delta={delta(now.received, before.received)}
-          hint={toPagos({ vista: "recibidos", ...same }, plural(now.payments.length, "pago", "pagos"))}
+          delta={vs(now.received, before.received)}
+          hint={plural(now.payments.length, "pago registrado", "pagos registrados")}
           icon={<TrendIcon size={15} />}
-          tone="success"
         />
         <StatCard
+          accent="green"
           label="Reservas confirmadas"
           value={now.confirmedCount}
-          delta={delta(now.confirmedCount, before.confirmedCount)}
-          hint="abono recibido en el periodo"
+          delta={vs(now.confirmedCount, before.confirmedCount)}
+          hint="con su abono en el periodo"
           icon={<CalendarIcon size={15} />}
         />
         <StatCard
-          label="Pendientes de abono"
-          value={awaiting.length}
-          hint={
-            awaiting.length
-              ? toPagos({ vista: "por-cobrar", tipo: "abonos" }, `${cop(awaiting.reduce((s, r) => s + r.quote.deposit, 0))} por recibir`)
-              : "ninguna solicitud en espera"
-          }
-          icon={<ClockIcon size={15} />}
-          tone={awaiting.length ? "warning" : undefined}
-        />
-        <StatCard
-          label="Por cobrar hoy"
-          value={cop(pendingTotal)}
-          hint={toPagos({ vista: "por-cobrar" }, plural(pending.length, "reserva con pagos pendientes", "reservas con pagos pendientes"))}
-          icon={<WalletIcon size={15} />}
-          tone="warning"
-        />
-        <StatCard
+          accent="yellow"
           label="Ocupación"
           value={`${Math.round(now.occupancy * 100)} %`}
-          delta={delta(now.occupancy, before.occupancy)}
+          delta={before.available && now.available ? Math.round((now.occupancy - before.occupancy) * 100) : undefined}
+          deltaUnit="pp"
           hint={`${now.occupied} de ${now.available} noches`}
           icon={<HomeIcon size={15} />}
         />
         <StatCard
+          accent="blue"
           label="Ticket promedio"
           value={now.ticket ? cop(now.ticket) : "—"}
-          delta={now.ticket ? delta(now.ticket, before.ticket) : undefined}
-          hint="valor por reserva confirmada"
+          delta={now.ticket && before.ticket ? vs(now.ticket, before.ticket) : undefined}
+          hint="por reserva confirmada"
           icon={<UsersIcon size={15} />}
         />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <RevenueChart buckets={now.buckets} />
-        <div className="flex flex-col gap-4">
-          <StaysMeter stays={now.stays} />
-          <BarList id="fi-cabin" title="Ingresos por cabaña" subtitle="¿Qué cabaña genera más?" rows={now.byCabin} total={now.received} />
-          <BarList
-            id="fi-type"
-            title="Ingresos por tipo de estadía"
-            subtitle="Pareja, familia (con niños), grupo (3 o más adultos) o individual."
-            rows={now.byType}
-            total={now.received}
+      {/* El gráfico se estira hasta el alto de la columna derecha: sin huecos debajo. */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <RevenueChart buckets={now.buckets} deposits={now.depositsTotal} balances={now.balancesTotal} />
+        <div className="flex min-w-0 flex-col gap-4 self-start">
+          <Receivables
+            deposits={awaiting.reduce((s, r) => s + pendingOf(r).deposit, 0)}
+            depositCount={awaiting.length}
+            balances={balances.reduce((s, r) => s + pendingOf(r).balance, 0)}
+            balanceCount={balances.length}
+            cabinId={cabinId}
           />
+          <StaysMeter stays={now.stays} />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <BarList
+          id="fi-cabin"
+          title="Ingresos por cabaña"
+          subtitle="¿Qué cabaña genera más?"
+          rows={now.byCabin}
+          total={now.received}
+          icon={<HomeIcon size={18} />}
+        />
+        <BarList
+          id="fi-type"
+          title="Ingresos por tipo de estadía"
+          subtitle="Pareja, familia (con niños), grupo (3 o más adultos) o individual."
+          rows={now.byType}
+          total={now.received}
+          icon={<UsersIcon size={18} />}
+        />
       </div>
     </>
   );
 }
 
+/* ───────────── Por cobrar hoy ───────────── */
+
+// Lo que falta por cobrar de todas las reservas activas (no depende del periodo), con atajos a Pagos.
+function Receivables({
+  deposits,
+  depositCount,
+  balances,
+  balanceCount,
+  cabinId,
+}: {
+  deposits: number;
+  depositCount: number;
+  balances: number;
+  balanceCount: number;
+  cabinId: string;
+}) {
+  const row = (accent: Accent, icon: ReactNode, label: string, hint: string, amount: number, tipo: "abonos" | "saldos") => (
+    <li>
+      <Link
+        href={paths.pagos({ vista: "por-cobrar", tipo, cabana: cabinId || null })}
+        className="flex items-center gap-3 rounded-[18px] bg-paper/70 p-3 pr-3.5 transition-colors hover:bg-paper"
+      >
+        <span aria-hidden="true" className={`grid size-10 flex-none place-items-center rounded-full text-ink ${ACCENT[accent].bg}`}>
+          {icon}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold text-ink">{label}</span>
+          <span className="block text-[12.5px] text-ink-muted">{hint}</span>
+        </span>
+        <span className="flex-none rounded-full bg-panel px-3 py-1 text-[13px] font-bold text-ink tabular-nums">{cop(amount)}</span>
+      </Link>
+    </li>
+  );
+  return (
+    <Card aria-labelledby="fi-due" className="flex flex-col gap-4 p-5 sm:p-6">
+      <CardHeader
+        id="fi-due"
+        icon={<WalletIcon size={18} />}
+        accent="blue"
+        title="Por cobrar hoy"
+        subtitle="De todas las reservas activas, sin importar el periodo."
+      />
+      <p className="text-[30px] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">{cop(deposits + balances)}</p>
+      <ul className="flex flex-col gap-2">
+        {row("yellow", <ClockIcon size={16} />, "Abonos por recibir", plural(depositCount, "reserva sin abono", "reservas sin abono"), deposits, "abonos")}
+        {row("green", <WalletIcon size={16} />, "Saldos por cobrar", plural(balanceCount, "reserva confirmada", "reservas confirmadas"), balances, "saldos")}
+      </ul>
+      <Link href={paths.pagos({ vista: "por-cobrar", cabana: cabinId || null })} className={buttonClass("secondary", "sm", "self-start")}>
+        Ver en Pagos
+        <ArrowRightIcon size={14} />
+      </Link>
+    </Card>
+  );
+}
+
 /* ───────────── Ingresos en el tiempo (columnas apiladas: abonos + saldos) ───────────── */
 
-export function RevenueChart({ buckets }: { buckets: ReturnType<typeof finance>["buckets"] }) {
+// La columna entera recibe el ratón, pero el tooltip apunta a la barra (justo encima de ella, no al tope del gráfico).
+const BAR_TIP = { anchor: (el: HTMLElement) => el.querySelector<HTMLElement>("[data-bar]") };
+
+export function RevenueChart({ buckets, deposits, balances }: { buckets: ReturnType<typeof finance>["buckets"]; deposits: number; balances: number }) {
   const tip = useTip();
   const max = Math.max(1, ...buckets.map((b) => b.deposit + b.balance));
   const top = buckets.reduce((m, b, i) => (b.deposit + b.balance > buckets[m].deposit + buckets[m].balance ? i : m), 0);
   const every = Math.ceil(buckets.length / 10); // etiquetas del eje x sin amontonarse
   const empty = buckets.every((b) => !b.deposit && !b.balance);
+  const by = buckets[0]?.from === buckets[0]?.to ? "Por día" : buckets[0]?.label.startsWith("Sem.") ? "Por semana" : "Por mes";
 
   return (
-    <Card aria-labelledby="fi-trend" className="flex flex-col gap-4 p-4 sm:p-5">
-      <CardHeader
-        id="fi-trend"
-        icon={<TrendIcon size={18} />}
-        title="Ingresos en el tiempo"
-        subtitle={buckets[0]?.from === buckets[0]?.to ? "Por día" : buckets[0]?.label.startsWith("Sem.") ? "Por semana" : "Por mes"}
-        actions={
-          <ul aria-label="Leyenda" className="flex gap-3 text-[12.5px] text-ink-muted">
-            <li className="inline-flex items-center gap-1.5">
-              <span aria-hidden="true" className="size-2.5 rounded-[3px] bg-series-1" />
-              Abonos
-            </li>
-            <li className="inline-flex items-center gap-1.5">
-              <span aria-hidden="true" className="size-2.5 rounded-[3px] bg-series-2" />
-              Saldos
-            </li>
-          </ul>
-        }
-      />
+    <Card aria-labelledby="fi-trend" className="flex flex-col gap-5 p-5 sm:p-6">
+      <CardHeader id="fi-trend" icon={<TrendIcon size={18} />} accent="pink" title="Ingresos en el tiempo" subtitle={by} />
+      {/* Totales del periodo, con el color de cada serie (también sirven de leyenda). */}
+      <dl className="grid grid-cols-3 gap-2 rounded-[18px] bg-paper/60 px-4 py-3">
+        {[
+          { k: "Total", v: deposits + balances, dot: "" },
+          { k: "Abonos", v: deposits, dot: "bg-series-1" },
+          { k: "Saldos", v: balances, dot: "bg-series-2" },
+        ].map((x) => (
+          <div key={x.k} className="min-w-0">
+            <dt className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[.06em] text-ink-muted uppercase">
+              {x.dot && <span aria-hidden="true" className={`size-2.5 flex-none rounded-full ${x.dot}`} />}
+              {x.k}
+            </dt>
+            <dd className="truncate text-[17px] font-bold tracking-[-0.01em] text-ink tabular-nums">{cop(x.v)}</dd>
+          </div>
+        ))}
+      </dl>
       {empty ? (
         <EmptyState
           compact
           icon={<TrendIcon size={18} />}
           title="Sin ingresos en este periodo"
-          text="Cuando se confirmen abonos o se cobren saldos, verás aquí su evolución."
+          text="Cuando se registren abonos o saldos, verás aquí su evolución."
         />
       ) : (
-        <div className="pl-12">
-          <div className="relative h-[240px]">
+        <div className="flex flex-1 flex-col pl-12">
+          <div className="relative min-h-[240px] flex-1">
             {[1, 0.5, 0].map((f) => (
-              <div key={f} aria-hidden="true" className="absolute inset-x-0 border-t border-line" style={{ top: `${(1 - f) * 100}%` }}>
+              <div key={f} aria-hidden="true" className="absolute inset-x-0 border-t border-dashed border-line" style={{ top: `${(1 - f) * 100}%` }}>
                 <span className="absolute top-0 right-full -translate-y-1/2 pr-2 text-[11px] whitespace-nowrap text-ink-subtle tabular-nums">
                   {short(max * f)}
                 </span>
@@ -190,30 +257,34 @@ export function RevenueChart({ buckets }: { buckets: ReturnType<typeof finance>[
                     key={b.key}
                     role="img"
                     aria-label={`${b.label}: ${cop(total)} (abonos ${cop(b.deposit)}, saldos ${cop(b.balance)})`}
-                    {...tip(() => (
-                      <span className="flex flex-col gap-0.5">
-                        <strong>{b.from === b.to ? fmtDate(b.from, true) : `${fmtDate(b.from)} → ${fmtDate(b.to)}`}</strong>
-                        <span>Total {cop(total)}</span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="size-2 rounded-[2px] bg-series-1" />
-                          Abonos {cop(b.deposit)}
+                    {...tip(
+                      () => (
+                        <span className="flex flex-col gap-0.5">
+                          <strong>{b.from === b.to ? fmtDate(b.from, true) : `${fmtDate(b.from)} → ${fmtDate(b.to)}`}</strong>
+                          <span>Total {cop(total)}</span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="size-2.5 rounded-full bg-series-1 ring-[1.5px] ring-current" />
+                            Abonos {cop(b.deposit)}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="size-2.5 rounded-full bg-series-2 ring-[1.5px] ring-current" />
+                            Saldos {cop(b.balance)}
+                          </span>
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="size-2 rounded-[2px] bg-series-2" />
-                          Saldos {cop(b.balance)}
-                        </span>
-                      </span>
-                    ))}
+                      ),
+                      BAR_TIP,
+                    )}
                     className="group relative flex h-full min-w-0 flex-1 flex-col items-center justify-end"
                   >
-                    {/* Las piezas apiladas se separan con 2 px del color de fondo. */}
+                    {/* Las piezas apiladas se separan con 3 px del color de fondo. */}
                     <span
                       aria-hidden="true"
-                      className="flex w-full max-w-6 flex-col-reverse gap-[2px] transition-[filter] group-hover:brightness-90"
+                      data-bar
+                      className="flex w-full max-w-[18px] flex-col-reverse gap-[3px] overflow-hidden rounded-full transition-[filter] group-hover:brightness-90"
                       style={{ height: `${(total / max) * 100}%` }}
                     >
-                      {b.deposit > 0 && <span className={`w-full bg-series-1 ${b.balance ? "" : "rounded-t-[4px]"}`} style={{ flex: b.deposit }} />}
-                      {b.balance > 0 && <span className="w-full rounded-t-[4px] bg-series-2" style={{ flex: b.balance }} />}
+                      {b.deposit > 0 && <span className="w-full rounded-full bg-series-1" style={{ flex: b.deposit }} />}
+                      {b.balance > 0 && <span className="w-full rounded-full bg-series-2" style={{ flex: b.balance }} />}
                     </span>
                     {i === top && total > 0 && (
                       <span className="absolute -top-5 text-[11.5px] font-bold whitespace-nowrap text-ink tabular-nums">{short(total)}</span>
@@ -242,42 +313,39 @@ export function RevenueChart({ buckets }: { buckets: ReturnType<typeof finance>[
 export function StaysMeter({ stays }: { stays: ReturnType<typeof finance>["stays"] }) {
   const pct = stays.value ? Math.round((stays.received / stays.value) * 100) : 0;
   return (
-    <Card aria-labelledby="fi-stays" className="flex flex-col gap-3 p-4 sm:p-5">
+    <Card aria-labelledby="fi-stays" className="flex flex-col gap-4 p-5 sm:p-6">
       <CardHeader
         id="fi-stays"
         icon={<CalendarIcon size={18} />}
-        title="Cobro de las estadías del periodo"
-        subtitle={`${plural(stays.count, "reserva que llega", "reservas que llegan")} en estas fechas: ¿cuánto ya está cobrado?`}
+        accent="green"
+        title="Estadías del periodo"
+        subtitle={stays.count ? `${plural(stays.count, "reserva llega", "reservas llegan")} en estas fechas` : "Llegadas en estas fechas"}
       />
       {stays.count ? (
         <>
-          <div aria-hidden="true" className="flex h-3 gap-[2px] overflow-hidden rounded-full">
-            {stays.received > 0 && <span className="bg-series-1" style={{ flex: stays.received }} />}
-            {stays.pending > 0 && <span className="bg-series-2" style={{ flex: stays.pending }} />}
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-[30px] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">{pct} %</p>
+            <p className="text-right text-[12.5px] text-ink-muted">
+              cobrado de
+              <strong className="block text-[14px] font-bold text-ink tabular-nums">{cop(stays.value)}</strong>
+            </p>
           </div>
-          <dl className="grid grid-cols-3 gap-2 text-[12.5px]">
-            <div>
-              <dt className="flex items-center gap-1.5 whitespace-nowrap text-ink-muted">
-                <span aria-hidden="true" className="size-2 rounded-[2px] bg-series-1" />
-                Cobrado · {pct} %
-              </dt>
-              <dd className="font-semibold text-ink tabular-nums">{cop(stays.received)}</dd>
+          <span aria-hidden="true" className="block h-2.5 overflow-hidden rounded-full bg-ink/8">
+            <span className="block h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${pct}%` }} />
+          </span>
+          <dl className="grid grid-cols-2 gap-2 text-[12.5px]">
+            <div className="rounded-[16px] bg-paper/70 px-3.5 py-2.5">
+              <dt className="text-ink-muted">Cobrado</dt>
+              <dd className="text-[14px] font-bold text-ink tabular-nums">{cop(stays.received)}</dd>
             </div>
-            <div>
-              <dt className="flex items-center gap-1.5 text-ink-muted">
-                <span aria-hidden="true" className="size-2 rounded-[2px] bg-series-2" />
-                Pendiente
-              </dt>
-              <dd className="font-semibold text-ink tabular-nums">{cop(stays.pending)}</dd>
-            </div>
-            <div>
-              <dt className="text-ink-muted">Valor total</dt>
-              <dd className="font-semibold text-ink tabular-nums">{cop(stays.value)}</dd>
+            <div className="rounded-[16px] bg-paper/70 px-3.5 py-2.5">
+              <dt className="text-ink-muted">Falta por cobrar</dt>
+              <dd className="text-[14px] font-bold text-ink tabular-nums">{cop(stays.pending)}</dd>
             </div>
           </dl>
         </>
       ) : (
-        <p className="text-[13px] text-ink-muted">No hay llegadas en este periodo.</p>
+        <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-muted">No hay llegadas en este periodo.</p>
       )}
     </Card>
   );
@@ -291,35 +359,48 @@ export function BarList({
   subtitle,
   rows,
   total,
+  icon,
 }: {
   id: string;
   title: string;
   subtitle: string;
   rows: { id: string; label: string; value: number }[];
   total: number;
+  icon?: ReactNode;
 }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
-    <Card aria-labelledby={id} className="flex flex-col gap-3 p-4 sm:p-5">
-      <CardHeader id={id} title={title} subtitle={subtitle} />
+    <Card aria-labelledby={id} className="flex flex-col gap-4 p-5 sm:p-6">
+      <CardHeader id={id} icon={icon} title={title} subtitle={subtitle} />
       {total ? (
-        <ul className="flex flex-col gap-2.5">
-          {rows.map((r) => (
-            <li key={r.id} className="flex flex-col gap-1">
-              <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                <span className="truncate font-medium text-ink">{r.label}</span>
-                <span className="text-ink-muted tabular-nums">
-                  <strong className="font-semibold text-ink">{cop(r.value)}</strong> · {total ? Math.round((r.value / total) * 100) : 0} %
+        <ol className="flex flex-col gap-2">
+          {rows.map((r, i) => {
+            const pct = Math.round((r.value / total) * 100);
+            return (
+              <li key={r.id} className="flex items-center gap-3 rounded-[16px] bg-paper/60 px-3.5 py-2.5">
+                <span
+                  aria-hidden="true"
+                  className={`grid size-7 flex-none place-items-center rounded-full text-[12px] font-bold ${i === 0 && r.value ? "bg-ink text-paper" : "bg-panel text-ink-muted"}`}
+                >
+                  {i + 1}
                 </span>
-              </div>
-              <span aria-hidden="true" className="block h-2 overflow-hidden rounded-full bg-ink/6">
-                <span className="block h-full rounded-r-[4px] bg-chart transition-[width] duration-500" style={{ width: `${(r.value / max) * 100}%` }} />
-              </span>
-            </li>
-          ))}
-        </ul>
+                <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="flex items-baseline justify-between gap-3 text-[13.5px]">
+                    <span className="truncate font-semibold text-ink">{r.label}</span>
+                    <span className="flex-none text-ink-muted tabular-nums">
+                      <strong className="font-bold text-ink">{cop(r.value)}</strong> · {pct} %
+                    </span>
+                  </span>
+                  <span className="block h-1.5 overflow-hidden rounded-full bg-ink/8">
+                    <span className="block h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${(r.value / max) * 100}%` }} />
+                  </span>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
       ) : (
-        <p className="text-[13px] text-ink-muted">Sin ingresos en este periodo.</p>
+        <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-muted">Sin ingresos en este periodo.</p>
       )}
     </Card>
   );

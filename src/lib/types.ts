@@ -6,7 +6,8 @@ import type { SiteTheme } from "@/lib/theme";
 
 export type ReservationStatus = "pending_deposit" | "confirmed" | "cancelled" | "expired" | "rescheduled" | "checked_in" | "completed";
 
-export type DocType = "CC" | "CE" | "Pasaporte" | "PPT";
+// SD: sin documento (reservas importadas); el número es el teléfono, así el cliente se agrupa por teléfono.
+export type DocType = "CC" | "CE" | "Pasaporte" | "PPT" | "SD";
 
 export type CabinType = {
   id: CabinTypeId;
@@ -88,7 +89,7 @@ export type ReservationInput = {
 export type Note = { at: string; text: string };
 
 // De dónde vino la reserva: el sitio (el huésped) o el panel (el equipo, por WhatsApp, teléfono o en persona).
-export type ReservationSource = "web" | "panel";
+export type ReservationSource = "web" | "panel" | "import";
 
 // Pagos registrados por el equipo (efectivo o transferencia).
 // deposit: abono (confirma) · full: pago total (confirma y salda) · balance: saldo.
@@ -158,6 +159,9 @@ export type Reservation = ReservationInput & {
   checkedInAt: string | null;
   clientKey: string; // "CC:12345678": tipo y número de documento
   source?: ReservationSource; // sin valor: "web" (reservas anteriores)
+  externalRef?: string | null; // reservas importadas: número de la reserva en el archivo
+  channel?: string; // canal de venta (Booking.com, recepción…); vacío en las de la web y el panel
+  commission?: number; // comisión del canal
   demo?: boolean;
 };
 
@@ -254,10 +258,64 @@ export type AdminData = {
   emails: EmailRecord[];
   clients: Record<string, ClientProfile>;
   notifications: AdminNotification[];
+  me: PanelUser; // quién usa el panel
+  bathrooms: Bathroom[];
+  bathroomBlocks: BathroomBlock[];
 };
+
+/* ───────────── Equipo ───────────── */
+
+// admin: todo. recepcion: el día a día (sin finanzas, tarifas, cabañas, contenido del sitio, cancelar ni eliminar).
+export type PanelRole = "admin" | "recepcion";
+export type PanelUser = { id: string; email: string; name: string; role: PanelRole };
+export type Employee = PanelUser & { createdAt: string; lastSignInAt: string | null; active: boolean };
+// Crear: email, name, role y password. Editar: id y lo que cambia (password solo para asignar una nueva).
+export type EmployeeInput = { id?: string; email?: string; name?: string; role?: PanelRole; password?: string; active?: boolean };
+// Perfil propio: nombre y, si se quiere, contraseña nueva.
+export type ProfileInput = { name?: string; password?: string };
+
+/* ───────────── Baños ───────────── */
+
+export type BathroomStatus = "available" | "unavailable" | "maintenance";
+// cabinTypeId y unit: la cabaña a la que pertenece (opcional; sin ella es un baño compartido).
+export type Bathroom = {
+  id: string;
+  name: string;
+  status: BathroomStatus;
+  cabinTypeId: CabinTypeId | null;
+  unit: number | null;
+  notes: string;
+  statusUpdatedAt: string;
+};
+export type BathroomInput = { id?: string; name?: string; status?: BathroomStatus; cabinTypeId?: CabinTypeId | null; unit?: number | null; notes?: string };
+export type BathroomBlock = { id: string; bathroomId: string; from: string; to: string; reason: string; notes: string };
+export type BathroomBlockInput = Omit<BathroomBlock, "id"> & { id?: string };
+
+/* ───────────── Importación ───────────── */
+
+// Una reserva a crear desde el archivo (ya mapeada a una cabaña del panel). ref: referencia única de la fila.
+export type ImportRow = {
+  ref: string;
+  guest: string;
+  email: string;
+  phone: string;
+  checkIn: string;
+  checkOut: string;
+  cabinTypeId: CabinTypeId;
+  unit: number;
+  total: number;
+  commission: number;
+  channel: string;
+  status: "confirmed" | "completed" | "cancelled";
+  notes: string;
+};
+export type ImportResult = { ref: string; ok: boolean; code?: string; error?: string };
 
 // Cuerpo de PUT /admin/site.
 export type SiteInput = { settings: SiteSettings; policies: SitePolicy[]; content: SiteTexts; theme: SiteTheme };
+
+// Condiciones de pago (solo administradores): el abono para confirmar (% del total) y los datos para pagar que ve el huésped.
+export type PaymentTerms = { depositPct: number; instructions: string };
 
 export type CabinInput = {
   id?: string; // solo al crear; si falta se genera a partir del nombre
@@ -274,14 +332,21 @@ export type CabinInput = {
 
 export type SeasonInput = Omit<RateSeason, "id"> & { id?: string };
 
+// Cómo pagó el huésped un pago que registra el equipo.
+export type PayMethod = "cash" | "transfer";
+
 export type AdminAction =
   | { code: string; action: "cancel" | "checkin" | "checkout" }
-  // Pago recibido (efectivo o transferencia): "confirm" = abono, "balance" = saldo.
-  | { code: string; action: "confirm" | "balance"; note?: string; full?: boolean }
+  // Pago recibido en persona: "confirm" = de una reserva pendiente (la confirma), "balance" = de una ya confirmada.
+  // Valor: `full` = todo lo que falta, `amount` = un valor a elección; sin ninguno, el abono (o el saldo). `method` y
+  // `note` quedan como detalle del pago.
+  | { code: string; action: "confirm" | "balance"; note?: string; full?: boolean; amount?: number; method?: PayMethod }
   | { code: string; action: "reschedule"; checkIn: string; checkOut: string }
-  // Enlace de pago con un plazo nuevo: amplía (o reactiva, si venció) la retención de una reserva sin abono.
+  // Plazo nuevo para pagar el abono: amplía (o reactiva, si venció) la retención de una reserva sin abono.
   | { code: string; action: "extend_hold"; holdMinutes: number }
-  | { code: string; action: "note"; text: string };
+  | { code: string; action: "note"; text: string }
+  // Corregir o completar los datos del huésped (p. ej. el documento de una reserva importada).
+  | { code: string; action: "guest"; guest: Guest };
 
 export type ProofReview = { id: string; decision: "approve" | "reject"; note: string; confirmReservation: boolean };
 

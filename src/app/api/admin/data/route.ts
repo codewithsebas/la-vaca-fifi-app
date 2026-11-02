@@ -1,13 +1,25 @@
 import { after, type NextRequest } from "next/server";
-import { loadCabinTypes, loadClients, loadSeasons, runDeadlines, toBlock, toEmail, toNotification, toPayment, toProof, toReservation } from "@/lib/server/db";
-import { json, requireAdmin, route } from "@/lib/server/http";
+import {
+  loadBathrooms,
+  loadCabinTypes,
+  loadClients,
+  loadSeasons,
+  runDeadlines,
+  toBlock,
+  toEmail,
+  toNotification,
+  toPayment,
+  toProof,
+  toReservation,
+} from "@/lib/server/db";
+import { json, requireStaff, route } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
 import { loadSiteContent, siteUrl } from "@/lib/server/site";
 
-// GET /api/admin/data → todo lo que necesita el panel. Consultas con la sesión del admin (RLS).
+// GET /api/admin/data → todo lo que necesita el panel y quién lo usa. Consultas con la sesión del equipo (RLS).
 export const GET = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, me, error } = await requireStaff();
   if (error) return error;
   await runDeadlines();
   const [
@@ -21,6 +33,7 @@ export const GET = route(async (req: NextRequest) => {
     { data: emails },
     clients,
     { data: notifications },
+    baths,
   ] = await Promise.all([
     sb.from("reservations").select("*, reservation_notes(text, created_at)").order("check_in", { ascending: false }).throwOnError(),
     sb.from("blocks").select("*").order("from_date").throwOnError(),
@@ -32,6 +45,7 @@ export const GET = route(async (req: NextRequest) => {
     sb.from("email_outbox").select("*").order("created_at", { ascending: false }).limit(300).throwOnError(),
     loadClients(sb),
     sb.from("admin_notifications").select("*").order("created_at", { ascending: false }).limit(150).throwOnError(),
+    loadBathrooms(sb),
   ]);
   // Correos que fallaron y ya les toca reintentar: se envían después de responder.
   if (emails.some((e) => e.status === "failed" || e.status === "pending")) after(() => processOutbox(siteUrl(req.nextUrl.origin)));
@@ -49,5 +63,8 @@ export const GET = route(async (req: NextRequest) => {
     emails: emails.map(toEmail),
     clients,
     notifications: notifications.map(toNotification),
+    me,
+    bathrooms: baths.bathrooms,
+    bathroomBlocks: baths.blocks,
   });
 });

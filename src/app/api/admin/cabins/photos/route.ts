@@ -20,7 +20,7 @@ async function cabinPhotos(sb: Db, id: string) {
 
 // POST /api/admin/cabins/photos (multipart: cabinId, file) → agrega una foto a la galería de la cabaña.
 export const POST = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const form = await req.formData().catch(() => null);
   const id = String(form?.get("cabinId") ?? "");
@@ -46,7 +46,7 @@ export const POST = route(async (req: NextRequest) => {
 
 // PUT /api/admin/cabins/photos { cabinId, fotos: [urls] } → reordena (la primera es la portada).
 export const PUT = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const b = await readJson<{ cabinId: string; fotos: string[] }>(req);
   const fotos = b && (await cabinPhotos(sb, String(b.cabinId)));
@@ -63,7 +63,7 @@ export const PUT = route(async (req: NextRequest) => {
 
 // DELETE /api/admin/cabins/photos?cabinId=&url= → quita la foto de la galería y de Storage.
 export const DELETE = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("cabinId") ?? "";
   const path = photoPath(req.nextUrl.searchParams.get("url") ?? "");

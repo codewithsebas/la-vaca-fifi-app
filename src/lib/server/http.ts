@@ -1,6 +1,8 @@
 import "server-only";
 import { createSessionClient, MissingSupabaseConfig } from "@/lib/supabase/server";
 import type { Db } from "@/lib/server/db";
+import { can, isRole, type Permission } from "@/lib/permissions";
+import type { PanelUser } from "@/lib/types";
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 export const fail = (status: number, error: string, extra?: object) => json({ error, ...extra }, status);
@@ -30,20 +32,36 @@ export function route<A extends unknown[]>(handler: (...args: A) => Promise<Resp
   };
 }
 
-// Sesión de Supabase Auth con rol de administrador (app_metadata, que el usuario no puede editar).
-export async function requireAdmin(): Promise<{ sb: Db; uid: string | null; error?: never } | { sb?: never; uid?: never; error: Response }> {
+// Sesión del equipo (Supabase Auth). El rol va en app_metadata, que el usuario no puede editar: «admin» o «recepcion».
+// `me`: quién hace la solicitud (para el panel y para los permisos de cada ruta: lib/permissions.ts).
+type Staff = { sb: Db; uid: string | null; me: PanelUser; error?: never } | { sb?: never; uid?: never; me?: never; error: Response };
+
+export async function requireStaff(): Promise<Staff> {
   const sb = await createSessionClient();
   const { data } = await sb.auth.getClaims();
-  if (!data?.claims) return { error: fail(401, "UNAUTHORIZED") };
-  const role = (data.claims.app_metadata as { role?: string } | undefined)?.role;
-  if (role !== "admin") return { error: fail(403, "FORBIDDEN") };
-  return { sb, uid: typeof data.claims.sub === "string" ? data.claims.sub : null };
+  const c = data?.claims;
+  if (!c) return { error: fail(401, "UNAUTHORIZED") };
+  const role = (c.app_metadata as { role?: string } | undefined)?.role;
+  if (!isRole(role)) return { error: fail(403, "FORBIDDEN") };
+  const uid = typeof c.sub === "string" ? c.sub : null;
+  const name = String((c.user_metadata as { full_name?: string } | undefined)?.full_name ?? "").trim();
+  const email = typeof c.email === "string" ? c.email : "";
+  return { sb, uid, me: { id: uid ?? "", email, name, role } };
+}
+
+// Solo administradores, o un permiso concreto (recepción tiene algunos: lib/permissions.ts).
+export async function requireAdmin(perm?: Permission): Promise<Staff> {
+  const s = await requireStaff();
+  if (s.error) return s;
+  if (perm ? !can(s.me.role, perm) : s.me.role !== "admin") return { error: fail(403, "FORBIDDEN") };
+  return s;
 }
 
 // Errores de negocio que lanzan las funciones de la base de datos → respuesta HTTP.
 const BUSINESS: Record<string, number> = {
   NOT_FOUND: 404,
   ALREADY_PAID: 409,
+  INVALID_AMOUNT: 422,
   NO_AVAILABILITY: 409,
   DUPLICATE: 409,
   NOT_APPLICABLE: 422,

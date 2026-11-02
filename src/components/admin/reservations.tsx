@@ -6,59 +6,52 @@ import { ChevronRightIcon, CloseIcon, FileTextIcon, PlusIcon, SearchIcon } from 
 import { StatusPill } from "@/components/ui/status-pill";
 import { paymentState } from "@/lib/admin-metrics";
 import { STATUS, isISO, plural } from "@/lib/format";
-import type { Reservation } from "@/lib/types";
+import type { Reservation, ReservationStatus } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
 import { NewReservationDialog } from "@/components/admin/new-reservation";
+import { Paginator, usePaged } from "@/components/admin/paginator";
 import { MODULES, paths } from "@/components/admin/routes";
 import { adminInput, norm, rowOf } from "@/components/admin/shared";
-import { Badge, Button, Card, EmptyState, Field, PageHeader, Segmented } from "@/components/admin/ui";
+import { Badge, Button, Card, EmptyState, Field, ModalPresence, PageHeader } from "@/components/admin/ui";
 
-type Quick = "todas" | "pendientes" | "comprobantes" | "proximas" | "en-estadia";
+// Un solo filtro de estado: los estados de la reserva y dos vistas de trabajo (comprobantes por revisar, próximas llegadas).
+type View = "" | "comprobantes" | "proximas" | ReservationStatus;
 type Sort = "llegada-desc" | "llegada-asc" | "creada-desc" | "valor-desc";
-const PAGE = 40;
 
 // Lista de reservas. Los filtros viven en la URL: al abrir una reserva y volver, la lista sigue igual.
 export function ReservationsView() {
   const { data, today, openReservation, cabinLabel } = useAdmin();
   const [q, setQ] = useParam("q", "");
-  const [quick, setQuick] = useParam<Quick>("vista", "todas");
-  const [status, setStatus] = useParam("estado", "");
+  const [view, setView] = useParam<View>("estado", "");
   const [cabin, setCabin] = useParam("cabana", "");
   const [fromP, setFrom] = useParam("desde", "");
   const [toP, setTo] = useParam("hasta", "");
   const [sort, setSort] = useParam<Sort>("orden", "llegada-desc");
-  const [limit, setLimit] = useState(PAGE);
   const [creating, setCreating] = useState(false);
   const from = isISO(fromP) ? fromP : null;
   const to = isISO(toP) ? toP : null;
 
   const proofCodes = useMemo(() => new Set(data.proofs.filter((p) => p.status === "pending").map((p) => p.reservationCode)), [data.proofs]);
-  const quickTest: Record<Quick, (r: Reservation) => boolean> = {
-    todas: () => true,
-    pendientes: (r) => r.status === "pending_deposit",
-    comprobantes: (r) => proofCodes.has(r.code),
-    proximas: (r) => ["pending_deposit", "confirmed", "rescheduled"].includes(r.status) && r.checkIn >= today,
-    "en-estadia": (r) => r.status === "checked_in",
-  };
-  const test = quickTest[quick] ?? quickTest.todas;
-  const counts = {
-    pendientes: data.reservations.filter(quickTest.pendientes).length,
-    comprobantes: data.reservations.filter(quickTest.comprobantes).length,
-    estadia: data.reservations.filter(quickTest["en-estadia"]).length,
-  };
+  const inView = (r: Reservation) =>
+    !view ||
+    (view === "comprobantes"
+      ? proofCodes.has(r.code)
+      : view === "proximas"
+        ? ["pending_deposit", "confirmed", "rescheduled"].includes(r.status) && r.checkIn >= today
+        : r.status === view);
+  const byStatus = (s: ReservationStatus) => data.reservations.filter((r) => r.status === s).length;
 
   const nq = norm(q.trim());
   const list = data.reservations
     .filter(
       (r) =>
-        test(r) &&
-        (!status || r.status === status) &&
+        inView(r) &&
         (!cabin || r.cabinTypeId === cabin) &&
         (!from || r.checkIn >= from) &&
         (!to || r.checkIn <= to) &&
-        (!nq || [r.code, r.guest.fullName, r.guest.email, r.guest.phone, r.guest.docNumber].some((v) => norm(v || "").includes(nq))),
+        (!nq || [r.code, r.guest.fullName, r.guest.email, r.guest.phone, r.guest.docNumber, r.externalRef ?? ""].some((v) => norm(v || "").includes(nq))),
     )
     .sort((a, b) =>
       sort === "llegada-asc"
@@ -75,11 +68,11 @@ export function ReservationsView() {
               ? 1
               : -1,
     );
-  const active = !!(q || status || cabin || from || quick !== "todas");
+  const paged = usePaged(list, "reservas", [nq, view, cabin, fromP, toP, sort].join("|"));
+  const active = !!(q || view || cabin || from);
   const clear = () => {
     setQ("");
-    setQuick("todas");
-    setStatus("");
+    setView("");
     setCabin("");
     setFrom("");
     setTo("");
@@ -96,28 +89,14 @@ export function ReservationsView() {
           </Button>
         }
       />
-      {creating && <NewReservationDialog draft={{}} onClose={() => setCreating(false)} />}
-      <Segmented
-        label="Filtro rápido"
-        value={quick}
-        onChange={(v) => {
-          setQuick(v);
-          setLimit(PAGE);
-        }}
-        options={[
-          { value: "todas", label: "Todas" },
-          { value: "pendientes", label: "Pendientes de abono", count: counts.pendientes },
-          { value: "comprobantes", label: "Comprobantes por revisar", count: counts.comprobantes },
-          { value: "proximas", label: "Próximas llegadas" },
-          { value: "en-estadia", label: "En estadía", count: counts.estadia },
-        ]}
-      />
-      <Card className="p-4">
+      <ModalPresence>{creating && <NewReservationDialog draft={{}} onClose={() => setCreating(false)} />}</ModalPresence>
+
+      <Card className="flex flex-col gap-3 p-4">
         <form
           role="search"
           aria-label="Filtrar reservas"
           onSubmit={(e) => e.preventDefault()}
-          className="grid grid-cols-2 items-end gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)]"
+          className="grid grid-cols-2 items-end gap-3 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)]"
         >
           <Field label="Buscar" className="col-span-2 xl:col-span-1">
             {(p) => (
@@ -138,9 +117,19 @@ export function ReservationsView() {
             {(p) => (
               <Combobox
                 id={p.id}
-                value={status}
-                onChange={setStatus}
-                options={[{ value: "", label: "Todos los estados" }, ...Object.entries(STATUS).map(([v, s]) => ({ value: v, label: s.label, color: s.bg }))]}
+                value={view}
+                onChange={(v) => setView(v as View)}
+                options={[
+                  { value: "", label: "Todas las reservas" },
+                  { value: "comprobantes", label: "Comprobantes por revisar", description: plural(proofCodes.size, "reserva", "reservas") },
+                  { value: "proximas", label: "Próximas llegadas", description: "Pendientes, confirmadas y reprogramadas" },
+                  ...(Object.entries(STATUS) as [ReservationStatus, (typeof STATUS)[ReservationStatus]][]).map(([v, s]) => ({
+                    value: v,
+                    label: s.label,
+                    color: s.bg,
+                    description: plural(byStatus(v), "reserva", "reservas"),
+                  })),
+                ]}
               />
             )}
           </Field>
@@ -187,19 +176,18 @@ export function ReservationsView() {
             )}
           </Field>
         </form>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+          <p aria-live="polite" className="text-[13px] font-medium text-ink-muted">
+            {plural(list.length, "reserva", "reservas")}
+            {active ? " con estos filtros" : ""}
+          </p>
+          {active && (
+            <Button size="sm" variant="ghost" icon={<CloseIcon size={14} />} onClick={clear}>
+              Limpiar filtros
+            </Button>
+          )}
+        </div>
       </Card>
-
-      <div className="-mb-1 flex flex-wrap items-center justify-between gap-2">
-        <p aria-live="polite" className="text-[13px] font-medium text-ink-muted">
-          {plural(list.length, "reserva", "reservas")}
-          {active ? " con estos filtros" : ""}
-        </p>
-        {active && (
-          <Button size="sm" variant="ghost" icon={<CloseIcon size={14} />} onClick={clear}>
-            Limpiar filtros
-          </Button>
-        )}
-      </div>
 
       {list.length > 0 ? (
         <>
@@ -218,7 +206,7 @@ export function ReservationsView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {list.slice(0, limit).map((r) => {
+                {paged.rows.map((r) => {
                   const x = rowOf(r, cabinLabel);
                   const pay = paymentState(r);
                   return (
@@ -231,6 +219,7 @@ export function ReservationsView() {
                         >
                           {x.code}
                         </Link>
+                        {r.source === "import" && <span className="block text-[11.5px] text-ink-muted">{r.channel || "Importada"}</span>}
                       </td>
                       <td className="px-4 py-3">
                         <span className="block font-semibold text-ink">{x.name}</span>
@@ -262,16 +251,17 @@ export function ReservationsView() {
                 })}
               </tbody>
             </table>
+            <Paginator p={paged} noun="reservas" className="border-t border-line px-4 py-3" />
           </Card>
           <ul className="flex flex-col gap-2.5 lg:hidden">
-            {list.slice(0, limit).map((r) => {
+            {paged.rows.map((r) => {
               const x = rowOf(r, cabinLabel);
               const pay = paymentState(r);
               return (
                 <li key={r.code}>
                   <Link
                     href={paths.reserva(r.code)}
-                    className="flex w-full flex-col gap-1.5 rounded-2xl border border-line bg-panel p-4 text-left shadow-panel transition-colors hover:bg-canvas/60"
+                    className="flex w-full flex-col gap-1.5 rounded-[20px] bg-panel p-4 text-left transition-colors hover:bg-line/70"
                   >
                     <span className="flex w-full items-center justify-between gap-2">
                       <strong className="text-[13px] font-bold text-ink-muted">{x.code}</strong>
@@ -288,11 +278,7 @@ export function ReservationsView() {
               );
             })}
           </ul>
-          {list.length > limit && (
-            <Button className="self-center" onClick={() => setLimit(limit + PAGE)}>
-              Mostrar {Math.min(PAGE, list.length - limit)} más
-            </Button>
-          )}
+          <Paginator p={paged} noun="reservas" className="rounded-[20px] bg-panel px-4 py-3 lg:hidden" />
         </>
       ) : (
         <Card className="p-4">

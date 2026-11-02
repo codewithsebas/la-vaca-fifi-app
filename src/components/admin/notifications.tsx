@@ -25,6 +25,7 @@ import { NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-
 import { addDays, dateOf, fmtClock, fmtFullDate, plural, timeAgo } from "@/lib/format";
 import type { AdminNotification, NotificationKind } from "@/lib/types";
 import { useAdmin, useParam } from "@/components/admin/context";
+import { Paginator, usePaged } from "@/components/admin/paginator";
 import { Popover } from "@/components/ui/floating";
 import { PREF, readPref, usePref, writePref } from "@/components/admin/prefs";
 import { PushPrompt } from "@/components/admin/push";
@@ -249,7 +250,7 @@ function ReminderList({ items, onPick }: { items: Reminder[]; onPick: (code: str
           <button
             type="button"
             onClick={() => onPick(r.code)}
-            className="flex w-full items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-canvas"
+            className="flex w-full items-start gap-3 rounded-[14px] px-2.5 py-2 text-left transition-colors hover:bg-panel"
           >
             <span aria-hidden="true" className={`grid size-8 flex-none place-items-center rounded-full ${r.tone}`}>
               <r.icon size={15} />
@@ -293,13 +294,13 @@ export function NotificationCenter() {
         aria-expanded={open}
         aria-label={unread.length ? `Notificaciones, ${unread.length} sin leer` : "Notificaciones"}
         onClick={() => setOpen(!open)}
-        className="btn-icon relative size-10 text-current transition-colors hover:bg-ink/6 [.admin-dark_&]:hover:bg-white/10"
+        className="relative grid size-10 flex-none place-items-center rounded-full bg-ink text-paper transition-[background-color,transform] duration-150 hover:bg-ink/85 motion-safe:active:scale-[.97] pointer-coarse:size-11"
       >
         <BellIcon size={19} />
         {unread.length > 0 && (
           <span
             aria-hidden="true"
-            className="absolute top-1 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-error px-1 text-[10px] leading-none font-bold text-white tabular-nums ring-2 ring-[var(--bell-ring,var(--color-panel))] motion-safe:animate-pop-in"
+            className="absolute -top-0.5 -right-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-pink px-1 text-[10px] leading-none font-bold text-ink tabular-nums ring-2 ring-canvas motion-safe:animate-pop-in"
           >
             {unread.length > 9 ? "9+" : unread.length}
           </span>
@@ -356,7 +357,7 @@ export function NotificationCenter() {
                       <button
                         type="button"
                         onClick={() => pick(n.reservationCode, n.readAt ? undefined : n.id)}
-                        className="flex w-full items-start gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas"
+                        className="flex w-full items-start gap-3 rounded-[14px] px-2.5 py-2.5 text-left transition-colors hover:bg-panel"
                       >
                         <span aria-hidden="true" className={`grid size-8 flex-none place-items-center rounded-full ${k.tone}`}>
                           <k.icon size={15} />
@@ -374,7 +375,7 @@ export function NotificationCenter() {
               </ul>
             ) : (
               <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
-                <span aria-hidden="true" className="grid size-10 place-items-center rounded-full bg-canvas text-ink-muted">
+                <span aria-hidden="true" className="grid size-10 place-items-center rounded-full bg-panel text-ink-muted">
                   <BellIcon size={18} />
                 </span>
                 <p className="text-[14px] font-semibold text-ink">Aún no hay notificaciones</p>
@@ -414,10 +415,11 @@ export function NotificationsView() {
   const [kind, setKind] = useParam<KindFilter>("tipo", "todas");
   const unread = data.notifications.filter((n) => !n.readAt);
   const list = data.notifications.filter((n) => (status === "todas" || !n.readAt) && (kind === "todas" || kindOf(n).group === kind));
+  const paged = usePaged(list, "notificaciones", `${status}|${kind}`, 20);
 
-  // Agrupadas por día (hora de Colombia), de la más reciente a la más antigua.
+  // La página actual agrupada por día (hora de Colombia), de la más reciente a la más antigua.
   const days: { day: string; items: AdminNotification[] }[] = [];
-  for (const n of list) {
+  for (const n of paged.rows) {
     const day = dateOf(n.createdAt);
     const last = days[days.length - 1];
     if (last?.day === day) last.items.push(n);
@@ -489,7 +491,7 @@ export function NotificationsView() {
                 {items.map((n) => {
                   const k = kindOf(n);
                   return (
-                    <li key={n.id} className={`flex items-start gap-3 px-4 py-3 ${n.readAt ? "" : "bg-highlight/6"}`}>
+                    <li key={n.id} className={`flex items-start gap-3 px-4 py-3 ${n.readAt ? "" : "bg-pink/12"}`}>
                       <span aria-hidden="true" className={`mt-0.5 grid size-9 flex-none place-items-center rounded-full ${k.tone}`}>
                         <k.icon size={16} />
                       </span>
@@ -525,6 +527,7 @@ export function NotificationsView() {
               </ul>
             </Card>
           ))}
+          <Paginator p={paged} noun="avisos" className="rounded-[20px] bg-panel px-4 py-3" />
           {data.notifications.length >= 150 && <p className="text-center text-[12.5px] text-ink-muted">Se muestran los 150 avisos más recientes.</p>}
         </div>
       ) : (
@@ -563,7 +566,7 @@ export function NotificationsView() {
 }
 
 export function LiveDot({ status }: { status: LiveStatus }) {
-  const cls = status === "live" ? "bg-success" : status === "connecting" ? "bg-highlight" : status === "offline" ? "bg-error" : "bg-ink-subtle";
+  const cls = status === "live" ? "bg-success" : status === "connecting" ? "bg-yellow-deep" : status === "offline" ? "bg-error" : "bg-ink-subtle";
   return (
     <span aria-hidden="true" className="relative inline-flex size-2">
       {status === "live" && <span className="absolute inset-0 rounded-full bg-success/60 motion-safe:animate-ping" />}

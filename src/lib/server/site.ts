@@ -29,6 +29,7 @@ export async function loadSiteContent(sb: Db): Promise<SiteContent> {
           checkInStart: s.check_in_start.slice(0, 5),
           checkInEnd: s.check_in_end.slice(0, 5),
           checkOutTime: s.check_out_time.slice(0, 5),
+          depositPct: s.deposit_pct,
           phones: s.phones,
           whatsapp: s.whatsapp,
           rnt: s.rnt,

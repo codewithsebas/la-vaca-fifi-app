@@ -1,6 +1,20 @@
 // Reglas de pago compartidas por el sitio, el panel y el servidor (funciones puras).
 // La fuente de verdad son la base de datos y la API: aquí solo se interpreta lo que ya respondieron.
-import type { PaymentKind, PaymentStatus, PublicReservation, Quote } from "@/lib/types";
+import type { PayMethod, PaymentKind, PaymentStatus, PublicReservation, Quote } from "@/lib/types";
+
+/* ───────────── Pagos que registra el equipo ───────────── */
+
+export const PAY_METHODS: { value: PayMethod; label: string }[] = [
+  { value: "cash", label: "Efectivo" },
+  { value: "transfer", label: "Transferencia" },
+];
+
+// Detalle que queda en el pago: el medio y, si hay, la nota ("Transferencia · Bancolombia, ref. 4521").
+export function manualPaymentNote(method: PayMethod | undefined, note: string | undefined) {
+  const label = PAY_METHODS.find((m) => m.value === method)?.label ?? "";
+  const text = String(note ?? "").trim();
+  return [label, text].filter(Boolean).join(" · ").slice(0, 300);
+}
 
 /* ───────────── Plazo para pagar el abono ───────────── */
 
@@ -28,7 +42,9 @@ export function manualDueAt(checkIn: string, minutes: number, now = Date.now()) 
   return { dueAt: new Date(due).toISOString(), capped: due < wanted, tooShort: due - now < MIN_HOLD_MS };
 }
 
-// Ruta pública del enlace de pago.
+// Porcentaje del abono de una reserva según su cotización (el configurado cuando se cotizó; puede ser distinto del actual).
+export const depositPctOf = (q: Quote) => (q.total ? Math.round((q.deposit / q.total) * 100) : 0);
+
 type Money = { quote: Quote; paid?: number; depositPaidAt?: string | null };
 
 // Total, lo pagado y lo que falta. Antes del abono, el saldo es el total menos el abono esperado.

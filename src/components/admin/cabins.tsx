@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, type DragEvent } from "react";
 import {
+  BathIcon,
   ArrowDownIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -27,6 +28,7 @@ import { imageSize, resizeImage } from "@/lib/client/image-resize";
 import { CABIN_PHOTO } from "@/lib/site";
 import type { CabinInput, CabinType } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
+import { CabinBathrooms, cabinBathroomAlerts } from "@/components/admin/bathrooms";
 import { MODULES, paths } from "@/components/admin/routes";
 import { useTip } from "@/components/ui/floating";
 import { adminInput } from "@/components/admin/shared";
@@ -66,7 +68,7 @@ const SUGGESTED = [
 /* ───────────── Listado ───────────── */
 
 export function CabinList() {
-  const { data, ask, setData, toast, onAuthError } = useAdmin();
+  const { data, ask, setData, toast, onAuthError, today } = useAdmin();
   const tip = useTip();
   const cabins = data.cabinTypes;
   const count = (id: string) => data.reservations.filter((r) => r.cabinTypeId === id).length;
@@ -132,11 +134,9 @@ export function CabinList() {
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cabins.map((c, i) => {
             const n = count(c.id);
+            const bathAlerts = cabinBathroomAlerts(data, c.id, today);
             return (
-              <li
-                key={c.id}
-                className={`flex flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-panel transition-opacity ${c.activa ? "" : "opacity-80"}`}
-              >
+              <li key={c.id} className={`flex flex-col overflow-hidden rounded-[22px] bg-panel transition-opacity ${c.activa ? "" : "opacity-80"}`}>
                 <div className="relative aspect-[16/10] bg-canvas">
                   {c.fotos[0] ? (
                     <Image src={c.fotos[0]} alt={c.nombre} fill sizes="(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw" className="object-cover" />
@@ -154,7 +154,7 @@ export function CabinList() {
                     </Badge>
                     {/* La etiqueta de la cabaña, como en el sitio. No usa Badge: su fondo neutro le gana al resaltado y no se lee sobre la foto. */}
                     {c.badge && (
-                      <span className="inline-flex items-center rounded-full bg-highlight px-2 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-on-light shadow-panel">
+                      <span className="inline-flex items-center rounded-full bg-yellow px-2.5 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-ink shadow-panel">
                         {c.badge}
                       </span>
                     )}
@@ -166,15 +166,15 @@ export function CabinList() {
                     {c.descripcion && <p className="mt-0.5 line-clamp-2 text-[13px] text-ink-muted">{c.descripcion}</p>}
                   </div>
                   <dl className="grid grid-cols-3 gap-2 text-[12.5px]">
-                    <div className="rounded-lg bg-canvas px-2.5 py-2">
+                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
                       <dt className="text-ink-muted">Capacidad</dt>
                       <dd className="font-semibold text-ink">{plural(c.maxPersonas, "persona", "personas")}</dd>
                     </div>
-                    <div className="rounded-lg bg-canvas px-2.5 py-2">
+                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
                       <dt className="text-ink-muted">Unidades</dt>
                       <dd className="font-semibold text-ink">{c.units}</dd>
                     </div>
-                    <div className="rounded-lg bg-canvas px-2.5 py-2">
+                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
                       <dt className="text-ink-muted">Pareja/noche</dt>
                       <dd className="font-semibold text-ink tabular-nums">{cop(c.precioPareja)}</dd>
                     </div>
@@ -183,6 +183,12 @@ export function CabinList() {
                     {plural(c.fotos.length, "foto", "fotos")} · {plural(c.caracteristicas.length, "característica", "características")} ·{" "}
                     {plural(n, "reserva", "reservas")}
                   </p>
+                  {bathAlerts.length > 0 && (
+                    <p className="flex items-center gap-2 rounded-[14px] bg-yellow-soft px-3 py-2 text-[12.5px] font-semibold text-warning">
+                      <BathIcon size={14} />
+                      {bathAlerts.length === 1 ? `${bathAlerts[0].name}: fuera de servicio hoy` : `${bathAlerts.length} baños fuera de servicio hoy`}
+                    </p>
+                  )}
                   <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
                     <Link href={paths.cabana(c.id)} className={buttonClass("primary", "sm")}>
                       <PencilIcon size={13} />
@@ -507,6 +513,7 @@ export function CabinEditor({ id }: { id?: string }) {
 
         <div className="flex flex-col gap-4 xl:sticky xl:top-20">
           {current ? <PhotoManager c={current} /> : <Callout>Guarda la cabaña para agregar fotos.</Callout>}
+          {current && <CabinBathrooms cabinTypeId={current.id} />}
           <Preview v={v} photo={current?.fotos[0]} />
         </div>
       </div>
@@ -618,9 +625,9 @@ function PhotoManager({ c }: { c: CabinType }) {
         }}
       />
       {c.fotos.length ? (
-        <ul className={`grid grid-cols-2 gap-2 rounded-xl transition-shadow ${over ? "ring-4 ring-focus/15" : ""}`}>
+        <ul className={`grid grid-cols-2 gap-2 rounded-[16px] transition-shadow ${over ? "ring-4 ring-focus/15" : ""}`}>
           {c.fotos.map((url, i) => (
-            <li key={url} className="group relative aspect-4/3 overflow-hidden rounded-xl bg-canvas">
+            <li key={url} className="group relative aspect-4/3 overflow-hidden rounded-[16px] bg-canvas">
               <Image src={url} alt={`Foto ${i + 1} de ${c.nombre}`} fill sizes="200px" className="object-cover" />
               {i === 0 && (
                 <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-panel px-2 py-0.5 text-[12px] leading-[1.5] font-semibold whitespace-nowrap text-ink shadow-panel">
@@ -629,7 +636,7 @@ function PhotoManager({ c }: { c: CabinType }) {
                 </span>
               )}
               <div className="absolute inset-x-1.5 bottom-1.5 flex justify-between gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-                <span className="flex gap-1 rounded-lg bg-panel/95 p-0.5 shadow-panel">
+                <span className="flex gap-1 rounded-full bg-paper/95 p-0.5 shadow-panel">
                   <IconButton label="Mover a la izquierda" size="sm" disabled={i === 0} onClick={() => move(i, -1)}>
                     <ArrowLeftIcon size={14} />
                   </IconButton>
@@ -642,7 +649,7 @@ function PhotoManager({ c }: { c: CabinType }) {
                     </IconButton>
                   )}
                 </span>
-                <span className="rounded-lg bg-panel/95 p-0.5 shadow-panel">
+                <span className="rounded-full bg-paper/95 p-0.5 shadow-panel">
                   <IconButton
                     label={`Quitar foto ${i + 1}`}
                     size="sm"
@@ -669,7 +676,7 @@ function PhotoManager({ c }: { c: CabinType }) {
         <button
           type="button"
           onClick={() => input.current?.click()}
-          className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors ${over ? "border-focus bg-success-soft/40" : "border-line-strong hover:bg-canvas"}`}
+          className={`flex flex-col items-center gap-2 rounded-[18px] border-2 border-dashed px-4 py-8 text-center transition-colors ${over ? "border-focus bg-green-soft" : "border-line-strong hover:bg-canvas/60"}`}
         >
           <UploadIcon size={22} className="text-ink-muted" />
           <span className="text-[14px] font-semibold text-ink">Arrastra fotos aquí o haz clic para elegirlas</span>

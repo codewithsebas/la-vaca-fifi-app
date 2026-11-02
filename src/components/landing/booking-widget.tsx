@@ -4,7 +4,7 @@ import Link from "next/link";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "@/lib/client/api";
 import { touches, useAvailabilitySync } from "@/lib/client/availability-sync";
-import { config, type Cabin, type CabinTypeId } from "@/lib/config";
+import { type Cabin, type CabinTypeId } from "@/lib/config";
 import { addDays, cop, fmtDate, monthStart, nightsBetween, plural, todayISO } from "@/lib/format";
 import type { Availability } from "@/lib/types";
 import { RangeCalendar } from "@/components/booking/range-calendar";
@@ -299,7 +299,7 @@ export function BookingWidget() {
             Reserva tu cabaña
           </h2>
           <p className="max-w-[48ch] text-[.9rem] font-semibold">
-            Elige fechas, cabaña y huéspedes: ves el total al instante y apartas tus fechas con un abono del {config.depositPct} %.
+            Elige fechas, cabaña y huéspedes: ves el total al instante y apartas tus fechas con un abono del {c.depositPct} %.
           </p>
         </div>
 
@@ -485,7 +485,7 @@ export function BookingWidget() {
             <strong className="display text-[2.6rem] leading-none">{totalLabel}</strong>
             <span className="text-[.86rem] font-semibold">{summary}</span>
             {s.deco && <span className="text-[.84rem]">Decoración especial: valor adicional, se cotiza por WhatsApp.</span>}
-            <span className="mt-1.5 text-[.8rem]">Precio estimado. La reserva se confirma con un abono del {config.depositPct} % (no reembolsable).</span>
+            <span className="mt-1.5 text-[.8rem]">Precio estimado. La reserva se confirma con un abono del {c.depositPct} % (no reembolsable).</span>
           </div>
           {/* «Continuar» lleva directo a «Tus datos» si la cabaña tiene cupo; «Ver disponibilidad» compara todas las cabañas en esas fechas. */}
           <div className="flex w-full flex-[0_1_auto] flex-col items-stretch gap-2 sm:w-auto sm:min-w-[280px]">

@@ -11,7 +11,7 @@ export class MissingSupabaseConfig extends Error {
   }
 }
 
-// Sesión del administrador (cookies). Respeta RLS: solo ve datos si el usuario tiene app_metadata.role = "admin".
+// Sesión del equipo (cookies). Respeta RLS: solo ve datos si el usuario tiene app_metadata.role = "admin" o "recepcion".
 export async function createSessionClient() {
   const { supabaseUrl: url, supabasePublishableKey: publishableKey } = env;
   if (!url || !publishableKey) throw new MissingSupabaseConfig(!url ? "NEXT_PUBLIC_SUPABASE_URL" : "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");

@@ -4,7 +4,10 @@ export function StatusPill({ status, size = "md", className = "" }: { status: st
   const st = statusOf(status);
   const sz = size === "sm" ? "px-2.5 py-0.5 text-[12px] leading-[1.6] font-bold" : "px-3.5 py-1.5 text-[.85rem] font-extrabold";
   return (
-    <span className={`inline-flex items-center self-start rounded-full whitespace-nowrap text-on-light ${sz} ${className}`} style={{ background: st.bg }}>
+    <span
+      className={`inline-flex items-center self-start rounded-full whitespace-nowrap text-[color:var(--status-text,var(--color-on-light))] ${sz} ${className}`}
+      style={{ background: st.bg }}
+    >
       {st.label}
     </span>
   );

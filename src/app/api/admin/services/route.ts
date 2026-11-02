@@ -42,7 +42,7 @@ async function done(sb: Db) {
 
 // POST /api/admin/services { title, description, icon, note, visible } → crea al final de la lista.
 export const POST = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const b = await readJson<Input>(req);
   if (!b) return fail(400, "INVALID_BODY");
@@ -59,7 +59,7 @@ export const POST = route(async (req: NextRequest) => {
 
 // PUT /api/admin/services { id, title, description, icon, note, visible } → edita (también mostrar u ocultar).
 export const PUT = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const b = await readJson<Input>(req);
   if (!b || typeof b.id !== "string" || !UUID.test(b.id)) return fail(400, "INVALID_BODY");
@@ -72,7 +72,7 @@ export const PUT = route(async (req: NextRequest) => {
 
 // PATCH /api/admin/services { order: [id, …] } → nuevo orden.
 export const PATCH = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const b = await readJson<Input>(req);
   const order = Array.isArray(b?.order) ? b.order.filter((id): id is string => typeof id === "string" && UUID.test(id)) : [];
@@ -91,7 +91,7 @@ export const PATCH = route(async (req: NextRequest) => {
 
 // DELETE /api/admin/services?id=… → elimina.
 export const DELETE = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id");
   if (!id || !UUID.test(id)) return fail(400, "INVALID_ID");

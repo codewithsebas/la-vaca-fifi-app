@@ -11,7 +11,7 @@ const isSlot = (slot: unknown): slot is string => typeof slot === "string" && PH
 
 // POST /api/admin/photos (multipart: slot, file) → sube la foto a Storage y la asigna al hueco.
 export const POST = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const form = await req.formData().catch(() => null);
   const slot = form?.get("slot");
@@ -36,7 +36,7 @@ export const POST = route(async (req: NextRequest) => {
 
 // DELETE /api/admin/photos?slot=<hueco> → quita la foto (vuelve el marcador).
 export const DELETE = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const slot = req.nextUrl.searchParams.get("slot");
   if (!isSlot(slot)) return fail(400, "INVALID_SLOT");

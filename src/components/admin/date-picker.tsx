@@ -75,10 +75,10 @@ function MonthGrid({ month, from, to, preview, focus, today, isDisabled, marks =
               onKeyDown={(e) => onKey(e, iso)}
               className={`relative grid h-9 place-items-center text-[13px] tabular-nums transition-colors duration-100 disabled:cursor-not-allowed disabled:text-ink-subtle/70 disabled:line-through ${
                 isStart || isEnd
-                  ? "z-1 rounded-lg bg-ink font-bold text-white"
+                  ? "z-1 rounded-full bg-ink font-bold text-paper"
                   : inRange
-                    ? `bg-ink/8 font-semibold text-ink ${col === 0 ? "rounded-l-lg" : ""} ${col === 6 ? "rounded-r-lg" : ""}`
-                    : `rounded-lg text-ink enabled:hover:bg-ink/6 ${iso === today ? "font-bold" : ""}`
+                    ? `bg-ink/8 font-semibold text-ink ${col === 0 ? "rounded-l-full" : ""} ${col === 6 ? "rounded-r-full" : ""}`
+                    : `rounded-full text-ink enabled:hover:bg-ink/6 ${iso === today ? "font-bold" : ""}`
               } ${mark === "blocked" && !isStart && !isEnd ? "bg-[repeating-linear-gradient(135deg,rgb(138_143_134/0.22)_0_3px,transparent_3px_6px)]" : ""}`}
             >
               {i + 1}
@@ -86,7 +86,7 @@ function MonthGrid({ month, from, to, preview, focus, today, isDisabled, marks =
               {(mark === "busy" || mark === "partial") && (
                 <span
                   aria-hidden="true"
-                  className={`absolute top-1 right-1 size-1.5 rounded-full ${mark === "busy" ? "bg-status-cancelled" : "bg-highlight"} ${isStart || isEnd ? "ring-1 ring-white" : ""}`}
+                  className={`absolute top-1 right-1 size-1.5 rounded-full ${mark === "busy" ? "bg-status-cancelled" : "bg-yellow-deep"} ${isStart || isEnd ? "ring-1 ring-paper" : ""}`}
                 />
               )}
             </button>
@@ -174,7 +174,7 @@ function Legend() {
         Ocupado
       </li>
       <li className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-highlight" />
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-yellow-deep" />
         Poca disponibilidad
       </li>
       <li className="inline-flex items-center gap-1.5">
@@ -266,7 +266,7 @@ export function DatePicker({
               type="button"
               disabled={k.isDisabled(k.today)}
               onClick={() => pick(k.today)}
-              className="rounded-lg px-2 py-1 text-[13px] font-semibold text-ink transition-colors hover:bg-ink/6 disabled:opacity-40"
+              className="rounded-full px-2.5 py-1 text-[13px] font-semibold text-ink transition-colors hover:bg-ink/6 disabled:opacity-40"
             >
               Hoy
             </button>
@@ -274,7 +274,7 @@ export function DatePicker({
               <button
                 type="button"
                 onClick={() => pick(null)}
-                className="rounded-lg px-2 py-1 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
+                className="rounded-full px-2.5 py-1 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
               >
                 Quitar fecha
               </button>
@@ -386,7 +386,7 @@ export function DateRangePicker({ from, to, onChange, mode = "days", clearable =
                   setDraft({ from: null, to: null });
                   onChange(null, null);
                 }}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
               >
                 <CloseIcon size={13} />
                 Limpiar

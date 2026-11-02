@@ -1,44 +1,79 @@
 "use client";
 
-// Página de una reserva (/admin/reservas/[codigo]): acciones, pagos, correos, comprobantes, notas, cliente y datos de la estadía.
+// Una reserva: la página (/admin/reservas/[codigo]) y el modal que abre el calendario muestran lo mismo. Arriba, el estado,
+// las acciones y cuatro tarjetas (estadía, pago, huéspedes y el siguiente paso); debajo, el huésped (editable, con su
+// historial de cliente) y la estadía como línea de tiempo, y después el pago, los correos, los comprobantes y las notas.
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import {
   AlertIcon,
+  ArrowRightIcon,
+  CalendarIcon,
   CheckIcon,
   ClockIcon,
+  CloseIcon,
   FileTextIcon,
   ListIcon,
   LockIcon,
+  LoginIcon,
+  LogoutIcon,
   MailIcon,
+  MoonIcon,
   NoteIcon,
+  PencilIcon,
   RefreshIcon,
+  UserIcon,
   UsersIcon,
   WalletIcon,
   WhatsAppIcon,
 } from "@/components/ui/icons";
-import { KeyValues, StatusPill } from "@/components/ui/status-pill";
-import { balanceDue, buildClients, typeMarks } from "@/lib/admin-metrics";
+import { StatusPill } from "@/components/ui/status-pill";
+import { balanceDue, buildClients, pendingOf, typeMarks, type ClientSummary } from "@/lib/admin-metrics";
+import { ACTIVE_STATUSES, validateGuest } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { config } from "@/lib/config";
-import { addDays, cop, countdown, dateOf, fmtDate, fmtDateTime, nightsBetween, plural, timeAgo, waTo } from "@/lib/format";
-import { DEFAULT_HOLD, HOLD_OPTIONS, PAYMENT_STATUS, kindLabel, manualDueAt } from "@/lib/payments";
-import type { EmailRecord, PaymentRecord, Reservation } from "@/lib/types";
+import { can } from "@/lib/permissions";
+import { addDays, cop, countdown, dateOf, fmtClock, fmtDate, fmtDateTime, nightsBetween, plural, timeAgo, waTo } from "@/lib/format";
+import { DEFAULT_HOLD, HOLD_OPTIONS, PAYMENT_STATUS, PAY_METHODS, depositPctOf, kindLabel, manualDueAt } from "@/lib/payments";
+import { fmtTime } from "@/lib/site";
+import type { DocType, EmailRecord, Guest, PayMethod, PaymentRecord, Reservation } from "@/lib/types";
+import { Combobox } from "@/components/ui/combobox";
 import { useAdmin } from "@/components/admin/context";
+import { BathroomWarning } from "@/components/admin/bathrooms";
+import { initialsOf } from "@/components/admin/calendar/shared";
 import { ProofCard } from "@/components/admin/proofs";
 import { paths } from "@/components/admin/routes";
 import { TRUST, type ConfirmCfg, adminInput, fmtDeadline } from "@/components/admin/shared";
-import { Badge, Button, Card, CardHeader, EmptyState, Field, FieldError, PageHeader, Segmented, Stars, buttonClass } from "@/components/admin/ui";
+import {
+  ACCENT,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  FieldError,
+  IconButton,
+  Modal,
+  ModalPresence,
+  MoneyInput,
+  PageHeader,
+  Segmented,
+  StatCard,
+  Stars,
+  buttonClass,
+} from "@/components/admin/ui";
 
 const OCC: Record<string, string> = { aniversario: "Aniversario", cumpleanos: "Cumpleaños", propuesta: "Propuesta", otra: "Otra" };
 
 type Action = { label: string; primary: boolean; danger: boolean; disabled?: string; run: () => void };
-type ActionId = "confirm" | "balance" | "checkin" | "checkout" | "cancel" | "reschedule";
+type ActionId = "checkin" | "checkout" | "cancel" | "reschedule";
+
+/* ───────────── Página y modal ───────────── */
 
 export function ReservationDetail({ code }: { code: string }) {
-  const { data, ask, cabinLabel, today } = useAdmin();
+  const { data } = useAdmin();
   const r = data.reservations.find((x) => x.code === code);
-
   if (!r)
     return (
       <>
@@ -57,7 +92,54 @@ export function ReservationDetail({ code }: { code: string }) {
         </Card>
       </>
     );
+  return <ReservationView r={r} />;
+}
 
+// Desde el calendario: la misma vista en un modal, sin salir del calendario. «Página completa» abre la ruta de la reserva.
+export function ReservationModal({ code, onClose }: { code: string; onClose: () => void }) {
+  const { data } = useAdmin();
+  const r = data.reservations.find((x) => x.code === code);
+  return (
+    <Modal
+      onClose={onClose}
+      labelledBy="rm-title"
+      dismissOnBackdrop
+      initialFocus="#rm-close"
+      className="m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-24px)] max-w-[1120px] overflow-y-auto rounded-[28px] bg-canvas! p-0"
+    >
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur-md sm:px-6">
+        <p className="min-w-0 truncate text-[13px] font-semibold text-ink-muted">
+          Reserva <span className="text-ink">{code}</span>
+        </p>
+        <div className="flex flex-none items-center gap-1.5">
+          {r && (
+            <Link href={paths.reserva(code)} className={buttonClass("ghost", "sm")}>
+              Página completa
+              <ArrowRightIcon size={14} />
+            </Link>
+          )}
+          <IconButton id="rm-close" label="Cerrar" variant="secondary" size="sm" onClick={onClose}>
+            <CloseIcon size={16} />
+          </IconButton>
+        </div>
+      </div>
+      <div className="flex flex-col gap-5 p-4 sm:p-6">
+        {r ? (
+          <ReservationView r={r} modal />
+        ) : (
+          <EmptyState icon={<ListIcon size={18} />} title={`No existe una reserva con el código ${code}`} text="Puede que se haya eliminado." />
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+/* ───────────── Vista ───────────── */
+
+function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean }) {
+  const { data, ask, cabinLabel, today } = useAdmin();
+  const [editing, setEditing] = useState(false);
+  const [paying, setPaying] = useState<string | null>(null); // título del diálogo de pago abierto
   const cabin = cabinLabel(r.cabinTypeId, r.unit);
   const proofs = data.proofs.filter((p) => p.reservationCode === r.code);
   const payments = data.payments.filter((p) => p.reservationCode === r.code);
@@ -65,6 +147,7 @@ export function ReservationDetail({ code }: { code: string }) {
   const pendingProof = proofs.some((p) => p.status === "pending");
   const units = data.cabinTypes.find((c) => c.id === r.cabinTypeId)?.units ?? 1;
   const due = balanceDue(r);
+  const nights = nightsBetween(r.checkIn, r.checkOut);
 
   const act = (label: string, action: ActionId, opts: Partial<ConfirmCfg> & { primary?: boolean; disabled?: string } = {}): Action => ({
     label,
@@ -82,24 +165,17 @@ export function ReservationDetail({ code }: { code: string }) {
             if (!cf.ci || !cf.co || cf.co <= cf.ci) return Promise.resolve({ status: 400, data: null });
             return api.admin.action({ code: r.code, action, checkIn: cf.ci, checkOut: cf.co });
           }
-          if (action === "confirm" || action === "balance")
-            return api.admin.action({ code: r.code, action, note: cf.note ?? "", full: action === "confirm" && !!cf.option });
           return api.admin.action({ code: r.code, action });
         },
         ...opts,
       }),
   });
+  // Registrar un pago abre su propio diálogo (valor, medio y nota).
+  const pay = (label: string, primary: boolean): Action => ({ label, primary, danger: false, run: () => setPaying(label) });
 
-  const manualNote = { noteLabel: "Detalle del pago (opcional)", noteHint: "Medio y referencia: efectivo, transferencia Bancolombia #…" };
   const actions: Action[] = [];
   if (r.status === "pending_deposit" || r.status === "expired")
-    actions.push(
-      act(r.status === "expired" ? "Registrar pago y reactivar" : "Registrar pago", "confirm", {
-        text: `Registra el pago recibido (efectivo o transferencia): el abono de ${cop(r.quote.deposit)} o el total de ${cop(r.quote.total)}. La reserva queda confirmada, el pago queda en el historial y se envía el correo de confirmación.`,
-        optionLabel: `El huésped pagó el total (${cop(r.quote.total)}), no solo el abono`,
-        ...manualNote,
-      }),
-    );
+    actions.push(pay(r.status === "expired" ? "Registrar pago y reactivar" : "Registrar pago", true));
   const earlyDue = (r.status === "confirmed" || r.status === "rescheduled") && !r.balancePaidAt ? Math.max(0, r.quote.total - r.paid) : 0;
   if (r.status === "confirmed" || r.status === "rescheduled")
     actions.push(
@@ -110,22 +186,9 @@ export function ReservationDetail({ code }: { code: string }) {
           : "La estadía ya está pagada: no queda saldo por cobrar.",
       }),
     );
-  if (earlyDue)
-    actions.push(
-      act("Registrar pago del saldo", "balance", {
-        text: `Registra el saldo de ${cop(earlyDue)} recibido antes de la llegada (efectivo o transferencia).`,
-        ...manualNote,
-      }),
-    );
+  if (earlyDue) actions.push(pay(r.depositPaidAt ? "Registrar pago del saldo" : "Registrar pago", false));
   if (r.status === "checked_in") {
-    if (due)
-      actions.push(
-        act("Registrar pago del saldo", "balance", {
-          primary: true,
-          text: `Registra el saldo de ${cop(due.amount)} recibido en recepción (efectivo o transferencia). Después podrás hacer el check-out.`,
-          ...manualNote,
-        }),
-      );
+    if (due) actions.push(pay("Registrar pago del saldo", true));
     actions.push(act("Marcar check-out", "checkout", { primary: !due, disabled: due ? "Disponible cuando el saldo esté pagado" : undefined }));
   }
   if (["pending_deposit", "confirmed", "rescheduled"].includes(r.status)) {
@@ -138,12 +201,13 @@ export function ReservationDetail({ code }: { code: string }) {
         text: "Elige las nuevas fechas. Se valida la disponibilidad de la misma cabaña y se recalcula el total con las tarifas vigentes (lo ya pagado se conserva).",
       }),
     );
-    actions.push(
-      act("Cancelar reserva", "cancel", {
-        danger: true,
-        text: `${r.code} · ${r.depositPaidAt ? "El abono recibido no es reembolsable según las políticas." : "Las fechas quedarán libres."}`,
-      }),
-    );
+    if (can(data.me.role, "cancel"))
+      actions.push(
+        act("Cancelar reserva", "cancel", {
+          danger: true,
+          text: `${r.code} · ${r.depositPaidAt ? "El abono recibido no es reembolsable según las políticas." : "Las fechas quedarán libres."}`,
+        }),
+      );
   }
 
   const client = buildClients(
@@ -152,122 +216,570 @@ export function ReservationDetail({ code }: { code: string }) {
     today,
   )[0];
 
+  // Lo que toca hacer ahora con la reserva.
+  const days = nightsBetween(today, r.checkIn);
+  const next: { value: string; hint: string } =
+    r.status === "pending_deposit"
+      ? { value: "Registrar el abono", hint: `La retención vence en ${countdown(r.depositDueAt)}` }
+      : r.status === "expired"
+        ? { value: "Reactivar o liberar", hint: "La retención venció sin abono" }
+        : r.status === "confirmed" || r.status === "rescheduled"
+          ? days === 0
+            ? { value: "Check-in hoy", hint: r.estimatedArrival ? `Llegada estimada ${r.estimatedArrival}` : "Llega hoy" }
+            : days > 0
+              ? { value: days === 1 ? "Llega mañana" : `Llega en ${days} días`, hint: earlyDue ? `Saldo por cobrar ${cop(earlyDue)}` : "Pagada por completo" }
+              : { value: "Check-in pendiente", hint: `Debía llegar el ${fmtDate(r.checkIn)}` }
+          : r.status === "checked_in"
+            ? due
+              ? { value: "Cobrar el saldo", hint: `${cop(due.amount)} antes del check-out` }
+              : { value: "Check-out", hint: `Sale el ${fmtDate(r.checkOut)}` }
+            : r.status === "completed"
+              ? { value: "Estadía finalizada", hint: `Salió el ${fmtDate(r.checkOut)}` }
+              : { value: "Cancelada", hint: "Las fechas quedaron libres" };
+  const pct = r.quote.total ? Math.min(100, Math.round((r.paid / r.quote.total) * 100)) : 0;
+  const owed = pendingOf(r).total;
+  const whatsapp = waTo(r.guest.phone, `Hola ${r.guest.fullName.split(" ")[0]}, te escribimos de ${config.name} por tu reserva ${r.code}.`);
+
+  const badges = (
+    <div className="flex flex-wrap items-center gap-2">
+      <StatusPill status={r.status} size="sm" />
+      {r.source === "panel" && <Badge tone="neutral">Creada por el equipo</Badge>}
+      {r.source === "import" && <Badge tone="neutral">{`Importada${r.channel ? ` · ${r.channel}` : ""}`}</Badge>}
+      {pendingProof && (
+        <Badge tone="info" icon={<FileTextIcon size={12} />}>
+          Comprobante por revisar
+        </Badge>
+      )}
+      {r.status === "pending_deposit" && <Badge tone="warning">{`Retención vence en ${countdown(r.depositDueAt)}`}</Badge>}
+      {due && <Badge tone="warning">{`Saldo por cobrar: ${cop(due.amount)}`}</Badge>}
+    </div>
+  );
+  const buttons = (
+    <>
+      {actions.map((a) => (
+        <Button key={a.label} variant={a.primary ? "primary" : a.danger ? "danger-ghost" : "secondary"} onClick={a.run} disabled={!!a.disabled}>
+          {a.label}
+        </Button>
+      ))}
+      <a href={whatsapp} target="_blank" rel="noopener" className={buttonClass("secondary")}>
+        <WhatsAppIcon size={16} />
+        WhatsApp
+      </a>
+    </>
+  );
+
   return (
     <>
-      <PageHeader
-        title={r.code}
-        description={`${r.guest.fullName} · ${cabin} · ${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)} · ${plural(nightsBetween(r.checkIn, r.checkOut), "noche", "noches")}`}
-        actions={
-          <>
-            {actions.map((a) => (
-              <Button
-                key={a.label}
-                variant={a.primary ? "primary" : a.danger ? "danger-ghost" : "secondary"}
-                onClick={a.run}
-                disabled={!!a.disabled}
-                title={a.disabled}
-              >
-                {a.label}
-              </Button>
-            ))}
-            <a
-              href={waTo(r.guest.phone, `Hola ${r.guest.fullName.split(" ")[0]}, te escribimos de ${config.name} por tu reserva ${r.code}.`)}
-              target="_blank"
-              rel="noopener"
-              className={buttonClass("secondary")}
-            >
-              <WhatsAppIcon size={16} />
-              WhatsApp
-            </a>
-          </>
-        }
-      >
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <StatusPill status={r.status} size="sm" />
-          {r.source === "panel" && <Badge tone="neutral">Creada por el equipo</Badge>}
-          {pendingProof && (
-            <Badge tone="info" icon={<FileTextIcon size={12} />}>
-              Comprobante por revisar
-            </Badge>
-          )}
-          {r.status === "pending_deposit" && <Badge tone="warning">{`Retención vence en ${countdown(r.depositDueAt)}`}</Badge>}
-          {due && <Badge tone="warning">{`Saldo por cobrar: ${cop(due.amount)}`}</Badge>}
-        </div>
-      </PageHeader>
+      {modal ? (
+        <header className="flex flex-col gap-3">
+          {badges}
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+            <div className="min-w-0">
+              <h2 id="rm-title" className="text-[clamp(1.4rem,2.4vw,1.9rem)] leading-tight font-bold tracking-[-0.03em] text-ink">
+                {r.guest.fullName}
+              </h2>
+              <p className="mt-1 text-[14px] text-ink-muted">{`${r.code} · ${cabin} · ${plural(nights, "noche", "noches")}`}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">{buttons}</div>
+          </div>
+        </header>
+      ) : (
+        <PageHeader title={r.code} description={`${r.guest.fullName} · ${cabin} · ${plural(nights, "noche", "noches")}`} actions={buttons}>
+          <div className="mt-2">{badges}</div>
+        </PageHeader>
+      )}
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-w-0 flex-col gap-4">
-          {(r.status === "pending_deposit" || r.status === "expired") && <HoldCard r={r} />}
-          <PaymentSummary r={r} payments={payments} />
-          <EmailsCard emails={emails} />
-          {proofs.length > 0 && (
-            <Card aria-labelledby="dt-proofs" className="flex flex-col gap-3 p-4 sm:p-5">
-              <CardHeader
-                id="dt-proofs"
-                icon={<FileTextIcon size={18} />}
-                title="Comprobantes de pago"
-                subtitle="Transferencias que envió el huésped desde «Mi reserva»."
-                actions={
-                  <span className="flex items-center gap-1 text-[12px] text-ink-subtle">
-                    <LockIcon size={12} />
-                    Privados
-                  </span>
-                }
-              />
-              <ul className="flex flex-col gap-2">
-                {proofs.map((p) => (
-                  <ProofCard key={p.id} p={p} r={r} />
-                ))}
-              </ul>
-            </Card>
-          )}
+      {/* Columnas según el ancho disponible (modal o página, con o sin barra lateral), no el de la pantalla. */}
+      <div className="@container flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-3 @lg:grid-cols-2 @4xl:grid-cols-4">
+          <StatCard
+            accent="yellow"
+            label="Estadía"
+            value={`${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}`}
+            hint={`${plural(nights, "noche", "noches")} · ${cabin}`}
+            icon={<CalendarIcon size={15} />}
+          />
+          <StatCard
+            accent="green"
+            label="Pagado"
+            value={cop(r.paid)}
+            hint={
+              <span className="flex w-full flex-col gap-1.5">
+                <span>{owed > 0 ? `de ${cop(r.quote.total)} · faltan ${cop(owed)}` : `de ${cop(r.quote.total)} · pagada`}</span>
+                <span aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-full bg-paper/60">
+                  <span className="block h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${pct}%` }} />
+                </span>
+              </span>
+            }
+            icon={<WalletIcon size={15} />}
+          />
+          <StatCard
+            accent="blue"
+            label="Huéspedes"
+            value={r.adults + r.children}
+            hint={`${plural(r.adults, "adulto", "adultos")}${r.children ? ` · ${plural(r.children, "niño", "niños")}` : ""}${r.pet?.hasPet ? " · mascota" : ""}`}
+            icon={<UsersIcon size={15} />}
+          />
+          <StatCard accent="pink" label="Siguiente paso" value={next.value} hint={next.hint} icon={<ClockIcon size={15} />} />
+        </div>
+
+        {ACTIVE_STATUSES.includes(r.status) && <BathroomWarning cabinTypeId={r.cabinTypeId} unit={r.unit} from={r.checkIn} to={addDays(r.checkOut, -1)} />}
+        {(r.status === "pending_deposit" || r.status === "expired") && <HoldCard r={r} />}
+
+        {/* Quién viene y cuándo, a la vista; debajo, el pago y las notas. */}
+        <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
+          <GuestCard r={r} client={client} onEdit={() => setEditing(true)} />
+          <StayCard r={r} cabin={cabin} />
+        </div>
+
+        <div className="grid grid-cols-1 items-start gap-4 @3xl:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-4">
+            <PaymentSummary r={r} payments={payments} />
+            <EmailsCard emails={emails} />
+            {proofs.length > 0 && (
+              <Card aria-labelledby="dt-proofs" className="flex flex-col gap-3 p-5 sm:p-6">
+                <CardHeader
+                  id="dt-proofs"
+                  icon={<FileTextIcon size={18} />}
+                  title="Comprobantes de pago"
+                  subtitle="Transferencias que envió el huésped desde «Mi reserva»."
+                  actions={
+                    <span className="flex items-center gap-1 text-[12px] text-ink-subtle">
+                      <LockIcon size={12} />
+                      Privados
+                    </span>
+                  }
+                />
+                <ul className="flex flex-col gap-2">
+                  {proofs.map((p) => (
+                    <ProofCard key={p.id} p={p} r={r} />
+                  ))}
+                </ul>
+              </Card>
+            )}
+          </div>
           <Notes r={r} />
         </div>
-
-        <div className="flex min-w-0 flex-col gap-4">
-          {client && <ClientCard c={client} />}
-          <DetailCard id="dt-stay" title="Estadía" rows={stayRows(r, cabin)} />
-          <DetailCard id="dt-guest" title="Huésped" rows={guestRows(r)} />
-        </div>
       </div>
+
+      <ModalPresence>{editing && <GuestEditor r={r} onClose={() => setEditing(false)} />}</ModalPresence>
+      <ModalPresence>{paying && <PaymentDialog r={r} title={paying} onClose={() => setPaying(null)} />}</ModalPresence>
     </>
   );
 }
 
-const stayRows = (r: Reservation, cabin: string) => [
-  { k: "Llegada", v: fmtDate(r.checkIn, true) },
-  { k: "Salida", v: fmtDate(r.checkOut, true) },
-  { k: "Cabaña", v: cabin },
-  { k: "Huéspedes", v: `${plural(r.adults, "adulto", "adultos")} · ${plural(r.children, "niño", "niños")}` },
-  { k: "Llegada estimada", v: r.estimatedArrival || "—" },
-  { k: "Check-in registrado", v: r.checkedInAt ? fmtDateTime(r.checkedInAt) : "—" },
-  { k: "Mascota", v: r.pet?.hasPet ? "Sí" : "No" },
-  {
-    k: "Decoración",
-    v: r.decoration?.requested ? `${OCC[r.decoration.occasion] || "Sí"}${r.decoration.notes ? " · " + r.decoration.notes : ""}` : "No",
-    wide: true,
-  },
-  { k: "Solicitudes", v: r.specialRequests || "—", wide: true },
-];
-
-const guestRows = (r: Reservation) => [
-  { k: "Nombre", v: r.guest.fullName, wide: true },
-  { k: "Documento", v: `${r.guest.docType} ${r.guest.docNumber}` },
-  { k: "Celular", v: r.guest.phone },
-  { k: "Ciudad", v: r.guest.city || "—" },
-  { k: "Promociones", v: r.consents?.marketing ? "Acepta" : "No acepta" },
-  { k: "Correo", v: r.guest.email, wide: true },
-  { k: "Creada", v: fmtDateTime(r.createdAt), wide: true },
-];
-
-function DetailCard({ id, title, rows }: { id: string; title: string; rows: { k: string; v: string; wide?: boolean }[] }) {
+// Filas de dato con la etiqueta a la izquierda (como el detalle de la visita del diseño): se leen de un vistazo.
+function Facts({ rows, className = "" }: { rows: { k: string; v: ReactNode }[]; className?: string }) {
   return (
-    <Card aria-labelledby={id} className="flex flex-col gap-3 p-4 sm:p-5">
-      <h2 id={id} className="text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
-        {title}
-      </h2>
-      <KeyValues rows={rows} variant="plain" />
+    <dl className={`flex flex-col text-[14px] ${className}`}>
+      {rows.map((x) => (
+        <div key={x.k} className="grid grid-cols-[minmax(0,104px)_minmax(0,1fr)] items-baseline gap-x-4 border-b border-ink/8 py-2.5 last:border-b-0">
+          <dt className="text-[13px] text-ink/65">{x.k}</dt>
+          <dd className="min-w-0 font-semibold break-words text-ink">{x.v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/* ───────────── Estadía ───────────── */
+
+// Horas en las fichas: "15:00" → "3:00 p. m."; el mediodía, corto: "12:00 m.".
+const clock = (t: string) => (t.startsWith("12:00") ? "12:00 m." : fmtTime(t));
+
+// Cuánto falta (o pasó) desde hoy hasta una fecha, en palabras.
+function fromToday(today: string, day: string) {
+  const n = nightsBetween(today, day);
+  return n === 0 ? "Hoy" : n === 1 ? "Mañana" : n === -1 ? "Ayer" : n > 0 ? `En ${n} días` : `Hace ${-n} días`;
+}
+
+// Llegada y salida como una línea de tiempo (con las horas del sitio), y los detalles de la estadía.
+function StayCard({ r, cabin }: { r: Reservation; cabin: string }) {
+  const { data, today } = useAdmin();
+  const s = data.site.settings;
+  const nights = nightsBetween(r.checkIn, r.checkOut);
+  const arrived = !!r.checkedInAt;
+  const left = r.status === "completed";
+  const live = ACTIVE_STATUSES.includes(r.status) && !left;
+  return (
+    <Card aria-labelledby="dt-stay" className="flex flex-col gap-4 p-5 sm:p-6">
+      <CardHeader
+        id="dt-stay"
+        icon={<CalendarIcon size={18} />}
+        accent="yellow"
+        title="Estadía"
+        subtitle={`${cabin} · ${plural(nights, "noche", "noches")}`}
+        actions={live && !arrived ? <Chip>{fromToday(today, r.checkIn)}</Chip> : undefined}
+      />
+      <ol className="flex flex-col">
+        <Stop
+          accent="yellow"
+          icon={arrived ? <CheckIcon size={16} /> : <LoginIcon size={16} />}
+          label="Llegada"
+          day={fmtDate(r.checkIn, true)}
+          text={arrived ? `Check-in registrado el ${fmtDate(dateOf(r.checkedInAt!))}` : `Check-in de ${clock(s.checkInStart)} a ${clock(s.checkInEnd)}`}
+          time={arrived ? fmtClock(r.checkedInAt!) : clock(r.estimatedArrival || s.checkInStart)}
+          timeLabel={arrived ? "Hora del check-in" : r.estimatedArrival ? "Llegada estimada" : "Inicio del check-in"}
+        />
+        <li
+          aria-hidden="true"
+          className="ml-[33px] flex items-center gap-3 border-l-2 border-dashed border-line-strong py-2.5 pl-5 text-[12.5px] font-semibold text-ink-muted"
+        >
+          <MoonIcon size={13} />
+          {plural(nights, "noche", "noches")}
+        </li>
+        <Stop
+          accent="green"
+          icon={left ? <CheckIcon size={16} /> : <LogoutIcon size={16} />}
+          label="Salida"
+          day={fmtDate(r.checkOut, true)}
+          text={left ? "Estadía finalizada" : `Check-out hasta las ${clock(s.checkOutTime)}`}
+          time={clock(s.checkOutTime)}
+          timeLabel="Hora del check-out"
+        />
+      </ol>
+      <Facts
+        className="-my-1"
+        rows={[
+          { k: "Huéspedes", v: `${plural(r.adults, "adulto", "adultos")}${r.children ? ` · ${plural(r.children, "niño", "niños")}` : ""}` },
+          { k: "Mascota", v: r.pet?.hasPet ? `Sí${r.pet.smallBreedConfirmed ? " · raza pequeña" : ""}` : "No" },
+          {
+            k: "Decoración",
+            v: r.decoration?.requested ? `${OCC[r.decoration.occasion] || "Sí"}${r.decoration.notes ? ` · ${r.decoration.notes}` : ""}` : "No",
+          },
+          { k: "Canal", v: r.source === "import" ? r.channel || "Importada" : r.source === "panel" ? "Creada por el equipo" : "Sitio web" },
+          { k: "Solicitudes", v: r.specialRequests || "—" },
+          { k: "Creada", v: fmtDateTime(r.createdAt) },
+        ]}
+      />
     </Card>
+  );
+}
+
+// Parada de la línea de tiempo: círculo de color, qué es y qué día, y la hora en una píldora (como la agenda del diseño).
+function Stop({
+  accent,
+  icon,
+  label,
+  day,
+  text,
+  time,
+  timeLabel,
+}: {
+  accent: "yellow" | "green";
+  icon: ReactNode;
+  label: string;
+  day: string;
+  text: string;
+  time: string;
+  timeLabel: string;
+}) {
+  return (
+    <li className="flex items-center gap-3 rounded-[18px] bg-paper/70 p-3 pr-3.5">
+      <span aria-hidden="true" className={`grid size-10 flex-none place-items-center rounded-full text-ink ${ACCENT[accent].bg}`}>
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12.5px] font-semibold text-ink-muted">{label}</span>
+        <span className="block text-[16px] leading-tight font-bold tracking-[-0.01em] text-ink">{day}</span>
+        <span className="mt-0.5 block text-[12.5px] text-ink-muted">{text}</span>
+      </span>
+      <span className={`flex-none rounded-full px-3 py-1 text-[12.5px] font-bold whitespace-nowrap text-ink tabular-nums ${ACCENT[accent].bg}`}>
+        <span className="sr-only">{`${timeLabel}: `}</span>
+        {time}
+      </span>
+    </li>
+  );
+}
+
+const Chip = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
+  <span className={`inline-flex items-center gap-1 rounded-full bg-paper px-3 py-1 text-[12.5px] font-bold whitespace-nowrap text-ink ${className}`}>
+    {children}
+  </span>
+);
+
+/* ───────────── Huésped ───────────── */
+
+const DOC_TYPES: { value: DocType; label: string; description?: string }[] = [
+  { value: "CC", label: "Cédula de ciudadanía" },
+  { value: "CE", label: "Cédula de extranjería" },
+  { value: "Pasaporte", label: "Pasaporte" },
+  { value: "PPT", label: "Permiso por protección temporal" },
+  { value: "SD", label: "Sin documento", description: "El cliente se agrupa por su celular" },
+];
+const docLabel = (g: Guest) => (g.docType === "SD" ? "Sin documento" : `${g.docType} ${g.docNumber}`);
+
+// El huésped y su historial como cliente, en el bloque rosado del diseño (el detalle de la visita): nombre grande,
+// etiquetas y los datos de contacto a la vista. El nombre abre la ficha del cliente.
+function GuestCard({ r, client, onEdit }: { r: Reservation; client?: ClientSummary; onEdit: () => void }) {
+  const { data } = useAdmin();
+  const g = r.guest;
+  const trust = client?.profile && client.profile.trust !== "sin_evaluar" ? TRUST[client.profile.trust] : null;
+  const tags: { label: string; alert?: boolean }[] = [
+    ...(client
+      ? [{ label: client.isRecurring ? `Recurrente · ${plural(client.stays, "estadía", "estadías")}` : client.stays ? "Primera estadía" : "Primera reserva" }]
+      : []),
+    ...(trust ? [{ label: trust.label, alert: trust.tone === "danger" || trust.tone === "warning" }] : []),
+    ...(client?.incidents ? [{ label: plural(client.incidents, "incidencia", "incidencias"), alert: true }] : []),
+    ...(r.consents?.marketing ? [{ label: "Acepta promociones" }] : []),
+    ...(client?.profile?.tags.slice(0, 3).map((t) => ({ label: t })) ?? []),
+  ];
+  const whatsapp = waTo(g.phone, `Hola ${g.fullName.split(" ")[0]}, te escribimos de ${config.name} por tu reserva ${r.code}.`);
+  return (
+    <section aria-labelledby="dt-guest" className="@container flex min-w-0 flex-col gap-4 rounded-[22px] bg-pink p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <span
+            aria-hidden="true"
+            className="grid size-13 flex-none place-items-center rounded-full bg-paper text-[17px] font-bold tracking-[-0.02em] text-ink"
+          >
+            {initialsOf(g.fullName)}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-semibold text-ink/70">Huésped</p>
+            <h2 id="dt-guest" className="text-[clamp(1.15rem,1.9vw,1.4rem)] leading-tight font-bold tracking-[-0.02em] break-words text-ink">
+              {client ? (
+                <Link href={paths.cliente(client.key)} className="underline decoration-ink/35 decoration-2 underline-offset-4 hover:decoration-ink">
+                  {g.fullName}
+                </Link>
+              ) : (
+                g.fullName
+              )}
+            </h2>
+          </div>
+        </div>
+        <Button size="sm" icon={<PencilIcon size={13} />} onClick={onEdit} className="flex-none bg-paper! ring-0!">
+          Editar
+        </Button>
+      </div>
+
+      {tags.length > 0 && (
+        <ul aria-label="Etiquetas del cliente" className="flex flex-wrap gap-1.5">
+          {tags.map((t) => (
+            <li
+              key={t.label}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] leading-none font-semibold ${t.alert ? "bg-error-soft text-error" : "bg-pink-deep text-ink"}`}
+            >
+              {t.alert && <AlertIcon size={12} />}
+              {t.label}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Su historial en cifras, como los indicadores de las tarjetas del diseño. */}
+      {client && (
+        <dl className={`grid gap-2 rounded-[18px] bg-paper/45 px-4 py-3 ${can(data.me.role, "finance") ? "grid-cols-2 @md:grid-cols-4" : "grid-cols-3"}`}>
+          {[
+            { k: "Reservas", v: client.reservations.length },
+            { k: "Estadías", v: client.stays },
+            { k: "Noches", v: client.nights },
+            ...(can(data.me.role, "finance") ? [{ k: "Ha generado", v: cop(client.value) }] : []),
+          ].map((x) => (
+            <div key={x.k} className="min-w-0">
+              <dt className="text-[11px] font-semibold tracking-[.06em] text-ink/60 uppercase">{x.k}</dt>
+              <dd className="truncate text-[17px] font-bold tracking-[-0.01em] text-ink tabular-nums">{x.v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      <Facts
+        className="-my-1"
+        rows={[
+          {
+            k: "Celular",
+            v: g.phone ? (
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <a href={`tel:${g.phone}`} className="tabular-nums hover:underline">
+                  {g.phone}
+                </a>
+                <a
+                  href={whatsapp}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 rounded-full bg-paper px-2.5 py-0.5 text-[12px] font-semibold text-ink transition-colors hover:bg-paper/70"
+                >
+                  <WhatsAppIcon size={12} />
+                  Escribir
+                </a>
+              </span>
+            ) : (
+              "—"
+            ),
+          },
+          {
+            k: "Correo",
+            v: g.email ? (
+              <a href={`mailto:${g.email}`} className="break-all hover:underline">
+                {g.email}
+              </a>
+            ) : (
+              "Sin correo"
+            ),
+          },
+          { k: "Documento", v: docLabel(g) },
+          { k: "Ciudad", v: g.city || "—" },
+          ...(client
+            ? [
+                {
+                  k: "Valoración",
+                  v: (
+                    <span className="flex items-center gap-2">
+                      <Stars value={client.profile?.rating ?? null} size={15} />
+                      {!client.profile?.rating && <span className="text-[13px] font-medium text-ink/65">Sin evaluar</span>}
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+          ...(client?.profile?.preferences ? [{ k: "Preferencias", v: client.profile.preferences }] : []),
+        ]}
+      />
+
+      {client && (
+        <Link href={paths.cliente(client.key)} className={buttonClass("secondary", "sm", "mt-auto self-start bg-paper/60! ring-0!")}>
+          Ver ficha del cliente
+          <ArrowRightIcon size={14} />
+        </Link>
+      )}
+    </section>
+  );
+}
+
+// Corregir los datos del huésped (nombre, documento, contacto). Cambiar el documento cambia el cliente al que pertenece.
+function GuestEditor({ r, onClose }: { r: Reservation; onClose: () => void }) {
+  const { reload, toast, onAuthError } = useAdmin();
+  const [g, setG] = useState<Guest>({ ...r.guest, docNumber: r.guest.docType === "SD" ? "" : r.guest.docNumber });
+  const [busy, setBusy] = useState(false);
+  const [tried, setTried] = useState(false);
+  const [server, setServer] = useState<Record<string, string>>({});
+  const [error, setError] = useState("");
+  const local = validateGuest(g);
+  const err = (k: string) => server[k] || (tried ? local[k] : "") || undefined;
+  const set = (p: Partial<Guest>) => {
+    setG((x) => ({ ...x, ...p }));
+    setServer({});
+    setError("");
+  };
+
+  async function save() {
+    setTried(true);
+    if (busy || Object.keys(local).length) return;
+    setBusy(true);
+    try {
+      const res = await api.admin.action({ code: r.code, action: "guest", guest: g });
+      if (res.status === 401 || res.status === 403) return onAuthError();
+      if (res.status !== 200) {
+        const fields = (res.data as { fields?: Record<string, string> } | null)?.fields;
+        if (fields) setServer(Object.fromEntries(Object.entries(fields).map(([k, v]) => [k.replace(/^guest\./, ""), v])));
+        else setError("No se pudieron guardar los datos. Inténtalo de nuevo.");
+        return;
+      }
+      await reload();
+      toast("Datos del huésped actualizados");
+      onClose();
+    } catch {
+      setError("Error de conexión. Inténtalo de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} labelledBy="ge-title" initialFocus="input" className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-[26px] p-0">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <div className="flex flex-col gap-4 p-5 sm:p-6">
+          <div className="flex items-start gap-3.5">
+            <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-blue text-ink">
+              <UserIcon size={18} />
+            </span>
+            <div className="pt-1">
+              <h2 id="ge-title" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
+                Datos del huésped
+              </h2>
+              <p className="text-[13.5px] text-ink-muted">{`${r.code} · se usan en los correos y para agrupar al cliente.`}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Nombre completo" error={err("fullName")} className="col-span-2">
+              {(p) => (
+                <input
+                  {...p}
+                  value={g.fullName}
+                  maxLength={120}
+                  autoComplete="off"
+                  onChange={(e) => set({ fullName: e.target.value })}
+                  className={adminInput}
+                />
+              )}
+            </Field>
+            <Field label="Tipo de documento" error={err("docType")} className="col-span-2 sm:col-span-1">
+              {(p) => <Combobox id={p.id} value={g.docType} onChange={(v) => set({ docType: v as DocType })} searchable={false} options={DOC_TYPES} />}
+            </Field>
+            <Field
+              label="Número"
+              error={g.docType === "SD" ? undefined : err("docNumber")}
+              hint={g.docType === "SD" ? "Sin documento: se usa el celular." : "Si lo cambias, la reserva pasa al cliente con ese documento."}
+              className="col-span-2 sm:col-span-1"
+            >
+              {(p) => (
+                <input
+                  {...p}
+                  value={g.docType === "SD" ? "" : g.docNumber}
+                  disabled={g.docType === "SD"}
+                  maxLength={15}
+                  autoComplete="off"
+                  onChange={(e) => set({ docNumber: e.target.value })}
+                  className={`${adminInput} disabled:opacity-50`}
+                />
+              )}
+            </Field>
+            <Field label="Celular" error={err("phone")} className="col-span-2 sm:col-span-1">
+              {(p) => (
+                <input
+                  {...p}
+                  type="tel"
+                  value={g.phone}
+                  maxLength={20}
+                  autoComplete="off"
+                  onChange={(e) => set({ phone: e.target.value })}
+                  className={adminInput}
+                />
+              )}
+            </Field>
+            <Field label="Ciudad" error={err("city")} className="col-span-2 sm:col-span-1">
+              {(p) => <input {...p} value={g.city} maxLength={60} autoComplete="off" onChange={(e) => set({ city: e.target.value })} className={adminInput} />}
+            </Field>
+            <Field label="Correo (opcional)" error={err("email")} className="col-span-2">
+              {(p) => (
+                <input
+                  {...p}
+                  type="email"
+                  value={g.email}
+                  maxLength={160}
+                  autoComplete="off"
+                  onChange={(e) => set({ email: e.target.value })}
+                  className={adminInput}
+                />
+              )}
+            </Field>
+          </div>
+          {error && <FieldError>{error}</FieldError>}
+        </div>
+        <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button type="submit" variant="primary" loading={busy} icon={<CheckIcon size={14} />}>
+            Guardar datos
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -330,7 +842,7 @@ function HoldCard({ r }: { r: Reservation }) {
         }
       />
       {(editing || expired) && (
-        <div className="flex flex-col gap-2 rounded-xl bg-canvas p-3">
+        <div className="flex flex-col gap-2 rounded-[16px] bg-canvas/70 p-3">
           <Segmented
             label="Plazo para pagar"
             size="sm"
@@ -361,53 +873,253 @@ function HoldCard({ r }: { r: Reservation }) {
   );
 }
 
+/* ───────────── Registrar un pago ───────────── */
+
+type PayChoice = "full" | "deposit" | "custom";
+
+const PAY_ERRORS: Record<string, string> = {
+  ALREADY_PAID: "La reserva ya está pagada por completo.",
+  INVALID_AMOUNT: "El valor no puede ser mayor a lo que falta por pagar.",
+  NO_AVAILABILITY: "Esas fechas ya no están libres: la reserva no se puede reactivar.",
+  DATES_UNAVAILABLE: "Esas fechas ya no están libres: la reserva no se puede reactivar.",
+  NOT_APPLICABLE: "En su estado actual la reserva no admite pagos.",
+  INVALID_TRANSITION: "La reserva cambió mientras tanto. Ciérralo y vuelve a intentarlo.",
+};
+
+// Pago recibido en persona: todo lo que falta, el abono del 30 % o un valor a elección, con el medio (efectivo o
+// transferencia) y una nota. Cualquier pago confirma una reserva pendiente; lo que falte queda como saldo.
+function PaymentDialog({ r, title, onClose }: { r: Reservation; title: string; onClose: () => void }) {
+  const { reload, toast, onAuthError } = useAdmin();
+  const owed = Math.max(0, r.quote.total - r.paid);
+  const deposit = Math.min(r.quote.deposit, owed);
+  const pending = r.status === "pending_deposit" || r.status === "expired";
+  const offerDeposit = !r.depositPaidAt && deposit > 0 && deposit < owed;
+  const [choice, setChoice] = useState<PayChoice>(pending && offerDeposit ? "deposit" : "full");
+  const [custom, setCustom] = useState(0);
+  const [method, setMethod] = useState<PayMethod | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [tried, setTried] = useState(false);
+  const [error, setError] = useState("");
+  const amount = choice === "full" ? owed : choice === "deposit" ? deposit : custom;
+  const amountError =
+    choice !== "custom" ? "" : custom <= 0 ? "Escribe el valor que recibiste." : custom > owed ? `No puede ser más de lo que falta (${cop(owed)}).` : "";
+  const left = Math.max(0, owed - amount);
+
+  const options: { value: PayChoice; label: string; hint: string }[] = [
+    { value: "full", label: r.paid > 0 ? "Todo lo que falta" : "Pago completo", hint: cop(owed) },
+    ...(offerDeposit ? [{ value: "deposit" as const, label: `Abono del ${depositPctOf(r.quote)} %`, hint: cop(deposit) }] : []),
+    { value: "custom", label: "Otro valor", hint: "El que recibiste" },
+  ];
+
+  async function save() {
+    setTried(true);
+    if (busy || amountError || !method) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api.admin.action({
+        code: r.code,
+        action: pending ? "confirm" : "balance",
+        method,
+        note: note.trim(),
+        ...(choice === "full" ? { full: true } : { amount }),
+      });
+      if (res.status === 401 || res.status === 403) return onAuthError();
+      if (res.status !== 200) {
+        const code = (res.data as { error?: string } | null)?.error ?? "";
+        setError(PAY_ERRORS[code] ?? "No se pudo registrar el pago. Inténtalo de nuevo.");
+        return;
+      }
+      await reload();
+      toast(`Pago de ${cop(amount)} registrado`);
+      onClose();
+    } catch {
+      setError("Error de conexión. Inténtalo de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Lo que pasará con la reserva al registrar este valor.
+  const outcome = amountError
+    ? null
+    : [
+        pending &&
+          (r.status === "expired" ? "La reserva se reactiva y queda confirmada." : "La reserva queda confirmada y se envía el correo de confirmación."),
+        left ? `Queda un saldo de ${cop(left)} por cobrar.` : "Queda pagada por completo.",
+      ].filter(Boolean);
+
+  return (
+    <Modal onClose={onClose} labelledBy="pay-title" initialFocus="input:checked" className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-[26px] p-0">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <div className="flex flex-col gap-5 p-5 sm:p-6">
+          <div className="flex items-start gap-3.5">
+            <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-green text-ink">
+              <WalletIcon size={18} />
+            </span>
+            <div className="min-w-0 pt-1">
+              <h2 id="pay-title" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
+                {title}
+              </h2>
+              <p className="text-[13.5px] text-ink-muted">{`${r.code} · ${r.guest.fullName}`}</p>
+            </div>
+          </div>
+
+          <dl className="grid grid-cols-3 gap-2 rounded-[18px] bg-panel px-4 py-3">
+            {[
+              { k: "Total", v: cop(r.quote.total) },
+              { k: "Pagado", v: cop(r.paid) },
+              { k: "Falta", v: cop(owed) },
+            ].map((x) => (
+              <div key={x.k} className="min-w-0">
+                <dt className="text-[11px] font-semibold tracking-[.06em] text-ink-muted uppercase">{x.k}</dt>
+                <dd className="truncate text-[16px] font-bold text-ink tabular-nums">{x.v}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="mb-1.5 text-[13px] font-semibold text-ink">¿Cuánto pagó?</legend>
+            <div className={`grid grid-cols-1 gap-2 ${options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+              {options.map((o) => {
+                const on = choice === o.value;
+                return (
+                  <label
+                    key={o.value}
+                    className={`flex cursor-pointer items-start gap-2.5 rounded-[18px] border p-3.5 transition-colors ${on ? "border-ink bg-panel/60" : "border-line-strong hover:bg-panel/40"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="pay-choice"
+                      value={o.value}
+                      checked={on}
+                      onChange={() => setChoice(o.value)}
+                      className="mt-0.5 size-4 flex-none accent-[var(--color-ink)]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-[14px] font-semibold text-ink">{o.label}</span>
+                      <span className="block text-[13px] text-ink-muted tabular-nums">{o.hint}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            {choice === "custom" && (
+              <Field label="Valor recibido" error={tried ? amountError || undefined : undefined} className="mt-1">
+                {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} invalid={!!p["aria-invalid"]} value={custom} onChange={setCustom} />}
+              </Field>
+            )}
+          </fieldset>
+
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="mb-1.5 text-[13px] font-semibold text-ink">¿Cómo pagó?</legend>
+            <div className="flex flex-wrap gap-2">
+              {PAY_METHODS.map((m) => {
+                const on = method === m.value;
+                return (
+                  <label
+                    key={m.value}
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-[14px] font-semibold transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ink has-focus-visible:ring-offset-2 has-focus-visible:ring-offset-paper ${on ? "border-ink bg-ink text-paper" : "border-line-strong text-ink hover:bg-panel/60"}`}
+                  >
+                    <input type="radio" name="pay-method" value={m.value} checked={on} onChange={() => setMethod(m.value)} className="sr-only" />
+                    {on && <CheckIcon size={14} />}
+                    {m.label}
+                  </label>
+                );
+              })}
+            </div>
+            {tried && !method && <FieldError>Elige si pagó en efectivo o por transferencia.</FieldError>}
+          </fieldset>
+
+          <Field label="Nota (opcional)" hint="Queda en el historial de pagos de la reserva.">
+            {(p) => (
+              <textarea
+                {...p}
+                rows={2}
+                maxLength={200}
+                value={note}
+                placeholder={method === "cash" ? "Quién lo recibió, en qué momento…" : "Banco y referencia: Bancolombia, ref. 4521…"}
+                onChange={(e) => setNote(e.target.value)}
+                className={`${adminInput} resize-y leading-relaxed`}
+              />
+            )}
+          </Field>
+
+          {outcome && (
+            <div className="flex flex-col gap-0.5 rounded-[16px] bg-green-soft px-4 py-3 text-[13.5px] text-ink" aria-live="polite">
+              {outcome.map((line) => (
+                <p key={String(line)}>{line}</p>
+              ))}
+            </div>
+          )}
+          {error && <FieldError>{error}</FieldError>}
+        </div>
+        <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button type="submit" variant="primary" loading={busy} icon={<CheckIcon size={14} />}>
+            {amount > 0 && !amountError ? `Registrar ${cop(amount)}` : "Registrar pago"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentRecord[] }) {
   const q = r.quote;
   const pct = q.total ? Math.min(100, Math.round((r.paid / q.total) * 100)) : 0;
   const due = balanceDue(r);
   const fullPayment = payments.some((p) => p.kind === "full" && p.status === "approved");
+  // Cada parte del pago como una fila de la lista del diseño: círculo de color con el estado y el valor en una píldora.
   const line = (label: string, amount: number, state: ReactNode, tone: "ok" | "wait" | "bad" | "muted") => (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <span className="flex items-center gap-2 text-[14px] text-ink">
-        <span
-          aria-hidden="true"
-          className={`grid size-5 place-items-center rounded-full ${tone === "ok" ? "bg-success-soft text-success" : tone === "wait" ? "bg-warning-soft text-warning" : tone === "bad" ? "bg-error-soft text-error" : "bg-canvas text-ink-subtle"}`}
-        >
-          {tone === "ok" ? <CheckIcon size={12} /> : <span className="size-1.5 rounded-full bg-current" />}
-        </span>
-        {label}
+    <li className="flex items-center gap-3 rounded-[18px] bg-paper/70 p-3 pr-3.5">
+      <span
+        aria-hidden="true"
+        className={`grid size-10 flex-none place-items-center rounded-full ${tone === "ok" ? "bg-green text-ink" : tone === "wait" ? "bg-yellow text-ink" : tone === "bad" ? "bg-error-soft text-error" : "bg-panel text-ink-subtle"}`}
+      >
+        {tone === "ok" ? <CheckIcon size={16} /> : tone === "wait" ? <ClockIcon size={16} /> : <span className="size-1.5 rounded-full bg-current" />}
       </span>
-      <span className="text-right">
-        <span className="block text-[14px] font-semibold text-ink tabular-nums">{cop(amount)}</span>
-        <span className={`block text-[12px] ${tone === "bad" ? "font-semibold text-error" : "text-ink-muted"}`}>{state}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14.5px] font-semibold text-ink">{label}</span>
+        <span className={`block text-[12.5px] ${tone === "bad" ? "font-semibold text-error" : "text-ink-muted"}`}>{state}</span>
       </span>
-    </div>
+      <span className={`flex-none rounded-full px-3 py-1 text-[13px] font-bold text-ink tabular-nums ${tone === "ok" ? "bg-green" : "bg-panel"}`}>
+        {cop(amount)}
+      </span>
+    </li>
   );
-  const depositAmount = r.depositPaidAt ? Math.min(q.deposit, r.paid || q.deposit) : q.deposit;
+  // El abono es el primer pago (puede ser un valor distinto al 30 %); lo demás es saldo, que puede pagarse por partes.
+  const firstPayment = payments.find((p) => p.status === "approved" && p.kind === "deposit");
+  const depositAmount = firstPayment ? firstPayment.amount : r.depositPaidAt ? Math.min(q.deposit, r.paid || q.deposit) : q.deposit;
   const balanceAmount = Math.max(0, q.total - depositAmount);
+  const balanceReceived = r.depositPaidAt ? Math.max(0, Math.min(balanceAmount, r.paid - depositAmount)) : 0;
   return (
-    <Card aria-labelledby="dt-pay" className="p-4 sm:p-5">
+    <Card aria-labelledby="dt-pay" className="p-5 sm:p-6">
       <CardHeader
         id="dt-pay"
         icon={<WalletIcon size={18} />}
+        accent="green"
         title="Pago"
+        subtitle={pct >= 100 ? "Pagada por completo" : `${cop(r.paid)} cobrado · ${pct} %`}
         actions={
-          <p className="text-[13px] text-ink-muted">
-            Total <strong className="text-[16px] text-ink tabular-nums">{cop(q.total)}</strong>
+          <p className="text-[12.5px] leading-tight font-semibold text-ink-muted sm:text-right">
+            Total
+            <strong className="block text-[22px] font-bold tracking-[-0.02em] text-ink tabular-nums">{cop(q.total)}</strong>
           </p>
         }
       />
-      <div className="mt-4 flex items-center gap-2">
-        <span aria-hidden="true" className="h-2 flex-1 overflow-hidden rounded-full bg-ink/8">
-          <span className="block h-full rounded-full bg-success transition-[width] duration-500" style={{ width: `${pct}%` }} />
-        </span>
-        <span className="text-[12px] font-semibold text-ink-muted tabular-nums">
-          {cop(r.paid)} cobrado · {pct} %
-        </span>
-      </div>
-      <div className="mt-2 divide-y divide-line">
+      <span aria-hidden="true" className="mt-4 block h-2.5 overflow-hidden rounded-full bg-ink/8">
+        <span className="block h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${pct}%` }} />
+      </span>
+      <ul className="mt-4 flex flex-col gap-2">
         {line(
-          `Abono (${config.depositPct} %)`,
+          depositAmount === q.deposit ? `Abono (${depositPctOf(q)} %)` : "Abono",
           depositAmount,
           r.depositPaidAt
             ? `Recibido el ${fmtDate(dateOf(r.depositPaidAt))}${fullPayment ? " · pago total" : ""}`
@@ -423,18 +1135,20 @@ function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentReco
           balanceAmount,
           r.balancePaidAt
             ? `Pagado el ${fmtDate(dateOf(r.balancePaidAt))}${fullPayment ? " · pago total" : r.checkedInAt && r.balancePaidAt < r.checkedInAt ? " · antes de llegar" : ""}`
-            : due
-              ? "En estadía · regístralo cuando lo pague en recepción"
-              : r.status === "confirmed" || r.status === "rescheduled"
-                ? "Se paga antes de llegar o en recepción"
-                : r.status === "cancelled"
-                  ? "No aplica (cancelada)"
-                  : "—",
+            : balanceReceived > 0
+              ? `${cop(balanceReceived)} recibido · faltan ${cop(balanceAmount - balanceReceived)}`
+              : due
+                ? "En estadía · regístralo cuando lo pague en recepción"
+                : r.status === "confirmed" || r.status === "rescheduled"
+                  ? "Se paga antes de llegar o en recepción"
+                  : r.status === "cancelled"
+                    ? "No aplica (cancelada)"
+                    : "—",
           r.balancePaidAt ? "ok" : due || r.status === "confirmed" || r.status === "rescheduled" ? "wait" : "muted",
         )}
-      </div>
+      </ul>
       {q.seasonNights ? (
-        <p className="mt-1 text-[12px] text-ink-muted">{`Incluye ${plural(q.seasonNights, "noche", "noches")} con tarifa de temporada.`}</p>
+        <p className="mt-2 text-[12px] text-ink-muted">{`Incluye ${plural(q.seasonNights, "noche", "noches")} con tarifa de temporada.`}</p>
       ) : null}
       <PaymentHistory payments={payments} />
     </Card>
@@ -445,16 +1159,16 @@ function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentReco
 function PaymentHistory({ payments }: { payments: PaymentRecord[] }) {
   const { now } = useAdmin();
   const [all, setAll] = useState(false);
-  if (!payments.length) return <p className="mt-3 border-t border-line pt-3 text-[13px] text-ink-muted">Aún no hay pagos registrados.</p>;
+  if (!payments.length) return <p className="mt-4 border-t border-line pt-4 text-[13px] text-ink-muted">Aún no hay pagos registrados.</p>;
   const list = all ? payments : payments.slice(0, 4);
   return (
-    <div className="mt-3 border-t border-line pt-3">
-      <h3 className="mb-1 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">Pagos</h3>
-      <ul className="divide-y divide-line">
+    <div className="mt-4 border-t border-line pt-4">
+      <h3 className="mb-2 text-[13px] font-bold text-ink">Pagos registrados</h3>
+      <ul className="flex flex-col gap-1.5">
         {list.map((p) => {
           const st = PAYMENT_STATUS[p.status];
           return (
-            <li key={p.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
+            <li key={p.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-[16px] bg-paper/50 px-3.5 py-2.5">
               <span className="min-w-0">
                 <span className="flex flex-wrap items-center gap-1.5 text-[13.5px] font-semibold text-ink">
                   {kindLabel(p.kind)} · {cop(p.amount)}
@@ -517,7 +1231,7 @@ function EmailsCard({ emails }: { emails: EmailRecord[] }) {
           return (
             <li
               key={e.id}
-              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${e.status === "failed" ? "border-error/30 bg-error-soft/40" : "border-line"}`}
+              className={`flex flex-wrap items-center justify-between gap-3 rounded-[16px] px-4 py-2.5 ${e.status === "failed" ? "bg-error-soft" : "bg-canvas/60"}`}
             >
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-1.5 text-[13.5px] font-semibold text-ink">
@@ -561,60 +1275,41 @@ function Notes({ r }: { r: Reservation }) {
     });
   };
   return (
-    <Card aria-labelledby="dt-notes" className="flex flex-col gap-3 p-4 sm:p-5">
-      <CardHeader id="dt-notes" icon={<NoteIcon size={18} />} title="Notas internas de la reserva" subtitle="Solo las ve el equipo." />
+    <Card aria-labelledby="dt-notes" className="flex flex-col gap-4 p-5 sm:p-6">
+      <CardHeader
+        id="dt-notes"
+        icon={<NoteIcon size={18} />}
+        accent="blue"
+        title="Notas internas"
+        subtitle={r.notes.length ? `${plural(r.notes.length, "nota", "notas")} · solo las ve el equipo` : "Solo las ve el equipo."}
+      />
       {r.notes.length ? (
         <ol className="flex flex-col gap-2">
           {r.notes.map((n) => (
-            <li key={n.at} className="rounded-xl bg-canvas px-3.5 py-2.5">
-              <p className="text-[12px] text-ink-muted">{fmtDateTime(n.at)}</p>
-              <p className="mt-0.5 text-[14px] whitespace-pre-wrap text-ink">{n.text}</p>
+            <li key={n.at} className="rounded-[18px] bg-paper/70 px-4 py-3">
+              <p className="text-[12px] font-semibold text-ink-muted">{fmtDateTime(n.at)}</p>
+              <p className="mt-1 text-[14px] leading-relaxed whitespace-pre-wrap text-ink">{n.text}</p>
             </li>
           ))}
         </ol>
       ) : (
-        <p className="text-[13px] text-ink-muted">Aún no hay notas para esta reserva.</p>
+        <p className="rounded-[18px] border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-muted">Aún no hay notas para esta reserva.</p>
       )}
       <Field label="Nueva nota">
-        {(p) => <textarea {...p} rows={3} value={note} onChange={(e) => setNote(e.target.value)} className={`${adminInput} resize-y leading-relaxed`} />}
+        {(p) => (
+          <textarea
+            {...p}
+            rows={3}
+            value={note}
+            placeholder="Algo que el equipo deba saber: hora de llegada, pedidos, acuerdos…"
+            onChange={(e) => setNote(e.target.value)}
+            className={`${adminInput} resize-y leading-relaxed`}
+          />
+        )}
       </Field>
       <Button variant="primary" size="sm" disabled={!note.trim()} onClick={addNote} className="self-start">
         Agregar nota
       </Button>
-    </Card>
-  );
-}
-
-function ClientCard({ c }: { c: ReturnType<typeof buildClients>[number] }) {
-  const t = TRUST[c.profile?.trust ?? "sin_evaluar"];
-  return (
-    <Card aria-labelledby="dt-client" className={`p-4 sm:p-5 ${c.flagged ? "border-error/30 bg-error-soft/40" : ""}`}>
-      <CardHeader
-        id="dt-client"
-        icon={<UsersIcon size={18} />}
-        title="Cliente"
-        subtitle={c.isRecurring ? `Recurrente · ${plural(c.stays, "estadía", "estadías")}` : c.stays ? "Primera estadía concretada" : "Primera reserva"}
-        actions={
-          <Link href={paths.cliente(c.key)} className={buttonClass("secondary", "sm")}>
-            Ver ficha
-          </Link>
-        }
-      />
-      <p className="mt-3 text-[13px] text-ink-muted">Valor generado {cop(c.value)}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <Stars value={c.profile?.rating ?? null} size={14} />
-        <Badge tone={t.tone}>{t.label}</Badge>
-        {c.profile?.tags.slice(0, 3).map((tag) => (
-          <Badge key={tag}>{tag}</Badge>
-        ))}
-      </div>
-      {c.incidents > 0 && (
-        <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-error">
-          <AlertIcon size={14} />
-          {plural(c.incidents, "incidencia registrada", "incidencias registradas")}
-        </p>
-      )}
-      {c.profile?.preferences && <p className="mt-2 text-[13px] text-ink">Preferencias: {c.profile.preferences}</p>}
     </Card>
   );
 }

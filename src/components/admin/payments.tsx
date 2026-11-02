@@ -3,9 +3,8 @@
 // Módulo de Pagos (/admin/pagos): la operación del dinero. Pagos recibidos, comprobantes y lo pendiente por cobrar.
 // El análisis (tendencias, comparaciones, distribución) vive en Finanzas.
 import Link from "next/link";
-import { useState } from "react";
 import { ClockIcon, DownloadIcon, FileTextIcon, HomeIcon, TrendIcon, WalletIcon } from "@/components/ui/icons";
-import { balanceDue, finance, pendingOf, paymentsOf, type Payment } from "@/lib/admin-metrics";
+import { balanceDue, finance, pendingOf, paymentsOf, recordsByCode, type Payment } from "@/lib/admin-metrics";
 import { cop, countdown, download, fmtDate, plural } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
@@ -14,6 +13,8 @@ import { PeriodFilter, usePeriod } from "@/components/admin/period";
 import { ProofCard } from "@/components/admin/proofs";
 import { MODULES, paths } from "@/components/admin/routes";
 import { csv } from "@/components/admin/shared";
+import { Paginator, usePaged } from "@/components/admin/paginator";
+import { can } from "@/lib/permissions";
 import { Button, Card, CardHeader, EmptyState, PageHeader, Segmented, StatCard, Tabs } from "@/components/admin/ui";
 
 type Tab = "recibidos" | "por-cobrar" | "comprobantes";
@@ -23,13 +24,15 @@ const PROOF_FILTER: Record<ProofFilter, string | null> = { "por-revisar": "pendi
 
 export function PaymentsView() {
   const { data, today } = useAdmin();
-  const [tabP, setTab] = useParam<Tab>("vista", "recibidos");
-  const tab: Tab = ["recibidos", "por-cobrar", "comprobantes"].includes(tabP) ? tabP : "recibidos";
+  const money = can(data.me.role, "finance");
+  const tabs: Tab[] = money ? ["recibidos", "por-cobrar", "comprobantes"] : ["por-cobrar", "comprobantes"];
+  const [tabP, setTab] = useParam<Tab>("vista", tabs[0]);
+  const tab: Tab = tabs.includes(tabP) ? tabP : tabs[0];
   const pendingProofs = data.proofs.filter((p) => p.status === "pending");
   const due = data.reservations.filter((r) => pendingOf(r).total > 0);
   const deposits = due.filter((r) => pendingOf(r).deposit > 0);
   const balances = due.filter((r) => pendingOf(r).balance > 0);
-  const month = finance(data.reservations, data.blocks, data.cabinTypes, { from: today.slice(0, 8) + "01", to: today });
+  const month = finance(data.reservations, data.blocks, data.cabinTypes, { from: today.slice(0, 8) + "01", to: today }, "", recordsByCode(data.payments));
 
   return (
     <>
@@ -37,14 +40,17 @@ export function PaymentsView() {
         title={MODULES.pagos.label}
         description={MODULES.pagos.description}
         actions={
-          <Link href={paths.finanzas()} className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-ink underline-offset-2 hover:underline">
-            <TrendIcon size={15} />
-            Ver análisis en Finanzas
-          </Link>
+          money ? (
+            <Link href={paths.finanzas()} className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-ink underline-offset-2 hover:underline">
+              <TrendIcon size={15} />
+              Ver análisis en Finanzas
+            </Link>
+          ) : undefined
         }
       />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 ${money ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         <StatCard
+          accent="blue"
           label="Comprobantes por revisar"
           value={pendingProofs.length}
           hint={pendingProofs.length ? "transferencias por confirmar" : "Ninguno ahora"}
@@ -52,6 +58,7 @@ export function PaymentsView() {
           tone={pendingProofs.length ? "info" : undefined}
         />
         <StatCard
+          accent="yellow"
           label="Abonos pendientes"
           value={cop(deposits.reduce((s, r) => s + pendingOf(r).deposit, 0))}
           hint={plural(deposits.length, "retención sin abono", "retenciones sin abono")}
@@ -59,18 +66,22 @@ export function PaymentsView() {
           tone={deposits.length ? "warning" : undefined}
         />
         <StatCard
+          accent="green"
           label="Saldos por cobrar"
           value={cop(balances.reduce((s, r) => s + pendingOf(r).balance, 0))}
           hint={plural(balances.length, "estadía", "estadías")}
           icon={<WalletIcon size={15} />}
         />
-        <StatCard
-          label="Recibido este mes"
-          value={cop(month.received)}
-          hint={plural(month.payments.length, "pago", "pagos")}
-          icon={<TrendIcon size={15} />}
-          tone="success"
-        />
+        {money && (
+          <StatCard
+            accent="pink"
+            label="Recibido este mes"
+            value={cop(month.received)}
+            hint={plural(month.payments.length, "pago", "pagos")}
+            icon={<TrendIcon size={15} />}
+            tone="success"
+          />
+        )}
       </div>
 
       <Tabs
@@ -78,7 +89,7 @@ export function PaymentsView() {
         value={tab}
         onChange={setTab}
         tabs={[
-          { value: "recibidos", label: "Pagos recibidos", icon: <TrendIcon size={15} /> },
+          ...(money ? [{ value: "recibidos" as Tab, label: "Pagos recibidos", icon: <TrendIcon size={15} /> }] : []),
           { value: "por-cobrar", label: "Por cobrar", icon: <ClockIcon size={15} /> },
           { value: "comprobantes", label: "Comprobantes", icon: <FileTextIcon size={15} />, count: pendingProofs.length },
         ]}
@@ -100,6 +111,7 @@ function ProofsTab() {
   const list = data.proofs.filter((p) => !status || p.status === status);
   const count = (s: string) => data.proofs.filter((p) => p.status === s).length;
   const byCode = new Map(data.reservations.map((r) => [r.code, r]));
+  const paged = usePaged(list, "comprobantes", filter);
 
   return (
     <>
@@ -115,11 +127,14 @@ function ProofsTab() {
         ]}
       />
       {list.length ? (
-        <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          {list.map((p) => (
-            <ProofCard key={p.id} p={p} r={byCode.get(p.reservationCode)} showReservation />
-          ))}
-        </ul>
+        <>
+          <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            {paged.rows.map((p) => (
+              <ProofCard key={p.id} p={p} r={byCode.get(p.reservationCode)} showReservation />
+            ))}
+          </ul>
+          <Paginator p={paged} noun="comprobantes" className="rounded-[20px] bg-panel px-4 py-3" />
+        </>
       ) : (
         <Card className="p-4">
           <EmptyState
@@ -139,9 +154,10 @@ function ReceivedTab() {
   const { data, cabin } = useAdmin();
   const period = usePeriod("30");
   const [cabinId, setCabinId] = useParam("cabana", "");
+  const records = recordsByCode(data.payments);
   const rows = data.reservations
     .filter((r) => !cabinId || r.cabinTypeId === cabinId)
-    .flatMap(paymentsOf)
+    .flatMap((r) => paymentsOf(r, records.get(r.code)))
     .filter((p) => p.date >= period.range.from && p.date <= period.range.to)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
   const total = rows.reduce((s, p) => s + p.amount, 0);
@@ -191,7 +207,7 @@ function ReceivedTab() {
           }
         />
         {rows.length ? (
-          <PaymentsTable rows={rows} />
+          <PaymentsTable rows={rows} reset={`${period.range.from}|${period.range.to}|${cabinId}`} />
         ) : (
           <EmptyState compact icon={<WalletIcon size={18} />} title="No se recibieron pagos en este periodo" text="Prueba con un periodo más largo." />
         )}
@@ -200,9 +216,9 @@ function ReceivedTab() {
   );
 }
 
-function PaymentsTable({ rows }: { rows: Payment[] }) {
+function PaymentsTable({ rows, reset }: { rows: Payment[]; reset: string }) {
   const { cabin } = useAdmin();
-  const [limit, setLimit] = useState(25);
+  const paged = usePaged(rows, "pagos-recibidos", reset);
   return (
     <>
       <div className="-mx-4 overflow-x-auto sm:-mx-5">
@@ -217,7 +233,7 @@ function PaymentsTable({ rows }: { rows: Payment[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {rows.slice(0, limit).map((p) => (
+            {paged.rows.map((p) => (
               <tr key={`${p.r.code}-${p.kind}`} className="transition-colors hover:bg-canvas/60">
                 <td className="px-4 py-2.5 whitespace-nowrap text-ink-muted sm:px-5">{fmtDate(p.date)}</td>
                 <td className="px-4 py-2.5 sm:px-5">
@@ -240,11 +256,7 @@ function PaymentsTable({ rows }: { rows: Payment[] }) {
           </tbody>
         </table>
       </div>
-      {rows.length > limit && (
-        <Button size="sm" variant="ghost" className="self-center" onClick={() => setLimit(limit + 50)}>
-          Ver más pagos
-        </Button>
-      )}
+      <Paginator p={paged} noun="pagos" />
     </>
   );
 }
@@ -257,7 +269,7 @@ function DueTab({ rows }: { rows: Reservation[] }) {
     .filter((r) => kind === "todo" || (kind === "abonos" ? pendingOf(r).deposit > 0 : pendingOf(r).balance > 0))
     .sort((a, b) => (a.checkIn < b.checkIn ? -1 : 1));
   const total = list.reduce((s, r) => s + (kind === "abonos" ? pendingOf(r).deposit : kind === "saldos" ? pendingOf(r).balance : pendingOf(r).total), 0);
-  const [limit, setLimit] = useState(25);
+  const paged = usePaged(list, "por-cobrar", kind);
 
   return (
     <>
@@ -280,14 +292,14 @@ function DueTab({ rows }: { rows: Reservation[] }) {
         />
         {list.length ? (
           <ul className="-mx-2 flex flex-col">
-            {list.slice(0, limit).map((r) => {
+            {paged.rows.map((r) => {
               const p = pendingOf(r);
               const bd = balanceDue(r);
               return (
                 <li key={r.code}>
                   <Link
                     href={paths.reserva(r.code)}
-                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-canvas"
+                    className="flex w-full items-center gap-3 rounded-[16px] px-2.5 py-2.5 text-left transition-colors hover:bg-canvas/70"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13.5px] font-semibold text-ink">{r.guest.fullName}</span>
@@ -314,11 +326,7 @@ function DueTab({ rows }: { rows: Reservation[] }) {
         ) : (
           <EmptyState compact icon={<ClockIcon size={18} />} title="No hay pagos pendientes" />
         )}
-        {list.length > limit && (
-          <Button size="sm" variant="ghost" className="self-center" onClick={() => setLimit(limit + 50)}>
-            Ver más
-          </Button>
-        )}
+        <Paginator p={paged} noun="reservas" />
       </Card>
     </>
   );

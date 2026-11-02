@@ -1135,7 +1135,7 @@ export function ReservationWizard() {
                   <dd className="dotted-top display pt-2.5 text-right text-[2rem] leading-none">{cop(q?.total)}</dd>
                 </dl>
                 <p className="text-[.92rem] font-semibold">
-                  {`Abono para confirmar (${config.depositPct} %): ${cop(q?.deposit)}. Lo que pagues para confirmar no es reembolsable.`}
+                  {`Abono para confirmar (${c.depositPct} %): ${cop(q?.deposit)}. Lo que pagues para confirmar no es reembolsable.`}
                 </p>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-2.5 rounded-md bg-card-muted px-4 py-3.5 text-[.9rem]">
                   {[
@@ -1246,7 +1246,7 @@ export function ReservationWizard() {
             <strong className="display text-[2.6rem] leading-none">{sumTotal}</strong>
             <span className="text-[.86rem]">{depositLine}</span>
           </div>
-          <p className="text-[.8rem] text-on-dark-muted">{`Tus fechas se apartan ${WEB_HOLD_HOURS} horas mientras pagas el abono del ${config.depositPct} % o el total. La reserva se confirma cuando lo recibimos.`}</p>
+          <p className="text-[.8rem] text-on-dark-muted">{`Tus fechas se apartan ${WEB_HOLD_HOURS} horas mientras pagas el abono del ${c.depositPct} % o el total. La reserva se confirma cuando lo recibimos.`}</p>
         </aside>
       </div>
 

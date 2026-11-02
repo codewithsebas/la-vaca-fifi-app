@@ -98,8 +98,9 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   );
   const free = !type || !range ? true : unit ? unitFree(occ, units, type.id, unit, range.ci, range.co) : findUnit(occ, units, type.id, range.ci, range.co) > 0;
   const guests = f.adults + f.children;
-  const rate = type && range ? computeQuote(type, range.ci, range.co, guests, data.seasons) : null;
-  const quote = rate && f.special && f.total ? withTotal(rate, f.total) : rate;
+  const pct = data.site.settings.depositPct;
+  const rate = type && range ? computeQuote(type, range.ci, range.co, guests, data.seasons, pct) : null;
+  const quote = rate && f.special && f.total ? withTotal(rate, f.total, pct) : rate;
   const due = range ? manualDueAt(range.ci, f.hold) : null;
 
   const errs: Record<string, string> = {};
@@ -189,7 +190,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       onClose={onClose}
       labelledBy="nr-title"
       initialFocus={range ? "[data-autofocus]" : "[data-dates] button"}
-      className="m-auto w-[calc(100%-32px)] max-w-[760px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
+      className="m-auto w-[calc(100%-32px)] max-w-[760px] rounded-[26px] p-0"
     >
       <div className="flex flex-col gap-5 p-5 sm:p-6">
         <div className="flex items-start gap-3.5">
@@ -197,11 +198,11 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
             <CalendarIcon size={18} variant="plus" />
           </span>
           <div className="pt-1">
-            <h2 id="nr-title" className="text-[17px] font-bold text-ink">
+            <h2 id="nr-title" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
               Nueva reserva
             </h2>
             <p className="text-[13.5px] text-ink-muted">
-              Las fechas quedan apartadas y le envías al huésped un enlace para pagar. Si no paga a tiempo, se liberan solas.
+              Las fechas quedan apartadas hasta el plazo que elijas. Si no registras el abono a tiempo, se liberan solas.
             </p>
           </div>
         </div>
@@ -299,7 +300,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
                 />
               )}
             </Field>
-            <Field label="Correo" error={err("guest.email")} hint="Ahí le llega la confirmación cuando pague.">
+            <Field label="Correo" error={err("guest.email")} hint="Ahí le llega la confirmación cuando registres el abono.">
               {(p) => (
                 <input
                   {...p}
@@ -418,7 +419,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
         )}
         {error && <FieldError>{error}</FieldError>}
       </div>
-      <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+      <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
         <Button onClick={onClose}>Cancelar</Button>
         <Button
           variant="primary"
@@ -441,14 +442,14 @@ function Created({ result, onClose, onOpen }: { result: ManualReservationResult;
   const r: Reservation = data.reservations.find((x) => x.code === result.reservation.code) ?? result.reservation;
   const paid = r.status !== "pending_deposit";
   return (
-    <Modal onClose={onClose} labelledBy="nr-done" className="m-auto w-[calc(100%-32px)] max-w-[600px] rounded-2xl p-0 motion-safe:open:animate-pop-in">
+    <Modal onClose={onClose} labelledBy="nr-done" className="m-auto w-[calc(100%-32px)] max-w-[600px] rounded-[26px] p-0">
       <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex items-start gap-3.5">
           <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-success-soft text-success">
             <CheckIcon size={18} />
           </span>
           <div className="min-w-0 pt-1">
-            <h2 id="nr-done" className="text-[17px] font-bold text-ink">
+            <h2 id="nr-done" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
               {`Reserva ${r.code} creada`}
             </h2>
             <p className="text-[13.5px] text-ink-muted">
@@ -467,7 +468,7 @@ function Created({ result, onClose, onOpen }: { result: ManualReservationResult;
           </p>
         )}
       </div>
-      <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+      <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
         <Button onClick={onClose}>Cerrar</Button>
         <Button variant="secondary" onClick={onOpen}>
           Ver la reserva

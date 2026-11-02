@@ -5,12 +5,12 @@ import { useMemo, useState } from "react";
 import { CalendarIcon, CheckIcon, HomeIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
 import { computeQuote, nightlyRate } from "@/lib/booking";
 import { api } from "@/lib/client/api";
-import { config } from "@/lib/config";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import type { CabinType, RateSeason, SeasonInput } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam, useSetParams } from "@/components/admin/context";
 import { MODULES } from "@/components/admin/routes";
+import { Paginator, usePaged } from "@/components/admin/paginator";
 import { DateRangePicker } from "@/components/admin/date-picker";
 import { adminInput } from "@/components/admin/shared";
 import {
@@ -24,6 +24,7 @@ import {
   FieldError,
   IconButton,
   Modal,
+  ModalPresence,
   MoneyInput,
   PageHeader,
   Segmented,
@@ -72,6 +73,7 @@ export function RatesView() {
         ? { ...found }
         : null;
   const edit = (id: string) => setParams({ temporada: id });
+  const paged = usePaged(shown, "temporadas", filter);
 
   return (
     <>
@@ -81,7 +83,7 @@ export function RatesView() {
       />
 
       <section aria-labelledby="rt-base" className="flex flex-col gap-3">
-        <h2 id="rt-base" className="text-[15px] font-bold text-ink">
+        <h2 id="rt-base" className="text-[18px] font-semibold tracking-[-0.015em] text-ink">
           Tarifa base por cabaña
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -116,11 +118,14 @@ export function RatesView() {
           />
         )}
         {shown.length ? (
-          <ul className="flex flex-col gap-2">
-            {shown.map((s) => (
-              <SeasonRow key={s.id} s={s} onEdit={() => edit(s.id)} />
-            ))}
-          </ul>
+          <>
+            <ul className="flex flex-col gap-2">
+              {paged.rows.map((s) => (
+                <SeasonRow key={s.id} s={s} onEdit={() => edit(s.id)} />
+              ))}
+            </ul>
+            <Paginator p={paged} noun="temporadas" />
+          </>
         ) : (
           <EmptyState
             compact
@@ -137,7 +142,7 @@ export function RatesView() {
 
       <Simulator />
 
-      {editing && <SeasonEditor key={seasonId} initial={editing} onClose={() => setParams({ temporada: null })} />}
+      <ModalPresence>{editing && <SeasonEditor key={seasonId} initial={editing} onClose={() => setParams({ temporada: null })} />}</ModalPresence>
     </>
   );
 }
@@ -164,7 +169,7 @@ function BaseRateCard({ c }: { c: CabinType }) {
     });
 
   return (
-    <Card aria-labelledby={`rb-${c.id}`} className={`flex flex-col gap-4 p-4 sm:p-5 ${dirty ? "ring-2 ring-highlight/50" : ""}`}>
+    <Card aria-labelledby={`rb-${c.id}`} className={`flex flex-col gap-4 p-4 sm:p-5 ${dirty ? "ring-2 ring-pink-deep/60" : ""}`}>
       <CardHeader
         id={`rb-${c.id}`}
         icon={<HomeIcon size={18} />}
@@ -234,9 +239,9 @@ function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
 
   return (
     <li
-      className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border px-4 py-3 ${st.order === 0 ? "border-success/30 bg-success-soft/40" : "border-line"} ${st.order >= 2 ? "opacity-75" : ""}`}
+      className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[18px] px-4 py-3 ${st.order === 0 ? "bg-green-soft" : "bg-canvas/60"} ${st.order >= 2 ? "opacity-75" : ""}`}
     >
-      <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-xl bg-canvas text-ink-muted">
+      <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-paper text-ink-muted">
         <TagIcon size={17} />
       </span>
       <div className="min-w-[200px] flex-1">
@@ -331,15 +336,10 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
   const nights = s.from && s.to ? nightsBetween(s.from, s.to) + 1 : 0;
 
   return (
-    <Modal
-      onClose={onClose}
-      labelledBy="se-title"
-      initialFocus="#se-name"
-      className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-2xl p-0 motion-safe:open:animate-pop-in"
-    >
+    <Modal onClose={onClose} labelledBy="se-title" initialFocus="#se-name" className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-[26px] p-0">
       <div className="flex max-h-[calc(100dvh-140px)] flex-col gap-4 overflow-y-auto p-5 sm:p-6">
         <div>
-          <h2 id="se-title" className="text-[17px] font-bold text-ink">
+          <h2 id="se-title" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
             {s.id ? "Editar temporada" : "Nueva temporada"}
           </h2>
           <p className="text-[13.5px] text-ink-muted">En estas noches se cobra este precio en lugar de la tarifa base.</p>
@@ -381,13 +381,13 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
                 return (
                   <label
                     key={c.id}
-                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-[13.5px] font-semibold transition-colors ${on ? "border-ink bg-ink/5 text-ink" : "border-line-strong text-ink-muted hover:text-ink"}`}
+                    className={`flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[13.5px] font-semibold transition-colors ${on ? "border-ink bg-paper text-ink" : "border-dashed border-line-strong text-ink-muted hover:text-ink"}`}
                   >
                     <input
                       type="checkbox"
                       checked={on}
                       onChange={() => setCabins(on ? cabins.filter((x) => x !== c.id) : [...cabins, c.id])}
-                      className="size-4 accent-[var(--color-cta)]"
+                      className="size-4 accent-[var(--color-ink)]"
                     />
                     {c.nombre}
                   </label>
@@ -455,7 +455,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
         )}
         {error && <FieldError>{error}</FieldError>}
       </div>
-      <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-canvas/60 px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
+      <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
         <Button onClick={onClose}>Cancelar</Button>
         <Button variant="primary" loading={busy} disabled={tried && invalid} icon={<CheckIcon size={14} />} onClick={save}>
           {s.id ? "Guardar cambios" : "Crear temporada"}
@@ -475,10 +475,11 @@ function Simulator() {
   const [range, setRange] = useState<{ from: string | null; to: string | null }>({ from: addDays(today, 7), to: addDays(today, 9) });
   const [guests, setGuests] = useState(2);
   const c = data.cabinTypes.find((x) => x.id === cabinId);
+  const pct = data.site.settings.depositPct;
 
   const result = useMemo(() => {
     if (!c || !range.from || !range.to || range.to <= range.from) return null;
-    const q = computeQuote(c, range.from, range.to, guests, data.seasons);
+    const q = computeQuote(c, range.from, range.to, guests, data.seasons, pct);
     const groups = new Map<string, { label: string; nights: number; couple: number; extra: number }>();
     for (let d = range.from; d < range.to; d = addDays(d, 1)) {
       const r = nightlyRate(c, data.seasons, d);
@@ -488,7 +489,7 @@ function Simulator() {
       groups.set(key, g);
     }
     return { q, groups: [...groups.values()] };
-  }, [c, range, guests, data.seasons]);
+  }, [c, range, guests, data.seasons, pct]);
 
   if (!active.length) return null;
   return (
@@ -509,7 +510,7 @@ function Simulator() {
         <Field label="Huéspedes">{(p) => <Stepper id={p.id} value={guests} onChange={setGuests} min={1} max={c?.maxPersonas ?? 12} />}</Field>
       </div>
       {result ? (
-        <div className="grid grid-cols-1 gap-4 rounded-xl bg-canvas p-4 sm:grid-cols-[1fr_auto]">
+        <div className="grid grid-cols-1 gap-4 rounded-[18px] bg-canvas/70 p-4 sm:grid-cols-[1fr_auto]">
           <ul className="flex flex-col gap-1.5 text-[13.5px]">
             {result.groups.map((g) => (
               <li key={g.label} className="flex flex-wrap justify-between gap-x-4">
@@ -528,9 +529,9 @@ function Simulator() {
           </ul>
           <div className="flex flex-col items-start gap-0.5 sm:items-end sm:border-l sm:border-line sm:pl-5">
             <span className="text-[12.5px] text-ink-muted">Total</span>
-            <strong className="text-[22px] font-extrabold text-ink tabular-nums">{cop(result.q.total)}</strong>
+            <strong className="text-[24px] font-bold tracking-[-0.025em] text-ink tabular-nums">{cop(result.q.total)}</strong>
             <span className="text-[12.5px] text-ink-muted">
-              Abono {config.depositPct} %: {cop(result.q.deposit)}
+              Abono {data.site.settings.depositPct} %: {cop(result.q.deposit)}
             </span>
           </div>
         </div>

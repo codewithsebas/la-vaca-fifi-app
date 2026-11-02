@@ -24,7 +24,7 @@ const RANGE = "M0 220V150l110-54 80 32 110-66 100 56 80-26 100 48 80-16 100 22 1
 const HILLS = "M0 100V46C160 22 320 64 500 42S820 16 1000 44 1150 38 1200 32V100Z";
 const FOG: CSSProperties = {
   background:
-    "radial-gradient(40% 60% at 30% 55%, color-mix(in srgb, var(--color-card) 8%, transparent), transparent 70%), radial-gradient(34% 55% at 74% 45%, color-mix(in srgb, var(--color-card) 7%, transparent), transparent 70%)",
+    "radial-gradient(40% 60% at 30% 55%, color-mix(in srgb, var(--color-paper) 40%, transparent), transparent 70%), radial-gradient(34% 55% at 74% 45%, color-mix(in srgb, var(--color-paper) 35%, transparent), transparent 70%)",
 };
 
 // Paisaje del ingreso y de la pantalla de carga: el Nevado del Ruiz asoma detrás de la cordillera, entre niebla. Al
@@ -40,22 +40,22 @@ function NevadoScene({ id, sky = true, className = "" }: { id: string; sky?: boo
               <path d={NEVADO} />
             </clipPath>
           </defs>
-          <path d={NEVADO} className="fill-[color-mix(in_srgb,var(--color-surface)_84%,var(--color-on-dark))]" />
+          <path d={NEVADO} className="fill-[color-mix(in_srgb,var(--color-panel)_78%,var(--color-ink))]" />
           <g clipPath={`url(#${id}-nevado)`}>
-            <path d={NEVADO_SNOW} className="fill-card/80" />
-            <path d={NEVADO_SHADE} className="fill-bg/25" />
+            <path d={NEVADO_SNOW} className="fill-paper/85" />
+            <path d={NEVADO_SHADE} className="fill-canvas/30" />
           </g>
         </svg>
       </div>
       {sky && <ShootingStar className="absolute bottom-[88%] left-[38%]" travel={150} every={10} delay={3} />}
       <div className="absolute -inset-x-[10%] bottom-[18%] h-[38%] motion-safe:animate-fog-drift" style={FOG} />
-      <svg viewBox="0 0 1200 220" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-[72%] w-full fill-surface motion-safe:animate-land-rise">
+      <svg viewBox="0 0 1200 220" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-[72%] w-full fill-panel motion-safe:animate-land-rise">
         <path d={RANGE} />
       </svg>
       <svg
         viewBox="0 0 1200 100"
         preserveAspectRatio="none"
-        className="absolute inset-x-0 bottom-0 h-[30%] w-full fill-[color-mix(in_srgb,var(--color-surface)_55%,var(--color-deep))] motion-safe:animate-land-rise"
+        className="absolute inset-x-0 bottom-0 h-[30%] w-full fill-line motion-safe:animate-land-rise"
         style={{ animationDelay: "120ms" }}
       >
         <path d={HILLS} />
@@ -69,17 +69,17 @@ function NevadoScene({ id, sky = true, className = "" }: { id: string; sky?: boo
 // Mientras se valida la sesión y se cargan los datos: el monograma sobre el nevado y la cordillera.
 export function PanelLoader({ label = "Preparando tu panel…" }: { label?: string }) {
   return (
-    <div role="status" aria-live="polite" className="admin-dark relative grid min-h-dvh place-items-center overflow-hidden bg-bg px-6 text-on-dark">
+    <div role="status" aria-live="polite" className="admin-surface relative grid min-h-dvh place-items-center overflow-hidden bg-canvas px-6 text-ink">
       <NevadoScene id="carga" sky={false} className="h-[30vh]" />
       <div className="relative flex flex-col items-center gap-7 motion-safe:animate-fade-in">
         <Logo size={120} eager className="size-[clamp(96px,20vw,120px)] motion-safe:animate-glide" />
         <p className="flex">
           <BrandName wordSize="clamp(2rem,6vw,2.6rem)" />
         </p>
-        <span aria-hidden="true" className="relative h-[3px] w-44 overflow-hidden rounded-full bg-on-dark/15">
-          <span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-highlight motion-safe:animate-loader-bar" />
+        <span aria-hidden="true" className="relative h-[3px] w-44 overflow-hidden rounded-full bg-ink/12">
+          <span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-pink-deep motion-safe:animate-loader-bar" />
         </span>
-        <span className="text-[13px] font-medium text-on-dark/70">{label}</span>
+        <span className="text-[13px] font-medium text-ink-muted">{label}</span>
       </div>
     </div>
   );
@@ -120,12 +120,12 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       .map((w) => ({ w, accent }));
   const words = [...split(texts.hero.title, false), ...split(texts.hero.highlight, true)];
   return (
-    <main className="admin-dark relative grid min-h-dvh bg-bg text-on-dark lg:grid-cols-[minmax(0,1.2fr)_minmax(460px,1fr)]">
+    <main className="admin-surface relative grid min-h-dvh bg-canvas text-ink lg:grid-cols-[minmax(0,1.2fr)_minmax(460px,1fr)]">
       {/* Foto: arriba en el celular, mitad izquierda en pantallas anchas. */}
       {/* En el celular la foto se disuelve hacia abajo (máscara): así su borde no se marca como una línea sobre el logo. */}
       <div
         aria-hidden="true"
-        className="relative h-[38vh] min-h-[240px] overflow-hidden bg-surface max-lg:[mask-image:linear-gradient(to_bottom,black_65%,transparent)] lg:sticky lg:top-0 lg:h-dvh"
+        className="relative h-[38vh] min-h-[240px] overflow-hidden bg-sidebar max-lg:[mask-image:linear-gradient(to_bottom,black_65%,transparent)] lg:sticky lg:top-3 lg:m-3 lg:h-[calc(100dvh-24px)] lg:rounded-[28px]"
       >
         {photo ? (
           // Se asienta al cargar y luego respira con un acercamiento muy lento, como la portada del sitio.
@@ -134,27 +134,31 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           </div>
         ) : (
           <>
-            <svg viewBox="0 0 1200 220" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-1/2 w-full fill-bg/70">
+            <svg viewBox="0 0 1200 220" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-1/2 w-full fill-white/10">
               <path d="M0 220V150l140-62 92 40 128-90 108 82 92-42 140 72 118-92 112 64 120-52 150 82v68z" />
             </svg>
-            <Constellation className="absolute top-[12%] left-1/2 w-[min(30%,220px)] -translate-x-1/2" opacity={0.4} depth={0} />
+            <Constellation
+              className="absolute top-[12%] left-1/2 w-[min(30%,220px)] -translate-x-1/2 [--color-on-dark:var(--color-paper)]"
+              opacity={0.4}
+              depth={0}
+            />
           </>
         )}
         {/* Velo para leer el título sobre cualquier foto; en el celular la foto se funde con el fondo. */}
-        <span className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-bg via-bg/55 to-transparent lg:h-1/2 lg:from-black/70 lg:via-black/25" />
+        <span className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-canvas via-canvas/55 to-transparent lg:h-1/2 lg:from-black/70 lg:via-black/25" />
         {/* El título sube palabra por palabra, como en la portada del sitio. */}
-        <p className="display absolute right-8 bottom-10 left-8 hidden text-[clamp(3rem,5.2vw,5.6rem)] leading-[.9] tracking-[.005em] text-balance lg:block">
+        <p className="absolute right-10 bottom-10 left-10 hidden text-[clamp(2.6rem,4.4vw,4.6rem)] leading-[.98] font-bold tracking-[-0.035em] text-balance text-white lg:block">
           {words.map(({ w, accent }, i) => (
             <Fragment key={i}>
               {i > 0 && " "}
-              <span className={`inline-block motion-safe:animate-rise ${accent ? "text-accent" : ""}`} style={{ animationDelay: `${350 + i * 90}ms` }}>
+              <span className={`inline-block motion-safe:animate-rise ${accent ? "text-pink" : ""}`} style={{ animationDelay: `${350 + i * 90}ms` }}>
                 {w}
               </span>
             </Fragment>
           ))}
           {texts.hero.badge && (
             <span
-              className="mt-4 block font-body text-[15px] leading-snug font-semibold tracking-normal text-on-dark/85 normal-case motion-safe:animate-rise"
+              className="mt-4 block text-[15px] leading-snug font-medium tracking-normal text-white/85 normal-case motion-safe:animate-rise"
               style={{ animationDelay: `${450 + words.length * 90}ms` }}
             >
               {texts.hero.badge}
@@ -175,10 +179,10 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           noValidate
           onSubmit={onSubmit}
           aria-labelledby="lg-title"
-          className="admin-surface relative flex w-full max-w-[400px] flex-col gap-5 rounded-2xl bg-panel p-6 text-ink shadow-overlay motion-safe:animate-pop-in sm:p-8"
+          className="admin-surface relative flex w-full max-w-[410px] flex-col gap-5 rounded-[28px] bg-paper p-6 text-ink shadow-overlay motion-safe:animate-pop-in sm:p-8"
         >
           <div>
-            <h1 id="lg-title" className="text-[22px] leading-tight font-extrabold tracking-[-0.01em]">
+            <h1 id="lg-title" className="text-[24px] leading-tight font-bold tracking-[-0.03em]">
               Panel de reservas
             </h1>
             <p className="mt-1 text-[14px] text-ink-muted">
@@ -218,7 +222,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
                   onClick={() => setShow(!show)}
                   aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
                   aria-pressed={show}
-                  className="btn-icon absolute top-1/2 right-1 size-9 -translate-y-1/2 text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
+                  className="absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center rounded-full text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
                 >
                   {show ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
                 </button>
@@ -234,7 +238,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
             {lg.loading ? "Entrando…" : "Entrar"}
           </Button>
         </form>
-        <Link href="/" className="relative rounded-sm text-[13.5px] font-semibold text-on-dark/75 transition-colors hover:text-on-dark">
+        <Link href="/" className="relative rounded-full px-2 py-1 text-[13.5px] font-semibold text-ink-muted transition-colors hover:text-ink">
           ← Volver al sitio
         </Link>
       </div>

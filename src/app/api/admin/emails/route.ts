@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { toEmail } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { fail, json, readJson, requireStaff, route } from "@/lib/server/http";
 import { mailConfigured, processOutbox } from "@/lib/server/mailer";
 import { siteUrl } from "@/lib/server/site";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -14,7 +14,7 @@ type Body =
 
 // GET /api/admin/emails → si el envío está configurado (para avisarlo en el panel antes de escribir).
 export const GET = route(async () => {
-  const { error } = await requireAdmin();
+  const { error } = await requireStaff();
   if (error) return error;
   return json({ configured: mailConfigured() });
 });
@@ -25,7 +25,7 @@ export const GET = route(async () => {
 //   { action: "retry", id } → reintenta ya un correo que falló.
 // Responde con el registro del correo (status "sent" o "failed" con el motivo); el resultado queda en la bandeja.
 export const POST = route(async (req: NextRequest) => {
-  const { sb, uid, error } = await requireAdmin();
+  const { sb, uid, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<Body>(req);
   if (!b) return fail(400, "INVALID_BODY");

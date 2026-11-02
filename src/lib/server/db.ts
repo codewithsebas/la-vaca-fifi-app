@@ -2,8 +2,13 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ACTIVE_STATUSES, type Occupancy, type Units } from "@/lib/booking";
 import type { Database, Tables } from "@/lib/supabase/database.types";
+import { config } from "@/lib/config";
+import { addDays, todayISO } from "@/lib/format";
 import type {
   AdminNotification,
+  Bathroom,
+  BathroomBlock,
+  BathroomStatus,
   Block,
   CabinType,
   ClientEntry,
@@ -80,10 +85,20 @@ export async function loadSeasons(sb: Db, { activeOnly = false } = {}) {
   return data.map(toSeason);
 }
 
-// Tarifas vigentes para cotizar: cabañas activas, unidades y temporadas activas.
+// Porcentaje del abono para confirmar (Condiciones de pago); sin configurar, el de lib/config.
+export async function loadDepositPct(sb: Db) {
+  const { data } = await sb.from("site_settings").select("deposit_pct").maybeSingle().throwOnError();
+  return data?.deposit_pct ?? config.depositPct;
+}
+
+// Tarifas vigentes para cotizar: cabañas activas, unidades, temporadas activas y el porcentaje del abono.
 export async function loadPricing(sb: Db) {
-  const [{ types, units }, seasons] = await Promise.all([loadCabinTypes(sb, { activeOnly: true }), loadSeasons(sb, { activeOnly: true })]);
-  return { types, units, seasons };
+  const [{ types, units }, seasons, depositPct] = await Promise.all([
+    loadCabinTypes(sb, { activeOnly: true }),
+    loadSeasons(sb, { activeOnly: true }),
+    loadDepositPct(sb),
+  ]);
+  return { types, units, seasons, depositPct };
 }
 
 // Reservas activas y bloqueos que tocan alguna noche entre firstNight y lastNight (inclusive).
@@ -197,9 +212,45 @@ export function toReservation(r: ReservationRow & { reservation_notes?: { text: 
     consents: r.consents as Reservation["consents"],
     createdAt: r.created_at,
     source: r.source as ReservationSource,
+    externalRef: r.external_ref,
+    channel: r.channel,
+    commission: r.commission,
     clientKey: r.client_key ?? `${r.guest_doc_type}:${r.guest_doc_number.toUpperCase()}`,
     notes: (r.reservation_notes ?? []).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)).map((n) => ({ at: n.created_at, text: n.text })),
   };
+}
+
+export const toBathroom = (b: Tables<"bathrooms">): Bathroom => ({
+  id: b.id,
+  name: b.name,
+  status: b.status as BathroomStatus,
+  cabinTypeId: b.cabin_type_id,
+  unit: b.unit,
+  notes: b.notes,
+  statusUpdatedAt: b.status_updated_at,
+});
+
+export const toBathroomBlock = (b: Tables<"bathroom_blocks">): BathroomBlock => ({
+  id: b.id,
+  bathroomId: b.bathroom_id,
+  from: b.from_date,
+  to: b.to_date,
+  reason: b.reason,
+  notes: b.notes,
+});
+
+// Baños y sus bloqueos (vigentes y del último año). Mientras la migración no esté aplicada, listas vacías.
+export async function loadBathrooms(sb: Db): Promise<{ bathrooms: Bathroom[]; blocks: BathroomBlock[] }> {
+  const [b, k] = await Promise.all([
+    sb.from("bathrooms").select("*").order("name"),
+    sb.from("bathroom_blocks").select("*").gte("to_date", addDays(todayISO(), -365)).order("from_date"),
+  ]);
+  const error = b.error ?? k.error;
+  if (error) {
+    if (["PGRST205", "42P01"].includes(error.code ?? "")) return { bathrooms: [], blocks: [] };
+    throw error;
+  }
+  return { bathrooms: (b.data ?? []).map(toBathroom), blocks: (k.data ?? []).map(toBathroomBlock) };
 }
 
 export function toBlock(b: Tables<"blocks">): Block {

@@ -1,7 +1,7 @@
 // Service worker de la PWA (sitio y panel): muestra una página propia cuando no hay internet y las notificaciones
 // push del equipo. No guarda páginas ni datos, porque disponibilidad, pagos y el panel siempre deben venir frescos del servidor.
 // Al cambiar offline.html, sube la versión para que los celulares descarguen la nueva.
-const CACHE = "vacafifi-offline-v1";
+const CACHE = "vacafifi-offline-v3";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

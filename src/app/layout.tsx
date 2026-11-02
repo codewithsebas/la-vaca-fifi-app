@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Lilita_One, Nunito } from "next/font/google";
 import { ServiceWorker } from "@/components/site/service-worker";
 import { SiteProvider } from "@/components/site/site-provider";
@@ -29,11 +30,17 @@ export const viewport: Viewport = {
   themeColor: "#FFF8EB",
 };
 
+// Apariencia del panel antes de pintar (components/admin/appearance.tsx), para que el modo oscuro no destelle en claro.
+const ADMIN_THEME = `try{if(location.pathname.startsWith("/admin")){var p=localStorage.getItem("vf-admin-theme");document.documentElement.dataset.adminTheme=p==="dark"||(p==="system"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"}}catch(e){}`;
+
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [content, cabins] = await Promise.all([getSiteContent(), getSiteCabins()]);
   return (
-    <html lang="es" data-scroll-behavior="smooth" className={`${lilita.variable} ${nunito.variable}`}>
+    <html lang="es" data-scroll-behavior="smooth" className={`${lilita.variable} ${nunito.variable}`} suppressHydrationWarning>
       <body>
+        <Script id="admin-theme" strategy="beforeInteractive">
+          {ADMIN_THEME}
+        </Script>
         <SiteProvider content={content} cabins={cabins}>
           {children}
         </SiteProvider>

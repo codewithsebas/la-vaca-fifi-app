@@ -7,6 +7,7 @@ export type SiteSettings = {
   checkInStart: string; // "HH:MM"
   checkInEnd: string;
   checkOutTime: string;
+  depositPct: number; // abono para confirmar una reserva (% del total); lo cambian solo los administradores
   phones: string[];
   whatsapp: string; // con indicativo, solo dígitos: 573142374008
   rnt: string;
@@ -211,6 +212,7 @@ export function mergeSite(s: SiteSettings, policies: SitePolicy[], texts: SiteTe
     checkInStart: s.checkInStart,
     checkInEnd: s.checkInEnd,
     checkOutTime: s.checkOutTime,
+    depositPct: s.depositPct,
     policies,
   };
 }
@@ -230,7 +232,15 @@ export const DEFAULT_PHOTOS: Record<string, string> = {
 
 // Valores del diseño, para el modo simulado o si Supabase no responde.
 export const defaultContent: SiteContent = {
-  settings: { checkInStart: "14:00", checkInEnd: "22:00", checkOutTime: "12:00", phones: [...config.phones], whatsapp: config.whatsapp, rnt: config.rnt },
+  settings: {
+    checkInStart: "14:00",
+    checkInEnd: "22:00",
+    checkOutTime: "12:00",
+    depositPct: config.depositPct,
+    phones: [...config.phones],
+    whatsapp: config.whatsapp,
+    rnt: config.rnt,
+  },
   policies: config.policies.map((p, i) => ({ ...p, id: `default-${i}` })),
   photos: DEFAULT_PHOTOS,
   texts: defaultTexts,

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { type Db, loadClients } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { fail, json, readJson, requireAdmin, requireStaff, route } from "@/lib/server/http";
 import type { ClientProfileInput } from "@/lib/types";
 
 // Valoración interna: exclusivamente administrativa. Ninguna ruta pública lee estas tablas.
@@ -19,7 +19,7 @@ const profile = async (sb: Db, key: string) => json((await loadClients(sb, key))
 
 // PUT /api/admin/clients { clientKey, rating, trust, tags, preferences, summary } → guarda la valoración.
 export const PUT = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<ClientProfileInput & { clientKey: string }>(req);
   const key = await knownClient(sb, b?.clientKey);
@@ -47,7 +47,7 @@ export const PUT = route(async (req: NextRequest) => {
 
 // POST /api/admin/clients { clientKey, kind: "note" | "incident", severity, text, reservationCode } → agrega un registro.
 export const POST = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<{ clientKey: string; kind: string; severity: string | null; text: string; reservationCode: string | null }>(req);
   const key = await knownClient(sb, b?.clientKey);
@@ -71,7 +71,7 @@ export const POST = route(async (req: NextRequest) => {
 
 // DELETE /api/admin/clients?entry=<id> → borra un registro.
 export const DELETE = route(async (req: NextRequest) => {
-  const { sb, error } = await requireAdmin();
+  const { sb, error } = await requireAdmin("delete");
   if (error) return error;
   const id = Number(req.nextUrl.searchParams.get("entry"));
   if (!Number.isInteger(id) || id < 1) return fail(400, "INVALID_ID");

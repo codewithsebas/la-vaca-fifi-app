@@ -10,7 +10,7 @@ import { cop, download, timeAgo } from "@/lib/format";
 import type { PaymentProof, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { paths } from "@/components/admin/routes";
-import { Badge, Button, Callout, IconButton, Modal, Spinner, buttonClass, type Tone } from "@/components/admin/ui";
+import { Badge, Button, Callout, IconButton, Modal, ModalPresence, Spinner, buttonClass, type Tone } from "@/components/admin/ui";
 
 const kb = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
@@ -67,9 +67,9 @@ export function ProofCard({ p, r, showReservation = false }: { p: PaymentProof; 
   const [viewing, setViewing] = useState(false);
   const st = PROOF_STATUS[p.status];
   return (
-    <li className={`flex flex-col gap-2.5 rounded-xl border p-3 ${p.status === "pending" ? "border-info/30 bg-info-soft/40" : "border-line bg-panel"}`}>
+    <li className={`flex flex-col gap-2.5 rounded-[18px] p-3.5 ${p.status === "pending" ? "bg-blue-soft" : "bg-canvas/60"}`}>
       <div className="flex items-start gap-3">
-        <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-lg bg-panel text-ink-muted shadow-panel">
+        <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-paper text-ink-muted">
           {p.mime === "application/pdf" ? <FileTextIcon size={18} /> : <ImageIcon size={18} />}
         </span>
         <div className="min-w-0 flex-1">
@@ -86,7 +86,7 @@ export function ProofCard({ p, r, showReservation = false }: { p: PaymentProof; 
         </div>
         <Badge tone={st.tone}>{st.label}</Badge>
       </div>
-      {p.note && <p className="rounded-lg bg-panel px-3 py-2 text-[13px] text-ink">«{p.note}»</p>}
+      {p.note && <p className="rounded-[12px] bg-paper/70 px-3 py-2 text-[13px] text-ink">«{p.note}»</p>}
       {p.status === "rejected" && p.reviewNote && <p className="text-[12.5px] text-error">Motivo: {p.reviewNote}</p>}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" icon={<EyeIcon size={14} />} onClick={() => setViewing(true)}>
@@ -108,7 +108,7 @@ export function ProofCard({ p, r, showReservation = false }: { p: PaymentProof; 
           </Link>
         )}
       </div>
-      {viewing && <ProofViewer p={p} onClose={() => setViewing(false)} />}
+      <ModalPresence>{viewing && <ProofViewer p={p} onClose={() => setViewing(false)} />}</ModalPresence>
     </li>
   );
 }
@@ -154,7 +154,7 @@ function ProofViewer({ p, onClose }: { p: PaymentProof; onClose: () => void }) {
       labelledBy="pv-title"
       dismissOnBackdrop
       initialFocus="#pv-close"
-      className="m-auto flex h-[min(860px,calc(100dvh-32px))] w-[calc(100%-32px)] max-w-[900px] flex-col rounded-2xl p-0 motion-safe:open:animate-pop-in"
+      className="m-auto flex h-[min(860px,calc(100dvh-32px))] w-[calc(100%-32px)] max-w-[900px] flex-col rounded-[26px] p-0"
     >
       <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
         <div className="min-w-0">
@@ -207,10 +207,10 @@ function ProofViewer({ p, onClose }: { p: PaymentProof; onClose: () => void }) {
             No se pudo abrir el comprobante. Cierra el visor e inténtalo de nuevo.
           </Callout>
         ) : p.mime === "application/pdf" ? (
-          <iframe title={p.fileName} src={state.url} className="size-full rounded-lg border border-line bg-white" />
+          <iframe title={p.fileName} src={state.url} className="size-full rounded-[12px] border border-line bg-white" />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element -- URL firmada temporal: no pasa por el optimizador
-          <img src={state.url} alt={`Comprobante ${p.fileName}`} className="max-h-full max-w-full rounded-lg object-contain shadow-panel" />
+          <img src={state.url} alt={`Comprobante ${p.fileName}`} className="max-h-full max-w-full rounded-[12px] object-contain shadow-panel" />
         )}
       </div>
     </Modal>

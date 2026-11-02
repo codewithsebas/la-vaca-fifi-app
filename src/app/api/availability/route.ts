@@ -15,6 +15,6 @@ export const GET = route(async (req: NextRequest) => {
 
   const sb = createServiceClient();
   await runDeadlines();
-  const [{ types, units, seasons }, occ] = await Promise.all([loadPricing(sb), loadOccupancy(sb, ci, addDays(co, -1))]);
-  return json(availability(occ, types, units, ci, co, guests, seasons));
+  const [{ types, units, seasons, depositPct }, occ] = await Promise.all([loadPricing(sb), loadOccupancy(sb, ci, addDays(co, -1))]);
+  return json(availability(occ, types, units, ci, co, guests, seasons, depositPct));
 });
