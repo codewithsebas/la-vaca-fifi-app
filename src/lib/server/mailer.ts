@@ -1,9 +1,11 @@
 import "server-only";
 import {
   arrivalReminderEmail,
+  balancePaidEmail,
   reservationConfirmedEmail,
   reservationEndedEmail,
   reservationReceivedEmail,
+  reservationRescheduledEmail,
   teamMessageEmail,
   type RenderedEmail,
 } from "@/lib/emails";
@@ -18,7 +20,7 @@ import { loadSiteContent } from "@/lib/server/site";
 import { env } from "@/lib/server/env";
 
 // Bandeja de salida (tabla email_outbox): quien necesita un correo lo encola (los de la reserva los encola la base de datos:
-// al crearse, al aprobarse el abono, al cancelarse o vencerse y dos días antes de llegar) y este módulo lo envía con Resend. El envío va aparte de la respuesta al huésped: si Resend falla,
+// al crearse, al aprobarse el abono, al completarse el pago, al reprogramarse, al cancelarse o vencerse y dos días antes de llegar) y este módulo lo envía con Resend. El envío va aparte de la respuesta al huésped: si Resend falla,
 // la reserva sigue confirmada, el error queda registrado (y avisa al panel) y el correo se reintenta con espera creciente.
 
 type Row = Tables<"email_outbox">;
@@ -123,8 +125,46 @@ async function renderReservation(ctx: Ctx, row: Row, c: SiteConfig, logoUrl: str
     case "reservation_cancelled":
     case "reservation_expired":
       return guest(
-        reservationEndedEmail(c, { ...stay, vencida: row.kind === "reservation_expired", reservarUrl: site ? `${ctx.base}/reservar` : "", whatsappUrl }),
+        reservationEndedEmail(c, {
+          ...stay,
+          vencida: row.kind === "reservation_expired",
+          pagado: r.paid_amount,
+          reservarUrl: site ? `${ctx.base}/reservar` : "",
+          whatsappUrl,
+        }),
       );
+    case "balance_paid":
+      return guest(
+        balancePaidEmail(c, {
+          ...stay,
+          total: q.total,
+          pagado: r.paid_amount,
+          enEstadia: r.status === "checked_in",
+          comoLlegarUrl: dirHref(),
+          miReservaUrl,
+          whatsappUrl,
+        }),
+      );
+    case "reservation_rescheduled": {
+      // Las fechas de este cambio quedan en la fila: si se reprograma otra vez, cada correo cuenta el suyo.
+      const d = row.payload as { checkInAnterior: string; checkOutAnterior: string; checkIn: string; checkOut: string };
+      const email = reservationRescheduledEmail(c, {
+        ...stay,
+        checkIn: d.checkIn,
+        checkOut: d.checkOut,
+        checkInAnterior: d.checkInAnterior,
+        checkOutAnterior: d.checkOutAnterior,
+        mascota,
+        total: q.total,
+        pagado: r.paid_amount,
+        abono: q.deposit,
+        plazo: r.deposit_due_at,
+        miReservaUrl,
+        whatsappUrl,
+      });
+      const calendar = ics({ code: r.code, checkIn: d.checkIn, checkOut: d.checkOut, cabinTypeId: r.cabin_type_id }, c, cabana);
+      return { ...guest(email), attachments: [{ filename: `reserva-${r.code}.ics`, content: Buffer.from(calendar).toString("base64") }] };
+    }
     case "arrival_reminder":
       return guest(arrivalReminderEmail(c, { ...stay, saldo: Math.max(0, q.total - r.paid_amount), comoLlegarUrl: dirHref(), miReservaUrl, whatsappUrl }));
     default:

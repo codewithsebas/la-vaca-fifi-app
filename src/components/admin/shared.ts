@@ -54,6 +54,8 @@ export const EMAIL_KIND: Record<string, string> = {
   reservation_received: "Reserva recibida",
   reservation_confirmed: "Confirmación de reserva",
   new_reservation: "Aviso de reserva nueva",
+  balance_paid: "Pago total recibido",
+  reservation_rescheduled: "Reserva reprogramada",
   reservation_cancelled: "Reserva cancelada",
   reservation_expired: "Reserva vencida",
   arrival_reminder: "Recordatorio de llegada",

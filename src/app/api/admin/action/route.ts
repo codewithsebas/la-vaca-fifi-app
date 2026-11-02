@@ -86,8 +86,8 @@ export const POST = route(async (req: NextRequest) => {
           ...(amount !== null && { p_amount: amount }),
         })
         .throwOnError();
-      // Confirmar el abono encola el correo de confirmación: se envía después de responder.
-      if (b.action === "confirm") after(() => processOutbox(siteUrl(req.nextUrl.origin)).then(() => dispatchPush()));
+      // Confirmar el abono o completar el saldo encola su correo: se envía después de responder.
+      after(() => processOutbox(siteUrl(req.nextUrl.origin)).then(() => dispatchPush()));
     } else if (b.action === "reschedule") {
       const { checkIn: ci, checkOut: co } = b;
       if (!isISO(ci) || !isISO(co) || co <= ci || ci < todayISO() || nightsBetween(ci, co) > 30) return fail(400, "INVALID_DATES");
@@ -117,6 +117,8 @@ export const POST = route(async (req: NextRequest) => {
         })
         .eq("code", current.code)
         .throwOnError();
+      // Cambiar las fechas encola el correo al huésped (lo hace la base de datos): se envía después de responder.
+      after(() => processOutbox(siteUrl(req.nextUrl.origin)));
     } else {
       await sb.from("reservations").update({ status: rule.to! }).eq("code", current.code).throwOnError();
       // Cancelar encola el correo al huésped (lo hace la base de datos): se envía después de responder.

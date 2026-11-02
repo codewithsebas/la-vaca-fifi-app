@@ -41,8 +41,8 @@ export function EmailPreview() {
     <div className="box-border min-h-screen gutter-1200 pt-7 pb-20">
       <h1 className="display mb-1.5 text-[clamp(2.4rem,5vw,4rem)] leading-[.95]">Plantillas de correo</h1>
       <p className="mb-5 max-w-[70ch]">
-        HTML de 600 px con tablas, estilos inline y colores hex. Los dos primeros se envían de verdad (con Resend) y se muestran con datos de ejemplo; el resto
-        son plantillas de referencia con variables <strong>{"{{var}}"}</strong> que aún no se envían. Cada correo trae su versión en texto plano.
+        HTML de 600 px con tablas, estilos inline y colores hex. Todos se envían de verdad (con Resend) y aquí se muestran con datos de ejemplo. Cada correo
+        trae su versión en texto plano.
       </p>
       <div role="toolbar" aria-label="Vista previa" className="sticky top-0 z-5 flex flex-wrap gap-3.5 bg-bg pt-3 pb-4">
         {groups.map((g) => (
@@ -76,10 +76,8 @@ export function EmailPreview() {
                 <span className="text-[.85rem]">
                   Para: <strong>{t.to}</strong>
                 </span>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[.78rem] font-extrabold ${t.sent ? "bg-accent text-on-light" : "bg-card-muted text-on-light"}`}
-                >
-                  {t.sent === "auto" ? "Se envía automáticamente" : t.sent === "panel" ? "Se envía desde el panel" : "Plantilla · aún no se envía"}
+                <span className="rounded-full bg-accent px-2.5 py-0.5 text-[.78rem] font-extrabold text-on-light">
+                  {t.sent === "auto" ? "Se envía automáticamente" : "Se envía desde el panel"}
                 </span>
               </div>
               <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 gap-y-1 rounded-md bg-[color-mix(in_srgb,var(--color-bg)_60%,var(--color-surface))] px-3.5 py-3 text-[.88rem]">

@@ -1,6 +1,5 @@
 // Correos transaccionales: HTML de 600 px con tablas, estilos inline y colores hex (funciona en Gmail, Outlook y Apple Mail).
-// Los que se envían de verdad (los automáticos de la reserva y el mensaje del equipo) se generan con funciones que reciben
-// los datos; la reprogramación sigue como plantilla de referencia con variables {{var}} que todavía no se envía.
+// Todos (los automáticos de la reserva y el mensaje del equipo) se generan con funciones que reciben los datos.
 import { cop, fmtDate, fmtDateTime, nightsBetween, plural } from "@/lib/format";
 import { fmtTime, type SiteConfig } from "@/lib/site";
 
@@ -171,7 +170,11 @@ export function reservationConfirmedEmail(c: Cfg, d: ConfirmedEmailData): Render
   const body =
     pill("&#10003;&nbsp; Reserva confirmada", "green") +
     h1(`¡Te esperamos, ${esc(first)}!`) +
-    p(`Recibimos tu ${full ? "pago" : "abono"} y tu reserva quedó confirmada. Aquí tienes lo esencial para tu llegada.`) +
+    p(
+      full
+        ? "Recibimos tu pago total y tu reserva quedó confirmada. No tienes saldo pendiente: solo queda disfrutar tu estadía en La Vaca Fifí. Aquí tienes lo esencial para tu llegada."
+        : "Recibimos tu abono y tu reserva quedó confirmada. Aquí tienes lo esencial para tu llegada.",
+    ) +
     codeBox(esc(d.codigo), "Confirmada", "green") +
     h2("Tu estadía") +
     kv([
@@ -315,36 +318,165 @@ export function reservationReceivedEmail(c: Cfg, d: ReceivedEmailData): Rendered
 
 /* ───────────── Reserva cancelada o vencida (automático, al huésped) ───────────── */
 
-type EndedEmailData = StayData & { vencida: boolean; reservarUrl: string; whatsappUrl: string }; // reservarUrl vacío: sin el sitio público
+type EndedEmailData = StayData & { vencida: boolean; pagado: number; reservarUrl: string; whatsappUrl: string }; // reservarUrl vacío: sin el sitio público
 
 export function reservationEndedEmail(c: Cfg, d: EndedEmailData): RenderedEmail {
   const first = firstName(d.nombre);
   const what = d.vencida
-    ? "venció porque no recibimos el abono dentro del plazo, y las fechas quedaron libres."
-    : "fue cancelada y las fechas quedaron libres.";
+    ? `tu reserva ${d.codigo} para la ${d.cabana} (${stayOf(d)}) venció porque no recibimos el abono dentro del plazo, y las fechas quedaron libres.`
+    : `has cancelado tu reserva ${d.codigo} en La Vaca Fifí para la ${d.cabana} (${stayOf(d)}). Las fechas quedaron libres.`;
+  // El abono solo se menciona si se pagó: sin pago no hay nada que retener.
+  const next = d.vencida
+    ? d.reservarUrl
+      ? "Si todavía quieres venir, puedes reservar de nuevo: te mostramos la disponibilidad actual."
+      : "Si todavía quieres venir, escríbenos por WhatsApp y te contamos la disponibilidad actual."
+    : `${d.pagado ? "Según nuestras políticas, el abono no es reembolsable. " : ""}Si no fuiste tú o crees que es un error, escríbenos.`;
   const body =
     pill(d.vencida ? "Reserva vencida" : "Reserva cancelada", "pink") +
-    h1(d.vencida ? "Tu reserva venció" : "Reserva cancelada") +
-    p(`Hola ${esc(first)}, tu reserva <strong>${esc(d.codigo)}</strong> para la ${esc(d.cabana)} (${esc(stayOf(d))}) ${what}`) +
-    (d.vencida
-      ? p(
-          d.reservarUrl
-            ? "Si todavía quieres venir, puedes reservar de nuevo: te mostramos la disponibilidad actual."
-            : "Si todavía quieres venir, escríbenos por WhatsApp y te contamos la disponibilidad actual.",
-        )
-      : small("Según nuestras políticas, el abono no es reembolsable. Si crees que es un error, escríbenos.")) +
+    h1(d.vencida ? "Tu reserva venció" : "Cancelaste tu reserva") +
+    p(`Hola ${esc(first)}, ${esc(what)}`) +
+    (d.vencida ? p(next) : small(next)) +
     btns([
       ["Reservar de nuevo", d.reservarUrl, X.brand, X.cream],
       ["Escribir por WhatsApp", d.whatsappUrl, X.hl, X.ink],
     ]);
+  const text = `Hola ${first}, ${what}\n\n${next}\n\n${linkLine("Reservar", d.reservarUrl)}WhatsApp: ${d.whatsappUrl}` + footText(c);
+  return finish(c, d.logoUrl, {
+    subject: d.vencida ? `Tu reserva ${d.codigo} venció` : `Cancelaste tu reserva ${d.codigo} en La Vaca Fifí`,
+    preheader: d.vencida ? "No recibimos el abono a tiempo y liberamos las fechas." : `Has cancelado tu reserva del ${fmtDate(d.checkIn)}.`,
+    body,
+    text,
+  });
+}
+
+/* ───────────── Pago total recibido (automático, al completar el saldo de una reserva ya confirmada) ───────────── */
+
+type BalancePaidEmailData = StayData & {
+  total: number;
+  pagado: number;
+  enEstadia: boolean; // pagó ya hospedado: las indicaciones de llegada sobran
+  comoLlegarUrl: string;
+  miReservaUrl: string; // vacío: sin el sitio público
+  whatsappUrl: string;
+};
+
+export function balancePaidEmail(c: Cfg, d: BalancePaidEmailData): RenderedEmail {
+  const first = firstName(d.nombre);
+  const nights = plural(nightsBetween(d.checkIn, d.checkOut), "noche", "noches");
+  const body =
+    pill("&#10003;&nbsp; Pago total recibido", "green") +
+    h1(`¡Todo listo, ${esc(first)}!`) +
+    p("Recibimos el pago de tu saldo: <strong>ya hiciste tu pago total</strong>. No tienes nada pendiente, solo queda disfrutar tu estadía en La Vaca Fifí.") +
+    codeBox(esc(d.codigo), "Pago total", "green") +
+    h2("Tu estadía") +
+    kv([
+      ["Cabaña", esc(d.cabana)],
+      ["Fechas", `${esc(stayOf(d))}<br><span style="font-weight:normal">${nights}</span>`],
+      ["Huéspedes", guestsOf(d)],
+    ]) +
+    h2("Pagos") +
+    amounts([
+      ["Valor total", cop(d.total)],
+      ["Pagado", `&#10003; ${cop(d.pagado)}`],
+      ["Saldo pendiente", cop(0), "No tienes saldo pendiente."],
+    ]) +
+    (d.enEstadia
+      ? ""
+      : h2("Para tu llegada") +
+        list([
+          "Presenta el <strong>documento de identidad físico</strong> de cada huésped.",
+          `El check-in es de ${fmtTime(c.checkInStart)} a ${fmtTime(c.checkInEnd)}.`,
+          "Trae ropa abrigada: las noches en Murillo son frías.",
+        ]) +
+        btns([
+          ["Cómo llegar", d.comoLlegarUrl, X.brand, X.cream],
+          ["Ver mi reserva", d.miReservaUrl, X.hl, X.ink],
+        ])) +
+    small(`¿Dudas? <a href="${d.whatsappUrl}" class="em-text" style="color:${X.ink};font-weight:bold;text-decoration:underline">Escríbenos por WhatsApp</a>.`);
   const text =
-    `Hola ${first}, tu reserva ${d.codigo} (${d.cabana}, ${stayOf(d)}) ${what}\n\n` +
-    (d.vencida ? "Si todavía quieres venir, puedes reservar de nuevo." : "Según nuestras políticas, el abono no es reembolsable.") +
-    `\n\n${linkLine("Reservar", d.reservarUrl)}WhatsApp: ${d.whatsappUrl}` +
+    `¡Todo listo, ${first}! Recibimos el pago de tu saldo: ya hiciste tu pago total. No tienes nada pendiente, solo queda disfrutar tu estadía en La Vaca Fifí.\n\n` +
+    `Código: ${d.codigo}\nCabaña: ${d.cabana}\nFechas: ${stayOf(d)} · ${nights}\n\nPAGOS\nValor total: ${cop(d.total)}\nPagado: ${cop(d.pagado)}\nSaldo pendiente: ${cop(0)}\n\n` +
+    `${d.enEstadia ? "" : `Cómo llegar: ${d.comoLlegarUrl}\n${linkLine("Ver mi reserva", d.miReservaUrl)}`}WhatsApp: ${d.whatsappUrl}` +
     footText(c);
   return finish(c, d.logoUrl, {
-    subject: d.vencida ? `Tu reserva ${d.codigo} venció` : `Tu reserva ${d.codigo} fue cancelada`,
-    preheader: d.vencida ? "No recibimos el abono a tiempo y liberamos las fechas." : `Cancelamos tu reserva del ${fmtDate(d.checkIn)}.`,
+    subject: `Ya hiciste tu pago total · ${d.codigo}`,
+    preheader: "Recibimos tu saldo. Disfruta tu estadía en La Vaca Fifí.",
+    body,
+    text,
+  });
+}
+
+/* ───────────── Reserva reprogramada (automático, al cambiar las fechas) ───────────── */
+
+type RescheduledEmailData = StayData & {
+  checkInAnterior: string;
+  checkOutAnterior: string;
+  mascota: boolean;
+  total: number;
+  pagado: number;
+  abono: number; // para la que sigue sin abono
+  plazo: string; // ISO: hasta cuándo se retienen las fechas sin el abono
+  miReservaUrl: string; // vacío: sin el sitio público
+  whatsappUrl: string;
+};
+
+export function reservationRescheduledEmail(c: Cfg, d: RescheduledEmailData): RenderedEmail {
+  const first = firstName(d.nombre);
+  const nights = plural(nightsBetween(d.checkIn, d.checkOut), "noche", "noches");
+  const saldo = Math.max(0, d.total - d.pagado);
+  const antes = stayOf({ ...d, checkIn: d.checkInAnterior, checkOut: d.checkOutAnterior });
+  const ahora = stayOf(d);
+  const plazo = fmtDateTime(d.plazo);
+  // El mensaje cambia según lo pagado: nada todavía, el abono (o parte) o todo.
+  const estado = !d.pagado ? "sin_abono" : saldo ? "abono" : "total";
+  const message = {
+    sin_abono: `Tus fechas siguen retenidas. Para confirmar tu reserva, paga el abono de ${cop(d.abono)} antes del ${plazo}`,
+    abono: `Lo que ya abonaste (${cop(d.pagado)}) se mantiene para las nuevas fechas. Te queda un saldo de ${cop(saldo)}, que puedes pagar por transferencia antes de llegar o en recepción.`,
+    total: "Ya hiciste tu pago total, así que no tienes saldo pendiente. Solo queda disfrutar tu estadía en La Vaca Fifí en las nuevas fechas.",
+  }[estado];
+  const status = { sin_abono: "Pendiente de abono", abono: "Reprogramada · abono pagado", total: "Reprogramada · pago total" }[estado];
+  const rows: [string, string, string?][] =
+    estado === "sin_abono"
+      ? [
+          ["Valor total", cop(d.total)],
+          ["Saldo al llegar", cop(Math.max(0, d.total - d.abono))],
+          ["Abono para confirmar", cop(d.abono), `Antes del ${esc(plazo)}`],
+        ]
+      : [
+          ["Valor total", cop(d.total)],
+          [estado === "total" ? "Pagado" : "Abono pagado", `&#10003; ${cop(d.pagado)}`],
+          ["Saldo pendiente", cop(saldo), saldo ? "Por transferencia antes de llegar o en recepción." : "No tienes saldo pendiente."],
+        ];
+  const body =
+    pill("Reserva reprogramada", "blue") +
+    h1(`Nuevas fechas, ${esc(first)}`) +
+    p(`Reprogramamos tu reserva para el <strong>${esc(ahora)}</strong>. ${esc(message)}`) +
+    codeBox(esc(d.codigo), status, "blue") +
+    h2("Tu estadía") +
+    kv([
+      ["Cabaña", esc(d.cabana)],
+      ["Antes", `<span style="font-weight:normal;text-decoration:line-through">${esc(antes)}</span>`],
+      ["Ahora", `${esc(ahora)}<br><span style="font-weight:normal">${nights}</span>`],
+      ["Huéspedes", `${guestsOf(d)}${d.mascota ? " · con mascota" : ""}`],
+    ]) +
+    h2("Pagos") +
+    amounts(rows) +
+    btns([
+      ["Ver mi reserva", d.miReservaUrl, X.hl, X.ink],
+      ["Escribir por WhatsApp", d.whatsappUrl, X.brand, X.cream],
+    ]) +
+    small(`Adjuntamos <strong>reserva-${esc(d.codigo)}.ics</strong> con las nuevas fechas para tu calendario.`) +
+    small("Con menos de 5 días (120 horas) antes de la llegada ya no se permiten nuevos cambios.");
+  const text =
+    `Nuevas fechas, ${first}. Reprogramamos tu reserva para el ${ahora}.\n\n${message}\n\n` +
+    `Código: ${d.codigo} (${status.toLowerCase()})\nCabaña: ${d.cabana}\nAntes: ${antes}\nAhora: ${ahora} · ${nights}\nHuéspedes: ${guestsOf(d)}${d.mascota ? " · con mascota" : ""}\n\n` +
+    `PAGOS\n${rows.map(([k, v]) => `${k}: ${v.replace("&#10003; ", "")}`).join("\n")}\n\n` +
+    `${linkLine("Ver mi reserva", d.miReservaUrl)}WhatsApp: ${d.whatsappUrl}\nAdjunto: reserva-${d.codigo}.ics\n\nCon menos de 5 días (120 horas) antes de la llegada ya no se permiten nuevos cambios.` +
+    footText(c);
+  const preheaderEnd = { sin_abono: `Abono pendiente: ${cop(d.abono)}.`, abono: `Saldo pendiente: ${cop(saldo)}.`, total: "Tu estadía está pagada." }[estado];
+  return finish(c, d.logoUrl, {
+    subject: `Tu reserva ${d.codigo} cambió de fecha · ${fmtDate(d.checkIn)}`,
+    preheader: `Nuevas fechas: ${ahora}. ${preheaderEnd}`,
     body,
     text,
   });
@@ -396,7 +528,7 @@ export function arrivalReminderEmail(c: Cfg, d: ReminderEmailData): RenderedEmai
 
 /* ───────────── Vista previa (/correos) ───────────── */
 
-type EmailTemplate = { name: string; to: string; subject: string; preheader: string; vars: string; html: string; text: string; sent: "auto" | "panel" | null };
+type EmailTemplate = { name: string; to: string; subject: string; preheader: string; vars: string; html: string; text: string; sent: "auto" | "panel" };
 
 const SAMPLE = { checkIn: "2026-10-03", checkOut: "2026-10-04" };
 
@@ -436,14 +568,36 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       miReservaUrl: "#",
       whatsappUrl: "#",
     });
-    const cancelled = reservationEndedEmail(c, { ...stay, vencida: false, reservarUrl: "#", whatsappUrl: "#" });
-    const expired = reservationEndedEmail(c, { ...stay, vencida: true, reservarUrl: "#", whatsappUrl: "#" });
+    const cancelled = reservationEndedEmail(c, { ...stay, vencida: false, pagado: 141000, reservarUrl: "#", whatsappUrl: "#" });
+    const expired = reservationEndedEmail(c, { ...stay, vencida: true, pagado: 0, reservarUrl: "#", whatsappUrl: "#" });
+    const balancePaid = balancePaidEmail(c, {
+      ...stay,
+      total: 470000,
+      pagado: 470000,
+      enEstadia: false,
+      comoLlegarUrl: "#",
+      miReservaUrl: "#",
+      whatsappUrl: "#",
+    });
+    const moved = {
+      ...stay,
+      checkInAnterior: "2026-09-26",
+      checkOutAnterior: "2026-09-27",
+      mascota: true,
+      total: 470000,
+      abono: 141000,
+      plazo: "2026-09-29T15:00:00Z",
+      miReservaUrl: "#",
+      whatsappUrl: "#",
+    };
+    const movedDeposit = reservationRescheduledEmail(c, { ...moved, pagado: 141000 });
+    const movedFull = reservationRescheduledEmail(c, { ...moved, pagado: 470000 });
+    const movedPending = reservationRescheduledEmail(c, { ...moved, pagado: 0 });
     const reminder = arrivalReminderEmail(c, { ...stay, saldo: 329000, comoLlegarUrl: "#", miReservaUrl: "#", whatsappUrl: "#" });
-    return { confirmed, team, received, cancelled, expired, reminder };
+    return { confirmed, team, received, cancelled, expired, reminder, balancePaid, movedDeposit, movedFull, movedPending };
   };
-  const { confirmed, team, received, cancelled, expired, reminder } = preview("{{logoUrl}}");
+  const { confirmed, team, received, cancelled, expired, reminder, balancePaid, movedDeposit, movedFull, movedPending } = preview("{{logoUrl}}");
   const auto = (name: string, to: string, e: RenderedEmail, vars: string): EmailTemplate => ({ name, to, sent: "auto", vars, ...e });
-  const ref = (body: string, title: string, preheader: string) => emailLayout(c, { title, preheader, body });
   return [
     auto(
       "Reserva recibida",
@@ -459,7 +613,7 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       preheader: confirmed.preheader,
       html: confirmed.html,
       text: confirmed.text,
-      vars: "Se envía una sola vez cuando el equipo registra el abono o el pago total. Adjunta el .ics de la estadía.",
+      vars: "Se envía una sola vez cuando el equipo registra el abono o el pago total de una reserva pendiente. Adjunta el .ics de la estadía.",
     },
     {
       name: "Mensaje del equipo",
@@ -474,32 +628,19 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
     auto("Recordatorio 2 días antes", "Huésped", reminder, "Se envía a las 9:00 dos días antes de la llegada a las reservas confirmadas."),
     auto("Reserva cancelada", "Huésped", cancelled, "Se envía cuando el equipo cancela la reserva."),
     auto("Reserva vencida", "Huésped", expired, "Se envía cuando vence el plazo del abono y las fechas se liberan."),
-    {
-      name: "Reserva reprogramada",
-      to: "Huésped · {{email}}",
-      sent: null,
-      subject: "Tu reserva {{codigo}} cambió de fecha",
-      preheader: "Nuevas fechas: {{nuevoCheckIn}} → {{nuevoCheckOut}}.",
-      vars: "nombre, email, codigo, cabana, checkInAnterior, checkOutAnterior, nuevoCheckIn, nuevoCheckOut, total, pagado, saldo, miReservaUrl",
-      html: ref(
-        h1("Nuevas fechas") +
-          p("Hola {{nombre}}, reprogramamos tu reserva {{codigo}}. Tu abono se mantiene.") +
-          kv([
-            ["Cabaña", "{{cabana}}"],
-            ["Antes", "{{checkInAnterior}} → {{checkOutAnterior}}"],
-            ["Ahora", "{{nuevoCheckIn}} → {{nuevoCheckOut}}"],
-            ["Total", "{{total}}"],
-            ["Pagado", "{{pagado}}"],
-            ["Saldo pendiente", "{{saldo}} · en recepción o por transferencia"],
-          ]) +
-          btn("Ver mi reserva", "{{miReservaUrl}}", X.brand, X.cream) +
-          small("Con menos de 5 días (120 horas) antes de la llegada ya no se permiten nuevos cambios."),
-        "Nuevas fechas",
-        "Reprogramamos tu reserva.",
-      ),
-      text:
-        "Hola {{nombre}}, reprogramamos tu reserva {{codigo}}.\nAhora: {{nuevoCheckIn}} → {{nuevoCheckOut}}\nTotal {{total}} · pagado {{pagado}} · saldo {{saldo}}\nVer mi reserva: {{miReservaUrl}}" +
-        footText(c),
-    },
+    auto("Pago total recibido", "Huésped", balancePaid, "Se envía cuando el equipo registra el pago que completa el saldo de una reserva ya confirmada."),
+    auto(
+      "Reprogramada · con abono",
+      "Huésped",
+      movedDeposit,
+      "Se envía al cambiar las fechas con el abono pagado y saldo pendiente. Adjunta el .ics con las nuevas fechas.",
+    ),
+    auto("Reprogramada · pago total", "Huésped", movedFull, "Se envía al cambiar las fechas con todo pagado. Adjunta el .ics con las nuevas fechas."),
+    auto(
+      "Reprogramada · sin abono",
+      "Huésped",
+      movedPending,
+      "Se envía al cambiar las fechas de una retención que aún no tiene abono. Adjunta el .ics con las nuevas fechas.",
+    ),
   ];
 }

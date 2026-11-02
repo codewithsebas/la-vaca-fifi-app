@@ -885,6 +885,7 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: string
       }
+      enqueue_arrival_reminders: { Args: never; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       panel_role: { Args: never; Returns: string }
@@ -897,6 +898,7 @@ export type Database = {
         }
         Returns: Json
       }
+      request_email_dispatch: { Args: never; Returns: undefined }
       run_payment_deadlines: { Args: never; Returns: undefined }
     }
     Enums: {
