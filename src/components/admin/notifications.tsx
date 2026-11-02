@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
-import { NOTIFICATION_GROUPS, type NotificationGroup } from "@/lib/notification-groups";
+import { NOTIFICATION_GROUPS, groupOf, type NotificationGroup } from "@/lib/notification-groups";
 import { addDays, dateOf, fmtClock, fmtFullDate, plural, timeAgo } from "@/lib/format";
 import type { AdminNotification, NotificationKind } from "@/lib/types";
 import { useAdmin, useParam } from "@/components/admin/context";
@@ -111,14 +111,17 @@ export const LIVE_LABEL: Record<LiveStatus, string> = {
 type SoundGroup = NotificationGroup;
 export const SOUND_GROUPS = NOTIFICATION_GROUPS;
 
+const SOUND_URL = "/sounds/notificacion.mp3"; // el mugido de la vaca (2 s)
+const SOUND_GAP_MS = 2500; // varios avisos seguidos suenan una sola vez, sin encimarse
+
 let audio: AudioContext | null = null;
+let sound: Promise<AudioBuffer | null> | null = null;
+let lastPlay = 0;
 
 // ¿Debe sonar este aviso? Respeta el interruptor general y los grupos silenciados en Configuración.
 export function soundFor(kind: NotificationKind) {
   if (readPref(PREF.sound, "on") === "off") return false;
-  const muted = readPref(PREF.mutedSounds, "").split(",");
-  const group = SOUND_GROUPS.find((g) => g.kinds.includes(kind));
-  return !group || !muted.includes(group.id);
+  return !readPref(PREF.mutedSounds, "").split(",").includes(groupOf(kind));
 }
 
 // Interruptor general del sonido, compartido por la campana y Configuración.
@@ -126,42 +129,60 @@ export function useSound() {
   const on = usePref(PREF.sound, "on") !== "off";
   const set = (v: boolean) => {
     writePref(PREF.sound, v ? "on" : "off");
-    if (v) {
-      unlockAudio();
-      setTimeout(chime, 60);
-    }
+    if (v) void previewSound();
   };
   return [on, set] as const;
 }
 
-// Los navegadores solo permiten sonido después de una interacción: se prepara con el primer clic o tecla.
+// El archivo se descarga y decodifica una sola vez; si falla (sin conexión), se reintenta en el próximo aviso.
+const loadSound = (ctx: AudioContext) =>
+  (sound ??= fetch(SOUND_URL)
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+    .then((b) => ctx.decodeAudioData(b))
+    .catch(() => {
+      sound = null;
+      return null;
+    }));
+
+// Los navegadores solo permiten sonido después de una interacción: se prepara con cada clic o tecla
+// (el celular puede suspender el audio al pasar a segundo plano y hay que reanudarlo).
 export function unlockAudio() {
   try {
     audio ??= new AudioContext();
-    if (audio.state === "suspended") void audio.resume();
+    if (audio.state !== "running") void audio.resume().catch(() => {});
+    void loadSound(audio);
   } catch {}
 }
 
-// Dos notas suaves (mi → la). Devuelve false si el navegador aún no permite reproducir.
-export function chime() {
-  if (!audio || audio.state !== "running") return false;
-  const t = audio.currentTime;
-  for (const [freq, at] of [
-    [659.25, 0],
-    [880, 0.13],
-  ]) {
-    const o = audio.createOscillator();
-    const g = audio.createGain();
-    o.type = "sine";
-    o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, t + at);
-    g.gain.exponentialRampToValueAtTime(0.16, t + at + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.4);
-    o.connect(g).connect(audio.destination);
-    o.start(t + at);
-    o.stop(t + at + 0.45);
+// Reproduce el sonido de aviso. Si el audio no está activo (aún no se preparó, el celular lo suspendió o el módulo
+// se recargó), lo crea o reanuda en ese momento: el navegador lo permite si ya hubo una interacción con la página.
+// Sin esa interacción, resume() queda esperando; se desiste a los 400 ms para no sonar tarde. Devuelve si sonó.
+export async function chime() {
+  if (Date.now() - lastPlay < SOUND_GAP_MS) return true;
+  try {
+    const ctx = (audio ??= new AudioContext());
+    if (ctx.state !== "running") await Promise.race([ctx.resume(), new Promise((ok) => setTimeout(ok, 400))]);
+    if (ctx.state !== "running") return false;
+    const buf = await loadSound(ctx);
+    if (!buf || Date.now() - lastPlay < SOUND_GAP_MS) return !!buf;
+    lastPlay = Date.now();
+    const src = ctx.createBufferSource();
+    const g = ctx.createGain();
+    src.buffer = buf;
+    g.gain.value = 0.8;
+    src.connect(g).connect(ctx.destination);
+    src.start();
+    return true;
+  } catch {
+    return false;
   }
-  return true;
+}
+
+// "Probar sonido" y al activarlo: suena aunque haya sonado un aviso hace un momento.
+export async function previewSound() {
+  unlockAudio();
+  lastPlay = 0;
+  await chime();
 }
 
 /* ───────────── Piezas compartidas ───────────── */
@@ -177,8 +198,10 @@ const KIND: Record<NotificationKind, { icon: typeof BellIcon; tone: string; grou
   proof_approved: { icon: CheckIcon, tone: "bg-success-soft text-success", group: "pagos" },
   proof_rejected: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "pagos" },
 };
-// Un tipo que ya no existe (avisos antiguos de pagos en línea o de Booking.com) se muestra como aviso general.
-const kindOf = (n: AdminNotification) => KIND[n.kind] ?? KIND.reservation_created;
+// Un tipo que ya no existe (avisos antiguos de pagos en línea o de Booking.com) se muestra como aviso general,
+// en el mismo grupo que le dan las notificaciones push.
+const OTHER = { icon: BellIcon, tone: "bg-panel text-ink-muted", group: groupOf("") };
+const kindOf = (n: AdminNotification) => KIND[n.kind] ?? OTHER;
 
 type Reminder = { key: string; icon: typeof BellIcon; tone: string; title: string; body: string; code: string };
 

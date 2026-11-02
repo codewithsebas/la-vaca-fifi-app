@@ -5,7 +5,7 @@ import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { useAdmin } from "@/components/admin/context";
 import { Combobox } from "@/components/ui/combobox";
-import { LIVE_LABEL, LiveDot, SOUND_GROUPS, chime, unlockAudio, useSound } from "@/components/admin/notifications";
+import { LIVE_LABEL, LiveDot, SOUND_GROUPS, previewSound, useSound } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
 import { PushSettingsCard } from "@/components/admin/push";
 import { ThemeSwitch } from "@/components/admin/appearance";
@@ -19,10 +19,7 @@ export function SettingsView() {
   const calendarView = usePref(PREF.calendarView, "auto");
 
   const toggleGroup = (id: string, on: boolean) => writePref(PREF.mutedSounds, (on ? muted.filter((x) => x !== id) : [...muted, id]).join(","));
-  const test = () => {
-    unlockAudio();
-    setTimeout(chime, 60);
-  };
+  const test = () => void previewSound();
   const reset = () =>
     ask({
       title: "Restablecer datos de prueba",

@@ -568,11 +568,12 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
     return () => clearInterval(t);
   }, [fast]);
 
-  // El sonido solo puede sonar después de una interacción: se habilita con el primer clic o tecla.
+  // El sonido solo puede sonar después de una interacción: se habilita con cada clic o tecla
+  // (barato si ya está activo; reanuda el audio si el celular lo suspendió en segundo plano).
   useEffect(() => {
     const unlock = () => unlockAudio();
-    addEventListener("pointerdown", unlock, { once: true });
-    addEventListener("keydown", unlock, { once: true });
+    addEventListener("pointerdown", unlock);
+    addEventListener("keydown", unlock);
     return () => {
       removeEventListener("pointerdown", unlock);
       removeEventListener("keydown", unlock);
@@ -584,7 +585,7 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
       setDataState((d) => (d.notifications.some((x) => x.id === n.id) ? d : { ...d, notifications: [n, ...d.notifications] }));
       if (!n.readAt) {
         showToast(n.title, "ok", n.reservationCode ? { label: "Ver", onClick: () => openReservation(n.reservationCode!) } : undefined);
-        if (soundFor(n.kind)) chime();
+        if (soundFor(n.kind)) void chime();
       }
       scheduleReload();
     },
