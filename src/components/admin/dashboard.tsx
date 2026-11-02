@@ -7,7 +7,6 @@ import { useState, type ReactNode } from "react";
 import {
   ArrowRightIcon,
   CalendarIcon,
-  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
@@ -23,6 +22,7 @@ import {
   WhatsAppIcon,
 } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/status-pill";
+import { Combobox } from "@/components/ui/combobox";
 import { balanceDue, pendingOf } from "@/lib/admin-metrics";
 import { ACTIVE_STATUSES } from "@/lib/booking";
 import { MONTHS, addDays, cop, countdown, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, waTo } from "@/lib/format";
@@ -46,6 +46,7 @@ import {
   buttonClass,
   iconButtonClass,
   type Accent,
+  type DecoShape,
 } from "@/components/admin/ui";
 
 type Data = ReturnType<typeof useAdmin>["data"];
@@ -202,6 +203,7 @@ function Stat({ value, label, strong = false }: { value: ReactNode; label: strin
 function Highlight({
   id,
   accent,
+  shape,
   title,
   action,
   className = "",
@@ -209,6 +211,7 @@ function Highlight({
 }: {
   id: string;
   accent: Accent;
+  shape: DecoShape;
   title: string;
   action?: ReactNode;
   className?: string;
@@ -219,7 +222,7 @@ function Highlight({
       aria-labelledby={id}
       className={`relative isolate flex min-h-[200px] min-w-0 flex-col gap-4 overflow-hidden rounded-[24px] p-5 ${ACCENT[accent].bg} ${className}`}
     >
-      <Deco accent={accent} className="-top-7 -right-7 size-[140px] rotate-[16deg]" />
+      <Deco accent={accent} shape={shape} className="-top-7 -right-7 size-[140px] rotate-[16deg]" />
       <div className="flex items-start justify-between gap-3">
         <h2 id={id} className="text-[17px] leading-tight font-semibold tracking-[-0.01em] text-ink">
           {title}
@@ -270,7 +273,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <Highlight id="d-hl-today" accent="yellow" title="Hoy:">
+        <Highlight id="d-hl-today" accent="yellow" shape="sun" title="Hoy:">
           <div className="grid grid-cols-3 gap-3 pr-10">
             <Stat value={arr.length} label="Llegan" strong />
             <Stat value={dep.length} label="Salen" />
@@ -304,7 +307,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
           </div>
         </Highlight>
 
-        <Highlight id="d-hl-occ" accent="pink" title="Ocupación:">
+        <Highlight id="d-hl-occ" accent="pink" shape="cabin" title="Ocupación:">
           <div className="grid grid-cols-3 gap-3 pr-10 sm:max-w-[360px]">
             <Stat value={`${tonight.pc} %`} label={`Esta noche (${tonight.busy} de ${tonight.total})`} strong />
             <Stat value={`${avg7} %`} label="Promedio 7 días" />
@@ -318,6 +321,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
         <Highlight
           id="d-hl-pay"
           accent="green"
+          shape="coin"
           title="Por cobrar:"
           action={
             <Link
@@ -340,6 +344,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
         <Highlight
           id="d-hl-week"
           accent="blue"
+          shape="calendar"
           title="Próximos 7 días:"
           action={
             <Link
@@ -716,15 +721,6 @@ function PendingList({ pend }: { pend: Reservation[] }) {
 
 const WEEKDAYS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
 
-// Semana ISO (lunes a domingo) de una fecha AAAA-MM-DD.
-function isoWeek(iso: string) {
-  const d = parseISO(iso);
-  const day = (d.getUTCDay() + 6) % 7;
-  d.setUTCDate(d.getUTCDate() - day + 3);
-  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  return 1 + Math.round(((d.getTime() - firstThursday.getTime()) / 864e5 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
-}
-
 // Mes con las llegadas marcadas: un día abre el calendario en ese día.
 function MiniCalendar() {
   const { data, today } = useAdmin();
@@ -755,7 +751,7 @@ function MiniCalendar() {
           type="button"
           onClick={() => setMonth(today.slice(0, 7) + "-01")}
           {...todayTip}
-          className="rounded-full bg-pink px-3.5 py-1 text-[13px] font-semibold text-ink first-letter:uppercase"
+          className="rounded-full bg-ink px-3.5 py-1 text-[13px] font-semibold text-paper first-letter:uppercase"
         >
           {label}
         </button>
@@ -763,50 +759,39 @@ function MiniCalendar() {
           <ChevronRightIcon size={18} />
         </IconButton>
       </div>
-      <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_34px] gap-y-1 text-center">
+      <div className="grid grid-cols-7 gap-y-1 text-center">
         {WEEKDAYS.map((w) => (
           <span key={w} aria-hidden="true" className="mx-auto mb-1 rounded-full bg-panel px-1.5 py-0.5 text-[11px] font-semibold text-ink-muted">
             {w}
           </span>
         ))}
-        <span aria-hidden="true" />
         {Array.from({ length: weeks }, (_, w) => {
           const weekStart = addDays(start, w * 7);
-          const current = weekStart <= today && today <= addDays(weekStart, 6);
-          return [
-            ...Array.from({ length: 7 }, (_, i) => {
-              const day = addDays(weekStart, i);
-              const inMonth = day.slice(0, 7) === month.slice(0, 7);
-              const n = arrivals.get(day) ?? 0;
-              const isToday = day === today;
-              return (
-                <Link
-                  key={day}
-                  href={paths.calendario({ vista: "dia", fecha: day })}
-                  aria-label={`${fmtDate(day)}${n ? `: ${plural(n, "llegada", "llegadas")}` : ""}`}
-                  className={`relative mx-auto grid size-9 place-items-center rounded-full text-[13px] tabular-nums transition-colors ${
-                    isToday
-                      ? "bg-pink font-bold text-ink"
-                      : inMonth
-                        ? day < today
-                          ? "text-ink-subtle hover:bg-panel"
-                          : "text-ink hover:bg-panel"
-                        : "text-ink-subtle/50 hover:bg-panel"
-                  }`}
-                >
-                  {parseISO(day).getUTCDate()}
-                  {n > 0 && <span aria-hidden="true" className="absolute bottom-1 size-1 rounded-full bg-ink" />}
-                </Link>
-              );
-            }),
-            <span
-              key={`w${w}`}
-              aria-hidden="true"
-              className={`mx-auto grid h-6 place-items-center place-self-center rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums ${current ? "bg-panel text-ink" : "text-ink-subtle"}`}
-            >
-              {`S${isoWeek(weekStart)}`}
-            </span>,
-          ];
+          return Array.from({ length: 7 }, (_, i) => {
+            const day = addDays(weekStart, i);
+            const inMonth = day.slice(0, 7) === month.slice(0, 7);
+            const n = arrivals.get(day) ?? 0;
+            const isToday = day === today;
+            return (
+              <Link
+                key={day}
+                href={paths.calendario({ vista: "dia", fecha: day })}
+                aria-label={`${fmtDate(day)}${n ? `: ${plural(n, "llegada", "llegadas")}` : ""}`}
+                className={`relative mx-auto grid size-9 place-items-center rounded-full text-[13px] tabular-nums transition-colors ${
+                  isToday
+                    ? "bg-ink font-bold text-paper"
+                    : inMonth
+                      ? day < today
+                        ? "text-ink-subtle hover:bg-panel"
+                        : "text-ink hover:bg-panel"
+                      : "text-ink-subtle/50 hover:bg-panel"
+                }`}
+              >
+                {parseISO(day).getUTCDate()}
+                {n > 0 && <span aria-hidden="true" className="absolute bottom-1 size-1 rounded-full bg-ink" />}
+              </Link>
+            );
+          });
         })}
       </div>
     </section>
@@ -890,20 +875,22 @@ function Agenda({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]; pe
           </h2>
           <p className="mt-0.5 text-[13px] text-ink-muted">Agenda de hoy</p>
         </div>
-        <label className="relative">
-          <span className="sr-only">Mostrar en la agenda</span>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as AgendaFilter)}
-            className="h-8 appearance-none rounded-full bg-ink pr-8 pl-3.5 text-[12.5px] font-semibold text-paper outline-none"
-          >
-            <option value="todo">Todo</option>
-            <option value="llegada">Llegadas</option>
-            <option value="salida">Salidas</option>
-            <option value="plazo">Plazos</option>
-          </select>
-          <ChevronDownIcon size={14} className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-paper" />
-        </label>
+        <span id="d-agenda-filter" className="sr-only">
+          Mostrar en la agenda
+        </span>
+        {/* El desplegable del panel, en píldora negra: el disparador es el del filtro, la lista es la de siempre. */}
+        <Combobox
+          value={filter}
+          onChange={(v) => setFilter(v as AgendaFilter)}
+          describedBy="d-agenda-filter"
+          options={[
+            { value: "todo", label: "Todo" },
+            { value: "llegada", label: "Llegadas" },
+            { value: "salida", label: "Salidas" },
+            { value: "plazo", label: "Plazos" },
+          ]}
+          className="min-h-8! w-auto! min-w-[112px] rounded-full! border-ink! bg-ink! py-0! pr-3! pl-3.5! text-[12.5px]! font-semibold text-paper! hover:border-ink! focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-ink)_18%,transparent)]!"
+        />
       </div>
       {items.length ? (
         <ol className="flex flex-col gap-2">

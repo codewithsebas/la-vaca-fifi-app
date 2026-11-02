@@ -4,7 +4,7 @@
 // Cada módulo es una página propia (app/admin/<modulo>/page.tsx) que se monta dentro de este marco.
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Brand, BrandName, Logo } from "@/components/brand/logo";
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, InfoIcon, MenuIcon, RefreshIcon, SearchIcon, SettingsIcon, WarningIcon } from "@/components/ui/icons";
 import { useSite } from "@/components/site/site-provider";
@@ -22,6 +22,7 @@ import { PREF, usePref, writePref } from "@/components/admin/prefs";
 import { ThemeMenu, useApplyTheme } from "@/components/admin/appearance";
 import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, canOpen, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "@/components/admin/routes";
 import { AccessDenied, AccountMenu } from "@/components/admin/account";
+import { GlobalSearch } from "@/components/admin/global-search";
 import { type Ask, type ConfirmCfg, adminInput } from "@/components/admin/shared";
 import {
   Breadcrumbs,
@@ -344,13 +345,15 @@ function Sidebar({
         >
           {mini ? <Logo size={40} eager /> : <Brand size={40} wordSize="1.1rem" eyebrowSize=".47rem" eager />}
         </Link>
+        {/* Centrado con el logo: 24 px de margen + 20 px (medio logo) − 14 px (medio botón) = 30 px. Dorado pastel fijo en
+            los dos modos: la barra lateral es negra siempre y el dorado oscuro del modo oscuro no se vería. */}
         <button
           type="button"
           onClick={onToggle}
           aria-label={mini ? "Expandir el menú" : "Contraer el menú"}
           {...tip(() => <NavTip label={mini ? "Expandir el menú" : "Contraer el menú"} />, SIDE_TIP)}
           aria-expanded={!mini}
-          className="absolute top-9 -right-3.5 grid size-7 place-items-center rounded-full bg-pink text-ink ring-[3px] ring-canvas transition-colors hover:bg-pink-deep"
+          className="absolute top-7.5 -right-3.5 grid size-7 place-items-center rounded-full bg-[#f5d462] text-[#171614] ring-[3px] ring-canvas transition-colors hover:bg-[#e9bf38]"
         >
           {mini ? <ChevronRightIcon size={15} /> : <ChevronLeftIcon size={15} />}
         </button>
@@ -362,99 +365,19 @@ function Sidebar({
   );
 }
 
-const SEARCH_SCOPES = [
-  { value: "reservas", label: "Reservas" },
-  { value: "clientes", label: "Clientes" },
-] as const;
-type SearchScope = (typeof SEARCH_SCOPES)[number]["value"];
-
-// Búsqueda del encabezado: abre Reservas o Clientes con el texto como filtro (?q=). «/» la enfoca desde cualquier parte.
-function AdminSearch({
-  current,
-  autoFocus = false,
-  onDone,
-  className = "",
-}: {
-  current: ModuleId | null;
-  autoFocus?: boolean;
-  onDone?: () => void;
-  className?: string;
-}) {
-  const router = useRouter();
-  const input = useRef<HTMLInputElement>(null);
-  const [scope, setScope] = useState<SearchScope>(current === "clientes" ? "clientes" : "reservas");
-  const [q, setQ] = useState("");
-  // Al entrar a Reservas o a Clientes, la búsqueda apunta ahí.
-  const [seen, setSeen] = useState(current);
-  if (seen !== current) {
-    setSeen(current);
-    if (current === "clientes" || current === "reservas") setScope(current);
-  }
-
-  useEffect(() => {
-    if (autoFocus) input.current?.focus();
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input, textarea, select, [contenteditable='true']")) return;
-      if (!input.current?.offsetParent) return; // la del encabezado que no se ve (móvil o escritorio) no responde
-      e.preventDefault();
-      input.current.focus();
-    };
-    addEventListener("keydown", onKey);
-    return () => removeEventListener("keydown", onKey);
-  }, [autoFocus]);
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const text = q.trim();
-    const query = text ? { q: text } : undefined;
-    router.push(scope === "clientes" ? paths.clientes(query) : paths.reservas(query));
-    onDone?.();
-  }
-
+// Pie del panel: derechos de autor a nombre del titular legal y quién lo desarrolló. Va al final de cada página (abajo
+// del todo si la página es corta). Mientras la razón social no esté en la configuración, solo el nombre comercial.
+function PanelFooter({ className = "" }: { className?: string }) {
+  const holder = config.razonSocial.startsWith("{") ? config.name : `${config.razonSocial} — ${config.name}`;
   return (
-    <form
-      role="search"
-      onSubmit={submit}
-      className={`flex h-12 min-w-0 items-center gap-2 rounded-full border border-line-strong bg-paper/70 py-1 pr-1.5 pl-1 transition-[border-color,background-color] duration-150 focus-within:border-ink focus-within:bg-paper ${className}`}
+    <footer
+      className={`mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line pt-4 text-[12.5px] text-ink-subtle ${className}`}
     >
-      <button
-        type="submit"
-        aria-label="Buscar"
-        className="grid size-10 flex-none place-items-center rounded-full bg-pink text-ink transition-colors hover:bg-pink-deep"
-      >
-        <SearchIcon size={18} />
-      </button>
-      <input
-        ref={input}
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        aria-label={scope === "clientes" ? "Buscar clientes" : "Buscar reservas"}
-        placeholder={scope === "clientes" ? "Buscar clientes por nombre o documento" : "Buscar por huésped, código o documento"}
-        className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-subtle [&::-webkit-search-cancel-button]:hidden"
-      />
-      <span aria-hidden="true" className="hidden flex-none text-[12.5px] text-ink-muted sm:inline">
-        En:
-      </span>
-      <div role="radiogroup" aria-label="Buscar en" className="flex flex-none items-center gap-1">
-        {SEARCH_SCOPES.map((s) => {
-          const on = scope === s.value;
-          return (
-            <button
-              key={s.value}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => setScope(s.value)}
-              className={`h-7 rounded-full border px-3 text-[12px] font-semibold whitespace-nowrap transition-colors duration-150 ${on ? "border-ink bg-ink text-paper" : "border-dashed border-line-strong text-ink-muted hover:text-ink"}`}
-            >
-              {s.label}
-            </button>
-          );
-        })}
-      </div>
-    </form>
+      <p>{`© ${todayISO().slice(0, 4)} ${holder}. Todos los derechos reservados.`}</p>
+      <p>
+        Desarrollado por <span className="font-semibold text-ink-muted">Joab Giraldo</span>
+      </p>
+    </footer>
   );
 }
 
@@ -714,14 +637,14 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
               </div>
               {searching && (
                 <div className="px-3 pb-3 motion-safe:animate-fade-in">
-                  <AdminSearch current={mod} autoFocus onDone={() => setSearching(false)} />
+                  <GlobalSearch autoFocus onDone={() => setSearching(false)} />
                 </div>
               )}
             </header>
 
             {/* Escritorio: búsqueda, apariencia, notificaciones, configuración y cuenta */}
             <header className="admin-surface sticky top-0 z-20 hidden flex-none items-center gap-4 bg-canvas/85 px-8 pt-4 pb-3 backdrop-blur-md lg:flex">
-              <AdminSearch current={mod} className="w-full max-w-[620px]" />
+              <GlobalSearch className="w-full max-w-[620px]" />
               <div className="ml-auto flex items-center gap-2">
                 <ThemeMenu />
                 <NotificationCenter />
@@ -748,6 +671,7 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
               <div key={pageKey} className={`flex flex-col gap-6 motion-safe:animate-fade-in ${fullHeight ? "tall:min-h-0 tall:flex-1" : ""}`}>
                 <Suspense fallback={<PageSkeleton />}>{mod && !canOpen(data.me.role, mod) ? <AccessDenied module={mod} /> : children}</Suspense>
               </div>
+              <PanelFooter className={fullHeight ? "tall:hidden" : ""} />
             </main>
           </div>
 

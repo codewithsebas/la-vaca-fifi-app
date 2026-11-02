@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Lilita_One, Nunito } from "next/font/google";
+import { Nunito } from "next/font/google";
+import localFont from "next/font/local";
 import { ServiceWorker } from "@/components/site/service-worker";
 import { SiteProvider } from "@/components/site/site-provider";
 import { config } from "@/lib/config";
@@ -10,7 +11,9 @@ import "@/app/globals.css";
 
 // Las letras de Fifí: Lilita One para títulos y nombre (redonda y gruesa, como las letras del letrero) y Nunito para
 // el texto (redondeada y fácil de leer).
-const lilita = Lilita_One({ variable: "--font-lilita", weight: "400", subsets: ["latin"] });
+// Lilita One va en el repositorio (latín, de Google Fonts, licencia OFL): el nombre de la marca no depende de que el
+// servidor alcance Google al compilar o al arrancar en desarrollo; si no lo alcanzaba, salía la letra de reserva.
+const lilita = localFont({ src: "./fonts/lilita-one-latin.woff2", variable: "--font-lilita", weight: "400", display: "swap" });
 const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"] });
 
 // Las páginas se regeneran cada hora o al guardar contenido en el panel (revalidatePath).

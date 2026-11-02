@@ -60,6 +60,7 @@
   /* Dos series (abonos y saldos): negro y rosa oscuro, ≥ 3:1 sobre las tarjetas y distintas también con daltonismo. */
   --color-series-1: #171614;
   --color-series-2: #c2588f;
+  /* Rosado: el acento del panel (en la barra lateral negra, el crema del fondo: .admin-dark). */
   --color-pink: #f4b8d6;
   --color-pink-soft: #f9dcea;
   --color-pink-deep: #e994c0;
@@ -112,8 +113,6 @@
   --animate-ken-burns: ec-ken-burns 26s ease-in-out infinite alternate;
   --animate-rise: ec-rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-star: ec-star 4.5s ease-in-out infinite;
-  --animate-fog-drift: ec-fog-drift 46s ease-in-out infinite alternate;
-  --animate-land-rise: ec-land-rise 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-photo-open: ec-photo-open 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-photo-in-next: ec-photo-in-next 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-photo-in-prev: ec-photo-in-prev 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -149,24 +148,6 @@
     to {
       opacity: 0;
       transform: translateX(9%) scale(0.96);
-    }
-  }
-
-  /* Capas de un paisaje que suben a su lugar al cargar (ingreso al panel): la cordillera y, detrás, el nevado. */
-  @keyframes ec-land-rise {
-    from {
-      opacity: 0;
-      transform: translateY(28%);
-    }
-  }
-
-  /* Niebla del horizonte: se corre muy despacio de un lado a otro. */
-  @keyframes ec-fog-drift {
-    from {
-      transform: translateX(-4%);
-    }
-    to {
-      transform: translateX(4%);
     }
   }
 
@@ -492,7 +473,7 @@
 
   /* Modo oscuro del panel (data-admin-theme en <html>: components/admin/appearance.tsx). Mismos papeles, invertidos:
      fondo casi negro, tarjetas y campos un poco más claros, tinta crema y los pasteles en tonos profundos, para que el
-     texto crema se lea sobre ellos (≥ 4.5:1). La barra lateral sigue negra y conserva sus acentos rosa claro. */
+     texto crema se lea sobre ellos (≥ 4.5:1). La barra lateral sigue negra y conserva sus acentos crema. */
   :root[data-admin-theme="dark"] {
     color-scheme: dark;
     --color-canvas: #121110;
@@ -837,6 +818,17 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 12%, transparent);
     outline: none !important;
   }
+  /* El autocompletado del navegador pinta el campo de azul: se tapa con el papel del panel. */
+  .field-input.field-compact:autofill {
+    -webkit-text-fill-color: var(--color-ink);
+    box-shadow: inset 0 0 0 100px var(--color-paper);
+    caret-color: var(--color-ink);
+  }
+  .field-input.field-compact:autofill:focus-visible {
+    box-shadow:
+      inset 0 0 0 100px var(--color-paper),
+      0 0 0 3px color-mix(in srgb, var(--color-focus) 12%, transparent);
+  }
   .field-input.field-compact[aria-invalid="true"],
   .field-input.field-compact[data-invalid="true"] {
     border-color: var(--color-error);
@@ -872,18 +864,18 @@
     }
   }
 
-  /* Zona clara del panel: anillo de foco negro, más fino que en el sitio. En la barra lateral negra, rosa. */
+  /* Zona clara del panel: anillo de foco negro, más fino que en el sitio. En la barra lateral negra, el crema del fondo. */
   .admin-surface {
     --ring: var(--color-focus);
     --ring-width: 2px;
     --ring-offset: 2px;
   }
-  /* Barra lateral negra (en los dos modos): rosa claro para lo activo y tinta oscura sobre él. */
+  /* Barra lateral negra (en los dos modos): el crema del fondo para lo activo y tinta oscura sobre él. */
   .admin-dark {
-    --color-pink: #f4b8d6;
-    --color-pink-deep: #e994c0;
+    --color-pink: #f7f2e8;
+    --color-pink-deep: #e2dacb;
     --color-ink: #171614;
-    --ring: #f4b8d6;
+    --ring: #f7f2e8;
     --ring-width: 2px;
     --ring-offset: 2px;
   }

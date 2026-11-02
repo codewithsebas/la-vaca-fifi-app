@@ -41,6 +41,9 @@ export const config = {
   unidades: { doble: 1, "dos-camas": 1, familiar: 1, "familiar-vista": 1 } as Record<CabinTypeId, number>,
   // Para pagar por transferencia o en recepción (se edita en el panel: Contenido → Pagos).
   datosPagoAbono: "{DATOS_DE_PAGO}",
+  // Titular legal del negocio (derechos de autor, política de privacidad). Pendientes: los da el cliente.
+  razonSocial: "{RAZON_SOCIAL}",
+  nit: "{NIT}",
   rnt: "208820",
   timeZone: "America/Bogota",
 

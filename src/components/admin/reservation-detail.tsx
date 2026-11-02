@@ -43,11 +43,12 @@ import { BathroomWarning } from "@/components/admin/bathrooms";
 import { initialsOf } from "@/components/admin/calendar/shared";
 import { ProofCard } from "@/components/admin/proofs";
 import { paths } from "@/components/admin/routes";
-import { TRUST, type ConfirmCfg, adminInput, fmtDeadline } from "@/components/admin/shared";
+import { EMAIL_KIND, TRUST, type ConfirmCfg, adminInput, fmtDeadline } from "@/components/admin/shared";
 import {
   ACCENT,
   Badge,
   Button,
+  CopyButton,
   Card,
   CardHeader,
   EmptyState,
@@ -369,13 +370,15 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
 }
 
 // Filas de dato con la etiqueta a la izquierda (como el detalle de la visita del diseño): se leen de un vistazo.
-function Facts({ rows, className = "" }: { rows: { k: string; v: ReactNode }[]; className?: string }) {
+// `copy`: el valor que se copia con el botón de la derecha (celular, correo, documento…).
+function Facts({ rows, className = "" }: { rows: { k: string; v: ReactNode; copy?: string }[]; className?: string }) {
   return (
     <dl className={`flex flex-col text-[14px] ${className}`}>
       {rows.map((x) => (
-        <div key={x.k} className="grid grid-cols-[minmax(0,104px)_minmax(0,1fr)] items-baseline gap-x-4 border-b border-ink/8 py-2.5 last:border-b-0">
+        <div key={x.k} className="grid grid-cols-[minmax(0,104px)_minmax(0,1fr)_auto] items-baseline gap-x-4 border-b border-ink/8 py-2.5 last:border-b-0">
           <dt className="text-[13px] text-ink/65">{x.k}</dt>
           <dd className="min-w-0 font-semibold break-words text-ink">{x.v}</dd>
+          {x.copy ? <CopyButton value={x.copy} label={`Copiar ${x.k.toLowerCase()}`} className="-my-1.5 self-center" /> : <span />}
         </div>
       ))}
     </dl>
@@ -509,7 +512,7 @@ const DOC_TYPES: { value: DocType; label: string; description?: string }[] = [
 ];
 const docLabel = (g: Guest) => (g.docType === "SD" ? "Sin documento" : `${g.docType} ${g.docNumber}`);
 
-// El huésped y su historial como cliente, en el bloque rosado del diseño (el detalle de la visita): nombre grande,
+// El huésped y su historial como cliente, en el bloque turquesa del diseño (el detalle de la visita): nombre grande,
 // etiquetas y los datos de contacto a la vista. El nombre abre la ficha del cliente.
 function GuestCard({ r, client, onEdit }: { r: Reservation; client?: ClientSummary; onEdit: () => void }) {
   const { data } = useAdmin();
@@ -589,6 +592,7 @@ function GuestCard({ r, client, onEdit }: { r: Reservation; client?: ClientSumma
         rows={[
           {
             k: "Celular",
+            copy: g.phone,
             v: g.phone ? (
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <a href={`tel:${g.phone}`} className="tabular-nums hover:underline">
@@ -610,6 +614,7 @@ function GuestCard({ r, client, onEdit }: { r: Reservation; client?: ClientSumma
           },
           {
             k: "Correo",
+            copy: g.email,
             v: g.email ? (
               <a href={`mailto:${g.email}`} className="break-all hover:underline">
                 {g.email}
@@ -618,8 +623,8 @@ function GuestCard({ r, client, onEdit }: { r: Reservation; client?: ClientSumma
               "Sin correo"
             ),
           },
-          { k: "Documento", v: docLabel(g) },
-          { k: "Ciudad", v: g.city || "—" },
+          { k: "Documento", v: docLabel(g), copy: g.docType === "SD" ? "" : g.docNumber },
+          { k: "Ciudad", v: g.city || "—", copy: g.city },
           ...(client
             ? [
                 {
@@ -1224,7 +1229,12 @@ function EmailsCard({ emails }: { emails: EmailRecord[] }) {
   };
   return (
     <Card aria-labelledby="dt-mail" className="flex flex-col gap-3 p-4 sm:p-5">
-      <CardHeader id="dt-mail" icon={<MailIcon size={18} />} title="Correos" subtitle="La confirmación se envía sola al aprobarse el abono." />
+      <CardHeader
+        id="dt-mail"
+        icon={<MailIcon size={18} />}
+        title="Correos"
+        subtitle="Los de la reserva salen solos: al crearla, al confirmarla, si se cancela o vence y dos días antes de la llegada."
+      />
       <ul className="flex flex-col gap-2">
         {emails.map((e) => {
           const st = EMAIL_STATUS[e.status];
@@ -1235,7 +1245,7 @@ function EmailsCard({ emails }: { emails: EmailRecord[] }) {
             >
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-1.5 text-[13.5px] font-semibold text-ink">
-                  {e.kind === "reservation_confirmed" ? "Confirmación de reserva" : e.subject || "Mensaje del equipo"}
+                  {EMAIL_KIND[e.kind] ?? (e.subject || "Mensaje del equipo")}
                   <Badge tone={st.tone}>{st.label}</Badge>
                 </span>
                 <span className="block text-[12px] text-ink-muted">

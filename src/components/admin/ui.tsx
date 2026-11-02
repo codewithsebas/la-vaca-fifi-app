@@ -17,7 +17,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { AlertIcon, CheckIcon, CloseIcon, InfoIcon, WarningIcon } from "@/components/ui/icons";
+import { AlertIcon, CheckIcon, CloseIcon, CopyIcon, InfoIcon, WarningIcon } from "@/components/ui/icons";
 import { useLabelTip } from "@/components/ui/floating";
 
 /* ───────────── Acentos ───────────── */
@@ -37,19 +37,54 @@ const BURST = Array.from({ length: 16 }, (_, i) => {
   const a = (Math.PI / 8) * i - Math.PI / 2;
   return `${(12 + r * Math.cos(a)).toFixed(2)},${(12 + r * Math.sin(a)).toFixed(2)}`;
 }).join(" ");
-const SHAPE: Record<Accent, ReactNode> = {
-  yellow: (
+// Cuadrícula de 3×2 huecos del calendario.
+const CAL_HOLES = [11, 16].flatMap((y) => [5.5, 10.5, 15.5].map((x) => `M${x} ${y}h3v3h-3z`)).join("");
+// Las figuras, por nombre. Cada tarjeta puede elegir la suya según lo que muestra; si no, va la de su color.
+const SHAPES = {
+  cross: (
     <path d="M9 2h6a1 1 0 0 1 1 1v5h5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-5v5a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-5H3a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5V3a1 1 0 0 1 1-1z" />
   ),
-  pink: <path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4 6.4 4c2.3 0 3.9 1.3 5.6 3.4C13.7 5.3 15.3 4 17.6 4 21.7 4 23.6 8.4 22 11.7 19.5 16.4 12 21 12 21z" />,
-  green: <path d="M12 3.5c.6 0 1.1.3 1.4.8l8.4 14.6c.6 1.1-.2 2.4-1.4 2.4H3.6c-1.2 0-2-1.3-1.4-2.4L10.6 4.3c.3-.5.8-.8 1.4-.8z" />,
-  blue: <polygon points={BURST} />,
+  // Una cabaña con su puerta (la puerta queda calada): ocupación y alojamiento.
+  cabin: (
+    <path
+      fillRule="evenodd"
+      d="M12 2.6c.4 0 .8.1 1.1.4l8.6 7.4c.9.8.4 2.3-.8 2.3H20v7.6c0 .9-.7 1.7-1.7 1.7H5.7c-.9 0-1.7-.8-1.7-1.7v-7.6h-.9c-1.2 0-1.7-1.5-.8-2.3l8.6-7.4c.3-.3.7-.4 1.1-.4zM10 21.6h4v-4.4a2 2 0 0 0-4 0z"
+    />
+  ),
+  triangle: <path d="M12 3.5c.6 0 1.1.3 1.4.8l8.4 14.6c.6 1.1-.2 2.4-1.4 2.4H3.6c-1.2 0-2-1.3-1.4-2.4L10.6 4.3c.3-.5.8-.8 1.4-.8z" />,
+  burst: <polygon points={BURST} />,
+  // El día: un sol con sus rayos.
+  sun: (
+    <>
+      <circle cx={12} cy={12} r={5.2} />
+      {Array.from({ length: 8 }, (_, i) => (
+        <rect key={i} x={10.9} y={0.8} width={2.2} height={4.4} rx={1.1} transform={`rotate(${i * 45} 12 12)`} />
+      ))}
+    </>
+  ),
+  // Dinero: una moneda con su borde.
+  coin: (
+    <path
+      fillRule="evenodd"
+      d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2.4a7.6 7.6 0 1 0 0 15.2 7.6 7.6 0 0 0 0-15.2zm0 1.4a6.2 6.2 0 1 1 0 12.4 6.2 6.2 0 0 1 0-12.4z"
+    />
+  ),
+  // Lo que viene: un calendario con sus anillas y los días calados.
+  calendar: (
+    <>
+      <path fillRule="evenodd" d={`M5 4h14a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z${CAL_HOLES}`} />
+      <rect x={6} y={1.5} width={2.4} height={4.5} rx={1.2} />
+      <rect x={15.6} y={1.5} width={2.4} height={4.5} rx={1.2} />
+    </>
+  ),
 };
+export type DecoShape = keyof typeof SHAPES;
+const ACCENT_SHAPE: Record<Accent, DecoShape> = { yellow: "cross", pink: "cabin", green: "triangle", blue: "burst" };
 
-export function Deco({ accent, className = "" }: { accent: Accent; className?: string }) {
+export function Deco({ accent, shape, className = "" }: { accent: Accent; shape?: DecoShape; className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={`pointer-events-none absolute -z-10 ${ACCENT[accent].deep} opacity-70 ${className}`}>
-      {SHAPE[accent]}
+      {SHAPES[shape ?? ACCENT_SHAPE[accent]]}
     </svg>
   );
 }
@@ -132,6 +167,31 @@ export function IconButton({
     <button type={type} aria-label={label} className={iconButtonClass(variant, size, className)} {...tip} {...rest}>
       {children}
     </button>
+  );
+}
+
+// Copia un dato al portapapeles: solo el icono (la etiqueta va en el tooltip); al copiar, un check por un momento.
+export function CopyButton({ value, label, className = "" }: { value: string; label: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(t);
+  }, [copied]);
+  return (
+    <IconButton
+      label={copied ? "Copiado" : label}
+      size="sm"
+      className={className}
+      onClick={() =>
+        navigator.clipboard?.writeText(value).then(
+          () => setCopied(true),
+          () => {},
+        )
+      }
+    >
+      {copied ? <CheckIcon size={15} /> : <CopyIcon size={15} />}
+    </IconButton>
   );
 }
 

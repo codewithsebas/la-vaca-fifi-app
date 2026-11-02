@@ -102,6 +102,7 @@ type PopoverProps = {
   anchor: RefObject<HTMLElement | null>;
   placement?: Placement;
   matchWidth?: boolean;
+  sheet?: boolean; // en móvil, hoja inferior (por defecto); false: junto al ancla, como en escritorio
   label?: string;
   role?: "dialog" | "listbox" | "menu";
   id?: string;
@@ -110,13 +111,29 @@ type PopoverProps = {
 };
 
 // Panel flotante anclado. Se cierra con Escape (devuelve el foco al ancla) o al hacer clic fuera.
-export function Popover({ open, onClose, anchor, placement, matchWidth, label, role = "dialog", id, tone = "panel", className = "", children }: PopoverProps) {
+export function Popover({
+  open,
+  onClose,
+  anchor,
+  placement,
+  matchWidth,
+  sheet = true,
+  label,
+  role = "dialog",
+  id,
+  tone = "panel",
+  className = "",
+  children,
+}: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   useEffect(() => {
     close.current = onClose;
   });
-  useLayoutEffect(() => (open ? track(anchor.current, ref.current, { placement, matchWidth }) : undefined), [open, anchor, placement, matchWidth]);
+  useLayoutEffect(
+    () => (open ? track(anchor.current, ref.current, { placement, matchWidth, sheet }) : undefined),
+    [open, anchor, placement, matchWidth, sheet],
+  );
 
   useEffect(() => {
     const el = ref.current;
@@ -153,7 +170,7 @@ export function Popover({ open, onClose, anchor, placement, matchWidth, label, r
       popover="manual"
       role={role === "dialog" ? "dialog" : undefined}
       aria-label={label}
-      className={`fixed inset-auto m-0 overflow-visible p-0 motion-safe:open:animate-pop-in ${TONE[tone]} ${sheetCls} ${className}`}
+      className={`fixed inset-auto m-0 overflow-visible p-0 motion-safe:open:animate-pop-in ${TONE[tone]} ${sheet ? sheetCls : ""} ${className}`}
     >
       {open && children}
     </div>

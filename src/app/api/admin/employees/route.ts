@@ -2,7 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { EMAIL_RE } from "@/lib/booking";
 import { isRole } from "@/lib/permissions";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { avatarOf, fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Employee, EmployeeInput } from "@/lib/types";
 
@@ -19,6 +19,7 @@ function toEmployee(u: User): Employee | null {
     id: u.id,
     email: u.email ?? "",
     name: String((u.user_metadata as { full_name?: string }).full_name ?? "").trim(),
+    photo: avatarOf(u.user_metadata),
     role,
     createdAt: u.created_at,
     lastSignInAt: u.last_sign_in_at ?? null,

@@ -129,6 +129,12 @@ export const CheckIcon = (p: IconProps) => (
     <path d="M20 6 9 17l-5-5" />
   </Stroke>
 );
+export const CopyIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <rect x="9" y="9" width="12" height="12" rx="2.5" />
+    <path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5" />
+  </Stroke>
+);
 export const SearchIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
     <circle cx="11" cy="11" r="7" />

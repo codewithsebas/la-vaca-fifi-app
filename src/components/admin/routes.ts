@@ -41,7 +41,7 @@ export type ModuleId =
   | "perfil";
 
 // `perm`: el permiso que exige (sin él, el módulo no aparece en el menú y su página muestra «sin acceso»).
-// `nav: false`: página sin lugar en el menú (se llega desde el menú de la cuenta).
+// `nav: false`: página sin lugar en el menú (se llega desde el encabezado o el menú de la cuenta).
 // `off: true`: módulo desactivado por ahora (no aparece en el menú y su página lo indica).
 type Module = {
   label: string;
@@ -141,7 +141,7 @@ export const MODULES: Record<ModuleId, Module> = {
     label: "Empleados",
     href: "/admin/empleados",
     icon: IdCardIcon,
-    group: "Administración",
+    group: "Principal",
     description: "Cuentas del equipo, su rol y su acceso al panel.",
     perm: "employees",
   },
@@ -151,6 +151,7 @@ export const MODULES: Record<ModuleId, Module> = {
     icon: SlidersIcon,
     group: "Administración",
     description: "Apariencia, sonido, tiempo real y preferencias de este navegador.",
+    nav: false,
   },
   perfil: {
     label: "Mi perfil",

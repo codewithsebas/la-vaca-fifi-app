@@ -1,82 +1,35 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { Fragment, useState, type CSSProperties, type FormEvent } from "react";
-import { Brand, BrandName, Logo } from "@/components/brand/logo";
-import { useSite } from "@/components/site/site-provider";
+import { useState, type CSSProperties, type FormEvent } from "react";
+import { BrandName, Logo } from "@/components/brand/logo";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
-import { Constellation, ShootingStar } from "@/components/brand/night-sky";
 import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
 import { adminInput } from "@/components/admin/shared";
 import { Button, Callout, Field } from "@/components/admin/ui";
 
-/* ───────────── Paisaje: el Nevado del Ruiz ───────────── */
-
-// Nevado del Ruiz (viewBox 560×200): volcán ancho de cumbre casi plana. La nieve, con lenguas de glaciar, y la sombra
-// de la ladera derecha se recortan con la silueta del volcán.
-const NEVADO = "M0 200C70 182 120 150 170 104C196 80 210 52 228 38Q246 26 268 28L292 24Q314 22 330 32C350 46 366 74 392 102C440 150 492 184 560 200Z";
-const NEVADO_SNOW = "M0 0H560V88L470 90L410 94L392 108L376 96L358 112L340 98L322 120L304 100L286 110L268 96L250 116L232 98L214 106L196 94L150 92L0 90Z";
-const NEVADO_SHADE = "M286 0H560V200H330Q302 110 286 0Z";
-// Cordillera delante del nevado (con un valle donde él asoma) y lomas cercanas.
-const RANGE = "M0 220V150l110-54 80 32 110-66 100 56 80-26 100 48 80-16 100 22 100-14 80 18 90-58 80 28 90-36v136z";
-const HILLS = "M0 100V46C160 22 320 64 500 42S820 16 1000 44 1150 38 1200 32V100Z";
-const FOG: CSSProperties = {
-  background:
-    "radial-gradient(40% 60% at 30% 55%, color-mix(in srgb, var(--color-paper) 40%, transparent), transparent 70%), radial-gradient(34% 55% at 74% 45%, color-mix(in srgb, var(--color-paper) 35%, transparent), transparent 70%)",
+// Cuadrícula del fondo del ingreso y de la pantalla de carga, en el color de las líneas del panel; se desvanece hacia
+// los bordes.
+const GRID: CSSProperties = {
+  backgroundImage:
+    "linear-gradient(to right, color-mix(in srgb, var(--color-line) 70%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 70%, transparent) 1px, transparent 1px)",
+  backgroundSize: "48px 48px",
+  backgroundPosition: "center",
+  maskImage: "radial-gradient(ellipse 70% 60% at 50% 45%, black 30%, transparent 75%)",
 };
-
-// Paisaje del ingreso y de la pantalla de carga: el Nevado del Ruiz asoma detrás de la cordillera, entre niebla. Al
-// cargar, la cordillera sube a su lugar y el nevado aparece detrás, más despacio; después solo se mueven la niebla y
-// una estrella fugaz. Con movimiento reducido queda quieto.
-function NevadoScene({ id, sky = true, className = "" }: { id: string; sky?: boolean; className?: string }) {
-  return (
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 bottom-0 ${className}`}>
-      <div className="absolute bottom-[14%] left-[78%] w-[min(58%,520px)] -translate-x-1/2 sm:left-[68%]">
-        <svg viewBox="0 0 560 200" className="block h-auto w-full motion-safe:animate-land-rise" style={{ animationDuration: "2.2s", animationDelay: "250ms" }}>
-          <defs>
-            <clipPath id={`${id}-nevado`}>
-              <path d={NEVADO} />
-            </clipPath>
-          </defs>
-          <path d={NEVADO} className="fill-[color-mix(in_srgb,var(--color-panel)_78%,var(--color-ink))]" />
-          <g clipPath={`url(#${id}-nevado)`}>
-            <path d={NEVADO_SNOW} className="fill-paper/85" />
-            <path d={NEVADO_SHADE} className="fill-canvas/30" />
-          </g>
-        </svg>
-      </div>
-      {sky && <ShootingStar className="absolute bottom-[88%] left-[38%]" travel={150} every={10} delay={3} />}
-      <div className="absolute -inset-x-[10%] bottom-[18%] h-[38%] motion-safe:animate-fog-drift" style={FOG} />
-      <svg viewBox="0 0 1200 220" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-[72%] w-full fill-panel motion-safe:animate-land-rise">
-        <path d={RANGE} />
-      </svg>
-      <svg
-        viewBox="0 0 1200 100"
-        preserveAspectRatio="none"
-        className="absolute inset-x-0 bottom-0 h-[30%] w-full fill-line motion-safe:animate-land-rise"
-        style={{ animationDelay: "120ms" }}
-      >
-        <path d={HILLS} />
-      </svg>
-    </div>
-  );
-}
 
 /* ───────────── Pantalla de carga ───────────── */
 
-// Mientras se valida la sesión y se cargan los datos: el monograma sobre el nevado y la cordillera.
+// Mientras se valida la sesión y se cargan los datos: la misma tarjeta del ingreso, con el logo y una barra de carga.
 export function PanelLoader({ label = "Preparando tu panel…" }: { label?: string }) {
   return (
-    <div role="status" aria-live="polite" className="admin-surface relative grid min-h-dvh place-items-center overflow-hidden bg-canvas px-6 text-ink">
-      <NevadoScene id="carga" sky={false} className="h-[30vh]" />
-      <div className="relative flex flex-col items-center gap-7 motion-safe:animate-fade-in">
-        <Logo size={120} eager className="size-[clamp(96px,20vw,120px)] motion-safe:animate-glide" />
-        <p className="flex">
-          <BrandName wordSize="clamp(2rem,6vw,2.6rem)" />
-        </p>
-        <span aria-hidden="true" className="relative h-[3px] w-44 overflow-hidden rounded-full bg-ink/12">
+    <div role="status" aria-live="polite" className="admin-surface relative grid h-dvh place-items-center overflow-hidden bg-canvas px-4 py-4 text-ink">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={GRID} />
+      <div className="relative flex w-full max-w-[360px] flex-col items-center gap-5 rounded-[28px] bg-paper px-6 py-10 text-center shadow-overlay motion-safe:animate-pop-in sm:px-10">
+        <Logo size={88} eager className="motion-safe:animate-glide" />
+        <BrandName wordSize="1.35rem" eyebrowSize=".66rem" className="items-center text-ink" />
+        <span aria-hidden="true" className="relative mt-2 h-[3px] w-44 overflow-hidden rounded-full bg-ink/12">
           <span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-pink-deep motion-safe:animate-loader-bar" />
         </span>
         <span className="text-[13px] font-medium text-ink-muted">{label}</span>
@@ -93,11 +46,17 @@ const LOGIN_ERRORS: Record<number, string> = {
   503: "El servidor no está configurado. Revisa las variables de entorno de Supabase.",
 };
 
+// Campos en píldora, como el botón de entrar.
+const pillInput = `${adminInput} min-h-12 rounded-full px-5`;
+
 export function Login({ onSuccess }: { onSuccess: () => void }) {
   const [lg, setLg] = useState({ email: "", password: "", error: "", loading: false });
   const [show, setShow] = useState(false);
+  const [forgot, setForgot] = useState(false);
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    // La ayuda de la contraseña y el error no se muestran a la vez: así la tarjeta cabe sin scroll en pantallas bajas.
+    setForgot(false);
     if (!lg.email || !lg.password) return setLg({ ...lg, error: "Escribe tu correo y tu contraseña." });
     setLg({ ...lg, loading: true, error: "" });
     try {
@@ -110,100 +69,44 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
     }
   }
   const missing = (v: string) => (lg.error && !v ? ({ "aria-invalid": true } as const) : {});
-  // La foto y el título de la portada del sitio (Contenido del sitio → Portada): si cambian allá, cambian aquí.
-  const { photos, texts } = useSite();
-  const photo = photos["hero-main"];
-  const split = (t: string | undefined, accent: boolean) =>
-    (t ?? "")
-      .split(" ")
-      .filter(Boolean)
-      .map((w) => ({ w, accent }));
-  const words = [...split(texts.hero.title, false), ...split(texts.hero.highlight, true)];
   return (
-    <main className="admin-surface relative grid min-h-dvh bg-canvas text-ink lg:grid-cols-[minmax(0,1.2fr)_minmax(460px,1fr)]">
-      {/* Foto: arriba en el celular, mitad izquierda en pantallas anchas. */}
-      {/* En el celular la foto se disuelve hacia abajo (máscara): así su borde no se marca como una línea sobre el logo. */}
-      <div
-        aria-hidden="true"
-        className="relative h-[38vh] min-h-[240px] overflow-hidden bg-sidebar max-lg:[mask-image:linear-gradient(to_bottom,black_65%,transparent)] lg:sticky lg:top-3 lg:m-3 lg:h-[calc(100dvh-24px)] lg:rounded-[28px]"
-      >
-        {photo ? (
-          // Se asienta al cargar y luego respira con un acercamiento muy lento, como la portada del sitio.
-          <div className="absolute inset-0 motion-safe:animate-ken-burns">
-            <Image src={photo} alt="" fill preload sizes="(min-width: 1024px) 55vw, 100vw" className="object-cover motion-safe:animate-photo-settle" />
-          </div>
-        ) : (
-          <>
-            <svg viewBox="0 0 1200 220" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-1/2 w-full fill-white/10">
-              <path d="M0 220V150l140-62 92 40 128-90 108 82 92-42 140 72 118-92 112 64 120-52 150 82v68z" />
-            </svg>
-            <Constellation
-              className="absolute top-[12%] left-1/2 w-[min(30%,220px)] -translate-x-1/2 [--color-on-dark:var(--color-paper)]"
-              opacity={0.4}
-              depth={0}
-            />
-          </>
-        )}
-        {/* Velo para leer el título sobre cualquier foto; en el celular la foto se funde con el fondo. */}
-        <span className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-canvas via-canvas/55 to-transparent lg:h-1/2 lg:from-black/70 lg:via-black/25" />
-        {/* El título sube palabra por palabra, como en la portada del sitio. */}
-        <p className="absolute right-10 bottom-10 left-10 hidden text-[clamp(2.6rem,4.4vw,4.6rem)] leading-[.98] font-bold tracking-[-0.035em] text-balance text-white lg:block">
-          {words.map(({ w, accent }, i) => (
-            <Fragment key={i}>
-              {i > 0 && " "}
-              <span className={`inline-block motion-safe:animate-rise ${accent ? "text-pink" : ""}`} style={{ animationDelay: `${350 + i * 90}ms` }}>
-                {w}
-              </span>
-            </Fragment>
-          ))}
-          {texts.hero.badge && (
-            <span
-              className="mt-4 block text-[15px] leading-snug font-medium tracking-normal text-white/85 normal-case motion-safe:animate-rise"
-              style={{ animationDelay: `${450 + words.length * 90}ms` }}
-            >
-              {texts.hero.badge}
-            </span>
-          )}
-        </p>
-      </div>
+    <main className="admin-surface relative grid h-dvh place-items-center overflow-hidden bg-canvas px-4 py-4 text-ink">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={GRID} />
 
-      {/* En pantallas anchas el formulario se centra un poco más arriba, para dejar ver el nevado debajo. */}
-      <div className="relative z-1 -mt-20 flex flex-col items-center justify-center gap-6 overflow-hidden px-4 pb-10 lg:mt-0 lg:px-12 lg:pt-12 lg:pb-[clamp(80px,20vh,200px)]">
-        {/* El paisaje de la pantalla de carga, al pie del lado del formulario: el nevado y una estrella fugaz. */}
-        <NevadoScene id="ingreso" className="h-[150px] lg:h-[clamp(170px,32vh,340px)]" />
-        {/* Logo y nombre del sitio sobre el formulario. */}
-        <p className="relative flex items-center gap-3 motion-safe:animate-rise">
-          <Brand size={52} wordSize="1.6rem" eyebrowSize=".7rem" eager />
-        </p>
-        <form
-          noValidate
-          onSubmit={onSubmit}
-          aria-labelledby="lg-title"
-          className="admin-surface relative flex w-full max-w-[410px] flex-col gap-5 rounded-[28px] bg-paper p-6 text-ink shadow-overlay motion-safe:animate-pop-in sm:p-8"
-        >
-          <div>
-            <h1 id="lg-title" className="text-[24px] leading-tight font-bold tracking-[-0.03em]">
-              Panel de reservas
-            </h1>
-            <p className="mt-1 text-[14px] text-ink-muted">
-              {isMockApi ? "Modo simulado: entra con cualquier correo y contraseña." : "Ingresa con tu cuenta de administración."}
-            </p>
-          </div>
-          <Field label="Correo">
-            {(p) => (
-              <input
-                {...p}
-                {...missing(lg.email)}
-                type="email"
-                autoComplete="username"
-                inputMode="email"
-                placeholder="tucorreo@ejemplo.com"
-                value={lg.email}
-                onChange={(e) => setLg({ ...lg, email: e.target.value })}
-                className={adminInput}
-              />
-            )}
-          </Field>
+      <form
+        noValidate
+        onSubmit={onSubmit}
+        aria-labelledby="lg-title"
+        className="relative flex w-full max-w-[440px] flex-col gap-5 rounded-[28px] bg-paper px-6 py-8 shadow-overlay motion-safe:animate-pop-in sm:px-10 sm:py-10 [@media(601px<=height<=860px)]:gap-3.5 [@media(601px<=height<=860px)]:py-6 [@media(max-height:600px)]:gap-2.5 [@media(max-height:600px)]:py-5"
+      >
+        {/* Logo y nombre centrados, sobre el saludo. En pantallas bajas todo se compacta para que quepa sin scroll. */}
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Logo size={72} eager className="motion-safe:animate-glide [@media(max-height:860px)]:size-14" />
+          <BrandName wordSize="1.15rem" eyebrowSize=".62rem" className="items-center text-ink" />
+          <h1 id="lg-title" className="mt-3 text-[26px] leading-tight font-bold tracking-[-0.03em] [@media(max-height:860px)]:mt-1">
+            Bienvenido al panel
+          </h1>
+          <p className="max-w-[30ch] text-[14.5px] text-balance text-ink-muted [@media(max-height:640px)]:hidden">
+            {isMockApi ? "Modo simulado: entra con cualquier correo y contraseña." : "Ingresa con tu cuenta del equipo para gestionar las reservas."}
+          </p>
+        </div>
+
+        <Field label="Correo">
+          {(p) => (
+            <input
+              {...p}
+              {...missing(lg.email)}
+              type="email"
+              autoComplete="username"
+              inputMode="email"
+              placeholder="tucorreo@ejemplo.com"
+              value={lg.email}
+              onChange={(e) => setLg({ ...lg, email: e.target.value })}
+              className={pillInput}
+            />
+          )}
+        </Field>
+        <div className="flex flex-col gap-2">
           <Field label="Contraseña">
             {(p) => (
               <div className="relative">
@@ -212,36 +115,58 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
                   {...missing(lg.password)}
                   type={show ? "text" : "password"}
                   autoComplete="current-password"
-                  placeholder="***********"
+                  placeholder="Tu contraseña"
                   value={lg.password}
                   onChange={(e) => setLg({ ...lg, password: e.target.value })}
-                  className={`${adminInput} pr-12`}
+                  className={`${pillInput} pr-13`}
                 />
                 <button
                   type="button"
                   onClick={() => setShow(!show)}
                   aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
                   aria-pressed={show}
-                  className="absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center rounded-full text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
+                  className="absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-full text-ink-muted transition-colors hover:bg-ink/6 hover:text-ink"
                 >
                   {show ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
                 </button>
               </div>
             )}
           </Field>
-          {lg.error && (
-            <Callout tone="error" role="alert">
-              {lg.error}
-            </Callout>
+          {/* No hay registro ni recuperación por correo: las cuentas las crea y restablece un administrador. */}
+          <button
+            type="button"
+            onClick={() => {
+              setForgot(!forgot);
+              setLg({ ...lg, error: "" });
+            }}
+            aria-expanded={forgot}
+            aria-controls="lg-forgot"
+            className="self-end rounded-full px-1 text-[13.5px] font-bold text-ink transition-colors hover:text-ink-muted"
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+          {forgot && (
+            <p id="lg-forgot" className="rounded-2xl bg-panel px-4 py-3 text-[13px] leading-snug text-ink-muted motion-safe:animate-fade-in">
+              Comunícate con el administrador del panel para recuperar el acceso a tu cuenta.
+            </p>
           )}
-          <Button type="submit" variant="primary" size="lg" loading={lg.loading}>
-            {lg.loading ? "Entrando…" : "Entrar"}
-          </Button>
-        </form>
-        <Link href="/" className="relative rounded-full px-2 py-1 text-[13.5px] font-semibold text-ink-muted transition-colors hover:text-ink">
-          ← Volver al sitio
-        </Link>
-      </div>
+        </div>
+
+        {lg.error && (
+          <Callout tone="error" role="alert">
+            {lg.error}
+          </Callout>
+        )}
+        <Button type="submit" variant="primary" size="lg" loading={lg.loading}>
+          {lg.loading ? "Entrando…" : "Entrar"}
+        </Button>
+        <p className="text-center text-[13.5px] text-ink-muted">
+          ¿Buscabas el sitio?{" "}
+          <Link href="/" className="font-bold text-ink transition-colors hover:text-ink-muted">
+            Volver a La Vaca Fifí
+          </Link>
+        </p>
+      </form>
     </main>
   );
 }

@@ -2,17 +2,33 @@
 
 // Cuenta de quien usa el panel: avatar, menú de la cuenta (encabezado), página «Mi perfil» y el aviso de «sin acceso»
 // para las páginas que su rol no incluye.
+import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { CheckIcon, ChevronDownIcon, ExternalLinkIcon, EyeIcon, EyeOffIcon, LockIcon, LogoutIcon, ShieldIcon, UserIcon } from "@/components/ui/icons";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ExternalLinkIcon,
+  EyeIcon,
+  EyeOffIcon,
+  ImageIcon,
+  LockIcon,
+  LogoutIcon,
+  ShieldIcon,
+  TrashIcon,
+  UserIcon,
+} from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
+import { resizeImage, type Crop } from "@/lib/client/image-resize";
+import { isMockApi } from "@/lib/config";
 import { CAPABILITIES, ROLE_HINT, ROLE_LABEL, can } from "@/lib/permissions";
 import type { PanelRole, PanelUser } from "@/lib/types";
 import { Popover, useLabelTip } from "@/components/ui/floating";
 import { useAdmin } from "@/components/admin/context";
+import { PhotoCropper } from "@/components/admin/photo-cropper";
 import { MODULES, paths, type ModuleId } from "@/components/admin/routes";
 import { adminInput } from "@/components/admin/shared";
-import { ACCENT, Badge, Button, Card, CardHeader, Deco, EmptyState, Field, PageHeader, buttonClass, type Accent } from "@/components/admin/ui";
+import { ACCENT, Badge, Button, Card, CardHeader, Deco, EmptyState, Field, ModalPresence, PageHeader, buttonClass, type Accent } from "@/components/admin/ui";
 
 /* ───────────── Avatar ───────────── */
 
@@ -36,14 +52,27 @@ function accentOf(id: string): Accent {
   return ACCENTS[h % ACCENTS.length];
 }
 
-export function Avatar({ user, size = 40, className = "" }: { user: Pick<PanelUser, "id" | "name" | "email">; size?: number; className?: string }) {
+// `accent`: un color fijo en lugar del de la persona (la cuenta propia va en dorado).
+export function Avatar({
+  user,
+  size = 40,
+  accent,
+  className = "",
+}: {
+  user: Pick<PanelUser, "id" | "name" | "email"> & { photo?: string | null };
+  size?: number;
+  accent?: Accent;
+  className?: string;
+}) {
   return (
     <span
       aria-hidden="true"
-      className={`grid flex-none place-items-center rounded-full font-bold tracking-[-0.02em] text-ink select-none ${ACCENT[accentOf(user.id)].bg} ${className}`}
+      className={`relative grid flex-none place-items-center overflow-hidden rounded-full font-bold tracking-[-0.02em] text-ink select-none ${ACCENT[accent ?? accentOf(user.id)].bg} ${className}`}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
     >
+      {/* Con foto, la foto encima; sin ella (o mientras carga), las iniciales sobre el color de la persona. */}
       {initialsOf(user)}
+      {user.photo && <Image src={user.photo} alt="" fill sizes={`${size}px`} className="object-cover" />}
     </span>
   );
 }
@@ -83,7 +112,7 @@ export function AccountMenu({ onLogout, compact = false }: { onLogout: () => voi
             : "flex h-12 flex-none items-center gap-2.5 rounded-full border border-line-strong bg-paper/70 py-1 pr-1 pl-1 transition-[border-color,background-color] duration-150 hover:border-ink-subtle hover:bg-paper xl:pr-3.5"
         }
       >
-        <Avatar user={me} size={compact ? 40 : 38} />
+        <Avatar user={me} size={compact ? 40 : 38} accent="yellow" />
         {!compact && (
           <>
             <span className="hidden min-w-0 flex-col text-left leading-tight xl:flex">
@@ -96,7 +125,7 @@ export function AccountMenu({ onLogout, compact = false }: { onLogout: () => voi
       </button>
       <Popover open={open} onClose={close} anchor={anchor} placement="bottom-end" label="Cuenta" role="menu" className="w-[280px] p-1.5">
         <div className="flex items-center gap-3 px-3 pt-2.5 pb-3">
-          <Avatar user={me} size={46} />
+          <Avatar user={me} size={46} accent="yellow" />
           <div className="min-w-0">
             <p className="truncate text-[14.5px] leading-tight font-bold text-ink">{displayName(me)}</p>
             <p className="truncate text-[12.5px] text-ink-muted">{me.email}</p>
@@ -189,6 +218,115 @@ export function AccessDenied({ module }: { module: ModuleId }) {
 
 /* ───────────── Mi perfil ───────────── */
 
+const PHOTO_SIDE = 512; // la foto de perfil se guarda cuadrada a este tamaño: alcanza para el avatar más grande en pantallas densas
+const PHOTO_ERRORS: Record<number, string> = {
+  413: "La imagen pesa demasiado (máximo 5 MB).",
+  415: "Formato no compatible. Usa JPG, PNG o WebP.",
+  501: "La foto de perfil no está disponible en modo simulado.",
+};
+
+// Foto de perfil: se elige, se encuadra en un marco cuadrado y se sube. Con foto, se puede cambiar o quitar.
+function ProfilePhoto() {
+  const { data, setData, toast, onAuthError } = useAdmin();
+  const me = data.me;
+  const input = useRef<HTMLInputElement>(null);
+  const [cropping, setCropping] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function run(req: () => ReturnType<typeof api.admin.deleteProfilePhoto>, done: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await req();
+      if (r.status === 401 || r.status === 403) return onAuthError();
+      if (r.status !== 200 || !r.data) return setError(PHOTO_ERRORS[r.status] ?? "No se pudo guardar la foto. Inténtalo de nuevo.");
+      const updated = r.data.me;
+      setData((d) => ({ ...d, me: updated }));
+      toast(done);
+    } catch {
+      setError("No se pudo leer la imagen. Prueba con otra en JPG, PNG o WebP.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Solo la región encuadrada, cuadrada y a lo sumo de PHOTO_SIDE px (no se amplía una foto más pequeña).
+  const upload = (file: File, crop: Crop, size: { width: number; height: number }) => {
+    const side = Math.min(PHOTO_SIDE, size.width);
+    return run(async () => {
+      const blob = await resizeImage(file, { crop, size: { width: side, height: side } });
+      return api.admin.uploadProfilePhoto(blob, `perfil.${blob.type === "image/webp" ? "webp" : "jpg"}`);
+    }, "Foto de perfil actualizada");
+  };
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <Avatar user={me} size={88} className="bg-paper! ring-4 ring-paper/70" />
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" icon={<ImageIcon size={14} />} loading={busy} onClick={() => input.current?.click()}>
+          {me.photo ? "Cambiar foto" : "Subir foto"}
+        </Button>
+        {me.photo && (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<TrashIcon size={14} />}
+            disabled={busy}
+            onClick={() => run(api.admin.deleteProfilePhoto, "Foto de perfil quitada")}
+          >
+            Quitar
+          </Button>
+        )}
+      </div>
+      {error && (
+        <p role="alert" className="text-[13px] font-semibold text-error">
+          {error}
+        </p>
+      )}
+      {isMockApi && <p className="text-[12.5px] text-ink/70">En modo simulado no se pueden subir fotos.</p>}
+      <input
+        ref={input}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          if (!file.type.startsWith("image/")) return setError("Elige una imagen JPG, PNG o WebP.");
+          setError("");
+          setCropping(file);
+        }}
+      />
+      <ModalPresence>
+        {cropping && (
+          <PhotoCropper
+            key={`${cropping.name}:${cropping.lastModified}`}
+            file={cropping}
+            title="Foto de perfil"
+            aspect="1/1"
+            hint="Encuadra tu cara en el centro: se verá en un círculo."
+            min={[160, 160]}
+            onCancel={() => setCropping(null)}
+            onChooseOther={() => {
+              setCropping(null);
+              input.current?.click();
+            }}
+            onConfirm={(crop, size) => {
+              const file = cropping;
+              setCropping(null);
+              upload(file, crop, size);
+            }}
+          />
+        )}
+      </ModalPresence>
+    </div>
+  );
+}
+
 type Fields = Record<string, string>;
 
 export function ProfileView() {
@@ -244,9 +382,9 @@ export function ProfileView() {
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="flex flex-col gap-4">
-          <section aria-label="Tu cuenta" className="relative isolate flex flex-col items-start gap-4 overflow-hidden rounded-[22px] bg-pink p-5 sm:p-6">
-            <Deco accent="pink" className="-top-8 -right-6 size-[150px] rotate-12" />
-            <Avatar user={me} size={72} className="bg-paper!" />
+          <section aria-label="Tu cuenta" className="relative isolate flex flex-col items-start gap-4 overflow-hidden rounded-[22px] bg-blue p-5 sm:p-6">
+            <Deco accent="blue" className="-top-8 -right-6 size-[150px] rotate-12" />
+            <ProfilePhoto />
             <div className="min-w-0">
               <p className="truncate text-[22px] leading-tight font-bold tracking-[-0.02em] text-ink">{displayName(me)}</p>
               <p className="truncate text-[14px] text-ink/75">{me.email}</p>

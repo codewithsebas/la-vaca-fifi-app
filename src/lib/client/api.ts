@@ -208,6 +208,8 @@ export const api = {
       remove: (id: string) => request<Employee[] | ApiError>("DELETE", "/admin/employees", { query: { id } }),
     },
     profile: (b: ProfileInput) => request<{ me: PanelUser } | ValidationError>("PUT", "/admin/profile", { body: b }),
+    uploadProfilePhoto: (file: Blob, name: string) => upload<{ me: PanelUser }>("/admin/profile/photo", formOf({ file }, name)),
+    deleteProfilePhoto: () => request<{ me: PanelUser }>("DELETE", "/admin/profile/photo"),
     importReservations: (rows: ImportRow[]) => request<{ results: ImportResult[] } | ApiError>("POST", "/admin/import", { body: { rows } }),
   },
 };

@@ -23,7 +23,7 @@ export default async function PrivacyPage() {
       <section className="flex flex-col gap-3.5 rounded-lg bg-card p-[clamp(20px,4vw,36px)] text-on-light">
         <h2 className={h2}>1. Responsable del tratamiento</h2>
         <p>
-          {"{RAZON_SOCIAL}"} (en adelante, «{c.name}»), identificado con NIT {"{NIT}"}, con domicilio en {c.address}. Correo: {c.correoReservas}. Teléfono:{" "}
+          {c.razonSocial} (en adelante, «{c.name}»), identificado con NIT {c.nit}, con domicilio en {c.address}. Correo: {c.correoReservas}. Teléfono:{" "}
           {c.phones[0]}.
         </p>
         <h2 className={h2}>2. Datos que recolectamos</h2>

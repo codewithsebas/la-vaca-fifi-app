@@ -307,9 +307,12 @@ export function DateRangePicker({ from, to, onChange, mode = "days", clearable =
   const months = wide ? 2 : 1;
 
   const open = () => {
+    const w = innerWidth >= 640;
     setDraft({ from, to });
-    setWide(innerWidth >= 640);
+    setWide(w);
     k.openAt(from);
+    // Sin fechas y con tope (un periodo pasado): el último mes visible es el del tope, no uno ya deshabilitado.
+    if (!from && p.max && w) k.setMonth(addMonths(monthStart(p.max), -1));
   };
   const pick = (iso: string) => {
     const d = draft;

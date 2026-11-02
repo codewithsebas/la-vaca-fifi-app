@@ -19,7 +19,6 @@ const PRESETS: { value: Preset; label: string }[] = [
   { value: "90", label: "3 meses" },
   { value: "180", label: "6 meses" },
   { value: "365", label: "1 año" },
-  { value: "personalizado", label: "Personalizado" },
 ];
 
 export function usePeriod(fallback: Preset = "30") {
@@ -28,7 +27,7 @@ export function usePeriod(fallback: Preset = "30") {
   const [fromP, setFrom] = useParam("desde", "");
   const [toP, setTo] = useParam("hasta", "");
   const custom = { from: isISO(fromP) ? fromP : addDays(today, -29), to: isISO(toP) ? toP : today };
-  const known = PRESETS.some((p) => p.value === preset);
+  const known = preset === "personalizado" || PRESETS.some((p) => p.value === preset);
   const range: Range = preset === "personalizado" ? custom : { from: addDays(today, -(Number(known ? preset : fallback) - 1)), to: today };
   const days = nightsBetween(range.from, range.to) + 1;
   const label = range.from === range.to ? fmtDate(range.from, true) : `${fmtDate(range.from, true)} → ${fmtDate(range.to, true)}`;
@@ -39,35 +38,45 @@ export function usePeriod(fallback: Preset = "30") {
   return { preset: known ? preset : fallback, setPreset, custom, setCustom, range, days, label, daysLabel: plural(days, "día", "días") };
 }
 
-// Una lista desplegable (cada opción dice sus fechas) y, con «Personalizado», el calendario para elegirlas.
+// Una lista desplegable con los periodos rápidos (cada opción dice sus fechas) y, al lado, el rango personalizado: dice
+// «Personalizado» hasta que se eligen fechas en su calendario, y entonces el desplegable queda sin selección.
 export function PeriodFilter({ period }: { period: ReturnType<typeof usePeriod> }) {
   const { today } = useAdmin();
+  const custom = period.preset === "personalizado";
   const options = PRESETS.map((p) => ({
     value: p.value,
     label: p.label,
-    description:
-      p.value === "personalizado"
-        ? "Elige las fechas"
-        : p.value === "1"
-          ? fmtDate(today)
-          : `${fmtDate(addDays(today, -(Number(p.value) - 1)))} → ${fmtDate(today)}`,
+    description: p.value === "1" ? fmtDate(today) : `${fmtDate(addDays(today, -(Number(p.value) - 1)))} → ${fmtDate(today)}`,
   }));
   return (
     <>
       <div className="w-full sm:w-[200px]">
         <Combobox
           value={period.preset}
-          onChange={(v) => period.setPreset(v as Preset)}
+          onChange={(v) => {
+            period.setPreset(v as Preset);
+            period.setCustom(null, null);
+          }}
           options={options}
+          placeholder="Periodo"
           searchable={false}
           icon={<CalendarIcon size={15} className="text-ink-muted" />}
         />
       </div>
-      {period.preset === "personalizado" && (
-        <div className="w-full sm:w-[280px]">
-          <DateRangePicker mode="days" from={period.custom.from} to={period.custom.to} max={today} onChange={period.setCustom} clearable={false} />
-        </div>
-      )}
+      <div className="w-full sm:w-[280px]">
+        <DateRangePicker
+          mode="days"
+          from={custom ? period.custom.from : null}
+          to={custom ? period.custom.to : null}
+          max={today}
+          placeholder="Personalizado"
+          clearable={false}
+          onChange={(from, to) => {
+            period.setCustom(from, to);
+            period.setPreset("personalizado");
+          }}
+        />
+      </div>
     </>
   );
 }

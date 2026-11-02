@@ -2,6 +2,7 @@ import "server-only";
 import { createSessionClient, MissingSupabaseConfig } from "@/lib/supabase/server";
 import type { Db } from "@/lib/server/db";
 import { can, isRole, type Permission } from "@/lib/permissions";
+import { photoUrl } from "@/lib/server/site";
 import type { PanelUser } from "@/lib/types";
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -32,6 +33,12 @@ export function route<A extends unknown[]>(handler: (...args: A) => Promise<Resp
   };
 }
 
+// Foto de perfil: su ruta en Storage va en user_metadata.avatar_path (api/admin/profile/photo) → URL pública.
+export const avatarOf = (meta: unknown) => {
+  const path = (meta as { avatar_path?: string | null } | undefined)?.avatar_path;
+  return path ? photoUrl(path) : null;
+};
+
 // Sesión del equipo (Supabase Auth). El rol va en app_metadata, que el usuario no puede editar: «admin» o «recepcion».
 // `me`: quién hace la solicitud (para el panel y para los permisos de cada ruta: lib/permissions.ts).
 type Staff = { sb: Db; uid: string | null; me: PanelUser; error?: never } | { sb?: never; uid?: never; me?: never; error: Response };
@@ -46,7 +53,7 @@ export async function requireStaff(): Promise<Staff> {
   const uid = typeof c.sub === "string" ? c.sub : null;
   const name = String((c.user_metadata as { full_name?: string } | undefined)?.full_name ?? "").trim();
   const email = typeof c.email === "string" ? c.email : "";
-  return { sb, uid, me: { id: uid ?? "", email, name, role } };
+  return { sb, uid, me: { id: uid ?? "", email, name, role, photo: avatarOf(c.user_metadata) } };
 }
 
 // Solo administradores, o un permiso concreto (recepción tiene algunos: lib/permissions.ts).

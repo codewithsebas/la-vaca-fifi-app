@@ -319,7 +319,7 @@ function meOf(): PanelUser {
     const v = JSON.parse(sessionStorage.getItem(ME_KEY) || "null");
     if (v?.role) return v;
   } catch {}
-  return { id: "demo-admin", email: "demo@lavacafifi.test", name: "Equipo de prueba", role: "admin" };
+  return { id: "demo-admin", email: "demo@lavacafifi.test", name: "Equipo de prueba", role: "admin", photo: null };
 }
 
 // Baños de la demo: uno por cabaña y uno compartido, con un bloqueo de mantenimiento.
@@ -369,6 +369,7 @@ function employeesOf(d: Db, me: PanelUser): Employee[] {
         id: "demo-recepcion",
         email: "recepcion@lavacafifi.test",
         name: "Laura Recepción",
+        photo: null,
         role: "recepcion",
         createdAt: new Date(Date.now() - 20 * 864e5).toISOString(),
         lastSignInAt: new Date(Date.now() - 864e5).toISOString(),
@@ -542,6 +543,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       email,
       name: email.split("@")[0].replace(/[._-]+/g, " "),
       role: email.includes("recepcion") ? "recepcion" : "admin",
+      photo: null,
     };
     sessionStorage.setItem(ME_KEY, JSON.stringify(me));
     return ok({});
@@ -622,7 +624,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     save(db);
     return ok(site.services);
   }
-  if (path === "/admin/photos" || path === "/admin/cabins/photos" || path === "/admin/proofs" || path === "/admin/push")
+  if (path === "/admin/photos" || path === "/admin/cabins/photos" || path === "/admin/profile/photo" || path === "/admin/proofs" || path === "/admin/push")
     return { status: 501, data: { error: "NOT_AVAILABLE_IN_MOCK" } };
 
   // Reserva tomada por el equipo: mismas reglas que POST /api/admin/reservations (en modo simulado, solo en este navegador).
@@ -1018,6 +1020,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
           id: crypto.randomUUID(),
           email,
           name: String(b.name).trim(),
+          photo: null,
           role: b.role ?? "recepcion",
           createdAt: new Date().toISOString(),
           lastSignInAt: null,
