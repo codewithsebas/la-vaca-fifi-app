@@ -6,6 +6,8 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.
 const nextConfig = {
   // Hostinger arranca el servidor standalone (.next/standalone/server.js).
   output: "standalone",
+  // Next crea un proceso por CPU detectada: en el servidor compartido de Hostinger son 63 y este sitio no los necesita.
+  experimental: { cpus: 2 },
   images: {
     remotePatterns: supabaseHost
       ? [{ protocol: "https", hostname: supabaseHost, port: "", pathname: "/storage/v1/object/public/site-images/**", search: "" }]

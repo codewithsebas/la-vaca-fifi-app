@@ -134,7 +134,7 @@ Las rutas `src/app/api/*` implementan el contrato que usa el front (`src/lib/cli
 
 Estados: la reserva usa `pending_deposit` → `confirmed` → `checked_in` → `completed`; cada pago es un abono (`deposit`), un pago total (`full`) o un saldo (`balance`).
 
-**Correos (Resend).** La confirmación la encola la base de datos (`email_outbox`, una por reserva) y se envía después de responder al huésped: si Resend falla, la reserva sigue confirmada, el error queda en la fila, el panel recibe un aviso y el correo se reintenta con espera creciente (o desde la ficha de la reserva). Sin dominio verificado en Resend, el remitente `onboarding@resend.dev` solo puede enviar al correo de tu cuenta.
+**Correos (Resend).** La confirmación la encola la base de datos (`email_outbox`, una por reserva) y se envía después de responder al huésped: si Resend falla, la reserva sigue confirmada, el error queda en la fila, el panel recibe un aviso y el correo se reintenta con espera creciente (o desde la ficha de la reserva). `EMAIL_FROM` es obligatorio y debe ser de un dominio verificado en Resend: sin él no sale ningún correo y el error lo dice.
 
 **Esquema.** `supabase/migrations/` (tablas `cabin_types`, `reservations`, `reservation_notes`, `blocks`). Tarifas, capacidad máxima y número de cabañas por tipo (`units`) viven en `cabin_types`; las tarifas se editan en el panel, `units` en el Table Editor de Supabase.
 

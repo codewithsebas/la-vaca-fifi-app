@@ -32,12 +32,13 @@ const MAX_ATTEMPTS = 5;
 const BACKOFF_MIN = [2, 10, 30, 120, 480]; // espera antes del siguiente intento automático
 const LEASE_MIN = 10; // un envío que quedó a medias (proceso caído) se vuelve a intentar después de esto
 
-export const mailConfigured = () => !!env.resendApiKey;
+export const mailConfigured = () => !!env.resendApiKey && !!env.emailFrom;
 
 async function sendWithResend(m: { to: string; subject: string; html: string; text: string; attachments?: Attachment[]; idempotencyKey: string }) {
   const key = env.resendApiKey;
   if (!key) throw new Error("El envío de correos no está configurado: falta RESEND_API_KEY.");
-  const from = env.emailFrom || "La Vaca Fifí <onboarding@resend.dev>";
+  const from = env.emailFrom;
+  if (!from) throw new Error("El envío de correos no está configurado: falta EMAIL_FROM.");
   const replyTo = env.emailReplyTo;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

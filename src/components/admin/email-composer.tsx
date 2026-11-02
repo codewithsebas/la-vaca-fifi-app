@@ -119,8 +119,8 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
       <div className="flex flex-col gap-4 px-5 py-4">
         {configured === false && (
           <Callout tone="warning">
-            El envío de correos aún no está configurado (falta <code>RESEND_API_KEY</code> en el servidor). Si lo envías, quedará registrado como no enviado y
-            podrás reintentarlo después.{" "}
+            El envío de correos aún no está configurado (falta <code>RESEND_API_KEY</code> o <code>EMAIL_FROM</code> en el servidor). Si lo envías, quedará
+            registrado como no enviado y podrás reintentarlo después.{" "}
             <a href={`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`} className="font-semibold underline">
               Abrir en mi aplicación de correo
             </a>
