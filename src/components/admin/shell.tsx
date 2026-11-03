@@ -290,6 +290,7 @@ function NavList({
                 href={href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
+                data-nav={id}
                 {...(mini ? tip(() => <NavTip label={label} badge={b} />, SIDE_TIP) : {})}
                 className={`${navItem(mini)} ${active ? `text-pink ${mini ? "bg-white/10" : ""}` : "text-white/72 hover:bg-white/7 hover:text-white"}`}
               >

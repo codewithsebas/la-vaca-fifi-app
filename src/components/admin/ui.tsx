@@ -82,9 +82,15 @@ export type DecoShape = keyof typeof SHAPES;
 const ACCENT_SHAPE: Record<Accent, DecoShape> = { yellow: "cross", pink: "cabin", green: "triangle", blue: "burst" };
 
 export function Deco({ accent, shape, className = "" }: { accent: Accent; shape?: DecoShape; className?: string }) {
+  const name = shape ?? ACCENT_SHAPE[accent];
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={`pointer-events-none absolute -z-10 ${ACCENT[accent].deep} opacity-70 ${className}`}>
-      {SHAPES[shape ?? ACCENT_SHAPE[accent]]}
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      data-deco={name}
+      className={`pointer-events-none absolute -z-10 ${ACCENT[accent].deep} opacity-70 ${className}`}
+    >
+      {SHAPES[name]}
     </svg>
   );
 }

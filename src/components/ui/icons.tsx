@@ -49,7 +49,8 @@ export const PinIcon = (p: IconProps) => (
 export const CalendarIcon = ({ variant, ...p }: IconProps & { variant?: "check" | "plus" }) => (
   <Stroke {...p}>
     <rect x="3" y="4" width="18" height="18" rx="3" />
-    <path d={`M16 2v4M8 2v4M3 10h18${variant === "check" ? "M9 16l2 2 4-4" : variant === "plus" ? "M12 14v4M10 16h4" : ""}`} />
+    <path d="M16 2v4M8 2v4" />
+    <path d={`M3 10h18${variant === "check" ? "M9 16l2 2 4-4" : variant === "plus" ? "M12 14v4M10 16h4" : ""}`} />
   </Stroke>
 );
 export const HomeIcon = (p: IconProps) => (
@@ -174,7 +175,12 @@ export const GridIcon = (p: IconProps) => (
 );
 export const ListIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
-    <path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />
+    <path d="M9 6h12" />
+    <path d="M9 12h12" />
+    <path d="M9 18h12" />
+    <path d="M4 6h.01" />
+    <path d="M4 12h.01" />
+    <path d="M4 18h.01" />
   </Stroke>
 );
 export const BanIcon = (p: IconProps) => (
@@ -277,7 +283,8 @@ export const PawIcon = ({ size = 18, className }: IconProps) => (
 
 export const BellIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
-    <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" />
+    <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+    <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
   </Stroke>
 );
 export const SendIcon = (p: IconProps) => (
@@ -295,7 +302,10 @@ export const SlidersIcon = (p: IconProps) => (
 );
 export const ReceiptIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
-    <path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3" />
+    <path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z" />
+    <path d="M9 8h6" />
+    <path d="M9 12h6" />
+    <path d="M9 16h3" />
   </Stroke>
 );
 export const VolumeIcon = (p: IconProps) => (
@@ -424,13 +434,16 @@ export const IdCardIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
     <rect x="3" y="5" width="18" height="14" rx="2.5" />
     <circle cx="9" cy="11" r="2" />
-    <path d="M5.5 16a3.5 3.5 0 0 1 7 0M15 10h3M15 14h3" />
+    <path d="M5.5 16a3.5 3.5 0 0 1 7 0" />
+    <path d="M15 10h3" />
+    <path d="M15 14h3" />
   </Stroke>
 );
 export const SpreadsheetIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <path d="M14 2v6h6M8 12h8v6H8zM8 15h8M12 12v6" />
+    <path d="M14 2v6h6" />
+    <path d="M8 12h8v6H8zM8 15h8M12 12v6" />
   </Stroke>
 );
 export const WrenchIcon = (p: IconProps) => (
