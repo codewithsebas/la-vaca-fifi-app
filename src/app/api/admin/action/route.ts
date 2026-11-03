@@ -1,33 +1,21 @@
 import { after, type NextRequest } from "next/server";
-import { computeQuote, findUnit, normalizePhone, validateGuest } from "@/lib/booking";
-import { addDays, isISO, nightsBetween, todayISO } from "@/lib/format";
+import { TRANSITIONS, computeQuote, findUnit, normalizePhone, validateGuest } from "@/lib/booking";
+import { addDays, isISO, nightsBetween } from "@/lib/format";
 import { isExclusionViolation, loadCabinTypes, loadDepositPct, loadOccupancy, loadSeasons, toReservation } from "@/lib/server/db";
-import { businessError, fail, json, readJson, requireStaff, route } from "@/lib/server/http";
+import { baseVersionOf, businessError, fail, json, occurredAtOf, opIdOf, operationDay, readJson, requireStaff, syncRoute } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
 import { siteUrl } from "@/lib/server/site";
 import { HOLD_OPTIONS, PAY_METHODS, manualDueAt, manualPaymentNote } from "@/lib/payments";
 import { can } from "@/lib/permissions";
-import type { AdminAction, Quote, ReservationStatus } from "@/lib/types";
-
-const TRANSITIONS: Record<string, { from: ReservationStatus[]; to?: ReservationStatus }> = {
-  confirm: { from: ["pending_deposit", "expired"] },
-  balance: { from: ["confirmed", "rescheduled", "checked_in"] },
-  checkin: { from: ["confirmed", "rescheduled"], to: "checked_in" },
-  checkout: { from: ["checked_in"], to: "completed" },
-  cancel: { from: ["pending_deposit", "confirmed", "rescheduled"], to: "cancelled" },
-  reschedule: { from: ["pending_deposit", "confirmed", "rescheduled"] },
-  extend_hold: { from: ["pending_deposit", "expired"] },
-  note: { from: ["pending_deposit", "confirmed", "cancelled", "expired", "rescheduled", "checked_in", "completed"] },
-  guest: { from: ["pending_deposit", "confirmed", "cancelled", "expired", "rescheduled", "checked_in", "completed"] },
-};
+import type { AdminAction, Quote } from "@/lib/types";
 
 // POST /api/admin/action { code, action, ... } → cambia el estado, registra un pago, reprograma o agrega una nota.
 // confirm / balance: pago recibido en persona (efectivo o transferencia) registrado por el equipo, por el abono, por todo
 // lo que falta (full) o por un valor a elección (amount). Cualquier pago confirma una reserva pendiente.
 // extend_hold: plazo nuevo para pagar el abono (amplía la retención o, si venció, la reactiva).
 // checkout: solo con el saldo pagado (la base de datos lo exige).
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, me, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<AdminAction>(req);
@@ -37,7 +25,9 @@ export const POST = route(async (req: NextRequest) => {
 
   const { data: current } = await sb.from("reservations").select("*").eq("code", b.code).maybeSingle().throwOnError();
   if (!current) return fail(404, "NOT_FOUND");
-  if (!rule.from.includes(current.status)) return fail(422, "INVALID_TRANSITION");
+  // `status`: la aplicación reconoce así que otra persona ya hizo lo mismo.
+  if (!rule.from.includes(current.status)) return fail(422, "INVALID_TRANSITION", { status: current.status });
+  const opId = opIdOf(req);
 
   try {
     if (b.action === "guest") {
@@ -46,7 +36,8 @@ export const POST = route(async (req: NextRequest) => {
       if (Object.keys(fields).length)
         return fail(422, "VALIDATION_ERROR", { fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [`guest.${k}`, v])) });
       const phone = normalizePhone(g.phone);
-      await sb
+      const base = baseVersionOf(req);
+      let q = sb
         .from("reservations")
         .update({
           guest_full_name: g.fullName.trim(),
@@ -57,14 +48,18 @@ export const POST = route(async (req: NextRequest) => {
           guest_phone: phone,
           guest_city: (g.city ?? "").trim(),
         })
-        .eq("code", current.code)
-        .throwOnError();
+        .eq("code", current.code);
+      if (base !== null) q = q.eq("version", base);
+      const { data: changed } = await q.select("code").throwOnError();
+      if (!changed.length) return fail(409, "VERSION_CONFLICT");
     } else if (b.action === "note") {
       const text = String(b.text ?? "")
         .trim()
         .slice(0, 2000);
       if (!text) return fail(400, "INVALID_BODY");
-      await sb.from("reservation_notes").insert({ reservation_code: current.code, text }).throwOnError();
+      // Repetir la misma operación no agrega otra nota (client_op_id es único).
+      const { error: noteErr } = await sb.from("reservation_notes").insert({ reservation_code: current.code, text, client_op_id: opId });
+      if (noteErr && noteErr.code !== "23505") throw noteErr;
     } else if (b.action === "extend_hold") {
       // El plazo nunca pasa del día de llegada.
       if (!HOLD_OPTIONS.some((o) => o.value === b.holdMinutes)) return fail(400, "INVALID_BODY");
@@ -78,19 +73,24 @@ export const POST = route(async (req: NextRequest) => {
       if (amount !== null && (!Number.isInteger(amount) || amount <= 0)) return fail(400, "INVALID_AMOUNT");
       if (b.method !== undefined && !PAY_METHODS.some((m) => m.value === b.method)) return fail(400, "INVALID_BODY");
       const kind = b.full ? "full" : b.action === "balance" ? "balance" : "deposit";
+      // Registrado sin conexión: si mientras tanto entró otro pago, podría ser el mismo dinero. Lo decide quien lo registró.
+      if (b.basePaid !== undefined && !b.force && b.basePaid !== current.paid_amount) return fail(409, "PAID_CHANGED", { paid: current.paid_amount });
+      const occurredAt = occurredAtOf(req);
       await sb
         .rpc("register_manual_payment", {
           p_code: current.code,
           p_kind: kind,
           p_note: manualPaymentNote(b.method, b.note),
           ...(amount !== null && { p_amount: amount }),
+          ...(opId && { p_op_id: opId }),
+          ...(occurredAt && { p_occurred_at: occurredAt }),
         })
         .throwOnError();
       // Confirmar el abono o completar el saldo encola su correo: se envía después de responder.
       after(() => processOutbox(siteUrl(req.nextUrl.origin)).then(() => dispatchPush()));
     } else if (b.action === "reschedule") {
       const { checkIn: ci, checkOut: co } = b;
-      if (!isISO(ci) || !isISO(co) || co <= ci || ci < todayISO() || nightsBetween(ci, co) > 30) return fail(400, "INVALID_DATES");
+      if (!isISO(ci) || !isISO(co) || co <= ci || ci < operationDay(req) || nightsBetween(ci, co) > 30) return fail(400, "INVALID_DATES");
       const [{ types, units }, seasons, depositPct] = await Promise.all([loadCabinTypes(sb), loadSeasons(sb, { activeOnly: true }), loadDepositPct(sb)]);
       const type = types.find((t) => t.id === current.cabin_type_id)!;
       const occ = await loadOccupancy(sb, ci, addDays(co, -1), type.id);

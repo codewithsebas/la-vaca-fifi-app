@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server";
-import { fail, json, readJson, requireStaff, route } from "@/lib/server/http";
+import { fail, json, readJson, requireStaff, syncRoute } from "@/lib/server/http";
 import type { PanelUser, ProfileInput } from "@/lib/types";
 
 // PUT /api/admin/profile { name?, password? } → el perfil propio: nombre y contraseña nueva. Devuelve { me }.
-export const PUT = route(async (req: NextRequest) => {
+export const PUT = syncRoute(async (req: NextRequest) => {
   const { sb, me, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<ProfileInput>(req);

@@ -24,6 +24,7 @@ export async function loadSiteContent(sb: Db): Promise<SiteContent> {
     sb.from("site_services").select("id, title, description, icon, note, visible").order("sort").order("created_at").throwOnError(),
   ]);
   return {
+    version: s?.version,
     settings: s
       ? {
           checkInStart: s.check_in_start.slice(0, 5),

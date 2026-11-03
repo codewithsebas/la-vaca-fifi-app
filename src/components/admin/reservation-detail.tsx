@@ -43,6 +43,8 @@ import { BathroomWarning } from "@/components/admin/bathrooms";
 import { initialsOf } from "@/components/admin/calendar/shared";
 import { ProofCard } from "@/components/admin/proofs";
 import { paths } from "@/components/admin/routes";
+import { SyncMark } from "@/components/admin/sync";
+import { useRouteParam } from "@/components/admin/route-param";
 import { EMAIL_KIND, TRUST, type ConfirmCfg, adminInput, fmtDeadline } from "@/components/admin/shared";
 import {
   ACCENT,
@@ -71,6 +73,10 @@ type Action = { label: string; primary: boolean; danger: boolean; disabled?: str
 type ActionId = "checkin" | "checkout" | "cancel" | "reschedule";
 
 /* ───────────── Página y modal ───────────── */
+
+export function ReservationRoute() {
+  return <ReservationDetail code={useRouteParam().toUpperCase()} />;
+}
 
 export function ReservationDetail({ code }: { code: string }) {
   const { data } = useAdmin();
@@ -244,6 +250,7 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
   const badges = (
     <div className="flex flex-wrap items-center gap-2">
       <StatusPill status={r.status} size="sm" />
+      <SyncMark entity={`reservations:${r.code}`} />
       {r.source === "panel" && <Badge tone="neutral">Creada por el equipo</Badge>}
       {r.source === "import" && <Badge tone="neutral">{`Importada${r.channel ? ` · ${r.channel}` : ""}`}</Badge>}
       {pendingProof && (

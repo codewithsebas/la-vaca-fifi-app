@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useState } from "react";
+import type { SyncEngine } from "@/lib/offline/engine";
 import type { AdminData, CabinType } from "@/lib/types";
 import type { LiveStatus } from "@/components/admin/notifications";
 import type { Ask } from "@/components/admin/shared";
@@ -19,6 +20,7 @@ export type AdminCtx = {
   onAuthError: () => void;
   logout: () => void;
   live: LiveStatus;
+  sync: SyncEngine | null; // motor de sincronización; null si el panel sin conexión no está activo
   today: string;
   now: number;
   cabin: (id: string) => CabinType | undefined;

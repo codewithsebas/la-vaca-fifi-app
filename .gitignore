@@ -41,3 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude
+# lista de archivos para el service worker (scripts/build.mjs)
+/public/sw-assets.json
+
+# pruebas de punta a punta
+/test-results
+/playwright-report

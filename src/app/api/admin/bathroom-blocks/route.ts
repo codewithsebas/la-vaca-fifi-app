@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { BATHROOM_BLOCK_REASONS } from "@/lib/booking";
 import { isISO, nightsBetween } from "@/lib/format";
 import { type Db, isExclusionViolation, loadBathrooms } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, requireStaff, route } from "@/lib/server/http";
+import { baseVersionOf, fail, json, readJson, requireAdmin, requireStaff, staleOrMissing, syncRoute } from "@/lib/server/http";
 import type { BathroomBlockInput } from "@/lib/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,13 +19,18 @@ function validate(b: BathroomBlockInput | null) {
 const answer = async (sb: Db) => json(await loadBathrooms(sb));
 
 // POST /api/admin/bathroom-blocks { bathroomId, from, to, reason, notes } → bloquea un baño (hasta `to` incluido).
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireStaff();
   if (error) return error;
-  const v = validate(await readJson<BathroomBlockInput>(req));
+  const b = await readJson<BathroomBlockInput>(req);
+  const v = validate(b);
   if (v.error) return v.error;
+  if (b?.id !== undefined && !UUID.test(String(b.id))) return fail(400, "INVALID_BODY");
   try {
-    await sb.from("bathroom_blocks").insert(v.row).throwOnError();
+    await sb
+      .from("bathroom_blocks")
+      .insert({ ...v.row, ...(b?.id && { id: b.id }) })
+      .throwOnError();
   } catch (e) {
     if (isExclusionViolation(e)) return fail(409, "BLOCK_OVERLAP");
     throw e;
@@ -34,7 +39,7 @@ export const POST = route(async (req: NextRequest) => {
 });
 
 // PUT /api/admin/bathroom-blocks { id, bathroomId, from, to, reason, notes } → edita un bloqueo.
-export const PUT = route(async (req: NextRequest) => {
+export const PUT = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<BathroomBlockInput>(req);
@@ -42,8 +47,11 @@ export const PUT = route(async (req: NextRequest) => {
   const v = validate(b);
   if (v.error) return v.error;
   try {
-    const { data } = await sb.from("bathroom_blocks").update(v.row).eq("id", b.id!).select("id").throwOnError();
-    if (!data.length) return fail(404, "NOT_FOUND");
+    const base = baseVersionOf(req);
+    let q = sb.from("bathroom_blocks").update(v.row).eq("id", b.id!);
+    if (base !== null) q = q.eq("version", base);
+    const { data } = await q.select("id").throwOnError();
+    if (!data.length) return staleOrMissing(sb, "bathroom_blocks", "id", b.id!, base);
   } catch (e) {
     if (isExclusionViolation(e)) return fail(409, "BLOCK_OVERLAP");
     throw e;
@@ -52,11 +60,18 @@ export const PUT = route(async (req: NextRequest) => {
 });
 
 // DELETE /api/admin/bathroom-blocks?id=<uuid> → solo administradores.
-export const DELETE = route(async (req: NextRequest) => {
+export const DELETE = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("delete");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id") ?? "";
   if (!UUID.test(id)) return fail(400, "INVALID_ID");
-  await sb.from("bathroom_blocks").delete().eq("id", id).throwOnError();
+  const base = baseVersionOf(req);
+  let q = sb.from("bathroom_blocks").delete().eq("id", id);
+  if (base !== null) q = q.eq("version", base);
+  const { data } = await q.select("id").throwOnError();
+  if (!data.length && base !== null) {
+    const res = await staleOrMissing(sb, "bathroom_blocks", "id", id, base);
+    if (res.status === 409) return res;
+  }
   return answer(sb);
 });

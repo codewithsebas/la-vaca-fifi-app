@@ -46,6 +46,7 @@ import {
   Tabs,
   type Tone,
 } from "@/components/admin/ui";
+import { SyncMark } from "@/components/admin/sync";
 
 type Filter = "vigentes" | "finalizados" | "todos";
 type View = "cabanas" | "banos";
@@ -231,6 +232,7 @@ export function BlocksView() {
                             <Badge tone={st.tone} icon={st.order === 0 ? <ClockIcon size={11} /> : undefined}>
                               {st.label}
                             </Badge>
+                            <SyncMark entity={`blocks:${b.id}`} />
                           </p>
                           <p className="text-[13px] text-ink-muted">
                             {fmtDate(b.from, true)} → {fmtDate(b.to, true)} · {plural(days, "día", "días")}

@@ -1,6 +1,6 @@
 import { after, type NextRequest } from "next/server";
 import { toProof } from "@/lib/server/db";
-import { businessError, fail, json, readJson, requireStaff, route } from "@/lib/server/http";
+import { baseVersionOf, businessError, fail, json, occurredAtOf, opIdOf, readJson, requireStaff, route, syncRoute } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
 import { siteUrl } from "@/lib/server/site";
@@ -25,7 +25,7 @@ export const GET = route(async (req: NextRequest) => {
 // POST /api/admin/proofs { id, decision, note, confirmReservation } → aprueba o rechaza.
 // Aprobar con confirmReservation registra el abono como pago recibido y confirma la reserva (si estaba pendiente o vencida),
 // con las mismas reglas que un pago registrado desde la ficha (y el mismo correo de confirmación).
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, uid, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<ProofReview>(req);
@@ -33,8 +33,10 @@ export const POST = route(async (req: NextRequest) => {
   const note = String(b.note ?? "").trim();
   if (note.length > 500 || (b.decision === "reject" && !note)) return fail(422, "VALIDATION_ERROR", { fields: { note: "Explica el motivo del rechazo." } });
 
-  const { data: proof } = await sb.from("payment_proofs").select("reservation_code").eq("id", b.id).maybeSingle().throwOnError();
+  const { data: proof } = await sb.from("payment_proofs").select("reservation_code, version").eq("id", b.id).maybeSingle().throwOnError();
   if (!proof) return fail(404, "NOT_FOUND");
+  const base = baseVersionOf(req);
+  if (base !== null && proof.version !== base) return fail(409, "VERSION_CONFLICT");
 
   const approve = b.decision === "approve";
   if (approve && b.confirmReservation) {
@@ -44,6 +46,8 @@ export const POST = route(async (req: NextRequest) => {
         p_code: proof.reservation_code,
         p_kind: "deposit",
         p_note: "Comprobante de pago aprobado",
+        ...(opIdOf(req) && { p_op_id: opIdOf(req)! }),
+        ...(occurredAtOf(req) && { p_occurred_at: occurredAtOf(req)! }),
       });
       if (payErr) {
         // Una retención vencida pudo perder sus fechas: otra reserva activa ya las ocupa.

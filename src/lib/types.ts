@@ -10,6 +10,7 @@ export type ReservationStatus = "pending_deposit" | "confirmed" | "cancelled" | 
 export type DocType = "CC" | "CE" | "Pasaporte" | "PPT" | "SD";
 
 export type CabinType = {
+  version?: number;
   id: CabinTypeId;
   nombre: string;
   precioPareja: number;
@@ -26,6 +27,7 @@ export type CabinType = {
 
 // Precio por noche distinto en un rango de fechas (noches de `from` a `to`, inclusive).
 export type RateSeason = {
+  version?: number;
   id: string;
   cabinTypeId: CabinTypeId;
   nombre: string;
@@ -133,6 +135,7 @@ export type EmailRecord = {
 export type ProofStatus = "pending" | "approved" | "rejected";
 
 export type PaymentProof = {
+  version?: number;
   id: string;
   reservationCode: string;
   fileName: string;
@@ -146,6 +149,7 @@ export type PaymentProof = {
 };
 
 export type Reservation = ReservationInput & {
+  version?: number;
   code: string;
   unit: number;
   status: ReservationStatus;
@@ -168,6 +172,8 @@ export type Reservation = ReservationInput & {
 // Cuerpo de POST /admin/reservations: reserva tomada por el equipo. Queda retenida hasta que el equipo registre el abono
 // (holdMinutes, como máximo hasta el día de llegada).
 export type ManualReservationInput = {
+  code?: string; // generado en el navegador (reservas creadas sin conexión)
+  expectedTotal?: number; // el valor que vio quien la creó sin conexión
   cabinTypeId: CabinTypeId;
   unit: number | null; // null: la primera libre (como en la web)
   checkIn: string;
@@ -193,6 +199,7 @@ export type PublicReservation = Pick<
 > & { guestFirstName?: string; payments?: PublicPayment[]; liveKey?: string; serverNow?: string };
 
 export type Block = {
+  version?: number;
   id: string;
   cabinTypeId: CabinTypeId;
   unit: number;
@@ -202,7 +209,8 @@ export type Block = {
   notes: string;
 };
 
-export type BlockInput = Omit<Block, "id" | "unit"> & { unit: number | "all" };
+// `ids`: identificadores generados en el navegador, uno por unidad afectada (operaciones sin conexión).
+export type BlockInput = Omit<Block, "id" | "unit" | "version"> & { unit: number | "all"; ids?: string[] };
 
 export type Rates = Partial<Record<CabinTypeId, { precioPareja: number; personaAdicional: number; maxPersonas: number }>>;
 
@@ -213,6 +221,7 @@ export type Severity = "leve" | "moderada" | "grave";
 export type ClientEntry = { id: number; kind: "note" | "incident"; severity: Severity | null; text: string; reservationCode: string | null; createdAt: string };
 
 export type ClientProfile = {
+  version?: number;
   clientKey: string;
   rating: number | null;
   trust: Trust;
@@ -247,6 +256,7 @@ export type AdminNotification = {
 };
 
 export type AdminData = {
+  cursor?: string; // desde dónde pedir cambios (lib/offline)
   reservations: Reservation[];
   blocks: Block[];
   cabinTypes: CabinType[]; // todas, activas e inactivas
@@ -280,6 +290,7 @@ export type ProfileInput = { name?: string; password?: string };
 export type BathroomStatus = "available" | "unavailable" | "maintenance";
 // cabinTypeId y unit: la cabaña a la que pertenece (opcional; sin ella es un baño compartido).
 export type Bathroom = {
+  version?: number;
   id: string;
   name: string;
   status: BathroomStatus;
@@ -289,8 +300,8 @@ export type Bathroom = {
   statusUpdatedAt: string;
 };
 export type BathroomInput = { id?: string; name?: string; status?: BathroomStatus; cabinTypeId?: CabinTypeId | null; unit?: number | null; notes?: string };
-export type BathroomBlock = { id: string; bathroomId: string; from: string; to: string; reason: string; notes: string };
-export type BathroomBlockInput = Omit<BathroomBlock, "id"> & { id?: string };
+export type BathroomBlock = { version?: number; id: string; bathroomId: string; from: string; to: string; reason: string; notes: string };
+export type BathroomBlockInput = Omit<BathroomBlock, "id" | "version"> & { id?: string };
 
 /* ───────────── Importación ───────────── */
 
@@ -331,7 +342,7 @@ export type CabinInput = {
   activa: boolean;
 };
 
-export type SeasonInput = Omit<RateSeason, "id"> & { id?: string };
+export type SeasonInput = Omit<RateSeason, "id" | "version"> & { id?: string };
 
 // Cómo pagó el huésped un pago que registra el equipo.
 export type PayMethod = "cash" | "transfer";
@@ -341,7 +352,8 @@ export type AdminAction =
   // Pago recibido en persona: "confirm" = de una reserva pendiente (la confirma), "balance" = de una ya confirmada.
   // Valor: `full` = todo lo que falta, `amount` = un valor a elección; sin ninguno, el abono (o el saldo). `method` y
   // `note` quedan como detalle del pago.
-  | { code: string; action: "confirm" | "balance"; note?: string; full?: boolean; amount?: number; method?: PayMethod }
+  // `basePaid`: lo pagado que veía quien registró el pago sin conexión; si cambió, el servidor lo advierte (a menos que venga `force`).
+  | { code: string; action: "confirm" | "balance"; note?: string; full?: boolean; amount?: number; method?: PayMethod; basePaid?: number; force?: boolean }
   | { code: string; action: "reschedule"; checkIn: string; checkOut: string }
   // Plazo nuevo para pagar el abono: amplía (o reactiva, si venció) la retención de una reserva sin abono.
   | { code: string; action: "extend_hold"; holdMinutes: number }
@@ -351,6 +363,7 @@ export type AdminAction =
 
 export type ProofReview = { id: string; decision: "approve" | "reject"; note: string; confirmReservation: boolean };
 
-export type ApiResult<T> = { status: number; data: T | null };
+// `queued`: la respuesta la construyó el navegador; el cambio está guardado en este dispositivo, aún sin confirmar (lib/offline).
+export type ApiResult<T> = { status: number; data: T | null; queued?: boolean };
 
 export type FieldErrors = Record<string, string>;

@@ -1,9 +1,8 @@
 import { after, type NextRequest } from "next/server";
 import { computeQuote, normalizePhone, validateManualReservation, withTotal } from "@/lib/booking";
-import { todayISO } from "@/lib/format";
 import { manualDueAt } from "@/lib/payments";
 import { loadPricing, runDeadlines, toReservation } from "@/lib/server/db";
-import { fail, json, readJson, requireStaff, route } from "@/lib/server/http";
+import { fail, json, operationDay, readJson, requireStaff, syncRoute } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { holdReservation } from "@/lib/server/reservations";
 import { siteUrl } from "@/lib/server/site";
@@ -15,7 +14,7 @@ const validation = (fields: Record<string, string>) => fail(422, "VALIDATION_ERR
 // POST /api/admin/reservations → 201 { reservation }. Reserva tomada por el equipo (WhatsApp, teléfono, en persona):
 // retiene la cabaña con las mismas reglas de disponibilidad que la web y queda pendiente de abono hasta el plazo elegido.
 // El equipo registra el abono cuando lo recibe; si no llega a tiempo, las fechas se liberan solas.
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { error } = await requireStaff();
   if (error) return error;
   const b = await readJson<ManualReservationInput>(req);
@@ -26,7 +25,7 @@ export const POST = route(async (req: NextRequest) => {
   await runDeadlines();
   const { types, units, seasons, depositPct } = await loadPricing(sb);
   const input: ManualReservationInput = { ...b, unit: b.unit ?? null, total: b.total ?? null, guest: { ...b.guest, phone: normalizePhone(b.guest.phone) } };
-  const fields = validateManualReservation(input, types, units, todayISO());
+  const fields = validateManualReservation(input, types, units, operationDay(req));
   const due = manualDueAt(input.checkIn, input.holdMinutes);
   if (!fields.checkIn && !fields.holdMinutes && due.tooShort)
     fields.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: registra el pago manualmente.";
@@ -35,6 +34,10 @@ export const POST = route(async (req: NextRequest) => {
   const type = types.find((t) => t.id === input.cabinTypeId)!;
   const { data: settings } = await sb.from("site_settings").select("check_in_start").maybeSingle().throwOnError();
   const quote = computeQuote(type, input.checkIn, input.checkOut, input.adults + input.children, seasons, depositPct);
+  const finalQuote = input.total ? withTotal(quote, input.total, depositPct) : quote;
+  // Creada sin conexión: el usuario le dijo un valor al huésped; si las tarifas cambiaron, lo decide él.
+  if (input.expectedTotal !== undefined && input.expectedTotal !== finalQuote.total) return fail(409, "QUOTE_CHANGED", { total: finalQuote.total });
+  if (input.code !== undefined && !/^VF-[A-Z0-9]{5}$/.test(input.code)) return fail(400, "INVALID_BODY");
   const g = input.guest;
   const held = await holdReservation(
     sb,
@@ -57,12 +60,12 @@ export const POST = route(async (req: NextRequest) => {
       special_requests: (input.specialRequests ?? "").trim(),
       // Reserva tomada por el equipo: el huésped no pasó por los consentimientos de la web.
       consents: { policies: false, dataProcessing: false, marketing: false },
-      quote: input.total ? withTotal(quote, input.total, depositPct) : quote,
+      quote: finalQuote,
       deposit_due_at: due.dueAt,
     },
-    { units: units[type.id] ?? 0, unit: input.unit },
+    { units: units[type.id] ?? 0, unit: input.unit, code: input.code },
   );
-  if (!("row" in held)) return fail(409, "DATES_UNAVAILABLE");
+  if (!("row" in held)) return fail(409, held.error === "ID_TAKEN" ? "ID_TAKEN" : "DATES_UNAVAILABLE");
 
   // La base de datos encoló la «Reserva recibida» para el huésped y el aviso al negocio: salen después de responder.
   after(() => processOutbox(siteUrl(req.nextUrl.origin)));

@@ -9,6 +9,10 @@ import { Brand, BrandName, Logo } from "@/components/brand/logo";
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, InfoIcon, MenuIcon, RefreshIcon, SearchIcon, SettingsIcon, WarningIcon } from "@/components/ui/icons";
 import { useSite } from "@/components/site/site-provider";
 import { api } from "@/lib/client/api";
+import { offlineEnabled } from "@/lib/offline/config";
+import type { SyncEngine } from "@/lib/offline/engine";
+import { precacheShell } from "@/lib/offline/precache";
+import { closeSession, endSession, openSession } from "@/lib/offline/session";
 import { config } from "@/lib/config";
 import { todayISO } from "@/lib/format";
 import { themeCss, type SiteTheme } from "@/lib/theme";
@@ -23,6 +27,7 @@ import { ThemeMenu, useApplyTheme } from "@/components/admin/appearance";
 import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, canOpen, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "@/components/admin/routes";
 import { AccessDenied, AccountMenu } from "@/components/admin/account";
 import { GlobalSearch } from "@/components/admin/global-search";
+import { SyncChip } from "@/components/admin/sync";
 import { type Ask, type ConfirmCfg, adminInput } from "@/components/admin/shared";
 import {
   Breadcrumbs,
@@ -52,7 +57,12 @@ function PanelTheme({ theme }: { theme: SiteTheme }) {
 
 /* ───────────── Acceso ───────────── */
 
-type Gate = { status: "checking" } | { status: "login" } | { status: "error" } | { status: "app"; data: AdminData };
+type Gate =
+  | { status: "checking" }
+  | { status: "login" }
+  | { status: "error"; firstTime?: boolean }
+  | { status: "expired" }
+  | { status: "app"; data: AdminData; engine: SyncEngine | null };
 
 // La sesión la valida el servidor: si /admin/data responde 200 hay sesión de administrador.
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -70,18 +80,38 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
 function Gated({ children }: { children: ReactNode }) {
   const [gate, setGate] = useState<Gate>({ status: "checking" });
-  const check = useCallback(
-    () =>
+  const check = useCallback(() => {
+    const online = () =>
       api.admin
         .data()
         .then((r) =>
           setGate(
-            r.status === 200 && r.data ? { status: "app", data: r.data } : r.status === 401 || r.status === 403 ? { status: "login" } : { status: "error" },
+            r.status === 200 && r.data
+              ? { status: "app", data: r.data, engine: null }
+              : r.status === 401 || r.status === 403
+                ? { status: "login" }
+                : { status: "error" },
           ),
         )
-        .catch(() => setGate({ status: "error" })),
-    [],
-  );
+        .catch(() => setGate({ status: "error" }));
+    if (!offlineEnabled) return online();
+    // Sin conexión también abre: con lo guardado en este dispositivo por el último usuario validado (lib/offline).
+    return openSession().then(
+      (o) =>
+        setGate(
+          o.status === "app"
+            ? { status: "app", data: o.engine.data, engine: o.engine }
+            : o.status === "error"
+              ? { status: "error", firstTime: o.firstTime }
+              : { status: o.status },
+        ),
+      (e) => {
+        // Este navegador no permite guardar datos (IndexedDB bloqueado o sin espacio): el panel sigue funcionando en línea.
+        console.error("[offline] sin almacén local", e);
+        return online();
+      },
+    );
+  }, []);
   const recheck = useCallback(() => {
     setGate({ status: "checking" });
     check();
@@ -90,24 +120,31 @@ function Gated({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     check();
+    return () => closeSession();
   }, [check]);
 
   if (gate.status === "checking") return <PanelLoader />;
   if (gate.status === "login") return <Login onSuccess={recheck} />;
-  if (gate.status === "error")
+  if (gate.status === "error" || gate.status === "expired")
     return (
       <div className="admin-surface grid min-h-dvh place-items-center bg-canvas px-4">
         <div className="w-full max-w-[460px]">
           <ErrorState
-            title="No pudimos abrir el panel"
-            text="Revisa tu conexión a internet. Si el problema sigue, el servidor puede estar en mantenimiento."
+            title={gate.status === "expired" ? "Conéctate para seguir" : "No pudimos abrir el panel"}
+            text={
+              gate.status === "expired"
+                ? "Pasaron muchos días sin validar tu sesión con el servidor. Conéctate a internet para volver a abrir el panel en este dispositivo."
+                : gate.firstTime
+                  ? "La primera vez en este dispositivo necesitas internet para descargar los datos. Después, el panel también funciona sin conexión."
+                  : "Revisa tu conexión a internet. Si el problema sigue, el servidor puede estar en mantenimiento."
+            }
             onRetry={recheck}
           />
         </div>
       </div>
     );
   return (
-    <Panel initialData={gate.data} onLoggedOut={loggedOut}>
+    <Panel initialData={gate.data} engine={gate.engine} onLoggedOut={loggedOut}>
       {children}
     </Panel>
   );
@@ -431,7 +468,17 @@ function LegacyRedirect() {
 
 /* ───────────── Panel ───────────── */
 
-function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData; onLoggedOut: () => void; children: ReactNode }) {
+function Panel({
+  initialData,
+  engine,
+  onLoggedOut,
+  children,
+}: {
+  initialData: AdminData;
+  engine: SyncEngine | null;
+  onLoggedOut: () => void;
+  children: ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [data, setDataState] = useState<AdminData>(initialData);
@@ -448,13 +495,19 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
   const mod = moduleOf(pathname);
 
   const setData = useCallback((fn: (d: AdminData) => AdminData) => setDataState(fn), []);
-  const showToast = useCallback((text: string, kind: "ok" | "error" = "ok", action?: ToastMsg["action"]) => {
-    const id = Date.now() + Math.random();
-    setToast({ id, text, kind, action });
-    setTimeout(() => setToast((t) => (t?.id === id ? null : t)), action ? 6000 : 3600);
-  }, []);
+  const showToast = useCallback(
+    (text: string, kind: "ok" | "error" = "ok", action?: ToastMsg["action"]) => {
+      const id = Date.now() + Math.random();
+      // El módulo dice qué pasó; aquí se aclara que aún no llegó al servidor, sin que cada módulo tenga que saberlo.
+      const local = kind === "ok" && !!engine && Date.now() - engine.lastQueuedAt < 2000;
+      setToast({ id, text: local ? `${text} · Guardado en este dispositivo` : text, kind, action });
+      setTimeout(() => setToast((t) => (t?.id === id ? null : t)), action ? 6000 : 3600);
+    },
+    [engine],
+  );
 
   const load = useCallback(async () => {
+    if (engine) return engine.sync();
     try {
       const r = await api.admin.data();
       if (r.status === 401 || r.status === 403) return onLoggedOut();
@@ -464,7 +517,27 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
     } catch {
       setLoadError(true);
     }
-  }, [onLoggedOut]);
+  }, [engine, onLoggedOut]);
+
+  // La proyección del motor es la fuente de los datos: cambia con cada escritura, cada entrega del servidor y otras pestañas.
+  useEffect(() => {
+    if (!engine) return;
+    engine.setOnAuthLost(onLoggedOut);
+    const unsubscribe = engine.subscribe(() => setDataState(engine.data));
+    // Lo que cambió entre abrir el motor y este momento.
+    void Promise.resolve().then(() => setDataState(engine.data));
+    if (engine.status.network === "online") void precacheShell();
+    return unsubscribe;
+  }, [engine, onLoggedOut]);
+
+  // Un 401 o 403 de un módulo: si la sesión sigue bien, era falta de permiso, y eso no saca del panel ni descarta nada.
+  const authError = useCallback(() => {
+    if (!engine) return onLoggedOut();
+    void api.admin.ping().then(
+      (r) => (r.status === 200 ? showToast("Tu cuenta no tiene permiso para esta acción.", "error") : onLoggedOut()),
+      () => showToast("Sin conexión: no se pudo comprobar tu sesión.", "error"),
+    );
+  }, [engine, onLoggedOut, showToast]);
 
   // Varios cambios seguidos (tiempo real) se agrupan en una sola recarga.
   const scheduleReload = useCallback(() => {
@@ -541,7 +614,10 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
     setConfirm({ ...cf, busy: true, error: "" });
     try {
       const r = await cf.run(cf);
-      if (r.status === 401 || r.status === 403) return onLoggedOut();
+      if (r.status === 401 || r.status === 403) {
+        setConfirm(null);
+        return authError();
+      }
       if (r.status >= 400) {
         const { fields } = (r.data as { fields?: Record<string, string> } | null) ?? {};
         const msg = fields
@@ -562,9 +638,29 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
     }
   }
 
-  const logout = useCallback(() => {
-    api.admin.logout().finally(onLoggedOut);
-  }, [onLoggedOut]);
+  const logout = useCallback(async () => {
+    if (!engine) return void api.admin.logout().finally(onLoggedOut);
+    const me = engine.me.id;
+    const out = () => endSession(me, () => api.admin.logout()).finally(onLoggedOut);
+    await engine.sync();
+    const unsent = engine.list();
+    if (!unsent.length) return void out();
+    // Cerrar sesión borra este dispositivo: lo que no se ha enviado se pierde, y eso se decide viéndolo.
+    setConfirm({
+      title: `Tienes ${unsent.length} ${unsent.length === 1 ? "cambio" : "cambios"} sin sincronizar`,
+      text: "Si cierras sesión ahora se borran de este dispositivo y no se pueden recuperar. Vuelve atrás para sincronizar primero.",
+      details: unsent.slice(0, 6).map((o, i) => ({ k: String(i + 1), v: o.label })),
+      okLabel: "Descartar y cerrar sesión",
+      danger: true,
+      done: "Sesión cerrada",
+      run: async () => {
+        await out();
+        return { status: 200, data: null };
+      },
+      error: "",
+      busy: false,
+    });
+  }, [engine, onLoggedOut]);
 
   const cabinMap = useMemo(() => new Map(data.cabinTypes.map((c) => [c.id, c])), [data.cabinTypes]);
   const ctx: AdminCtx = {
@@ -575,9 +671,10 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
     toast: showToast,
     go,
     openReservation,
-    onAuthError: onLoggedOut,
+    onAuthError: authError,
     logout,
     live,
+    sync: engine,
     today,
     now,
     cabin: (id) => cabinMap.get(id),
@@ -623,6 +720,7 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
                   </Link>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <SyncChip compact />
                   <ThemeMenu compact />
                   <IconButton
                     label={searching ? "Cerrar la búsqueda" : "Buscar"}
@@ -647,6 +745,7 @@ function Panel({ initialData, onLoggedOut, children }: { initialData: AdminData;
             <header className="admin-surface sticky top-0 z-20 hidden flex-none items-center gap-4 bg-canvas/85 px-8 pt-4 pb-3 backdrop-blur-md lg:flex">
               <GlobalSearch className="w-full max-w-[620px]" />
               <div className="ml-auto flex items-center gap-2">
+                <SyncChip />
                 <ThemeMenu />
                 <NotificationCenter />
                 <SettingsLink />

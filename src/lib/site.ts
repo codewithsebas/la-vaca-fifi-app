@@ -31,6 +31,7 @@ export type SiteService = { id: string; title: string; description: string; icon
 export const SERVICE_LIMITS = { title: 60, description: 160, note: 30, max: 40 };
 
 export type SiteContent = {
+  version?: number;
   settings: SiteSettings;
   policies: SitePolicy[];
   photos: Record<string, string>; // slot → URL pública

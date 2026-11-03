@@ -34,7 +34,8 @@ import { useAdmin, useParam } from "@/components/admin/context";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { EmailComposer, hasEmail } from "@/components/admin/email-composer";
 import { Facts } from "@/components/admin/reservation-detail";
-import { MODULES, paths } from "@/components/admin/routes";
+import { MODULES, clientKeyOf, paths } from "@/components/admin/routes";
+import { useRouteParam } from "@/components/admin/route-param";
 import { TRUST, adminInput, norm } from "@/components/admin/shared";
 import {
   Badge,
@@ -323,6 +324,10 @@ const SEVERITY: Record<Severity, { label: string; tone: Tone }> = {
   moderada: { label: "Moderada", tone: "warning" },
   grave: { label: "Grave", tone: "danger" },
 };
+
+export function ClientRoute() {
+  return <ClientDetail clientKey={clientKeyOf(useRouteParam()) ?? ""} />;
+}
 
 export function ClientDetail({ clientKey }: { clientKey: string }) {
   const c = useClients().find((x) => x.key === clientKey);

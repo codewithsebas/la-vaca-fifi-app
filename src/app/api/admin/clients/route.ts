@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { type Db, loadClients } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, requireStaff, route } from "@/lib/server/http";
+import { baseVersionOf, fail, json, opIdOf, readJson, requireAdmin, requireStaff, syncRoute } from "@/lib/server/http";
 import type { ClientProfileInput } from "@/lib/types";
 
 // Valoración interna: exclusivamente administrativa. Ninguna ruta pública lee estas tablas.
@@ -18,7 +18,7 @@ async function knownClient(sb: Db, key: unknown) {
 const profile = async (sb: Db, key: string) => json((await loadClients(sb, key))[key] ?? null);
 
 // PUT /api/admin/clients { clientKey, rating, trust, tags, preferences, summary } → guarda la valoración.
-export const PUT = route(async (req: NextRequest) => {
+export const PUT = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<ClientProfileInput & { clientKey: string }>(req);
@@ -31,6 +31,11 @@ export const PUT = route(async (req: NextRequest) => {
   if (tags.length > 20 || tags.some((t) => t.length > 30)) errors.tags = "Hasta 20 etiquetas de máximo 30 caracteres.";
   if (String(b.preferences ?? "").length > 2000 || String(b.summary ?? "").length > 2000) errors.text = "Los textos admiten hasta 2000 caracteres.";
   if (Object.keys(errors).length) return fail(422, "VALIDATION_ERROR", { fields: errors });
+  const base = baseVersionOf(req);
+  if (base !== null) {
+    const { data: current } = await sb.from("client_profiles").select("version").eq("client_key", key).maybeSingle().throwOnError();
+    if (current && current.version !== base) return fail(409, "VERSION_CONFLICT");
+  }
   await sb
     .from("client_profiles")
     .upsert({
@@ -46,7 +51,7 @@ export const PUT = route(async (req: NextRequest) => {
 });
 
 // POST /api/admin/clients { clientKey, kind: "note" | "incident", severity, text, reservationCode } → agrega un registro.
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<{ clientKey: string; kind: string; severity: string | null; text: string; reservationCode: string | null }>(req);
@@ -62,15 +67,17 @@ export const POST = route(async (req: NextRequest) => {
     code = data?.code ?? null;
   }
   await sb.from("client_profiles").upsert({ client_key: key }, { onConflict: "client_key", ignoreDuplicates: true }).throwOnError();
-  await sb
+  // Repetir la misma operación no agrega otro registro (client_op_id es único).
+  const opId = opIdOf(req);
+  const { error: insErr } = await sb
     .from("client_entries")
-    .insert({ client_key: key, kind: b.kind, severity: incident ? b.severity : null, text, reservation_code: code })
-    .throwOnError();
+    .insert({ client_key: key, kind: b.kind, severity: incident ? b.severity : null, text, reservation_code: code, client_op_id: opId });
+  if (insErr && insErr.code !== "23505") throw insErr;
   return profile(sb, key);
 });
 
 // DELETE /api/admin/clients?entry=<id> → borra un registro.
-export const DELETE = route(async (req: NextRequest) => {
+export const DELETE = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("delete");
   if (error) return error;
   const id = Number(req.nextUrl.searchParams.get("entry"));

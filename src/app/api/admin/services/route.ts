@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import type { Db } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { baseVersionOf, fail, json, opIdOf, readJson, requireAdmin, staleOrMissing, syncRoute } from "@/lib/server/http";
 import { isServiceIcon } from "@/lib/service-icons";
 import { SERVICE_LIMITS, type SiteService } from "@/lib/site";
 
@@ -41,7 +41,7 @@ async function done(sb: Db) {
 }
 
 // POST /api/admin/services { title, description, icon, note, visible } → crea al final de la lista.
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const b = await readJson<Input>(req);
@@ -52,26 +52,29 @@ export const POST = route(async (req: NextRequest) => {
   if (last.length >= SERVICE_LIMITS.max) return fail(422, "VALIDATION_ERROR", { fields: { title: `Puedes tener hasta ${SERVICE_LIMITS.max} servicios.` } });
   await sb
     .from("site_services")
-    .insert({ ...p.fields, sort: (last[0]?.sort ?? 0) + 1 })
+    .insert({ ...p.fields, sort: (last[0]?.sort ?? 0) + 1, ...(opIdOf(req) && typeof b.id === "string" && UUID.test(b.id) && { id: b.id }) })
     .throwOnError();
   return done(sb);
 });
 
 // PUT /api/admin/services { id, title, description, icon, note, visible } → edita (también mostrar u ocultar).
-export const PUT = route(async (req: NextRequest) => {
+export const PUT = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const b = await readJson<Input>(req);
   if (!b || typeof b.id !== "string" || !UUID.test(b.id)) return fail(400, "INVALID_BODY");
   const p = parse(b);
   if ("errors" in p) return fail(422, "VALIDATION_ERROR", { fields: p.errors });
-  const { data } = await sb.from("site_services").update(p.fields).eq("id", b.id).select("id").throwOnError();
-  if (!data.length) return fail(404, "NOT_FOUND");
+  const base = baseVersionOf(req);
+  let q = sb.from("site_services").update(p.fields).eq("id", b.id);
+  if (base !== null) q = q.eq("version", base);
+  const { data } = await q.select("id").throwOnError();
+  if (!data.length) return staleOrMissing(sb, "site_services", "id", b.id, base);
   return done(sb);
 });
 
 // PATCH /api/admin/services { order: [id, …] } → nuevo orden.
-export const PATCH = route(async (req: NextRequest) => {
+export const PATCH = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const b = await readJson<Input>(req);
@@ -90,7 +93,7 @@ export const PATCH = route(async (req: NextRequest) => {
 });
 
 // DELETE /api/admin/services?id=… → elimina.
-export const DELETE = route(async (req: NextRequest) => {
+export const DELETE = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id");

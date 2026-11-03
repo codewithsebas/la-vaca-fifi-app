@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
-import { fail, json, requireAdmin, route } from "@/lib/server/http";
+import { fail, json, requireAdmin, syncRoute } from "@/lib/server/http";
 import { loadSiteContent, PHOTO_BUCKET } from "@/lib/server/site";
 import { PHOTO_SLOTS } from "@/lib/site";
 
@@ -10,7 +10,7 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const isSlot = (slot: unknown): slot is string => typeof slot === "string" && PHOTO_SLOTS.some((s) => s.id === slot);
 
 // POST /api/admin/photos (multipart: slot, file) → sube la foto a Storage y la asigna al hueco.
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const form = await req.formData().catch(() => null);
@@ -35,7 +35,7 @@ export const POST = route(async (req: NextRequest) => {
 });
 
 // DELETE /api/admin/photos?slot=<hueco> → quita la foto (vuelve el marcador).
-export const DELETE = route(async (req: NextRequest) => {
+export const DELETE = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const slot = req.nextUrl.searchParams.get("slot");

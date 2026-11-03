@@ -11,6 +11,7 @@ import {
   IdCardIcon,
   ListIcon,
   ReceiptIcon,
+  RefreshIcon,
   SlidersIcon,
   SpreadsheetIcon,
   TagIcon,
@@ -38,6 +39,7 @@ export type ModuleId =
   | "contenido"
   | "empleados"
   | "configuracion"
+  | "sincronizacion"
   | "perfil";
 
 // `perm`: el permiso que exige (sin él, el módulo no aparece en el menú y su página muestra «sin acceso»).
@@ -151,6 +153,14 @@ export const MODULES: Record<ModuleId, Module> = {
     icon: SlidersIcon,
     group: "Administración",
     description: "Apariencia, sonido, tiempo real y preferencias de este navegador.",
+    nav: false,
+  },
+  sincronizacion: {
+    label: "Sincronización",
+    href: "/admin/sincronizacion",
+    icon: RefreshIcon,
+    group: "Administración",
+    description: "Lo que está guardado en este dispositivo y lo que hay que revisar.",
     nav: false,
   },
   perfil: {
@@ -271,6 +281,7 @@ export const paths = {
   contenido: (section?: ContentSectionId) => (section ? `/admin/contenido/${section}` : "/admin/contenido"),
   notificaciones: (q?: Query) => withQuery("/admin/notificaciones", q),
   configuracion: "/admin/configuracion",
+  sincronizacion: "/admin/sincronizacion",
   importar: "/admin/importar",
   empleados: "/admin/empleados",
   perfil: "/admin/perfil",

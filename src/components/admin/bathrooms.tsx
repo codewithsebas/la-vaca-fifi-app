@@ -17,6 +17,7 @@ import { DateRangePicker, type DayMark } from "@/components/admin/date-picker";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { paths } from "@/components/admin/routes";
 import { adminInput } from "@/components/admin/shared";
+import { SyncMark } from "@/components/admin/sync";
 import {
   Badge,
   Button,
@@ -265,6 +266,7 @@ export function BathroomsPanel() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14.5px] font-bold text-ink">{b.name}</p>
+                      <SyncMark entity={`bathrooms:${b.id}`} />
                       <p className="flex items-center gap-1.5 text-[12.5px] text-ink-muted">
                         <HomeIcon size={12} />
                         {where(b)}
@@ -718,6 +720,7 @@ export function CabinBathrooms({ cabinTypeId }: { cabinTypeId: string }) {
                   )}
                 </span>
                 <BathroomStatusBadge status={b.status} />
+                <SyncMark entity={`bathrooms:${b.id}`} />
               </p>
               <StatusPicker b={b} />
               {(data.bathroomBlocks ?? [])

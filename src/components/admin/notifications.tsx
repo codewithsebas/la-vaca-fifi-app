@@ -84,6 +84,7 @@ export function useRealtime(handlers: { onNotification: (n: AdminNotification) =
         .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "email_outbox" }, changed)
         .on("postgres_changes", { event: "*", schema: "public", table: "blocks" }, changed)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "sync_changes" }, changed)
         .subscribe(
           (st) => alive && setStatus(st === "SUBSCRIBED" ? "live" : st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED" ? "offline" : "connecting"),
         );

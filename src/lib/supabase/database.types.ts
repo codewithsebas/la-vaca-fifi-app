@@ -90,6 +90,7 @@ export type Database = {
           notes: string
           reason: string
           to_date: string
+          version: number
         }
         Insert: {
           bathroom_id: string
@@ -99,6 +100,7 @@ export type Database = {
           notes?: string
           reason: string
           to_date: string
+          version?: number
         }
         Update: {
           bathroom_id?: string
@@ -108,6 +110,7 @@ export type Database = {
           notes?: string
           reason?: string
           to_date?: string
+          version?: number
         }
         Relationships: [
           {
@@ -130,6 +133,7 @@ export type Database = {
           status_updated_at: string
           unit: number | null
           updated_at: string
+          version: number
         }
         Insert: {
           cabin_type_id?: string | null
@@ -141,6 +145,7 @@ export type Database = {
           status_updated_at?: string
           unit?: number | null
           updated_at?: string
+          version?: number
         }
         Update: {
           cabin_type_id?: string | null
@@ -152,6 +157,7 @@ export type Database = {
           status_updated_at?: string
           unit?: number | null
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -175,6 +181,7 @@ export type Database = {
           to_date: string
           unit: number
           updated_at: string
+          version: number
         }
         Insert: {
           cabin_type_id: string
@@ -187,6 +194,7 @@ export type Database = {
           to_date: string
           unit: number
           updated_at?: string
+          version?: number
         }
         Update: {
           cabin_type_id?: string
@@ -199,6 +207,7 @@ export type Database = {
           to_date?: string
           unit?: number
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -226,6 +235,7 @@ export type Database = {
           sort: number
           units: number
           updated_at: string
+          version: number
         }
         Insert: {
           activa?: boolean
@@ -242,6 +252,7 @@ export type Database = {
           sort?: number
           units: number
           updated_at?: string
+          version?: number
         }
         Update: {
           activa?: boolean
@@ -258,12 +269,14 @@ export type Database = {
           sort?: number
           units?: number
           updated_at?: string
+          version?: number
         }
         Relationships: []
       }
       client_entries: {
         Row: {
           client_key: string
+          client_op_id: string | null
           created_at: string
           created_by: string | null
           id: number
@@ -274,6 +287,7 @@ export type Database = {
         }
         Insert: {
           client_key: string
+          client_op_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: never
@@ -284,6 +298,7 @@ export type Database = {
         }
         Update: {
           client_key?: string
+          client_op_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: never
@@ -319,6 +334,7 @@ export type Database = {
           tags: string[]
           trust: string
           updated_at: string
+          version: number
         }
         Insert: {
           client_key: string
@@ -329,6 +345,7 @@ export type Database = {
           tags?: string[]
           trust?: string
           updated_at?: string
+          version?: number
         }
         Update: {
           client_key?: string
@@ -339,6 +356,7 @@ export type Database = {
           tags?: string[]
           trust?: string
           updated_at?: string
+          version?: number
         }
         Relationships: []
       }
@@ -421,6 +439,7 @@ export type Database = {
           reviewed_by: string | null
           size: number
           status: string
+          version: number
         }
         Insert: {
           created_at?: string
@@ -435,6 +454,7 @@ export type Database = {
           reviewed_by?: string | null
           size: number
           status?: string
+          version?: number
         }
         Update: {
           created_at?: string
@@ -449,6 +469,7 @@ export type Database = {
           reviewed_by?: string | null
           size?: number
           status?: string
+          version?: number
         }
         Relationships: [
           {
@@ -464,6 +485,7 @@ export type Database = {
         Row: {
           amount: number
           approved_at: string | null
+          client_op_id: string | null
           created_at: string
           created_by: string | null
           currency: string
@@ -481,6 +503,7 @@ export type Database = {
         Insert: {
           amount: number
           approved_at?: string | null
+          client_op_id?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -498,6 +521,7 @@ export type Database = {
         Update: {
           amount?: number
           approved_at?: string | null
+          client_op_id?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -570,6 +594,7 @@ export type Database = {
           precio_pareja: number
           to_date: string
           updated_at: string
+          version: number
         }
         Insert: {
           activa?: boolean
@@ -582,6 +607,7 @@ export type Database = {
           precio_pareja: number
           to_date: string
           updated_at?: string
+          version?: number
         }
         Update: {
           activa?: boolean
@@ -594,6 +620,7 @@ export type Database = {
           precio_pareja?: number
           to_date?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -607,6 +634,7 @@ export type Database = {
       }
       reservation_notes: {
         Row: {
+          client_op_id: string | null
           created_at: string
           created_by: string | null
           id: number
@@ -614,6 +642,7 @@ export type Database = {
           text: string
         }
         Insert: {
+          client_op_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: never
@@ -621,6 +650,7 @@ export type Database = {
           text: string
         }
         Update: {
+          client_op_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: never
@@ -673,6 +703,7 @@ export type Database = {
           status: Database["public"]["Enums"]["reservation_status"]
           unit: number
           updated_at: string
+          version: number
         }
         Insert: {
           adults: number
@@ -709,6 +740,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["reservation_status"]
           unit: number
           updated_at?: string
+          version?: number
         }
         Update: {
           adults?: number
@@ -745,6 +777,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["reservation_status"]
           unit?: number
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -808,6 +841,7 @@ export type Database = {
           sort: number
           title: string
           updated_at: string
+          version: number
           visible: boolean
         }
         Insert: {
@@ -819,6 +853,7 @@ export type Database = {
           sort?: number
           title: string
           updated_at?: string
+          version?: number
           visible?: boolean
         }
         Update: {
@@ -830,6 +865,7 @@ export type Database = {
           sort?: number
           title?: string
           updated_at?: string
+          version?: number
           visible?: boolean
         }
         Relationships: []
@@ -846,6 +882,7 @@ export type Database = {
           rnt: string
           theme: Json
           updated_at: string
+          version: number
           whatsapp: string
         }
         Insert: {
@@ -859,6 +896,7 @@ export type Database = {
           rnt?: string
           theme?: Json
           updated_at?: string
+          version?: number
           whatsapp: string
         }
         Update: {
@@ -872,7 +910,65 @@ export type Database = {
           rnt?: string
           theme?: Json
           updated_at?: string
+          version?: number
           whatsapp?: string
+        }
+        Relationships: []
+      }
+      sync_changes: {
+        Row: {
+          changed_at: string
+          collection: string
+          op: string
+          row_key: string
+          seq: number
+          tx: unknown
+        }
+        Insert: {
+          changed_at?: string
+          collection: string
+          op: string
+          row_key: string
+          seq?: never
+          tx?: unknown
+        }
+        Update: {
+          changed_at?: string
+          collection?: string
+          op?: string
+          row_key?: string
+          seq?: never
+          tx?: unknown
+        }
+        Relationships: []
+      }
+      sync_ops: {
+        Row: {
+          finished_at: string | null
+          http_status: number | null
+          op_id: string
+          op_type: string
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          finished_at?: string | null
+          http_status?: number | null
+          op_id: string
+          op_type?: string
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          finished_at?: string | null
+          http_status?: number | null
+          op_id?: string
+          op_type?: string
+          started_at?: string
+          status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -889,17 +985,22 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       panel_role: { Args: never; Returns: string }
+      purge_sync_log: { Args: never; Returns: undefined }
       register_manual_payment: {
         Args: {
           p_amount?: number
           p_code: string
           p_kind: Database["public"]["Enums"]["payment_kind"]
           p_note?: string
+          p_occurred_at?: string
+          p_op_id?: string
         }
         Returns: Json
       }
       request_email_dispatch: { Args: never; Returns: undefined }
       run_payment_deadlines: { Args: never; Returns: undefined }
+      sync_cursor: { Args: never; Returns: string }
+      sync_pull: { Args: { p_cursor: string; p_limit?: number }; Returns: Json }
     }
     Enums: {
       payment_kind: "deposit" | "balance" | "full"

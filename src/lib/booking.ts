@@ -16,6 +16,19 @@ import type {
 
 export const ACTIVE_STATUSES: ReservationStatus[] = ["pending_deposit", "confirmed", "rescheduled", "checked_in"];
 
+// Desde qué estados aplica cada acción del panel, y a cuál lleva (la API y el panel sin conexión validan lo mismo).
+export const TRANSITIONS: Record<string, { from: ReservationStatus[]; to?: ReservationStatus }> = {
+  confirm: { from: ["pending_deposit", "expired"] },
+  balance: { from: ["confirmed", "rescheduled", "checked_in"] },
+  checkin: { from: ["confirmed", "rescheduled"], to: "checked_in" },
+  checkout: { from: ["checked_in"], to: "completed" },
+  cancel: { from: ["pending_deposit", "confirmed", "rescheduled"], to: "cancelled" },
+  reschedule: { from: ["pending_deposit", "confirmed", "rescheduled"] },
+  extend_hold: { from: ["pending_deposit", "expired"] },
+  note: { from: ["pending_deposit", "confirmed", "cancelled", "expired", "rescheduled", "checked_in", "completed"] },
+  guest: { from: ["pending_deposit", "confirmed", "cancelled", "expired", "rescheduled", "checked_in", "completed"] },
+};
+
 // Motivos de bloqueo ("Otro" exige una descripción).
 export const BLOCK_REASONS = ["Mantenimiento", "Uso propio", "Evento privado", "Otro"];
 // Motivos de bloqueo de un baño ("Otro" exige una descripción).

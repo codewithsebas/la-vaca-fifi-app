@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { isISO, nightsBetween } from "@/lib/format";
 import { type Db, isExclusionViolation, loadSeasons } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { baseVersionOf, fail, json, readJson, requireAdmin, staleOrMissing, syncRoute } from "@/lib/server/http";
 import type { SeasonInput } from "@/lib/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -55,14 +55,21 @@ async function save(req: NextRequest, mode: "create" | "update") {
   const { sb, error } = await requireAdmin("rates");
   if (error) return error;
   const b = await readJson<SeasonInput>(req);
-  if (mode === "update" && !UUID.test(String(b?.id))) return fail(400, "INVALID_ID");
+  if ((mode === "update" || b?.id !== undefined) && !UUID.test(String(b?.id))) return fail(400, "INVALID_ID");
   const v = await clean(sb, b);
   if (v.errors) return fail(422, "VALIDATION_ERROR", { fields: v.errors });
   try {
-    if (mode === "create") await sb.from("rate_seasons").insert(v.row).throwOnError();
+    if (mode === "create")
+      await sb
+        .from("rate_seasons")
+        .insert({ ...v.row, ...(b!.id && { id: b!.id }) })
+        .throwOnError();
     else {
-      const { data } = await sb.from("rate_seasons").update(v.row).eq("id", b!.id!).select("id").throwOnError();
-      if (!data.length) return fail(404, "NOT_FOUND");
+      const base = baseVersionOf(req);
+      let q = sb.from("rate_seasons").update(v.row).eq("id", b!.id!);
+      if (base !== null) q = q.eq("version", base);
+      const { data } = await q.select("id").throwOnError();
+      if (!data.length) return staleOrMissing(sb, "rate_seasons", "id", b!.id!, base);
     }
   } catch (e) {
     if (isExclusionViolation(e))
@@ -73,15 +80,22 @@ async function save(req: NextRequest, mode: "create" | "update") {
 }
 
 // POST /api/admin/seasons → crea una temporada; PUT → la edita (incluye activarla o pausarla).
-export const POST = route((req: NextRequest) => save(req, "create"));
-export const PUT = route((req: NextRequest) => save(req, "update"));
+export const POST = syncRoute((req: NextRequest) => save(req, "create"));
+export const PUT = syncRoute((req: NextRequest) => save(req, "update"));
 
 // DELETE /api/admin/seasons?id= → elimina. Las reservas ya hechas conservan su cotización.
-export const DELETE = route(async (req: NextRequest) => {
+export const DELETE = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("rates");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id") ?? "";
   if (!UUID.test(id)) return fail(400, "INVALID_ID");
-  await sb.from("rate_seasons").delete().eq("id", id).throwOnError();
+  const base = baseVersionOf(req);
+  let q = sb.from("rate_seasons").delete().eq("id", id);
+  if (base !== null) q = q.eq("version", base);
+  const { data } = await q.select("id").throwOnError();
+  if (!data.length && base !== null) {
+    const res = await staleOrMissing(sb, "rate_seasons", "id", id, base);
+    if (res.status === 409) return res;
+  }
   return done(sb);
 });

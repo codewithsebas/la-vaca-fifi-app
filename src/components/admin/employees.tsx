@@ -21,6 +21,7 @@ import { ROLE_HINT, ROLE_LABEL } from "@/lib/permissions";
 import { fmtDate, dateOf, timeAgo } from "@/lib/format";
 import type { ApiResult, Employee, EmployeeInput, PanelRole } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
+import { useSyncStatus } from "@/components/admin/sync";
 import { MODULES } from "@/components/admin/routes";
 import { Avatar, RoleBadge, RoleCapabilities, displayName } from "@/components/admin/account";
 import { Paginator, usePaged } from "@/components/admin/paginator";
@@ -37,6 +38,7 @@ import {
   IconButton,
   Modal,
   ModalPresence,
+  Callout,
   PageHeader,
   Segmented,
   Skeleton,
@@ -63,7 +65,8 @@ function newPassword() {
 }
 
 export function EmployeesView() {
-  const { data, ask, onAuthError, now } = useAdmin();
+  const { sync, data, ask, onAuthError, now } = useAdmin();
+  const offline = useSyncStatus(sync).network === "offline";
   const [list, setList] = useState<Employee[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [editing, setEditing] = useState<Draft | null>(null);
@@ -149,6 +152,9 @@ export function EmployeesView() {
 
   return (
     <>
+      {offline && (
+        <Callout tone="warning">Sin conexión puedes consultar el equipo, pero crear o cambiar cuentas, roles y contraseñas requiere internet.</Callout>
+      )}
       <PageHeader
         title={MODULES.empleados.label}
         description="Cada persona del equipo entra con su propio correo y contraseña. El rol decide qué puede ver y hacer en el panel."

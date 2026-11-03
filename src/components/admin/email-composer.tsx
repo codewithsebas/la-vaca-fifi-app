@@ -111,6 +111,12 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
       if (r.status === 422 && (body as ApiError | null)?.error === "NO_EMAIL") return setError("Este cliente no tiene un correo válido registrado.");
       if ((r.status !== 200 && r.status !== 201) || !body || !("status" in body)) throw 0;
       store(body);
+      if (body.status === "pending") {
+        toast(`Correo para ${email}: saldrá al sincronizar`);
+        setRequestId(newRequestId());
+        onClose();
+        return;
+      }
       if (body.status === "sent") {
         toast(`Correo enviado a ${email}`);
         setRequestId(newRequestId());

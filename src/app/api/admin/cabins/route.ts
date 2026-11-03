@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { ACTIVE_STATUSES, slugify } from "@/lib/booking";
 import { todayISO } from "@/lib/format";
 import { type Db, loadCabinTypes } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { baseVersionOf, fail, json, opIdOf, readJson, requireAdmin, staleOrMissing, syncRoute } from "@/lib/server/http";
 import { PHOTO_BUCKET } from "@/lib/server/site";
 import type { CabinInput } from "@/lib/types";
 
@@ -44,7 +44,7 @@ const done = async (sb: Db) => {
 };
 
 // POST /api/admin/cabins → crea una cabaña (el id sale del nombre y no cambia después).
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const b = await readJson<CabinInput>(req);
@@ -52,6 +52,8 @@ export const POST = route(async (req: NextRequest) => {
   if (v.errors) return fail(422, "VALIDATION_ERROR", { fields: v.errors });
   const { rows } = await loadCabinTypes(sb);
   const base = slugify(b!.id || v.row.nombre) || "cabana";
+  // Una cabaña creada sin conexión ya tiene su id en el dispositivo (y quizá fotos en cola): no se cambia en silencio.
+  if (opIdOf(req) && b!.id && (rows.some((r) => r.id === base) || base !== b!.id)) return fail(409, "ID_TAKEN");
   let id = base;
   // "nueva" es la ruta del panel para crear una cabaña (/admin/cabanas/nueva): no puede ser un id.
   for (let i = 2; rows.some((r) => r.id === id) || id === "nueva"; i++) id = `${base}-${i}`.slice(0, 40);
@@ -64,7 +66,7 @@ export const POST = route(async (req: NextRequest) => {
 });
 
 // PUT /api/admin/cabins { id, ...datos } → edita. No deja reducir unidades que tienen reservas o bloqueos vigentes.
-export const PUT = route(async (req: NextRequest) => {
+export const PUT = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const b = await readJson<CabinInput & { id: string }>(req);
@@ -94,12 +96,16 @@ export const PUT = route(async (req: NextRequest) => {
         },
       });
   }
-  await sb.from("cabin_types").update(v.row).eq("id", id).throwOnError();
+  const version = baseVersionOf(req);
+  let q = sb.from("cabin_types").update(v.row).eq("id", id);
+  if (version !== null) q = q.eq("version", version);
+  const { data: changed } = await q.select("id").throwOnError();
+  if (!changed.length) return staleOrMissing(sb, "cabin_types", "id", id, version);
   return done(sb);
 });
 
 // PATCH /api/admin/cabins { order: [ids] } → nuevo orden en el sitio y en el panel.
-export const PATCH = route(async (req: NextRequest) => {
+export const PATCH = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const b = await readJson<{ order: string[] }>(req);
@@ -116,7 +122,7 @@ export const PATCH = route(async (req: NextRequest) => {
 });
 
 // DELETE /api/admin/cabins?id= → solo si nunca tuvo reservas (si las tuvo, se desactiva en su lugar).
-export const DELETE = route(async (req: NextRequest) => {
+export const DELETE = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("cabins");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id") ?? "";

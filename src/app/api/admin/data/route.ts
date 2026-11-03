@@ -22,6 +22,8 @@ export const GET = route(async (req: NextRequest) => {
   const { sb, me, error } = await requireStaff();
   if (error) return error;
   await runDeadlines();
+  // El cursor se pide antes de leer: lo que cambie durante la lectura se entrega en la siguiente sincronización.
+  const { data: cursor } = await sb.rpc("sync_cursor").throwOnError();
   const [
     { data: reservations },
     { data: blocks },
@@ -52,6 +54,7 @@ export const GET = route(async (req: NextRequest) => {
   // Avisos que aún no salieron como notificación push (p. ej. los del cron, si la base de datos no pudo avisar a la app).
   after(dispatchPush);
   return json({
+    cursor,
     reservations: reservations.map(toReservation),
     blocks: blocks.map(toBlock),
     cabinTypes: types,

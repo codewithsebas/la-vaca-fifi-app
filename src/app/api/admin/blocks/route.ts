@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { ACTIVE_STATUSES, BLOCK_REASONS } from "@/lib/booking";
 import { isISO, nightsBetween } from "@/lib/format";
 import { type Db, isExclusionViolation, loadCabinTypes, toBlock } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, requireStaff, route } from "@/lib/server/http";
+import { baseVersionOf, fail, json, readJson, requireAdmin, requireStaff, staleOrMissing, syncRoute } from "@/lib/server/http";
 import type { BlockInput } from "@/lib/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -42,7 +42,7 @@ async function clashes(sb: Db, cabinTypeId: string, units: number[], from: strin
 }
 
 // POST /api/admin/blocks { cabinTypeId, unit | "all", from, to, reason, notes } → bloquea fechas (hasta `to` incluido).
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<BlockInput>(req);
@@ -50,8 +50,11 @@ export const POST = route(async (req: NextRequest) => {
   if (v.error) return v.error;
   const conflicts = await clashes(sb, b!.cabinTypeId, v.units, b!.from, b!.to);
   if (conflicts.length) return fail(409, "RESERVATION_CONFLICT", { conflicts });
-  const rows = v.units.map((unit) => ({
-    id: randomUUID(),
+  // Identificadores generados en el navegador (bloqueos creados sin conexión), uno por unidad.
+  const ids = Array.isArray(b!.ids) ? b!.ids.map(String) : null;
+  if (ids && (ids.length !== v.units.length || ids.some((id) => !UUID.test(id)))) return fail(400, "INVALID_BODY");
+  const rows = v.units.map((unit, i) => ({
+    id: ids?.[i] ?? randomUUID(),
     cabin_type_id: b!.cabinTypeId,
     unit,
     from_date: b!.from,
@@ -69,7 +72,7 @@ export const POST = route(async (req: NextRequest) => {
 });
 
 // PUT /api/admin/blocks { id, cabinTypeId, unit, from, to, reason, notes } → edita un bloqueo.
-export const PUT = route(async (req: NextRequest) => {
+export const PUT = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<BlockInput & { id: string }>(req);
@@ -79,13 +82,14 @@ export const PUT = route(async (req: NextRequest) => {
   const conflicts = await clashes(sb, b.cabinTypeId, v.units, b.from, b.to);
   if (conflicts.length) return fail(409, "RESERVATION_CONFLICT", { conflicts });
   try {
-    const { data } = await sb
+    const base = baseVersionOf(req);
+    let q = sb
       .from("blocks")
       .update({ cabin_type_id: b.cabinTypeId, unit: v.units[0], from_date: b.from, to_date: b.to, reason: b.reason, notes: v.notes })
-      .eq("id", b.id)
-      .select("id")
-      .throwOnError();
-    if (!data.length) return fail(404, "NOT_FOUND");
+      .eq("id", b.id);
+    if (base !== null) q = q.eq("version", base);
+    const { data } = await q.select("id").throwOnError();
+    if (!data.length) return staleOrMissing(sb, "blocks", "id", b.id, base);
   } catch (e) {
     if (isExclusionViolation(e)) return fail(409, "BLOCK_OVERLAP");
     throw e;
@@ -94,11 +98,19 @@ export const PUT = route(async (req: NextRequest) => {
 });
 
 // DELETE /api/admin/blocks?id=<uuid>
-export const DELETE = route(async (req: NextRequest) => {
+export const DELETE = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("delete");
   if (error) return error;
   const id = req.nextUrl.searchParams.get("id") ?? "";
   if (!UUID.test(id)) return fail(400, "INVALID_ID");
-  await sb.from("blocks").delete().eq("id", id).throwOnError();
+  const base = baseVersionOf(req);
+  let q = sb.from("blocks").delete().eq("id", id);
+  if (base !== null) q = q.eq("version", base);
+  const { data } = await q.select("id").throwOnError();
+  // Ya no existía: el resultado es el que se quería. Si existe con otra versión, alguien la cambió.
+  if (!data.length && base !== null) {
+    const res = await staleOrMissing(sb, "blocks", "id", id, base);
+    if (res.status === 409) return res;
+  }
   return json(await allBlocks(sb));
 });

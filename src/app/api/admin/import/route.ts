@@ -3,7 +3,7 @@ import { importDocNumber, invalidImportRow, newReservationCode } from "@/lib/boo
 import { config } from "@/lib/config";
 import { nightsBetween } from "@/lib/format";
 import { loadCabinTypes } from "@/lib/server/db";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { fail, json, readJson, requireAdmin, syncRoute } from "@/lib/server/http";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { TablesInsert } from "@/lib/supabase/database.types";
 import type { ImportResult, ImportRow, Quote } from "@/lib/types";
@@ -13,7 +13,7 @@ const MAX_ROWS = 500;
 // POST /api/admin/import { rows: ImportRow[] } → crea las reservas de un archivo, una por fila. Cada fila responde por
 // separado: creada (con su código), ya importada (misma referencia), fechas ocupadas en esa cabaña o datos no válidos.
 // Entran confirmadas (o finalizadas / canceladas), sin pagos registrados; el equipo registra los pagos después.
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { error } = await requireAdmin("import");
   if (error) return error;
   const b = await readJson<{ rows?: ImportRow[] }>(req);

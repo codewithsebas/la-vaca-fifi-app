@@ -40,8 +40,9 @@ import { photoUrl } from "@/lib/server/site";
 export type Db = SupabaseClient<Database>;
 type ReservationRow = Tables<"reservations">;
 
-function toCabinType(row: Tables<"cabin_types">): CabinType {
+export function toCabinType(row: Tables<"cabin_types">): CabinType {
   return {
+    version: row.version,
     id: row.id,
     nombre: row.nombre,
     precioPareja: row.precio_pareja,
@@ -67,7 +68,8 @@ export async function loadCabinTypes(sb: Db, { activeOnly = false } = {}) {
   return { rows, types: rows.map(toCabinType), units };
 }
 
-const toSeason = (s: Tables<"rate_seasons">): RateSeason => ({
+export const toSeason = (s: Tables<"rate_seasons">): RateSeason => ({
+  version: s.version,
   id: s.id,
   cabinTypeId: s.cabin_type_id,
   nombre: s.nombre,
@@ -194,6 +196,7 @@ export async function publicView(sb: Db, r: ReservationRow): Promise<PublicReser
 export function toReservation(r: ReservationRow & { reservation_notes?: { text: string; created_at: string }[] }): Reservation {
   return {
     ...toPublic(r),
+    version: r.version,
     unit: r.unit,
     adults: r.adults,
     children: r.children,
@@ -221,6 +224,7 @@ export function toReservation(r: ReservationRow & { reservation_notes?: { text: 
 }
 
 export const toBathroom = (b: Tables<"bathrooms">): Bathroom => ({
+  version: b.version,
   id: b.id,
   name: b.name,
   status: b.status as BathroomStatus,
@@ -231,6 +235,7 @@ export const toBathroom = (b: Tables<"bathrooms">): Bathroom => ({
 });
 
 export const toBathroomBlock = (b: Tables<"bathroom_blocks">): BathroomBlock => ({
+  version: b.version,
   id: b.id,
   bathroomId: b.bathroom_id,
   from: b.from_date,
@@ -254,10 +259,11 @@ export async function loadBathrooms(sb: Db): Promise<{ bathrooms: Bathroom[]; bl
 }
 
 export function toBlock(b: Tables<"blocks">): Block {
-  return { id: b.id, cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date, reason: b.reason, notes: b.notes };
+  return { version: b.version, id: b.id, cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date, reason: b.reason, notes: b.notes };
 }
 
 export const toProof = (p: Tables<"payment_proofs">): PaymentProof => ({
+  version: p.version,
   id: p.id,
   reservationCode: p.reservation_code,
   fileName: p.file_name,
@@ -290,13 +296,14 @@ const toEntry = (e: Tables<"client_entries">): ClientEntry => ({
 });
 
 // Perfiles internos de clientes con sus registros, indexados por client_key.
-export async function loadClients(sb: Db, clientKey?: string) {
+export async function loadClients(sb: Db, clientKey?: string | string[]) {
   let pq = sb.from("client_profiles").select("*, client_entries(*)");
-  if (clientKey) pq = pq.eq("client_key", clientKey);
+  if (clientKey) pq = Array.isArray(clientKey) ? pq.in("client_key", clientKey) : pq.eq("client_key", clientKey);
   const { data } = await pq.throwOnError();
   const out: Record<string, ClientProfile> = {};
   for (const p of data) {
     out[p.client_key] = {
+      version: p.version,
       clientKey: p.client_key,
       rating: p.rating,
       trust: p.trust as Trust,

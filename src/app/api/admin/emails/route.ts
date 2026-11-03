@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { toEmail } from "@/lib/server/db";
-import { fail, json, readJson, requireStaff, route } from "@/lib/server/http";
+import { fail, json, readJson, requireStaff, route, syncRoute } from "@/lib/server/http";
 import { mailConfigured, processOutbox } from "@/lib/server/mailer";
 import { siteUrl } from "@/lib/server/site";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -24,7 +24,7 @@ export const GET = route(async () => {
 //     `requestId` (UUID del intento en el navegador) hace la solicitud idempotente: repetirla nunca envía dos correos.
 //   { action: "retry", id } → reintenta ya un correo que falló.
 // Responde con el registro del correo (status "sent" o "failed" con el motivo); el resultado queda en la bandeja.
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, uid, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<Body>(req);

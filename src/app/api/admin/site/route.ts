@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
-import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
+import { baseVersionOf, fail, json, readJson, requireAdmin, syncRoute } from "@/lib/server/http";
 import { loadSiteContent } from "@/lib/server/site";
 import { TEXT_LIMITS, mergeTexts } from "@/lib/site";
 import { THEME_KEYS, mergeTheme, normalizeHex } from "@/lib/theme";
@@ -13,7 +13,7 @@ const URL_OK = /^https:\/\/[^\s]+$/;
 
 // PUT /api/admin/site { settings, policies, content, theme } → horarios, contacto, RNT, políticas, textos y colores. Regenera todo el sitio.
 // El abono y las instrucciones de pago no se tocan aquí: tienen su página (Condiciones de pago, /api/admin/payment-terms).
-export const PUT = route(async (req: NextRequest) => {
+export const PUT = syncRoute(async (req: NextRequest) => {
   const { sb, error } = await requireAdmin("content");
   if (error) return error;
   const b = await readJson<SiteInput>(req);
@@ -69,7 +69,9 @@ export const PUT = route(async (req: NextRequest) => {
   if (Object.keys(errors).length) return fail(422, "VALIDATION_ERROR", { fields: errors });
 
   // Las instrucciones de pago guardadas se conservan (las edita Condiciones de pago).
-  const { data: current } = await sb.from("site_settings").select("content").maybeSingle().throwOnError();
+  const { data: current } = await sb.from("site_settings").select("content, version").maybeSingle().throwOnError();
+  const base = baseVersionOf(req);
+  if (base !== null && current && current.version !== base) return fail(409, "VERSION_CONFLICT");
   texts.payment = mergeTexts(current?.content).payment;
 
   await sb

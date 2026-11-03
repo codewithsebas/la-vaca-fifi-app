@@ -14,6 +14,7 @@ import { NewReservationDialog } from "@/components/admin/new-reservation";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { MODULES, paths } from "@/components/admin/routes";
 import { adminInput, norm, rowOf } from "@/components/admin/shared";
+import { SyncMark } from "@/components/admin/sync";
 import { Badge, Button, Card, EmptyState, Field, ModalPresence, PageHeader } from "@/components/admin/ui";
 
 // Un solo filtro de estado: los estados de la reserva y dos vistas de trabajo (comprobantes por revisar, próximas llegadas).
@@ -241,7 +242,10 @@ export function ReservationsView() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <StatusPill status={r.status} size="sm" />
+                        <span className="flex flex-col items-start gap-1">
+                          <StatusPill status={r.status} size="sm" />
+                          <SyncMark entity={`reservations:${r.code}`} />
+                        </span>
                       </td>
                       <td className="pr-3 text-ink-subtle">
                         <ChevronRightIcon size={16} className="transition-transform duration-150 motion-safe:group-hover:translate-x-0.5" />
@@ -273,6 +277,7 @@ export function ReservationsView() {
                       {proofCodes.has(r.code) ? <Badge tone="info">Comprobante por revisar</Badge> : <Badge tone={pay.tone}>{pay.label}</Badge>}
                       <strong className="font-semibold text-ink tabular-nums">{x.total}</strong>
                     </span>
+                    <SyncMark entity={`reservations:${r.code}`} />
                   </Link>
                 </li>
               );

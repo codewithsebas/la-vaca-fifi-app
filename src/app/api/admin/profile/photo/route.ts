@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { fail, json, requireStaff, route } from "@/lib/server/http";
+import { fail, json, requireStaff, syncRoute } from "@/lib/server/http";
 import { PHOTO_BUCKET, photoUrl } from "@/lib/server/site";
 import type { Db } from "@/lib/server/db";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -23,7 +23,7 @@ async function setAvatar(sb: Db, uid: string, path: string | null) {
 }
 
 // POST /api/admin/profile/photo (multipart: file) → sube la foto (ya recortada en el navegador). Devuelve { me }.
-export const POST = route(async (req: NextRequest) => {
+export const POST = syncRoute(async (req: NextRequest) => {
   const { sb, uid, me, error } = await requireStaff();
   if (error) return error;
   if (!uid) return fail(401, "UNAUTHORIZED");
@@ -44,7 +44,7 @@ export const POST = route(async (req: NextRequest) => {
 });
 
 // DELETE /api/admin/profile/photo → quita la foto (vuelven las iniciales). Devuelve { me }.
-export const DELETE = route(async () => {
+export const DELETE = syncRoute(async () => {
   const { sb, uid, me, error } = await requireStaff();
   if (error) return error;
   if (!uid) return fail(401, "UNAUTHORIZED");

@@ -30,6 +30,7 @@ import type { CabinInput, CabinType } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { CabinBathrooms, cabinBathroomAlerts } from "@/components/admin/bathrooms";
 import { MODULES, paths } from "@/components/admin/routes";
+import { useRouteParam } from "@/components/admin/route-param";
 import { useTip } from "@/components/ui/floating";
 import { adminInput } from "@/components/admin/shared";
 import { themeStyle } from "@/components/admin/theme";
@@ -259,6 +260,10 @@ const EMPTY: CabinInput = {
 };
 
 // Crear (sin id) o editar una cabaña.
+export function CabinRoute() {
+  return <CabinEditor id={useRouteParam()} />;
+}
+
 export function CabinEditor({ id }: { id?: string }) {
   const { data, setData, toast, go, onAuthError } = useAdmin();
   const current = id ? data.cabinTypes.find((c) => c.id === id) : null;
