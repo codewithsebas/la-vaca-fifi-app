@@ -205,6 +205,20 @@ const KIND: Record<NotificationKind, { icon: typeof BellIcon; tone: string; grou
 const OTHER = { icon: BellIcon, tone: "bg-panel text-ink-muted", group: groupOf("") };
 const kindOf = (n: AdminNotification) => KIND[n.kind] ?? OTHER;
 
+// Gesto del icono al pasar el mouse por el aviso (globals.css), según qué icono lleva.
+const GESTURE = new Map<typeof BellIcon, string>([
+  [LoginIcon, "enter"],
+  [CloseIcon, "close"],
+  [WalletIcon, "tilt"],
+  [MailIcon, "mail"],
+  [ClockIcon, "clock"],
+  [FileTextIcon, "tilt"],
+  [CheckIcon, "pop"],
+  [AlertIcon, "swing"],
+  [BellIcon, "bell"],
+]);
+const gestureOf = (icon: typeof BellIcon) => GESTURE.get(icon) ?? "tilt";
+
 type Reminder = { key: string; icon: typeof BellIcon; tone: string; title: string; body: string; code: string };
 
 // Situaciones que piden atención ahora (se calculan con los datos; no se guardan).
@@ -275,9 +289,10 @@ function ReminderList({ items, onPick }: { items: Reminder[]; onPick: (code: str
           <button
             type="button"
             onClick={() => onPick(r.code)}
+            data-notice={gestureOf(r.icon)}
             className="flex w-full items-start gap-3 rounded-[14px] px-2.5 py-2 text-left transition-colors hover:bg-panel"
           >
-            <span aria-hidden="true" className={`grid size-8 flex-none place-items-center rounded-full ${r.tone}`}>
+            <span aria-hidden="true" data-notice-icon className={`grid size-8 flex-none place-items-center rounded-full ${r.tone}`}>
               <r.icon size={15} />
             </span>
             <span className="min-w-0 flex-1">
@@ -318,6 +333,7 @@ export function NotificationCenter() {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={unread.length ? `Notificaciones, ${unread.length} sin leer` : "Notificaciones"}
+        data-gesture="bell"
         onClick={() => setOpen(!open)}
         className="relative grid size-10 flex-none place-items-center rounded-full bg-ink text-paper transition-[background-color,transform] duration-150 hover:bg-ink/85 motion-safe:active:scale-[.97] pointer-coarse:size-11"
       >
@@ -382,9 +398,10 @@ export function NotificationCenter() {
                       <button
                         type="button"
                         onClick={() => pick(n.reservationCode, n.readAt ? undefined : n.id)}
+                        data-notice={gestureOf(k.icon)}
                         className="flex w-full items-start gap-3 rounded-[14px] px-2.5 py-2.5 text-left transition-colors hover:bg-panel"
                       >
-                        <span aria-hidden="true" className={`grid size-8 flex-none place-items-center rounded-full ${k.tone}`}>
+                        <span aria-hidden="true" data-notice-icon className={`grid size-8 flex-none place-items-center rounded-full ${k.tone}`}>
                           <k.icon size={15} />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -516,8 +533,8 @@ export function NotificationsView() {
                 {items.map((n) => {
                   const k = kindOf(n);
                   return (
-                    <li key={n.id} className={`flex items-start gap-3 px-4 py-3 ${n.readAt ? "" : "bg-pink/12"}`}>
-                      <span aria-hidden="true" className={`mt-0.5 grid size-9 flex-none place-items-center rounded-full ${k.tone}`}>
+                    <li key={n.id} data-notice={gestureOf(k.icon)} className={`flex items-start gap-3 px-4 py-3 ${n.readAt ? "" : "bg-pink/12"}`}>
+                      <span aria-hidden="true" data-notice-icon className={`mt-0.5 grid size-9 flex-none place-items-center rounded-full ${k.tone}`}>
                         <k.icon size={16} />
                       </span>
                       <div className="min-w-0 flex-1">

@@ -198,6 +198,7 @@ export function GlobalSearch({ autoFocus = false, onDone, className = "" }: { au
       <button
         type="submit"
         aria-label="Buscar"
+        data-gesture="search"
         className="grid size-10 flex-none place-items-center rounded-full bg-ink text-paper transition-colors hover:bg-ink/85"
       >
         <SearchIcon size={18} />

@@ -389,6 +389,7 @@ function Sidebar({
           type="button"
           onClick={onToggle}
           aria-label={mini ? "Expandir el menú" : "Contraer el menú"}
+          data-gesture={mini ? "next" : "prev"}
           {...tip(() => <NavTip label={mini ? "Expandir el menú" : "Contraer el menú"} />, SIDE_TIP)}
           aria-expanded={!mini}
           className="absolute top-7.5 -right-3.5 grid size-7 place-items-center rounded-full bg-[#f5d462] text-[#171614] ring-[3px] ring-canvas transition-colors hover:bg-[#e9bf38]"
@@ -423,7 +424,7 @@ function PanelFooter({ className = "" }: { className?: string }) {
 function SettingsLink() {
   const tip = useLabelTip("Configuración");
   return (
-    <Link href={paths.configuracion} aria-label="Configuración" {...tip} className={iconButtonClass("primary")}>
+    <Link href={paths.configuracion} aria-label="Configuración" data-gesture="settings" {...tip} className={iconButtonClass("primary")}>
       <SettingsIcon size={18} />
     </Link>
   );
@@ -707,7 +708,7 @@ function Panel({
 
           <div className={`flex min-w-0 flex-1 flex-col ${fullHeight ? "tall:h-dvh" : ""}`}>
             {/* Móvil y tableta: menú en cajón, marca, búsqueda y notificaciones */}
-            <header className="admin-surface sticky top-0 z-30 flex flex-none flex-col bg-canvas/90 backdrop-blur-md lg:hidden">
+            <header className="admin-surface admin-header sticky top-0 z-30 flex flex-none flex-col lg:hidden">
               <div className="flex h-16 items-center justify-between gap-2 px-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <IconButton label="Abrir el menú" variant="primary" aria-expanded={menu} onClick={() => setMenu(true)}>
@@ -742,7 +743,7 @@ function Panel({
             </header>
 
             {/* Escritorio: búsqueda, apariencia, notificaciones, configuración y cuenta */}
-            <header className="admin-surface sticky top-0 z-20 hidden flex-none items-center gap-4 bg-canvas/85 px-8 pt-4 pb-3 backdrop-blur-md lg:flex">
+            <header className="admin-surface admin-header sticky top-0 z-20 hidden flex-none items-center gap-4 px-8 pt-4 pb-3 lg:flex">
               <GlobalSearch className="w-full max-w-[620px]" />
               <div className="ml-auto flex items-center gap-2">
                 <SyncChip />

@@ -68,6 +68,7 @@ export function ThemeMenu({ compact = false }: { compact?: boolean }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Apariencia: ${current.label}`}
+        data-gesture="theme"
         {...(open ? {} : tip)}
         onClick={() => setOpen(!open)}
         className={compact ? iconButtonClass("secondary") : iconButtonClass("primary")}

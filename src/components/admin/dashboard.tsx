@@ -137,10 +137,10 @@ export function Dashboard() {
             <Button variant="primary" size="lg" className="flex-1" icon={<PlusIcon size={15} />} onClick={() => setCreating(true)}>
               Nueva reserva
             </Button>
-            <IconButton label="Actualizar los datos" variant="secondary" size="lg" onClick={refresh} disabled={refreshing}>
+            <IconButton label="Actualizar los datos" variant="secondary" size="lg" data-gesture="refresh" onClick={refresh} disabled={refreshing}>
               <RefreshIcon size={18} className={refreshing ? "animate-spin-fast" : ""} />
             </IconButton>
-            <Link href={paths.calendario()} aria-label="Abrir el calendario" {...calTip} className={iconButtonClass("secondary", "lg")}>
+            <Link href={paths.calendario()} aria-label="Abrir el calendario" data-gesture="calendar" {...calTip} className={iconButtonClass("secondary", "lg")}>
               <CalendarIcon size={18} />
             </Link>
           </div>

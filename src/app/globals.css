@@ -489,18 +489,18 @@
     --color-chart: #f3efe6;
     --color-series-1: #f3efe6;
     --color-series-2: #e994c0;
-    --color-pink: #4f2a40;
+    --color-pink: #7c2f62;
     --color-pink-soft: #3a2230;
-    --color-pink-deep: #7d4766;
-    --color-yellow: #4a3d14;
+    --color-pink-deep: #a4487f;
+    --color-yellow: #665007;
     --color-yellow-soft: #3a3112;
-    --color-yellow-deep: #7a6421;
-    --color-green: #343d1f;
+    --color-yellow-deep: #856a0c;
+    --color-green: #435914;
     --color-green-soft: #283016;
-    --color-green-deep: #5a6a33;
-    --color-blue: #26314f;
+    --color-green-deep: #58731c;
+    --color-blue: #23478f;
     --color-blue-soft: #1f2840;
-    --color-blue-deep: #3f5288;
+    --color-blue-deep: #4265b6;
     --color-success: #b9cc85;
     --color-success-soft: #2b3419;
     --color-warning: #e9c35f;
@@ -889,133 +889,356 @@
   }
 }
 
-/* Gestos de los iconos del menú del panel y de las figuras de las tarjetas de color. Son transiciones hacia una pose, no
-   animaciones: al entrar o salir a mitad de camino siguen desde donde iban y nunca hay un corte. La vuelta (más corta) se
-   define en el estado normal y la ida, con rebote, en el :hover. Solo las piezas que se mueven llevan transform-origin:
-   los rayos del sol se colocan con un transform propio y cambiárselo los descoloca. Van fuera de @layer para ganarle a
-   transition-colors de los iconos. Sin mouse o con movimiento reducido, todo se queda quieto. */
+/* Fondo del panel: una mancha muy difuminada arriba a la derecha (verde en claro, azul en oscuro), fija al hacer scroll. Es un degradado y no
+   filter: blur(), así no le cuesta nada al navegador. El tono sale del token, por lo que se adapta a claro y oscuro. */
+.admin-root {
+  --glow: color-mix(in srgb, var(--color-green-deep) 38%, transparent);
+  isolation: isolate;
+}
+:root[data-admin-theme="dark"] .admin-root {
+  --glow: color-mix(in srgb, var(--color-blue-deep) 34%, transparent);
+}
+.admin-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(70vw 80vh at 100% 0%, var(--glow), transparent 72%);
+}
+
+/* Encabezado del panel: sin color propio, desenfoca lo que pasa por debajo. El desenfoque va en una capa que se desvanece
+   hacia abajo y hacia el menú lateral, para que no marque un corte recto sobre el contenido. */
+.admin-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -24px;
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: blur(24px);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent), linear-gradient(to right, transparent, #000 32px);
+  mask-composite: intersect;
+}
+@media (max-width: 1023.98px) {
+  .admin-header::before {
+    mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  }
+}
+
+/* Menú del panel: al pasar el mouse (o llegar con el teclado), el icono de cada módulo hace un gesto corto y propio. Los
+   iconos separan en trazos lo que se mueve por aparte. Sin mouse o con movimiento reducido, se quedan quietos. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-nav]:is(:hover, :focus-visible) {
+    svg {
+      overflow: visible;
+    }
+    svg,
+    svg * {
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    &[data-nav="dashboard"] svg > * {
+      animation: ec-nav-pop 0.45s ease-out both;
+    }
+    &[data-nav="dashboard"] svg > :nth-child(2) {
+      animation-delay: 60ms;
+    }
+    &[data-nav="dashboard"] svg > :nth-child(3) {
+      animation-delay: 120ms;
+    }
+    &[data-nav="dashboard"] svg > :nth-child(4) {
+      animation-delay: 180ms;
+    }
+    &[data-nav="calendario"] svg > :nth-child(2) {
+      animation: ec-nav-lift 0.45s ease-in-out both;
+    }
+    &[data-nav="notificaciones"] svg > :nth-child(1) {
+      transform-origin: 50% 0;
+      animation: ec-nav-ring 0.7s ease-in-out both;
+    }
+    &[data-nav="notificaciones"] svg > :nth-child(2) {
+      animation: ec-nav-clap 0.7s ease-in-out both;
+    }
+    &[data-nav="empleados"] svg > :nth-child(2),
+    &[data-nav="empleados"] svg > :nth-child(3) {
+      animation: ec-nav-lift 0.45s ease-in-out both;
+    }
+    &[data-nav="empleados"] svg > :nth-child(4),
+    &[data-nav="empleados"] svg > :nth-child(5) {
+      transform-origin: 0 50%;
+      animation: ec-nav-grow 0.4s ease-out both;
+    }
+    &[data-nav="empleados"] svg > :nth-child(5) {
+      animation-delay: 90ms;
+    }
+    &[data-nav="reservas"] svg > :nth-child(-n + 3) {
+      transform-origin: 0 50%;
+      animation: ec-nav-grow 0.4s ease-out both;
+    }
+    &[data-nav="reservas"] svg > :nth-child(n + 4) {
+      animation: ec-nav-pop 0.4s ease-out both;
+    }
+    &[data-nav="reservas"] svg > :nth-child(3n + 2) {
+      animation-delay: 70ms;
+    }
+    &[data-nav="reservas"] svg > :nth-child(3n) {
+      animation-delay: 140ms;
+    }
+    &[data-nav="pagos"] svg > :nth-child(1) {
+      animation: ec-nav-lift 0.45s ease-in-out both;
+    }
+    &[data-nav="pagos"] svg > :nth-child(n + 2) {
+      transform-origin: 0 50%;
+      animation: ec-nav-grow 0.4s ease-out both;
+    }
+    &[data-nav="pagos"] svg > :nth-child(3) {
+      animation-delay: 70ms;
+    }
+    &[data-nav="pagos"] svg > :nth-child(4) {
+      animation-delay: 140ms;
+    }
+    &[data-nav="clientes"] svg > :nth-child(2) {
+      animation: ec-nav-lift 0.45s ease-in-out both;
+    }
+    &[data-nav="clientes"] svg > :nth-child(3) {
+      animation: ec-nav-peek 0.45s ease-out both;
+    }
+    &[data-nav="importar"] svg > :nth-child(3) {
+      animation: ec-nav-pop 0.45s ease-out both;
+    }
+    &[data-nav="cabanas"] svg {
+      transform-origin: 50% 100%;
+      animation: ec-nav-hop 0.5s ease-in-out both;
+    }
+    &[data-nav="bloqueos"] svg {
+      animation: ec-nav-spin 0.55s ease-in-out both;
+    }
+    &[data-nav="tarifas"] svg {
+      transform-origin: 20% 20%;
+      animation: ec-nav-swing 0.65s ease-in-out both;
+    }
+    &[data-nav="finanzas"] svg > :nth-child(1) {
+      stroke-dasharray: 1;
+      animation: ec-nav-draw 0.5s ease-out both;
+    }
+    &[data-nav="finanzas"] svg > :nth-child(2) {
+      animation: ec-nav-pop-in 0.3s ease-out 0.3s both;
+    }
+    &[data-nav="condiciones"] svg {
+      animation: ec-nav-tilt 0.5s ease-in-out both;
+    }
+  }
+}
+/* Botones de icono del panel (encabezado, buscador, contraer el menú, actualizar y calendario): los mismos gestos. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-gesture]:is(:hover, :focus-visible) {
+    svg {
+      overflow: visible;
+    }
+    svg,
+    svg > * {
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    &[data-gesture="theme"] svg {
+      animation: ec-nav-tilt 0.5s ease-in-out both;
+    }
+    &[data-gesture="bell"] svg > :nth-child(1) {
+      transform-origin: 50% 0;
+      animation: ec-nav-ring 0.7s ease-in-out both;
+    }
+    &[data-gesture="bell"] svg > :nth-child(2) {
+      animation: ec-nav-clap 0.7s ease-in-out both;
+    }
+    &[data-gesture="settings"] svg {
+      animation: ec-nav-spin 0.6s ease-in-out both;
+    }
+    &[data-gesture="search"] svg {
+      animation: ec-nav-search 0.5s ease-in-out both;
+    }
+    &[data-gesture="prev"] svg {
+      animation: ec-nav-prev 0.45s ease-in-out both;
+    }
+    &[data-gesture="next"] svg {
+      animation: ec-nav-next 0.45s ease-in-out both;
+    }
+    /* Mientras actualiza, el icono ya gira con su propia animación. */
+    &[data-gesture="refresh"] svg:not(.animate-spin-fast) {
+      animation: ec-nav-full 0.6s ease-in-out both;
+    }
+    &[data-gesture="calendar"] svg > :nth-child(2) {
+      animation: ec-nav-lift 0.45s ease-in-out both;
+    }
+  }
+}
+/* Avisos de notificaciones: al pasar por el aviso, su icono hace el gesto que le toca. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-notice]:is(:hover, :focus-visible) [data-notice-icon] {
+    svg {
+      overflow: visible;
+    }
+    svg,
+    svg > * {
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+  }
+  [data-notice="enter"]:is(:hover, :focus-visible) [data-notice-icon] svg {
+    animation: ec-nav-next 0.45s ease-in-out both;
+  }
+  [data-notice="close"]:is(:hover, :focus-visible) [data-notice-icon] svg {
+    animation: ec-nav-spin 0.5s ease-in-out both;
+  }
+  [data-notice="tilt"]:is(:hover, :focus-visible) [data-notice-icon] svg {
+    animation: ec-nav-tilt 0.5s ease-in-out both;
+  }
+  [data-notice="mail"]:is(:hover, :focus-visible) [data-notice-icon] svg > :nth-child(2) {
+    animation: ec-nav-lift 0.45s ease-in-out both;
+  }
+  [data-notice="clock"]:is(:hover, :focus-visible) [data-notice-icon] svg > :nth-child(2) {
+    transform-origin: 0 71%;
+    animation: ec-nav-full 0.7s ease-in-out both;
+  }
+  [data-notice="pop"]:is(:hover, :focus-visible) [data-notice-icon] svg {
+    animation: ec-nav-pop 0.45s ease-out both;
+  }
+  [data-notice="swing"]:is(:hover, :focus-visible) [data-notice-icon] svg {
+    animation: ec-nav-swing 0.65s ease-in-out both;
+  }
+  [data-notice="bell"]:is(:hover, :focus-visible) [data-notice-icon] svg > :nth-child(1) {
+    transform-origin: 50% 0;
+    animation: ec-nav-ring 0.7s ease-in-out both;
+  }
+  [data-notice="bell"]:is(:hover, :focus-visible) [data-notice-icon] svg > :nth-child(2) {
+    animation: ec-nav-clap 0.7s ease-in-out both;
+  }
+}
+@keyframes ec-nav-search {
+  40% {
+    transform: translate(-1.5px, -1.5px) scale(1.12);
+  }
+}
+@keyframes ec-nav-prev {
+  40% {
+    transform: translateX(-2.5px);
+  }
+}
+@keyframes ec-nav-next {
+  40% {
+    transform: translateX(2.5px);
+  }
+}
+@keyframes ec-nav-full {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ec-nav-pop {
+  45% {
+    transform: scale(0.7);
+  }
+}
+@keyframes ec-nav-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+@keyframes ec-nav-lift {
+  40% {
+    transform: translateY(-2.5px);
+  }
+}
+@keyframes ec-nav-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes ec-nav-peek {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+@keyframes ec-nav-ring {
+  20% {
+    transform: rotate(14deg);
+  }
+  40% {
+    transform: rotate(-11deg);
+  }
+  60% {
+    transform: rotate(7deg);
+  }
+  80% {
+    transform: rotate(-4deg);
+  }
+}
+@keyframes ec-nav-clap {
+  20% {
+    transform: translateX(-1.5px);
+  }
+  40% {
+    transform: translateX(1.5px);
+  }
+  60% {
+    transform: translateX(-1px);
+  }
+  80% {
+    transform: translateX(0.5px);
+  }
+}
+@keyframes ec-nav-hop {
+  35% {
+    transform: translateY(-3px) scale(0.96, 1.05);
+  }
+  70% {
+    transform: scale(1.05, 0.95);
+  }
+}
+@keyframes ec-nav-spin {
+  to {
+    transform: rotate(180deg);
+  }
+}
+@keyframes ec-nav-swing {
+  25% {
+    transform: rotate(-14deg);
+  }
+  55% {
+    transform: rotate(9deg);
+  }
+  80% {
+    transform: rotate(-4deg);
+  }
+}
+@keyframes ec-nav-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ec-nav-tilt {
+  35% {
+    transform: rotate(-10deg) translateY(-1.5px);
+  }
+  70% {
+    transform: rotate(4deg);
+  }
+}
+
+/* Figuras de las tarjetas de color: transiciones hacia una pose, no animaciones. Al entrar o salir a mitad de camino siguen
+   desde donde iban y nunca hay un corte. La vuelta (más corta) se define en el estado normal y la ida, con rebote, en el
+   :hover. Solo las piezas que se mueven llevan transform-origin: los rayos del sol se colocan con un transform propio y
+   cambiárselo los descoloca. Sin mouse o con movimiento reducido, se quedan quietas. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   :root {
     --pose-in: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     --pose-out: 0.35s ease-out;
   }
 
-  /* Menú del panel */
-  [data-nav] svg {
-    overflow: visible;
-  }
-  [data-nav] svg,
-  [data-nav] svg > * {
-    transform-box: fill-box;
-    transform-origin: center;
-    transition:
-      transform var(--pose-out),
-      color 0.15s;
-  }
-  [data-nav]:is(:hover, :focus-visible) svg,
-  [data-nav]:is(:hover, :focus-visible) svg > * {
-    transition:
-      transform var(--pose-in),
-      color 0.15s;
-  }
-  [data-nav="notificaciones"] svg > :nth-child(1) {
-    transform-origin: 50% 0;
-  }
-  [data-nav="tarifas"] svg {
-    transform-origin: 20% 20%;
-  }
-  [data-nav="cabanas"] svg {
-    transform-origin: 50% 100%;
-  }
-  [data-nav="empleados"] svg > :nth-child(n + 4),
-  [data-nav="reservas"] svg > :nth-child(-n + 3),
-  [data-nav="pagos"] svg > :nth-child(n + 2) {
-    transform-origin: 0 50%;
-  }
-
-  [data-nav]:is(:hover, :focus-visible) {
-    &[data-nav="dashboard"] svg > * {
-      transform: scale(0.8);
-    }
-    &[data-nav="dashboard"] svg > :nth-child(2) {
-      transition-delay: 40ms;
-    }
-    &[data-nav="dashboard"] svg > :nth-child(3) {
-      transition-delay: 80ms;
-    }
-    &[data-nav="dashboard"] svg > :nth-child(4) {
-      transition-delay: 120ms;
-    }
-    &[data-nav="calendario"] svg > :nth-child(2) {
-      transform: translateY(-2px);
-    }
-    &[data-nav="notificaciones"] svg > :nth-child(1) {
-      transform: rotate(12deg);
-    }
-    &[data-nav="notificaciones"] svg > :nth-child(2) {
-      transform: translateX(-2px);
-    }
-    &[data-nav="empleados"] svg > :nth-child(2),
-    &[data-nav="empleados"] svg > :nth-child(3) {
-      transform: translateY(-1.5px);
-    }
-    &[data-nav="empleados"] svg > :nth-child(n + 4) {
-      transform: scaleX(0.6);
-    }
-    &[data-nav="empleados"] svg > :nth-child(5) {
-      transition-delay: 50ms;
-    }
-    &[data-nav="reservas"] svg > :nth-child(-n + 3) {
-      transform: scaleX(0.65);
-    }
-    &[data-nav="reservas"] svg > :nth-child(n + 4) {
-      transform: translateX(1.5px);
-    }
-    &[data-nav="reservas"] svg > :nth-child(3n + 2) {
-      transition-delay: 40ms;
-    }
-    &[data-nav="reservas"] svg > :nth-child(3n) {
-      transition-delay: 80ms;
-    }
-    &[data-nav="pagos"] svg > :nth-child(1) {
-      transform: translateY(-1.5px);
-    }
-    &[data-nav="pagos"] svg > :nth-child(n + 2) {
-      transform: translateY(-1.5px) scaleX(0.65);
-    }
-    &[data-nav="pagos"] svg > :nth-child(3) {
-      transition-delay: 40ms;
-    }
-    &[data-nav="pagos"] svg > :nth-child(4) {
-      transition-delay: 80ms;
-    }
-    &[data-nav="clientes"] svg > :nth-child(2) {
-      transform: translateY(-1.5px);
-    }
-    &[data-nav="clientes"] svg > :nth-child(3) {
-      transform: translateX(2px);
-    }
-    &[data-nav="importar"] svg > :nth-child(3) {
-      transform: scale(0.8);
-    }
-    &[data-nav="cabanas"] svg {
-      transform: translateY(-1.5px) scale(1.08);
-    }
-    &[data-nav="bloqueos"] svg {
-      transform: rotate(180deg);
-    }
-    &[data-nav="tarifas"] svg {
-      transform: rotate(-14deg);
-    }
-    &[data-nav="finanzas"] svg {
-      transform: translate(1.5px, -1.5px) scale(1.08);
-    }
-    &[data-nav="condiciones"] svg {
-      transform: rotate(-10deg) translateY(-1px);
-    }
-  }
-
-  /* Figuras de las tarjetas de color */
   [data-deco],
   [data-deco="sun"] > circle,
   [data-deco="calendar"] > rect {

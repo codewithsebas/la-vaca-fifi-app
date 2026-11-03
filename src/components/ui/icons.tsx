@@ -352,7 +352,8 @@ export const PlayIcon = (p: IconProps) => (
 );
 export const TrendIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
-    <path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6" />
+    <path pathLength={1} d="M22 7l-8.5 8.5-5-5L2 17" />
+    <path d="M16 7h6v6" />
   </Stroke>
 );
 export const MoonIcon = (p: IconProps) => (
