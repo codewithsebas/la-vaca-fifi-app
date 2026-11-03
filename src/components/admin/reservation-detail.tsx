@@ -371,7 +371,7 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
 
 // Filas de dato con la etiqueta a la izquierda (como el detalle de la visita del diseño): se leen de un vistazo.
 // `copy`: el valor que se copia con el botón de la derecha (celular, correo, documento…).
-function Facts({ rows, className = "" }: { rows: { k: string; v: ReactNode; copy?: string }[]; className?: string }) {
+export function Facts({ rows, className = "" }: { rows: { k: string; v: ReactNode; copy?: string }[]; className?: string }) {
   return (
     <dl className={`flex flex-col text-[14px] ${className}`}>
       {rows.map((x) => (
