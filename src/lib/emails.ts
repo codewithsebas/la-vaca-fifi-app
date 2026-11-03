@@ -122,6 +122,12 @@ const footText = (c: Cfg) =>
   "\n\n—\n" +
   `${c.name}\n${c.address}\nTel. ${c.phones.join(" · ")} · WhatsApp +${c.whatsapp}${c.rnt ? `\nRNT ${c.rnt}` : ""}\nLey 679 de 2001: rechazamos la explotación y el abuso sexual de niños, niñas y adolescentes.`;
 
+// Vista previa en un tema fijo, sin depender del tema del dispositivo de quien la mira.
+export const previewEmailTheme = (html: string, dark: boolean) => {
+  const fixed = html.replace(`@media (prefers-color-scheme:dark){${DARK}}`, "");
+  return dark ? fixed.replace('<html lang="es"', '<html class="dm" lang="es"') : fixed;
+};
+
 export type RenderedEmail = { subject: string; preheader: string; html: string; text: string };
 
 const finish = (c: Cfg, logoUrl: string, e: Omit<RenderedEmail, "html"> & { body: string }): RenderedEmail => ({

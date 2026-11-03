@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { arrivalReminderEmail, balancePaidEmail, reservationEndedEmail, reservationReceivedEmail, reservationRescheduledEmail } from "@/lib/emails";
+import {
+  arrivalReminderEmail,
+  balancePaidEmail,
+  previewEmailTheme,
+  reservationEndedEmail,
+  reservationReceivedEmail,
+  reservationRescheduledEmail,
+} from "@/lib/emails";
 import { defaultContent, mergeSite } from "@/lib/site";
 
 const c = mergeSite(defaultContent.settings, defaultContent.policies, defaultContent.texts);
@@ -92,6 +99,14 @@ describe("correos automáticos de la reserva", () => {
     const pending = reservationRescheduledEmail(c, { ...base, pagado: 0 });
     expect(pending.html).toContain("paga el abono de $150.000");
     expect(pending.html).not.toContain("Ya hiciste tu pago total");
+  });
+
+  it("la vista previa fija el tema sin depender del dispositivo", () => {
+    const { html } = reservationEndedEmail(c, { ...stay, vencida: false, pagado: 0, reservarUrl: "", whatsappUrl: "https://wa.me/1" });
+    expect(html).toContain("@media (prefers-color-scheme:dark)");
+    expect(previewEmailTheme(html, false)).not.toContain("@media (prefers-color-scheme:dark)");
+    expect(previewEmailTheme(html, false)).not.toContain('<html class="dm"');
+    expect(previewEmailTheme(html, true)).toContain('<html class="dm"');
   });
 
   it("recordatorio con su saldo y sin HTML del huésped", () => {

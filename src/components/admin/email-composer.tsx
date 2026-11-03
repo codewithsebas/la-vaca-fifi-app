@@ -3,15 +3,17 @@
 // Enviar un correo a un cliente desde su ficha. El servidor toma el destinatario de las reservas del cliente (no del navegador),
 // lo envía con Resend y deja el resultado en la bandeja de correos. Cada intento lleva un identificador propio:
 // reintentar después de un fallo nunca envía el mismo mensaje dos veces.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CloseIcon, MailIcon } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
+import { useSite } from "@/components/site/site-provider";
 import { api, type ApiError } from "@/lib/client/api";
-import { fmtDate, timeAgo } from "@/lib/format";
+import { previewEmailTheme, teamMessageEmail } from "@/lib/emails";
+import { fmtDate, timeAgo, wa } from "@/lib/format";
 import type { EmailRecord, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { EMAIL_KIND, adminInput } from "@/components/admin/shared";
-import { Badge, Button, Callout, Field, IconButton, Modal } from "@/components/admin/ui";
+import { Badge, Button, Callout, Field, IconButton, Modal, Segmented } from "@/components/admin/ui";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // UUID v4 (crypto.randomUUID solo existe en contextos seguros: https o localhost).
@@ -26,10 +28,44 @@ function newRequestId() {
 
 export const hasEmail = (email: string | null | undefined) => !!email && EMAIL.test(email);
 
+const PREVIEW_WIDTH = { computador: 640, celular: 375 };
+const bodyOf = (html: string) => new DOMParser().parseFromString(html, "text/html").body.innerHTML;
+
+// El correo tal cual sale (misma plantilla que el envío), aislado en un iframe sin scripts ni ventanas emergentes: sus
+// enlaces no abren nada. Al escribir solo cambia el cuerpo, sin recargar: no parpadea ni pierde el scroll.
+function EmailFrame({ html, width }: { html: string; width: number }) {
+  const ref = useRef<HTMLIFrameElement>(null);
+  const [initial] = useState(html);
+  const latest = useRef(html);
+  const sync = () => {
+    const body = ref.current?.contentDocument?.body;
+    if (body) body.innerHTML = bodyOf(latest.current);
+  };
+  useEffect(() => {
+    latest.current = html;
+    if (ref.current?.contentDocument?.readyState === "complete") sync();
+  }, [html]);
+  return (
+    <iframe
+      ref={ref}
+      title="Vista previa del correo"
+      sandbox="allow-same-origin"
+      srcDoc={initial}
+      onLoad={sync}
+      className="mx-auto block h-full max-w-none border-0 bg-transparent"
+      style={{ width }}
+    />
+  );
+}
+
 type Props = { clientKey: string; name: string; email: string; reservations: Reservation[]; onClose: () => void };
 
 export function EmailComposer({ clientKey, name, email, reservations, onClose }: Props) {
   const { data, setData, toast, onAuthError, now } = useAdmin();
+  const { c } = useSite();
+  const [view, setView] = useState<"escribir" | "vista">("escribir");
+  const [device, setDevice] = useState<keyof typeof PREVIEW_WIDTH>("computador");
+  const [theme, setTheme] = useState<"claro" | "oscuro">("claro");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [code, setCode] = useState(reservations[0]?.code ?? "");
@@ -49,6 +85,14 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
 
   const history = data.emails.filter((e) => e.to.toLowerCase() === email.toLowerCase()).slice(0, 4);
   const store = (e: EmailRecord) => setData((d) => ({ ...d, emails: [e, ...d.emails.filter((x) => x.id !== e.id)] }));
+  const preview = teamMessageEmail(c, {
+    nombre: name,
+    asunto: subject,
+    mensaje: message.trim() || "Aquí aparecerá tu mensaje.",
+    codigo: code || null,
+    whatsappUrl: wa(c.whatsapp),
+    logoUrl: "/correo/logo.png",
+  });
 
   async function send() {
     if (busy) return;
@@ -87,7 +131,7 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
       labelledBy="em-title"
       describedBy="em-to"
       initialFocus="#em-subject"
-      className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-[26px] p-0"
+      className="m-auto w-[calc(100%-32px)] max-w-[560px] rounded-[26px] p-0 lg:max-w-[1140px]"
     >
       <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
         <div className="min-w-0">
@@ -116,80 +160,131 @@ export function EmailComposer({ clientKey, name, email, reservations, onClose }:
         </IconButton>
       </div>
 
-      <div className="flex flex-col gap-4 px-5 py-4">
-        {configured === false && (
-          <Callout tone="warning">
-            El envío de correos aún no está configurado (falta <code>RESEND_API_KEY</code> o <code>EMAIL_FROM</code> en el servidor). Si lo envías, quedará
-            registrado como no enviado y podrás reintentarlo después.{" "}
-            <a href={`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`} className="font-semibold underline">
-              Abrir en mi aplicación de correo
-            </a>
-          </Callout>
-        )}
-        <Field label="Asunto" error={fields.subject}>
-          {(p) => (
-            <input
-              {...p}
-              id="em-subject"
-              type="text"
-              maxLength={150}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Ej. Tu llegada el sábado"
-              className={adminInput}
-            />
+      <div className="px-5 pt-4 lg:hidden">
+        <Segmented
+          size="sm"
+          label="Vista del correo"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "escribir", label: "Escribir" },
+            { value: "vista", label: "Vista previa" },
+          ]}
+        />
+      </div>
+      <div className="lg:grid lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
+        <div className={`flex-col gap-4 px-5 py-4 lg:flex ${view === "escribir" ? "flex" : "hidden"}`}>
+          {configured === false && (
+            <Callout tone="warning">
+              El envío de correos aún no está configurado (falta <code>RESEND_API_KEY</code> o <code>EMAIL_FROM</code> en el servidor). Si lo envías, quedará
+              registrado como no enviado y podrás reintentarlo después.{" "}
+              <a href={`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`} className="font-semibold underline">
+                Abrir en mi aplicación de correo
+              </a>
+            </Callout>
           )}
-        </Field>
-        <Field label="Mensaje" hint={`Empieza con «Hola ${name.split(" ")[0]},» y termina con la firma del equipo automáticamente.`} error={fields.message}>
-          {(p) => (
-            <textarea
-              {...p}
-              rows={6}
-              maxLength={5000}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className={`${adminInput} resize-y leading-relaxed`}
-            />
-          )}
-        </Field>
-        {reservations.length > 0 && (
-          <Field label="Reserva relacionada">
+          <Field label="Asunto" error={fields.subject}>
             {(p) => (
-              <Combobox
-                id={p.id}
-                value={code}
-                onChange={setCode}
-                options={[
-                  { value: "", label: "Ninguna" },
-                  ...reservations.map((r) => ({ value: r.code, label: r.code, description: `${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}` })),
-                ]}
+              <input
+                {...p}
+                id="em-subject"
+                type="text"
+                maxLength={150}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Ej. Tu llegada el sábado"
+                className={adminInput}
               />
             )}
           </Field>
-        )}
-        {error && (
-          <Callout tone="error" role="alert">
-            {error}
-          </Callout>
-        )}
-        {history.length > 0 && (
-          <div className="flex flex-col gap-1.5 border-t border-line pt-3">
-            <h3 className="text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">Últimos correos a este cliente</h3>
-            <ul className="flex flex-col gap-1">
-              {history.map((e) => (
-                <li key={e.id} className="flex items-center justify-between gap-2 text-[13px]">
-                  <span className="min-w-0 truncate text-ink">{EMAIL_KIND[e.kind] ? `${EMAIL_KIND[e.kind]} ${e.reservationCode ?? ""}` : e.subject}</span>
-                  <span className="flex flex-none items-center gap-1.5 text-[12px] text-ink-muted">
-                    {timeAgo(e.sentAt ?? e.createdAt, now)}
-                    <Badge tone={e.status === "sent" ? "success" : e.status === "failed" ? "danger" : "info"}>
-                      {e.status === "sent" ? "Enviado" : e.status === "failed" ? "No enviado" : "En cola"}
-                    </Badge>
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <Field label="Mensaje" hint={`Empieza con «Hola ${name.split(" ")[0]},» y termina con la firma del equipo automáticamente.`} error={fields.message}>
+            {(p) => (
+              <textarea
+                {...p}
+                rows={6}
+                maxLength={5000}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className={`${adminInput} resize-y leading-relaxed`}
+              />
+            )}
+          </Field>
+          {reservations.length > 0 && (
+            <Field label="Reserva relacionada">
+              {(p) => (
+                <Combobox
+                  id={p.id}
+                  value={code}
+                  onChange={setCode}
+                  options={[
+                    { value: "", label: "Ninguna" },
+                    ...reservations.map((r) => ({ value: r.code, label: r.code, description: `${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}` })),
+                  ]}
+                />
+              )}
+            </Field>
+          )}
+          {error && (
+            <Callout tone="error" role="alert">
+              {error}
+            </Callout>
+          )}
+          {history.length > 0 && (
+            <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+              <h3 className="text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">Últimos correos a este cliente</h3>
+              <ul className="flex flex-col gap-1">
+                {history.map((e) => (
+                  <li key={e.id} className="flex items-center justify-between gap-2 text-[13px]">
+                    <span className="min-w-0 truncate text-ink">{EMAIL_KIND[e.kind] ? `${EMAIL_KIND[e.kind]} ${e.reservationCode ?? ""}` : e.subject}</span>
+                    <span className="flex flex-none items-center gap-1.5 text-[12px] text-ink-muted">
+                      {timeAgo(e.sentAt ?? e.createdAt, now)}
+                      <Badge tone={e.status === "sent" ? "success" : e.status === "failed" ? "danger" : "info"}>
+                        {e.status === "sent" ? "Enviado" : e.status === "failed" ? "No enviado" : "En cola"}
+                      </Badge>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <section
+          aria-label="Vista previa del correo"
+          className={`min-w-0 flex-col gap-3 bg-canvas/50 px-5 py-4 lg:flex lg:border-l lg:border-line ${view === "vista" ? "flex" : "hidden"}`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">Así le llegará</h3>
+            <Segmented
+              size="sm"
+              label="Tamaño de la vista previa"
+              value={device}
+              onChange={setDevice}
+              options={[
+                { value: "computador", label: "Computador" },
+                { value: "celular", label: "Celular" },
+              ]}
+            />
+            <Segmented
+              size="sm"
+              label="Tema de la vista previa"
+              value={theme}
+              onChange={setTheme}
+              options={[
+                { value: "claro", label: "Claro" },
+                { value: "oscuro", label: "Oscuro" },
+              ]}
+            />
           </div>
-        )}
+          <p className="min-w-0 text-[13px] text-ink-muted">
+            Asunto: <strong className="break-words text-ink">{subject.trim() || "Sin asunto"}</strong>
+          </p>
+          <div
+            className={`h-[min(620px,calc(100dvh-280px))] min-h-[360px] overflow-x-auto overflow-y-hidden rounded-[16px] ${theme === "oscuro" ? "bg-[#121110]" : "bg-[#F7F2E8]"}`}
+          >
+            <EmailFrame key={theme} html={previewEmailTheme(preview.html, theme === "oscuro")} width={PREVIEW_WIDTH[device]} />
+          </div>
+        </section>
       </div>
 
       <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:justify-end">
