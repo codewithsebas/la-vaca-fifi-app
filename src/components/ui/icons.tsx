@@ -228,6 +228,14 @@ export const MailIcon = (p: IconProps) => (
     <path d="m22 7-10 6L2 7" />
   </Stroke>
 );
+// Marca de Booking.com (la «B» con su punto) en el trazo de los demás iconos: módulo de reservas de Booking.
+export const BookingIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="4.5" />
+    <path d="M8.5 11.6h3.1a2.3 2.3 0 0 0 0-4.6H8.5v10h3.6a2.7 2.7 0 0 0 0-5.4" />
+    <circle cx="16.4" cy="16" r="1.2" fill="currentColor" stroke="none" />
+  </Stroke>
+);
 export const WalletIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
     <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v3h-4a2 2 0 0 0 0 4h4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5" />

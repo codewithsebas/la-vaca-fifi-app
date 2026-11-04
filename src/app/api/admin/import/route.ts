@@ -1,14 +1,15 @@
 import type { NextRequest } from "next/server";
-import { importDocNumber, invalidImportRow, newReservationCode } from "@/lib/booking";
+import { invalidImportRow } from "@/lib/booking";
 import { config } from "@/lib/config";
-import { nightsBetween } from "@/lib/format";
 import { loadCabinTypes } from "@/lib/server/db";
 import { fail, json, readJson, requireAdmin, syncRoute } from "@/lib/server/http";
+import { insertImported } from "@/lib/server/reservations";
 import { createServiceClient } from "@/lib/supabase/server";
-import type { TablesInsert } from "@/lib/supabase/database.types";
-import type { ImportResult, ImportRow, Quote } from "@/lib/types";
+import type { ImportResult, ImportRow } from "@/lib/types";
 
 const MAX_ROWS = 500;
+
+const ERRORS = { DATES_UNAVAILABLE: "Las fechas ya están ocupadas en esa cabaña.", DUPLICATE: "Ya se había importado.", FAILED: "No se pudo crear." };
 
 // POST /api/admin/import { rows: ImportRow[] } → crea las reservas de un archivo, una por fila. Cada fila responde por
 // separado: creada (con su código), ya importada (misma referencia), fechas ocupadas en esa cabaña o datos no válidos.
@@ -23,8 +24,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
   // Todas las filas en la misma solicitud: la conexión de servicio (las reglas las aplica la base de datos).
   const sb = createServiceClient();
   const [{ units }, { data: settings }] = await Promise.all([loadCabinTypes(sb), sb.from("site_settings").select("check_in_start, deposit_pct").maybeSingle()]);
-  const depositPct = settings?.deposit_pct ?? config.depositPct;
-  const arrival = (settings?.check_in_start ?? "15:00").slice(0, 5);
+  const ctx = { depositPct: settings?.deposit_pct ?? config.depositPct, arrival: (settings?.check_in_start ?? "15:00").slice(0, 5) };
   const results: ImportResult[] = [];
 
   for (const r of rows) {
@@ -33,63 +33,8 @@ export const POST = syncRoute(async (req: NextRequest) => {
       results.push({ ref: String(r?.ref ?? ""), ok: false, error: why });
       continue;
     }
-    const nights = nightsBetween(r.checkIn, r.checkOut);
-    const total = Math.round(r.total);
-    const deposit = Math.round((total * depositPct) / 100);
-    const quote: Quote = {
-      base: total,
-      extraGuests: 0,
-      extraAmount: 0,
-      total,
-      deposit,
-      balance: total - deposit,
-      pricePerNight: Math.round(total / nights),
-      extraPerNight: 0,
-      nights,
-    };
-    const phone = String(r.phone ?? "")
-      .replace(/\D/g, "")
-      .slice(0, 15);
-    const row: Omit<TablesInsert<"reservations">, "code"> = {
-      source: "import",
-      external_ref: r.ref.trim(),
-      channel: String(r.channel ?? "")
-        .trim()
-        .slice(0, 40),
-      commission: Math.round(r.commission),
-      status: r.status,
-      cabin_type_id: r.cabinTypeId,
-      unit: r.unit,
-      check_in: r.checkIn,
-      check_out: r.checkOut,
-      adults: 2,
-      children: 0,
-      pet: { hasPet: false, smallBreedConfirmed: false },
-      decoration: { requested: false, occasion: "", notes: "" },
-      estimated_arrival: arrival,
-      guest_full_name: r.guest.trim(),
-      guest_doc_type: "SD",
-      guest_doc_number: importDocNumber(r),
-      guest_email: String(r.email ?? "").trim(),
-      guest_phone: phone ? `+${phone}` : "",
-      guest_city: "",
-      special_requests: String(r.notes ?? "")
-        .trim()
-        .slice(0, 500),
-      consents: { policies: false, dataProcessing: false, marketing: false },
-      quote,
-      deposit_due_at: new Date().toISOString(),
-    };
-    let done: ImportResult | null = null;
-    for (let attempt = 0; attempt < 3 && !done; attempt++) {
-      const code = newReservationCode();
-      const { error: insErr } = await sb.from("reservations").insert({ ...row, code });
-      if (!insErr) done = { ref: r.ref, ok: true, code };
-      else if (insErr.code === "23P01") done = { ref: r.ref, ok: false, error: "Las fechas ya están ocupadas en esa cabaña." };
-      else if (insErr.code === "23505" && insErr.message.includes("external_ref")) done = { ref: r.ref, ok: false, error: "Ya se había importado." };
-      else if (insErr.code !== "23505") done = { ref: r.ref, ok: false, error: "No se pudo crear." };
-    }
-    results.push(done ?? { ref: r.ref, ok: false, error: "No se pudo crear." });
+    const done = await insertImported(sb, r, ctx);
+    results.push("code" in done ? { ref: r.ref, ok: true, code: done.code } : { ref: r.ref, ok: false, error: ERRORS[done.error] });
   }
   return json({ results });
 });

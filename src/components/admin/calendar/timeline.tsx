@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { BanIcon, BathIcon, ClockIcon, PlusIcon } from "@/components/ui/icons";
+import { BanIcon, BathIcon, ChevronDownIcon, ClockIcon, PlusIcon } from "@/components/ui/icons";
 import { computeQuote, nightlyRate } from "@/lib/booking";
 import { addDays, cop, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { CabinType } from "@/lib/types";
-import { useAdmin } from "@/components/admin/context";
+import { useAdmin, useParam } from "@/components/admin/context";
 import { Popover, useTip } from "@/components/ui/floating";
 import { type NewReservationDraft } from "@/components/admin/new-reservation";
 import { bathroomIssues } from "@/components/admin/bathrooms";
@@ -15,7 +15,7 @@ import { paths } from "@/components/admin/routes";
 import { Button, buttonClass } from "@/components/admin/ui";
 import {
   BlockTip,
-  type CalView,
+  CalendarLegend,
   DayName,
   ReservationTip,
   type Unit,
@@ -35,19 +35,24 @@ import {
 type TimelineProps = {
   days: string[];
   rows: Unit[];
-  view: CalView;
   today: string;
   width: number;
   onDay: (d: string) => void;
   onNew: (d: NewReservationDraft) => void;
   onOpen: (code: string) => void;
+  footer?: boolean; // leyenda y ayuda al pie (la primera quincena del mes no la lleva)
+  className?: string;
 };
-type Line = { kind: "group"; cabin: CabinType; units: Unit[] } | { kind: "unit"; u: Unit };
+// "idle": las unidades de un tipo sin reservas ni bloqueos en el periodo. Cerradas, quedan en esa sola línea; abiertas,
+// se muestran todas y la línea queda al final del tipo para volver a cerrarlas.
+type Line = { kind: "group"; cabin: CabinType; units: Unit[] } | { kind: "unit"; u: Unit } | { kind: "idle"; cabin: CabinType; units: Unit[]; open: boolean };
 
 // Agrupada por tipo de cabaña: cada tipo muestra por día cuántas unidades quedan libres y su tarifa (lo que se necesita
-// para vender por WhatsApp); debajo, una fila por unidad con sus reservas, bloqueos y noches de Booking.
+// para vender por WhatsApp); debajo, una fila por unidad con sus reservas, bloqueos y noches de Booking. Por defecto solo
+// las unidades con algo en el periodo; las demás quedan en una línea que las despliega, tipo por tipo, como un acordeón
+// (?unidades=doble,familiar: los tipos abiertos).
 // Arrastrar sobre noches libres de una unidad (con el mouse) abre «Nueva reserva» con esa cabaña y esas fechas.
-export function Timeline({ days, rows, view, today, width, onDay, onNew, onOpen }: TimelineProps) {
+export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, footer = true, className = "" }: TimelineProps) {
   const { data, cabinLabel, now } = useAdmin();
   const calBlocks = useCalBlocks();
   const tip = useTip();
@@ -64,21 +69,32 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew, onOpen 
   const compact = width < 640;
   // Columna de nombres y ancho mínimo de media jornada según el espacio: sin desplazamiento horizontal salvo que no haya otra opción.
   const label = compact ? 104 : 168;
-  const half = view === "mes" ? 10 : view === "semana" ? (compact ? 14 : 34) : compact ? 22 : 48;
+  // Ancho mínimo de media jornada según cuántos días se ven (las columnas crecen para llenar el ancho): pocos días, más
+  // aire; un mes completo, apretado. Desde 22 px cabe la tarifa.
+  const half = n <= 3 ? (compact ? 22 : 48) : n <= 7 ? (compact ? 14 : 34) : n <= 16 ? (compact ? 12 : 24) : 10;
   const showRates = half >= 22;
 
+  const [openParam, setOpenParam] = useParam("unidades", "");
+  const opened = useMemo(() => new Set(openParam.split(",").filter(Boolean)), [openParam]);
+  const toggleGroup = (id: string) => {
+    const next = new Set(opened);
+    if (!next.delete(id)) next.add(id);
+    setOpenParam([...next].join(","));
+  };
+  const visible = data.reservations.filter((r) => r.checkIn <= to && r.checkOut > from && rows.some((u) => occupies(r, u)));
   const lines = useMemo<Line[]>(() => {
+    const busy = (u: Unit) => visible.some((r) => occupies(r, u)) || calBlocks.some((b) => blocks(b, u) && b.from <= to && b.to >= from);
     const out: Line[] = [];
-    let group = "";
-    for (const u of rows) {
-      if (u.cabin.id !== group) {
-        group = u.cabin.id;
-        out.push({ kind: "group", cabin: u.cabin, units: rows.filter((x) => x.cabin.id === group) });
-      }
-      out.push({ kind: "unit", u });
+    for (const cabin of [...new Map(rows.map((u) => [u.cabin.id, u.cabin])).values()]) {
+      const all = rows.filter((x) => x.cabin.id === cabin.id);
+      const idle = all.filter((u) => !busy(u));
+      const open = opened.has(cabin.id);
+      const shown = open ? all : all.filter(busy);
+      out.push({ kind: "group", cabin, units: all }, ...shown.map((u) => ({ kind: "unit" as const, u })));
+      if (idle.length) out.push({ kind: "idle", cabin, units: idle, open });
     }
     return out;
-  }, [rows]);
+  }, [rows, visible, calBlocks, opened, from, to]);
 
   // Abre desplazado hasta hoy si el periodo no cabe en pantalla.
   useEffect(() => {
@@ -90,7 +106,6 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew, onOpen 
 
   const free = (u: Unit, d: string) =>
     !data.reservations.some((r) => occupies(r, u) && r.checkIn <= d && d < r.checkOut) && !calBlocks.some((b) => blocks(b, u) && b.from <= d && d <= b.to);
-  const visible = data.reservations.filter((r) => r.checkIn <= to && r.checkOut > from && rows.some((u) => occupies(r, u)));
 
   // Noches libres seguidas desde `a` hacia `target` (dentro del periodo y desde hoy): la selección no salta reservas.
   const reach = (u: Unit, a: string, target: string) => {
@@ -147,13 +162,13 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew, onOpen 
   const rowHeight = compact ? 46 : 52;
   const gridStyle: CSSProperties = {
     gridTemplateColumns: `${label}px repeat(${n * 2}, minmax(${half}px, 1fr))`,
-    gridTemplateRows: `auto ${lines.map((l) => (l.kind === "group" ? "32px" : `${rowHeight}px`)).join(" ")}`,
+    gridTemplateRows: `auto ${lines.map((l) => (l.kind === "group" ? "32px" : l.kind === "idle" ? "34px" : `${rowHeight}px`)).join(" ")}`,
     minWidth: label + n * 2 * half,
   };
   const rate = cell ? nightlyRate(cell.u.cabin, data.seasons, cell.d) : null;
 
   return (
-    <div className="flex min-h-[300px] flex-col overflow-hidden rounded-[22px] bg-panel">
+    <div className={`flex min-h-[300px] flex-col overflow-hidden rounded-[22px] bg-panel ${className}`}>
       <div ref={scroller} className={`relative min-h-0 flex-1 overflow-auto overscroll-x-contain ${sel ? "cursor-col-resize select-none" : ""}`}>
         <div role="grid" aria-label="Ocupación por cabaña" aria-rowcount={lines.length + 1} className="grid" style={gridStyle}>
           {/* Encabezado de días */}
@@ -193,6 +208,32 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew, onOpen 
 
           {lines.map((line, li) => {
             const gridRow = 2 + li;
+            if (line.kind === "idle") {
+              const nums = line.units.map((u) => u.unit);
+              const which =
+                nums.length === 1
+                  ? `${nums[0]}`
+                  : nums.length > 2 && nums.every((x, k) => !k || x === nums[k - 1] + 1)
+                    ? `${nums[0]} a ${nums[nums.length - 1]}`
+                    : nums.join(", ");
+              return (
+                <div key={`idle-${line.cabin.id}`} role="row" className="contents">
+                  <button
+                    type="button"
+                    aria-expanded={line.open}
+                    onClick={() => toggleGroup(line.cabin.id)}
+                    className="sticky left-0 z-10 flex min-w-0 items-center gap-2 border-b border-line bg-panel py-1 pr-2 pl-5 text-left text-[12px] font-medium text-ink-muted transition-colors hover:text-ink sm:pl-6"
+                    style={{ gridRow, gridColumn: `1 / span ${1 + n * 2}`, width: "fit-content" }}
+                  >
+                    <ChevronDownIcon size={14} className={`flex-none transition-transform duration-200 ${line.open ? "rotate-180" : ""}`} />
+                    <span className="truncate">
+                      {line.open ? "Ocultar" : "Mostrar"} {plural(line.units.length, "unidad", "unidades")} sin reservas ({which})
+                    </span>
+                  </button>
+                  <div aria-hidden="true" className="border-b border-line" style={{ gridRow, gridColumn: `1 / span ${1 + n * 2}` }} />
+                </div>
+              );
+            }
             if (line.kind === "group") {
               const total = line.cabin.units;
               const all = units([line.cabin], "");
@@ -449,9 +490,20 @@ export function Timeline({ days, rows, view, today, width, onDay, onNew, onOpen 
           </p>
         )}
       </div>
-      <p className="hidden border-t border-line bg-canvas/50 px-4 py-2 text-[12px] text-ink-muted pointer-fine:block">
-        Arrastra sobre los días libres de una cabaña para crear una reserva con esas fechas, o haz clic en un día libre para reservar o bloquear.
-      </p>
+      {/* Leyenda y ayuda en una sola línea; si no caben, la ayuda se recorta (completa al pasar el mouse). */}
+      {footer && (
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-t border-line bg-canvas/50 px-4 py-2 xl:flex-nowrap">
+          <div className="flex-none">
+            <CalendarLegend />
+          </div>
+          <p
+            title="Arrastra sobre los días libres de una cabaña para crear una reserva con esas fechas, o haz clic en un día libre para reservar o bloquear."
+            className="hidden min-w-0 truncate text-[12px] text-ink-subtle pointer-fine:block"
+          >
+            Arrastra sobre días libres para crear una reserva · clic en un día libre para reservar o bloquear
+          </p>
+        </div>
+      )}
 
       {/* Fecha libre: acciones al tocar o hacer clic (en móvil, hoja inferior) */}
       <Popover open={!!cell} onClose={() => setCell(null)} anchor={cellAnchor} label="Fecha libre">

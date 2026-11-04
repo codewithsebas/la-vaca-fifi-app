@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import {
   BanIcon,
   BellIcon,
+  BookingIcon,
   CalendarIcon,
   FileTextIcon,
   GridIcon,
@@ -28,6 +29,7 @@ export type ModuleId =
   | "calendario"
   | "notificaciones"
   | "reservas"
+  | "booking"
   | "pagos"
   | "clientes"
   | "importar"
@@ -69,6 +71,13 @@ export const MODULES: Record<ModuleId, Module> = {
   calendario: { label: "Calendario", href: "/admin/calendario", icon: CalendarIcon, group: "Principal", description: "Ocupación por cabaña y por día." },
   notificaciones: { label: "Notificaciones", href: "/admin/notificaciones", icon: BellIcon, group: "Principal", description: "Historial de avisos del panel." },
   reservas: { label: "Reservas", href: "/admin/reservas", icon: ListIcon, group: "Reservas", description: "Busca, filtra y gestiona cualquier reserva." },
+  booking: {
+    label: "Booking",
+    href: "/admin/booking",
+    icon: BookingIcon,
+    group: "Reservas",
+    description: "Reservas de Booking.com que llegan por correo de Ayenda, para asignarles una cabaña.",
+  },
   pagos: {
     label: "Pagos",
     href: "/admin/pagos",
@@ -268,6 +277,7 @@ export const paths = {
   calendario: (q?: Query) => withQuery("/admin/calendario", q),
   reservas: (q?: Query) => withQuery("/admin/reservas", q),
   reserva: (code: string) => `/admin/reservas/${encodeURIComponent(code)}`,
+  booking: "/admin/booking",
   pagos: (q?: Query) => withQuery("/admin/pagos", q),
   clientes: (q?: Query) => withQuery("/admin/clientes", q),
   cliente: (key: string) => `/admin/clientes/${clientSlug(key)}`,

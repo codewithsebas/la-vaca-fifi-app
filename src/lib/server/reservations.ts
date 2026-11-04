@@ -1,7 +1,8 @@
 import "server-only";
-import { findUnit, newReservationCode, type Occupancy } from "@/lib/booking";
-import { addDays } from "@/lib/format";
+import { findUnit, importDocNumber, newReservationCode, type Occupancy } from "@/lib/booking";
+import { addDays, nightsBetween } from "@/lib/format";
 import type { Tables, TablesInsert } from "@/lib/supabase/database.types";
+import type { ImportRow, Quote } from "@/lib/types";
 import { loadOccupancy, type Db } from "@/lib/server/db";
 
 type NewReservation = Omit<TablesInsert<"reservations">, "code" | "unit">;
@@ -36,4 +37,69 @@ export async function holdReservation(sb: Db, row: NewReservation, opts: { units
     throw error;
   }
   return { error: "DATES_UNAVAILABLE" };
+}
+
+// Reserva que ya se hizo por otro canal (archivo importado o Booking): entra confirmada, finalizada o cancelada, sin
+// pagos registrados; el equipo registra los pagos después. `r` ya viene validada (invalidImportRow).
+export async function insertImported(
+  sb: Db,
+  r: ImportRow,
+  ctx: { depositPct: number; arrival: string },
+): Promise<{ code: string } | { error: "DATES_UNAVAILABLE" | "DUPLICATE" | "FAILED" }> {
+  const nights = nightsBetween(r.checkIn, r.checkOut);
+  const total = Math.round(r.total);
+  const deposit = Math.round((total * ctx.depositPct) / 100);
+  const quote: Quote = {
+    base: total,
+    extraGuests: 0,
+    extraAmount: 0,
+    total,
+    deposit,
+    balance: total - deposit,
+    pricePerNight: Math.round(total / nights),
+    extraPerNight: 0,
+    nights,
+  };
+  const phone = String(r.phone ?? "")
+    .replace(/\D/g, "")
+    .slice(0, 15);
+  const row: Omit<TablesInsert<"reservations">, "code"> = {
+    source: "import",
+    external_ref: r.ref.trim(),
+    channel: String(r.channel ?? "")
+      .trim()
+      .slice(0, 40),
+    commission: Math.round(r.commission),
+    status: r.status,
+    cabin_type_id: r.cabinTypeId,
+    unit: r.unit,
+    check_in: r.checkIn,
+    check_out: r.checkOut,
+    adults: 2,
+    children: 0,
+    pet: { hasPet: false, smallBreedConfirmed: false },
+    decoration: { requested: false, occasion: "", notes: "" },
+    estimated_arrival: ctx.arrival,
+    guest_full_name: r.guest.trim(),
+    guest_doc_type: "SD",
+    guest_doc_number: importDocNumber(r),
+    guest_email: String(r.email ?? "").trim(),
+    guest_phone: phone ? `+${phone}` : "",
+    guest_city: "",
+    special_requests: String(r.notes ?? "")
+      .trim()
+      .slice(0, 500),
+    consents: { policies: false, dataProcessing: false, marketing: false },
+    quote,
+    deposit_due_at: new Date().toISOString(),
+  };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const code = newReservationCode();
+    const { error } = await sb.from("reservations").insert({ ...row, code });
+    if (!error) return { code };
+    if (error.code === "23P01") return { error: "DATES_UNAVAILABLE" };
+    if (error.code === "23505" && error.message.includes("external_ref")) return { error: "DUPLICATE" };
+    if (error.code !== "23505") return { error: "FAILED" };
+  }
+  return { error: "FAILED" };
 }

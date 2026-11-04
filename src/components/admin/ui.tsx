@@ -15,6 +15,7 @@ import {
   type ButtonHTMLAttributes,
   type HTMLAttributes,
   type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { AlertIcon, CheckIcon, CloseIcon, CopyIcon, InfoIcon, WarningIcon } from "@/components/ui/icons";
@@ -503,10 +504,17 @@ type ModalProps = {
   describedBy?: string;
   role?: "dialog" | "alertdialog";
   initialFocus?: string; // selector del elemento que recibe el foco al abrir
-  dismissOnBackdrop?: boolean;
+  dismissOnBackdrop?: boolean; // clic afuera la cierra (por defecto, sí)
   motion?: keyof typeof MOTION; // pop: ventana centrada · drawer: cajón desde la izquierda
   className?: string;
   children: ReactNode;
+};
+
+// ¿El puntero está en el fondo, fuera del rectángulo de la ventana?
+const outside = (e: ReactMouseEvent<HTMLDialogElement>) => {
+  if (e.target !== e.currentTarget) return false;
+  const r = e.currentTarget.getBoundingClientRect();
+  return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
 };
 
 // <dialog> nativo: atrapa el foco, Escape lo cierra y deja inerte el fondo. Al cerrarse devuelve el foco a quien lo abrió.
@@ -517,13 +525,14 @@ export function Modal({
   describedBy,
   role = "dialog",
   initialFocus,
-  dismissOnBackdrop,
+  dismissOnBackdrop = true,
   motion = "pop",
   className = "",
   children,
 }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const close = useRef(onClose);
+  const downOutside = useRef(false);
   const presence = useContext(Presence);
   const leaving = !!presence?.leaving;
   useEffect(() => {
@@ -561,7 +570,13 @@ export function Modal({
         close.current();
       }}
       onClose={() => close.current()}
-      onClick={(e) => dismissOnBackdrop && e.target === e.currentTarget && close.current()}
+      // Clic afuera (en el fondo): solo si empezó y terminó afuera, así no la cierra arrastrar una selección de texto
+      // hasta el fondo ni un clic en el margen interior de la ventana (que también tiene como destino el <dialog>).
+      onPointerDown={(e) => (downOutside.current = outside(e))}
+      onClick={(e) => {
+        if (dismissOnBackdrop && downOutside.current && outside(e)) close.current();
+        downOutside.current = false;
+      }}
       onAnimationEnd={(e) => leaving && e.target === e.currentTarget && !e.pseudoElement && presence?.done()}
       className={`admin-surface bg-paper text-ink shadow-overlay backdrop:bg-[rgb(23_22_20/0.42)] backdrop:backdrop-blur-[2px] data-closing:pointer-events-none motion-safe:backdrop:animate-fade-in motion-safe:data-closing:backdrop:animate-fade-out ${MOTION[motion]} ${className}`}
     >

@@ -1,7 +1,7 @@
 // Reglas de reserva compartidas por el servidor (Supabase) y el modo simulado.
 import { config, type CabinTypeId } from "@/lib/config";
 import { DEFAULT_HOLD, HOLD_OPTIONS } from "@/lib/payments";
-import { addDays, isISO, nightsBetween } from "@/lib/format";
+import { WD, WD_FULL, addDays, fmtDate, isISO, nightsBetween, parseISO } from "@/lib/format";
 import type {
   Availability,
   CabinType,
@@ -12,6 +12,7 @@ import type {
   RateSeason,
   ReservationInput,
   ReservationStatus,
+  SeasonDayRate,
 } from "@/lib/types";
 
 export const ACTIVE_STATUSES: ReservationStatus[] = ["pending_deposit", "confirmed", "rescheduled", "checked_in"];
@@ -86,11 +87,75 @@ export type Units = Partial<Record<CabinTypeId, number>>;
 
 type Priced = Pick<CabinType, "id" | "precioPareja" | "personaAdicional">;
 
-// Tarifa de una noche: la temporada activa que la cubre o, si no hay, la tarifa base de la cabaña.
+// Regla de precio por día que aplica a una noche de la temporada: primero una fecha puntual, luego un día de la semana.
+export function dayRateFor(s: Pick<RateSeason, "dayRates">, night: string) {
+  const rules = s.dayRates ?? [];
+  const dow = parseISO(night).getUTCDay();
+  return rules.find((r) => r.dates.includes(night)) ?? rules.find((r) => r.weekdays.includes(dow)) ?? null;
+}
+
+// Tarifa de una noche: la temporada activa que la cubre (con su precio por día, si lo tiene) o, si no hay, la tarifa
+// base de la cabaña.
 export function nightlyRate(t: Priced, seasons: RateSeason[], night: string) {
   const s = seasons.find((x) => x.activa && x.cabinTypeId === t.id && x.from <= night && night <= x.to);
-  return s ? { couple: s.precioPareja, extra: s.personaAdicional, season: s } : { couple: t.precioPareja, extra: t.personaAdicional, season: null };
+  if (!s) return { couple: t.precioPareja, extra: t.personaAdicional, season: null, dayRate: null };
+  const r = dayRateFor(s, night);
+  return r
+    ? { couple: r.precioPareja, extra: r.personaAdicional, season: s, dayRate: r }
+    : { couple: s.precioPareja, extra: s.personaAdicional, season: s, dayRate: null };
 }
+
+// "Vie y Sáb" · "Lun a Jue" · "24 dic, 31 dic": para qué noches es una regla de precio por día.
+const WEEK = [1, 2, 3, 4, 5, 6, 0]; // la semana empieza el lunes
+export function dayRateLabel(r: SeasonDayRate) {
+  if (r.dates.length)
+    return [...r.dates]
+      .sort()
+      .map((d) => fmtDate(d).replace(/^\S+ /, ""))
+      .join(", ");
+  const days = WEEK.filter((d) => r.weekdays.includes(d));
+  const run = days.length > 2 && days.every((d, i) => i === 0 || WEEK.indexOf(d) === WEEK.indexOf(days[i - 1]) + 1);
+  if (run) return `${WD[days[0]]} a ${WD[days[days.length - 1]]}`;
+  return days.map((d) => WD[d]).join(days.length === 2 ? " y " : ", ");
+}
+
+export const MAX_DAY_RATES = 10;
+
+// Reglas de precio por día de una temporada: cada una con días o con fechas (dentro de la temporada), sin repetir un día
+// ni una fecha entre reglas, y con precio. Devuelve el error en palabras.
+export function invalidDayRates(rules: unknown, from: string, to: string): string | null {
+  if (!Array.isArray(rules)) return "Los precios por día no son válidos.";
+  if (rules.length > MAX_DAY_RATES) return `Máximo ${MAX_DAY_RATES} precios por día en una temporada.`;
+  const days = new Set<number>();
+  const dates = new Set<string>();
+  for (const r of rules as SeasonDayRate[]) {
+    const wd = Array.isArray(r?.weekdays) ? r.weekdays : null;
+    const ds = Array.isArray(r?.dates) ? r.dates : null;
+    if (!wd || !ds || wd.length > 0 === ds.length > 0) return "Elige los días o las fechas de cada precio por día.";
+    if (wd.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) return "Los días de la semana no son válidos.";
+    if (ds.length > 60 || ds.some((d) => !isISO(d) || d < from || d > to)) return "Las fechas de un precio por día deben estar dentro de la temporada.";
+    for (const d of wd) {
+      if (days.has(d)) return `El ${WD_FULL[d].toLowerCase()} está en dos precios por día.`;
+      days.add(d);
+    }
+    for (const d of ds) {
+      if (dates.has(d)) return `El ${fmtDate(d, true)} está en dos precios por día.`;
+      dates.add(d);
+    }
+    const money = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 50_000_000;
+    if (!money(r.precioPareja) || r.precioPareja <= 0 || !money(r.personaAdicional)) return "Escribe el precio de cada precio por día.";
+  }
+  return null;
+}
+
+// Copia limpia de las reglas (solo los campos conocidos, días y fechas ordenados y sin repetir).
+export const cleanDayRates = (rules: SeasonDayRate[]): SeasonDayRate[] =>
+  rules.map((r) => ({
+    weekdays: [...new Set(r.weekdays)].sort((a, b) => a - b),
+    dates: [...new Set(r.dates)].sort(),
+    precioPareja: r.precioPareja,
+    personaAdicional: r.personaAdicional,
+  }));
 
 // Cotización noche a noche (cada noche puede caer en una temporada distinta).
 // depositPct: abono para confirmar (Condiciones de pago); por defecto, el de lib/config.

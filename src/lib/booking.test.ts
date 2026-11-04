@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { clashingReservations, computeQuote, normalizePhone, unitFree, validateReservation, withTotal, type Occupancy } from "@/lib/booking";
+import {
+  clashingReservations,
+  computeQuote,
+  dayRateLabel,
+  invalidDayRates,
+  normalizePhone,
+  unitFree,
+  validateReservation,
+  withTotal,
+  type Occupancy,
+} from "@/lib/booking";
 import type { CabinType, RateSeason, ReservationInput } from "@/lib/types";
 
 const cabin = { id: "doble", precioPareja: 160_000, personaAdicional: 40_000 } as const;
@@ -107,5 +117,45 @@ describe("validateReservation", () => {
 
   it("rechaza más huéspedes que la capacidad de la cabaña", () => {
     expect(validateReservation({ ...base, adults: 3 }, types, "2026-11-01").adults).toBe("Máximo 2 personas.");
+  });
+});
+
+describe("precios por día de una temporada", () => {
+  const cabin = { id: "doble", precioPareja: 160_000, personaAdicional: 40_000 } as CabinType;
+  // Diciembre 2026: el 25 es viernes, el 26 sábado y el 31 jueves.
+  const s = season({
+    from: "2026-12-20",
+    to: "2027-01-10",
+    dayRates: [
+      { weekdays: [5, 6], dates: [], precioPareja: 250_000, personaAdicional: 60_000 },
+      { weekdays: [], dates: ["2026-12-31", "2026-12-26"], precioPareja: 400_000, personaAdicional: 80_000 },
+    ],
+  });
+
+  it("cobra cada noche con su regla: fecha puntual, luego día de la semana, luego la temporada", () => {
+    // Noches: jue 24 (temporada), vie 25 (fin de semana), sáb 26 (fecha puntual, gana sobre el sábado), dom 27 (temporada).
+    const q = computeQuote(cabin, "2026-12-24", "2026-12-28", 3, [s]);
+    expect(q.base).toBe(200_000 + 250_000 + 400_000 + 200_000);
+    expect(q.extraAmount).toBe(50_000 + 60_000 + 80_000 + 50_000);
+    expect(q.seasonNights).toBe(4);
+  });
+
+  it("describe cada regla en palabras", () => {
+    expect(dayRateLabel(s.dayRates[0])).toBe("Vie y Sáb");
+    expect(dayRateLabel({ weekdays: [1, 2, 3, 4], dates: [], precioPareja: 1, personaAdicional: 0 })).toBe("Lun a Jue");
+    expect(dayRateLabel(s.dayRates[1])).toBe("26 dic, 31 dic");
+  });
+
+  it("valida días y fechas", () => {
+    expect(invalidDayRates(s.dayRates, s.from, s.to)).toBeNull();
+    expect(invalidDayRates([{ weekdays: [], dates: [], precioPareja: 1, personaAdicional: 0 }], s.from, s.to)).toMatch(/Elige los días/);
+    expect(invalidDayRates([{ weekdays: [], dates: ["2027-02-01"], precioPareja: 1, personaAdicional: 0 }], s.from, s.to)).toMatch(/dentro de la temporada/);
+    const twice = { weekdays: [5], dates: [], precioPareja: 1, personaAdicional: 0 };
+    expect(invalidDayRates([twice, twice], s.from, s.to)).toMatch(/viernes está en dos/);
+    expect(invalidDayRates([{ ...twice, precioPareja: 0 }], s.from, s.to)).toMatch(/precio/);
+  });
+
+  it("una temporada sin precios por día sigue como antes", () => {
+    expect(computeQuote(cabin, "2026-12-25", "2026-12-26", 2, [season({ from: "2026-12-20", to: "2026-12-31" })]).base).toBe(200_000);
   });
 });

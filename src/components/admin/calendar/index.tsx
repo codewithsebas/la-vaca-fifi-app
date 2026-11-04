@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { BanIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon, LoginIcon, LogoutIcon, MoonIcon, PlusIcon, WalletIcon } from "@/components/ui/icons";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  BanIcon,
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  HomeIcon,
+  LoginIcon,
+  LogoutIcon,
+  MoonIcon,
+  PlusIcon,
+  WalletIcon,
+} from "@/components/ui/icons";
 import { ACTIVE_STATUSES } from "@/lib/booking";
 import { MONTHS, MS, addDays, fmtDate, fmtFullDate, isISO, monthStart, parseISO, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";
@@ -12,16 +23,15 @@ import { NewReservationDialog, type NewReservationDraft } from "@/components/adm
 import { ReservationModal } from "@/components/admin/reservation-detail";
 import { PREF, usePref } from "@/components/admin/prefs";
 import { paths } from "@/components/admin/routes";
-import { Button, EmptyState, IconButton, ModalPresence, Segmented, Skeleton, buttonClass } from "@/components/admin/ui";
+import { Button, EmptyState, IconButton, ModalPresence, Skeleton, buttonClass } from "@/components/admin/ui";
 import {
-  BLOCK_BG,
   CALENDAR_VIEWS,
   type CalView,
   MONTH_TIMELINE_MIN,
   autoView,
-  barStyle,
   blocks,
   lastOfMonth,
+  fridayOf,
   mondayOf,
   occupies,
   units,
@@ -51,18 +61,34 @@ export function CalendarView() {
   const setAnchor = (d: string) => setDateParam(d === today ? "" : d);
   const narrow = width < 560;
   const monthGrid = view === "mes" && width < MONTH_TIMELINE_MIN;
+  const splitMonth = view === "mes" && !monthGrid && !!width;
 
-  const from = view === "mes" ? monthStart(anchor) : view === "semana" ? mondayOf(anchor) : anchor;
-  const to = view === "mes" ? lastOfMonth(from) : view === "semana" ? addDays(from, 6) : view === "3dias" ? addDays(anchor, 2) : anchor;
+  const from = view === "mes" ? monthStart(anchor) : view === "semana" || view === "2semanas" ? mondayOf(anchor) : view === "finde" ? fridayOf(anchor) : anchor;
+  const to = view === "mes" ? lastOfMonth(from) : addDays(from, { dia: 0, "3dias": 2, finde: 2, semana: 6, "2semanas": 13 }[view]);
   const days = useMemo(() => {
     const out: string[] = [];
     for (let d = from; d <= to; d = addDays(d, 1)) out.push(d);
     return out;
   }, [from, to]);
+  // Quincena visible en el mes partido: la de la fecha elegida (al cambiar de fecha o de mes, vuelve a ella).
+  const halfOf = (d: string) => (view === "mes" && days[15] && d >= days[15] ? 1 : 0);
+  const [half, setHalf] = useState(() => halfOf(anchor));
+  const [halfFor, setHalfFor] = useState(anchor);
+  if (halfFor !== anchor) {
+    setHalfFor(anchor);
+    setHalf(halfOf(anchor));
+  }
 
-  const stepDays = { dia: 1, "3dias": 3, semana: 7, mes: 0 }[view];
+  const stepDays = { dia: 1, "3dias": 3, finde: 7, semana: 7, "2semanas": 14, mes: 0 }[view];
   const step = (dir: number) => setAnchor(view === "mes" ? monthStart(addDays(monthStart(anchor), dir > 0 ? 32 : -1)) : addDays(anchor, dir * stepDays));
-  const unitName = { dia: "Día", "3dias": "Días", semana: "Semana", mes: "Mes" }[view];
+  const [prevLabel, nextLabel] = {
+    dia: ["Día anterior", "Día siguiente"],
+    "3dias": ["3 días anteriores", "3 días siguientes"],
+    finde: ["Fin de semana anterior", "Fin de semana siguiente"],
+    semana: ["Semana anterior", "Semana siguiente"],
+    "2semanas": ["2 semanas anteriores", "2 semanas siguientes"],
+    mes: ["Mes anterior", "Mes siguiente"],
+  }[view];
   const range = (a: string, b: string) => {
     const x = parseISO(a);
     const y = parseISO(b);
@@ -105,54 +131,59 @@ export function CalendarView() {
 
   return (
     <div ref={wrap} className="flex min-h-0 flex-1 flex-col gap-3">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+      {/* Una línea en pantallas anchas: el periodo a la izquierda y, pegados a su derecha, la vista (desplegable), la fecha,
+          las cabañas y «Nueva reserva». En el celular, los controles en una cuadrícula de dos columnas. */}
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="flex min-w-0 items-center gap-3">
           <h1 id="ad-title" tabIndex={-1} className="sr-only">
             Calendario
           </h1>
-          <div className="flex items-center gap-0.5 rounded-full border border-line-strong p-0.5">
-            <IconButton label={`${unitName} anterior`} size="sm" onClick={() => step(-1)}>
+          <div className="flex flex-none items-center gap-0.5 rounded-full border border-line-strong p-0.5">
+            <IconButton label={prevLabel} size="sm" onClick={() => step(-1)}>
               <ChevronLeftIcon size={17} />
             </IconButton>
             <Button size="sm" variant="ghost" onClick={() => setAnchor(today)} disabled={today >= from && today <= to} className="px-3">
               Hoy
             </Button>
-            <IconButton label={`${unitName} siguiente`} size="sm" onClick={() => step(1)}>
+            <IconButton label={nextLabel} size="sm" onClick={() => step(1)}>
               <ChevronRightIcon size={17} />
             </IconButton>
           </div>
-          <p aria-live="polite" className="text-[clamp(1.3rem,2.1vw,1.75rem)] leading-tight font-bold tracking-[-0.03em] text-ink first-letter:uppercase">
+          <p
+            aria-live="polite"
+            className="truncate text-[clamp(1.3rem,2.1vw,1.75rem)] leading-tight font-bold tracking-[-0.03em] text-ink first-letter:uppercase"
+          >
             {title}
           </p>
         </div>
-        {/* En móvil: fecha y cabaña lado a lado, la vista debajo y «Nueva reserva» a todo el ancho; así la cuadrícula empieza más arriba. */}
-        <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
-          <div className="min-w-0 sm:w-[168px]">
-            <DatePicker value={anchor} onChange={(d) => d && setAnchor(d)} clearable={false} placeholder="Ir a fecha" className="h-8 min-h-8 text-[13px]" />
+        <div className="grid w-full grid-cols-2 items-center gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+          <div className="min-w-0 sm:w-[164px]">
+            <label htmlFor="cal-vista" className="sr-only">
+              Vista del calendario
+            </label>
+            <Combobox
+              id="cal-vista"
+              value={view}
+              onChange={(v) => setViewParam(v as CalView)}
+              options={CALENDAR_VIEWS}
+              searchable={false}
+              icon={<CalendarIcon size={15} className="text-ink-muted" />}
+              className="h-10 min-h-10 text-[13.5px]"
+            />
           </div>
-          <div className="min-w-0 sm:w-[190px]">
+          <div className="min-w-0 sm:w-[164px]">
+            <DatePicker value={anchor} onChange={(d) => d && setAnchor(d)} clearable={false} placeholder="Ir a fecha" className="h-10 min-h-10 text-[13.5px]" />
+          </div>
+          <div className="min-w-0 sm:w-[206px]">
             <Combobox
               value={filter}
               onChange={setFilter}
               options={cabinOptions}
               icon={<HomeIcon size={15} className="text-ink-muted" />}
-              className="h-8 min-h-8 text-[13px]"
+              className="h-10 min-h-10 text-[13.5px]"
             />
           </div>
-          <Segmented
-            className="col-span-2 w-full justify-self-stretch sm:w-auto [&>*]:flex-1 [&>*]:justify-center sm:[&>*]:flex-none"
-            label="Vista del calendario"
-            value={view}
-            onChange={(v) => setViewParam(v)}
-            options={CALENDAR_VIEWS}
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<PlusIcon size={14} />}
-            onClick={() => setDraft({ cabinTypeId: filter || undefined })}
-            className="col-span-2 w-full sm:w-auto"
-          >
+          <Button variant="primary" icon={<PlusIcon size={16} />} onClick={() => setDraft({ cabinTypeId: filter || undefined })}>
             Nueva reserva
           </Button>
         </div>
@@ -185,7 +216,7 @@ export function CalendarView() {
               <Chip label="Noches libres" value={Math.max(0, capacity - busyNights)} icon={<MoonIcon size={13} />} />
               {blockedNights > 0 && <Chip label="Bloqueadas" value={blockedNights} icon={<BanIcon size={13} />} />}
             </ul>
-            <Legend />
+            {splitMonth && <HalfSwitch days={days} active={half} onChange={setHalf} />}
           </div>
           <div key={`${view}-${from}-${filter}-${monthGrid}`} className="flex min-h-0 flex-1 flex-col motion-safe:animate-fade-in">
             {!width ? (
@@ -194,8 +225,27 @@ export function CalendarView() {
               <DayAgenda day={anchor} rows={rows} onNew={setDraft} onOpen={setOpenCode} />
             ) : monthGrid ? (
               <MonthGrid month={from} rows={rows} today={today} onPick={showDay} />
+            ) : view === "mes" ? (
+              <MonthHalves
+                days={days}
+                active={half}
+                onActive={setHalf}
+                render={(part) => (
+                  <Timeline
+                    days={part}
+                    rows={rows}
+
+                    today={today}
+                    width={width}
+                    onDay={showDay}
+                    onNew={setDraft}
+                    onOpen={setOpenCode}
+                    className="min-h-0 flex-1"
+                  />
+                )}
+              />
             ) : (
-              <Timeline days={days} rows={rows} view={view} today={today} width={width} onDay={showDay} onNew={setDraft} onOpen={setOpenCode} />
+              <Timeline days={days} rows={rows} today={today} width={width} onDay={showDay} onNew={setDraft} onOpen={setOpenCode} />
             )}
           </div>
         </>
@@ -223,29 +273,117 @@ function Chip({ label, value, icon, meter, tone }: { label: string; value: React
   );
 }
 
-const LEGEND: { label: string; style: CSSProperties }[] = [
-  { label: "Confirmada", style: barStyle({ status: "confirmed" }) },
-  { label: "Sin pagar (retenida)", style: barStyle({ status: "pending_deposit" }) },
-  { label: "Reprogramada", style: barStyle({ status: "rescheduled" }) },
-  { label: "En estadía", style: barStyle({ status: "checked_in" }) },
-  { label: "Finalizada", style: barStyle({ status: "completed" }) },
-  { label: "Bloqueo", style: { background: BLOCK_BG } },
-];
+/* ───────────── Línea de tiempo (3 días, semana y mes en pantallas anchas) ───────────── */
 
-function Legend() {
+/* ───────────── Mes en quincenas ───────────── */
+
+// "1 – 15 nov": rango de una quincena.
+const halfLabel = (p: string[]) => {
+  const a = parseISO(p[0]);
+  return `${a.getUTCDate()} – ${parseISO(p[p.length - 1]).getUTCDate()} ${MS[a.getUTCMonth()]}`;
+};
+const halvesOf = (days: string[]) => [days.slice(0, 15), days.slice(15)];
+
+// El mes en dos quincenas lado a lado (1 al 15 y 16 a fin de mes), una a la vez y siempre a todo el ancho. Se cambia con
+// el control de la fila de resumen (HalfSwitch) o con un gesto horizontal (trackpad, Shift + rueda), con un
+// desplazamiento suave.
+function MonthHalves({
+  days,
+  active,
+  onActive,
+  render,
+}: {
+  days: string[];
+  active: number;
+  onActive: (k: number) => void;
+  render: (part: string[]) => ReactNode;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const moving = useRef(false); // el desplazamiento es nuestro: no se lee como gesto del usuario hasta que termine
+  const parts = halvesOf(days);
+  const leftOf = (k: number) => (track.current?.children[k] as HTMLElement | undefined)?.offsetLeft ?? 0;
+
+  // Al abrir, en su quincena sin animación; después, cada cambio se desliza.
+  const first = useRef(true);
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (!el) return;
+    if (first.current) {
+      first.current = false;
+      el.scrollLeft = leftOf(active);
+      return;
+    }
+    if (Math.abs(el.scrollLeft - leftOf(active)) < 2) return;
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    moving.current = true;
+    const done = () => (moving.current = false);
+    el.addEventListener("scrollend", done, { once: true });
+    const t = setTimeout(done, 1500); // por si el navegador no avisa el final
+    el.scrollTo({ left: leftOf(active), behavior: smooth ? "smooth" : "auto" });
+    return () => {
+      clearTimeout(t);
+      el.removeEventListener("scrollend", done);
+      done();
+    };
+  }, [active]);
+
+  const onActiveRef = useRef(onActive);
+  useEffect(() => {
+    onActiveRef.current = onActive;
+  });
+
+  // Un gesto horizontal (trackpad o Shift + rueda) pasa a la otra quincena; la rueda normal sigue moviendo las filas.
+  // Las tablas no lo encadenan solas (su desplazamiento horizontal está contenido), por eso se escucha aquí.
+  useEffect(() => {
+    const el = track.current;
+    if (!el) return;
+    let lock = 0;
+    const onWheel = (e: WheelEvent) => {
+      const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
+      if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(e.shiftKey ? 0 : e.deltaY)) return;
+      e.preventDefault();
+      if (Date.now() < lock) return;
+      lock = Date.now() + 600;
+      onActiveRef.current(dx > 0 ? 1 : 0);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   return (
-    <ul
-      aria-label="Leyenda"
-      className="-mx-4 no-scrollbar flex gap-x-3 gap-y-1 overflow-x-auto px-4 text-[12px] text-ink-muted sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+    <div
+      ref={track}
+      onScroll={(e) => {
+        if (moving.current) return;
+        const el = e.currentTarget;
+        const k = el.scrollLeft > (leftOf(1) - leftOf(0)) / 2 ? 1 : 0;
+        if (k !== active) onActive(k);
+      }}
+      className="relative no-scrollbar flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto"
     >
-      {LEGEND.map((l) => (
-        <li key={l.label} className="inline-flex flex-none items-center gap-1.5 whitespace-nowrap">
-          <span aria-hidden="true" className="h-3 w-5 rounded-full" style={l.style} />
-          {l.label}
-        </li>
+      {parts.map((p) => (
+        <div key={p[0]} className="flex min-h-0 w-full flex-none snap-start flex-col">
+          {render(p)}
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
-/* ───────────── Línea de tiempo (3 días, semana y mes en pantallas anchas) ───────────── */
+// Control de quincena en la fila de resumen, fuera de la tabla: ‹ 1 – 15 nov ›.
+function HalfSwitch({ days, active, onChange }: { days: string[]; active: number; onChange: (k: number) => void }) {
+  const parts = halvesOf(days);
+  return (
+    <div role="group" aria-label="Quincena" className="flex flex-none items-center gap-0.5 rounded-full border border-line-strong p-0.5">
+      <IconButton label={`Primera quincena · ${halfLabel(parts[0])}`} size="sm" disabled={active === 0} onClick={() => onChange(0)}>
+        <ChevronLeftIcon size={16} />
+      </IconButton>
+      <span aria-live="polite" className="min-w-[96px] px-1 text-center text-[13px] font-semibold text-ink tabular-nums">
+        {halfLabel(parts[active])}
+      </span>
+      <IconButton label={`Segunda quincena · ${halfLabel(parts[1])}`} size="sm" disabled={active === 1} onClick={() => onChange(1)}>
+        <ChevronRightIcon size={16} />
+      </IconButton>
+    </div>
+  );
+}

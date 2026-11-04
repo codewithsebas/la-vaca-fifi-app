@@ -7,8 +7,8 @@ export const NOTIFICATION_GROUPS: { id: NotificationGroup; label: string; descri
   {
     id: "reservas",
     label: "Reservas confirmadas",
-    description: "Cuando se registra el abono de una reserva y queda confirmada.",
-    kinds: ["reservation_created", "reservation_confirmed"],
+    description: "Cuando se registra el abono de una reserva y queda confirmada, y cuando llega una reserva de Booking por asignar.",
+    kinds: ["reservation_created", "reservation_confirmed", "booking_pending"],
   },
   {
     id: "pagos",
@@ -19,8 +19,8 @@ export const NOTIFICATION_GROUPS: { id: NotificationGroup; label: string; descri
   {
     id: "cambios",
     label: "Cancelaciones, vencimientos y fallos",
-    description: "Reservas canceladas, retenciones que vencen sin abono y correos que no se pudieron enviar.",
-    kinds: ["reservation_cancelled", "reservation_expired", "email_failed"],
+    description: "Reservas canceladas, retenciones que vencen sin abono, cambios de Booking y correos que no se pudieron enviar o leer.",
+    kinds: ["reservation_cancelled", "reservation_expired", "email_failed", "booking_modified", "booking_cancelled", "booking_failed"],
   },
 ];
 

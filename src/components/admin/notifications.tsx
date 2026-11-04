@@ -14,6 +14,7 @@ import {
   FileTextIcon,
   LoginIcon,
   MailIcon,
+  PencilIcon,
   SlidersIcon,
   VolumeIcon,
   VolumeOffIcon,
@@ -199,7 +200,13 @@ const KIND: Record<NotificationKind, { icon: typeof BellIcon; tone: string; grou
   proof_uploaded: { icon: FileTextIcon, tone: "bg-info-soft text-info", group: "pagos" },
   proof_approved: { icon: CheckIcon, tone: "bg-success-soft text-success", group: "pagos" },
   proof_rejected: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "pagos" },
+  booking_pending: { icon: MailIcon, tone: "bg-info-soft text-info", group: "reservas" },
+  booking_modified: { icon: PencilIcon, tone: "bg-info-soft text-info", group: "cambios" },
+  booking_cancelled: { icon: CloseIcon, tone: "bg-error-soft text-error", group: "cambios" },
+  booking_failed: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "cambios" },
 };
+// Los avisos de Booking sin reserva (aún por asignar) llevan a la bandeja de Booking.
+const toBooking = (n: AdminNotification) => !n.reservationCode && n.kind.startsWith("booking_");
 // Un tipo que ya no existe (avisos antiguos de pagos en línea o de Booking.com) se muestra como aviso general,
 // en el mismo grupo que le dan las notificaciones push.
 const OTHER = { icon: BellIcon, tone: "bg-panel text-ink-muted", group: groupOf("") };
@@ -310,7 +317,7 @@ function ReminderList({ items, onPick }: { items: Reminder[]; onPick: (code: str
 /* ───────────── Campana (acceso rápido) ───────────── */
 
 export function NotificationCenter() {
-  const { data, openReservation, now } = useAdmin();
+  const { data, openReservation, go, now } = useAdmin();
   const anchor = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [sound, setSound] = useSound();
@@ -319,10 +326,11 @@ export function NotificationCenter() {
   const unread = data.notifications.filter((n) => !n.readAt);
   const recent = (unread.length ? unread : data.notifications).slice(0, 8);
 
-  const pick = (code: string | null, id?: number) => {
-    if (id) void mark({ ids: [id] });
+  const pick = (n: AdminNotification) => {
+    if (!n.readAt) void mark({ ids: [n.id] });
     setOpen(false);
-    if (code) openReservation(code);
+    if (n.reservationCode) openReservation(n.reservationCode);
+    else if (toBooking(n)) go(paths.booking);
   };
 
   return (
@@ -383,7 +391,13 @@ export function NotificationCenter() {
                 <h3 id="nc-rem" className="px-2 pt-1 pb-1.5 text-[11.5px] font-bold tracking-[.06em] text-ink-muted uppercase">
                   Requiere atención
                 </h3>
-                <ReminderList items={reminders} onPick={(code) => pick(code)} />
+                <ReminderList
+                  items={reminders}
+                  onPick={(code) => {
+                    setOpen(false);
+                    openReservation(code);
+                  }}
+                />
               </section>
             )}
             <h3 className="px-4 pt-3 pb-1 text-[11.5px] font-bold tracking-[.06em] text-ink-muted uppercase">
@@ -397,7 +411,7 @@ export function NotificationCenter() {
                     <li key={n.id}>
                       <button
                         type="button"
-                        onClick={() => pick(n.reservationCode, n.readAt ? undefined : n.id)}
+                        onClick={() => pick(n)}
                         data-notice={gestureOf(k.icon)}
                         className="flex w-full items-start gap-3 rounded-[14px] px-2.5 py-2.5 text-left transition-colors hover:bg-panel"
                       >
@@ -555,6 +569,11 @@ export function NotificationsView() {
                             className={buttonClass("secondary", "sm")}
                           >
                             Ver reserva
+                          </Link>
+                        )}
+                        {toBooking(n) && (
+                          <Link href={paths.booking} onClick={() => !n.readAt && void mark({ ids: [n.id] })} className={buttonClass("secondary", "sm")}>
+                            Ver en Booking
                           </Link>
                         )}
                         {!n.readAt && (

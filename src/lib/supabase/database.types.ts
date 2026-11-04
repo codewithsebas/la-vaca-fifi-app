@@ -219,6 +219,89 @@ export type Database = {
           },
         ]
       }
+      booking_emails: {
+        Row: {
+          created_at: string
+          detail: string
+          kind: string | null
+          message_id: string
+          received_at: string
+          ref: string | null
+          result: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string
+          kind?: string | null
+          message_id: string
+          received_at: string
+          ref?: string | null
+          result: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string
+          kind?: string | null
+          message_id?: string
+          received_at?: string
+          ref?: string | null
+          result?: string
+        }
+        Relationships: []
+      }
+      booking_inbox: {
+        Row: {
+          check_in: string
+          check_out: string
+          created_at: string
+          guest_email: string
+          guest_full_name: string
+          guest_phone: string
+          last_email_at: string
+          ref: string
+          reservation_code: string | null
+          status: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          check_in: string
+          check_out: string
+          created_at?: string
+          guest_email?: string
+          guest_full_name: string
+          guest_phone?: string
+          last_email_at: string
+          ref: string
+          reservation_code?: string | null
+          status?: string
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          check_in?: string
+          check_out?: string
+          created_at?: string
+          guest_email?: string
+          guest_full_name?: string
+          guest_phone?: string
+          last_email_at?: string
+          ref?: string
+          reservation_code?: string | null
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_inbox_reservation_code_fkey"
+            columns: ["reservation_code"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       cabin_types: {
         Row: {
           activa: boolean
@@ -587,6 +670,7 @@ export type Database = {
           activa: boolean
           cabin_type_id: string
           created_at: string
+          day_rates: Json
           from_date: string
           id: string
           nombre: string
@@ -600,6 +684,7 @@ export type Database = {
           activa?: boolean
           cabin_type_id: string
           created_at?: string
+          day_rates?: Json
           from_date: string
           id?: string
           nombre: string
@@ -613,6 +698,7 @@ export type Database = {
           activa?: boolean
           cabin_type_id?: string
           created_at?: string
+          day_rates?: Json
           from_date?: string
           id?: string
           nombre?: string
@@ -981,6 +1067,23 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: string
       }
+      apply_booking_email: {
+        Args: {
+          p_check_in?: string
+          p_check_out?: string
+          p_email?: string
+          p_error?: string
+          p_guest?: string
+          p_kind?: string
+          p_message_id: string
+          p_phone?: string
+          p_quiet: boolean
+          p_received_at: string
+          p_ref?: string
+          p_total?: number
+        }
+        Returns: string
+      }
       enqueue_arrival_reminders: { Args: never; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
@@ -997,6 +1100,7 @@ export type Database = {
         }
         Returns: Json
       }
+      request_booking_mail_sync: { Args: never; Returns: undefined }
       request_email_dispatch: { Args: never; Returns: undefined }
       run_payment_deadlines: { Args: never; Returns: undefined }
       sync_cursor: { Args: never; Returns: string }

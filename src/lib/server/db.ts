@@ -28,6 +28,7 @@ import type {
   PublicReservation,
   Quote,
   RateSeason,
+  SeasonDayRate,
   Reservation,
   ReservationSource,
   Severity,
@@ -78,6 +79,7 @@ export const toSeason = (s: Tables<"rate_seasons">): RateSeason => ({
   precioPareja: s.precio_pareja,
   personaAdicional: s.persona_adicional,
   activa: s.activa,
+  dayRates: Array.isArray(s.day_rates) ? (s.day_rates as SeasonDayRate[]) : [],
 });
 
 export async function loadSeasons(sb: Db, { activeOnly = false } = {}) {

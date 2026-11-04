@@ -3,8 +3,10 @@
 import {
   ACTIVE_STATUSES,
   EMAIL_RE,
+  cleanDayRates,
   computeQuote,
   findUnit,
+  invalidDayRates,
   newReservationCode,
   normalizePhone,
   slugify,
@@ -755,6 +757,7 @@ const seasonFrom = (p: SeasonInput) => ({
   precioPareja: p.precioPareja,
   personaAdicional: p.personaAdicional,
   activa: !!p.activa,
+  dayRates: cleanDayRates(p.dayRates ?? []),
 });
 
 function seasonErrors(p: SeasonInput, d: AdminData) {
@@ -762,7 +765,11 @@ function seasonErrors(p: SeasonInput, d: AdminData) {
   const nombre = String(p.nombre ?? "").trim();
   if (!nombre || nombre.length > 80) fields.nombre = "Escribe un nombre (máximo 80 caracteres).";
   if (!isISO(p.from) || !isISO(p.to) || p.to < p.from) fields.dates = "Elige un rango de fechas válido.";
-  else if (p.activa) {
+  else {
+    const bad = invalidDayRates(p.dayRates ?? [], p.from, p.to);
+    if (bad) fields.dayRates = bad;
+  }
+  if (!fields.dates && p.activa) {
     const hit = d.seasons.find((s) => s.id !== p.id && s.activa && s.cabinTypeId === p.cabinTypeId && s.from <= p.to && s.to >= p.from);
     if (hit) fields.dates = `Se cruza con la temporada activa "${hit.nombre}" de la misma cabaña.`;
   }

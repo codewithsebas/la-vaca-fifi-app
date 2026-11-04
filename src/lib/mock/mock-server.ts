@@ -7,6 +7,7 @@ import {
   depositDueAt,
   findUnit,
   importDocNumber,
+  invalidDayRates,
   invalidImportRow,
   newReservationCode,
   normalizePhone,
@@ -30,6 +31,8 @@ import type {
   ApiResult,
   Block,
   BlockInput,
+  BookingInboxAction,
+  BookingInboxItem,
   CabinInput,
   CabinType,
   ClientProfile,
@@ -81,6 +84,7 @@ type Db = {
   bathrooms?: Bathroom[];
   bathroomBlocks?: BathroomBlock[];
   employees?: Employee[];
+  booking?: BookingInboxItem[];
 };
 
 // Escenarios de prueba para el envío: localStorage.setItem('vf-mock-settings', '{"post":"409"}')
@@ -215,6 +219,10 @@ function seed(): Db {
         precioPareja: 550000,
         personaAdicional: 60000,
         activa: true,
+        dayRates: [
+          { weekdays: [5, 6], dates: [], precioPareja: 620000, personaAdicional: 70000 },
+          { weekdays: [], dates: [`${t.slice(0, 4)}-12-24`, `${t.slice(0, 4)}-12-31`], precioPareja: 700000, personaAdicional: 80000 },
+        ],
       },
     ],
     clients: {
@@ -823,6 +831,8 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       const b = opts.body as SeasonInput;
       const clash = b.activa && db.seasons.find((s) => s.id !== b.id && s.activa && s.cabinTypeId === b.cabinTypeId && s.from <= b.to && b.from <= s.to);
       if (clash) return invalid({ dates: `Se cruza con la temporada activa "${clash.nombre}" de la misma cabaña.` });
+      const bad = invalidDayRates(b.dayRates ?? [], b.from, b.to);
+      if (bad) return invalid({ dayRates: bad });
       if (method === "PUT")
         Object.assign(
           db.seasons.find((s) => s.id === b.id)!,
@@ -995,6 +1005,60 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     }
     save(db);
     return ok(bathroomsOf(db));
+  }
+
+  // ----- Reservas de Booking por correo (en modo simulado: una de ejemplo por asignar) -----
+  if (path === "/admin/booking") {
+    if (!db.booking) {
+      const ci = addDays(todayISO(), 12);
+      db.booking = [
+        {
+          ref: "4300001",
+          status: "pending",
+          guest: "Laura Restrepo",
+          email: "lrestrepo.100001@guest.booking.com",
+          phone: "",
+          checkIn: ci,
+          checkOut: addDays(ci, 2),
+          total: 400000,
+          reservationCode: null,
+          lastEmailAt: new Date().toISOString(),
+        },
+      ];
+      save(db);
+    }
+    if (method === "GET") return ok(db.booking);
+    const b = opts.body as BookingInboxAction;
+    const item = db.booking.find((x) => x.ref === b?.ref);
+    if (!item) return { status: 404, data: { error: "NOT_FOUND" } };
+    if (item.status !== "pending") return { status: 409, data: { error: "NOT_PENDING" } };
+    if (b.action === "dismiss") {
+      item.status = "dismissed";
+      save(db);
+      return ok(db.booking);
+    }
+    const row: ImportRow = {
+      ref: `ayenda:${item.ref}`,
+      guest: item.guest,
+      email: item.email,
+      phone: item.phone,
+      checkIn: item.checkIn,
+      checkOut: item.checkOut,
+      cabinTypeId: b.cabinTypeId,
+      unit: b.unit,
+      total: item.total,
+      commission: 0,
+      channel: "Booking",
+      status: "confirmed",
+      notes: `Booking vía Ayenda · reserva ${item.ref}`,
+    };
+    const r = await mockRequest("POST", "/admin/import", { body: { rows: [row] } });
+    const done = (r.data as { results?: ImportResult[] } | null)?.results?.[0];
+    if (!done?.ok || !done.code) return { status: 409, data: { error: done?.error?.includes("ocupadas") ? "DATES_UNAVAILABLE" : "FAILED" } };
+    const fresh = load();
+    fresh.booking = (fresh.booking ?? []).map((x) => (x.ref === item.ref ? { ...x, status: "assigned", reservationCode: done.code! } : x));
+    save(fresh);
+    return ok({ code: done.code, items: fresh.booking });
   }
 
   // ----- Empleados (en modo simulado, solo en este navegador) -----

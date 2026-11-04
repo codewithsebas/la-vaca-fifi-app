@@ -7,12 +7,15 @@ import type { Block, CabinType, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { paths } from "@/components/admin/routes";
 
-export type CalView = "dia" | "3dias" | "semana" | "mes";
+// finde: viernes a domingo (las noches que más se venden). 2semanas: de lunes a domingo de la semana siguiente.
+export type CalView = "dia" | "3dias" | "finde" | "semana" | "2semanas" | "mes";
 
 export const CALENDAR_VIEWS: { value: CalView; label: string }[] = [
   { value: "dia", label: "Día" },
   { value: "3dias", label: "3 días" },
+  { value: "finde", label: "Fin de semana" },
   { value: "semana", label: "Semana" },
+  { value: "2semanas", label: "2 semanas" },
   { value: "mes", label: "Mes" },
 ];
 
@@ -26,6 +29,11 @@ export const lastOfMonth = (m: string) => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
 };
 export const mondayOf = (d: string) => addDays(d, -((parseISO(d).getUTCDay() + 6) % 7));
+// Viernes del fin de semana de una fecha: el de esa semana si ya es viernes, sábado o domingo; si no, el que viene.
+export const fridayOf = (d: string) => {
+  const wd = parseISO(d).getUTCDay();
+  return addDays(d, wd === 0 ? -2 : wd === 6 ? -1 : 5 - wd);
+};
 export const BLOCK_BG =
   "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-status-block) 32%, var(--color-panel)) 0 5px, color-mix(in srgb, var(--color-status-block) 14%, var(--color-panel)) 5px 10px)";
 export const blockStyle = (): CSSProperties => ({ background: BLOCK_BG });
@@ -185,3 +193,30 @@ export function BlockTip({ b, cabin }: { b: Block; cabin: string }) {
 }
 
 /* ───────────── Vista ───────────── */
+
+/* ───────────── Leyenda (pie de la tabla) ───────────── */
+
+const LEGEND: { label: string; style: CSSProperties }[] = [
+  { label: "Confirmada", style: barStyle({ status: "confirmed" }) },
+  { label: "Sin pagar (retenida)", style: barStyle({ status: "pending_deposit" }) },
+  { label: "Reprogramada", style: barStyle({ status: "rescheduled" }) },
+  { label: "En estadía", style: barStyle({ status: "checked_in" }) },
+  { label: "Finalizada", style: barStyle({ status: "completed" }) },
+  { label: "Bloqueo", style: { background: BLOCK_BG } },
+];
+
+export function CalendarLegend() {
+  return (
+    <ul
+      aria-label="Leyenda"
+      className="-mx-4 no-scrollbar flex gap-x-3 gap-y-1 overflow-x-auto px-4 text-[12px] text-ink-muted sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+    >
+      {LEGEND.map((l) => (
+        <li key={l.label} className="inline-flex flex-none items-center gap-1.5 whitespace-nowrap">
+          <span aria-hidden="true" className="h-3 w-5 rounded-full" style={l.style} />
+          {l.label}
+        </li>
+      ))}
+    </ul>
+  );
+}

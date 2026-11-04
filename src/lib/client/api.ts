@@ -20,6 +20,8 @@ import type {
   Availability,
   Block,
   BlockInput,
+  BookingInboxAction,
+  BookingInboxItem,
   CabinInput,
   CabinType,
   ClientProfile,
@@ -154,6 +156,16 @@ export const api = {
       create: (b: EmployeeInput) => request<Employee[] | ValidationError | ApiError>("POST", "/admin/employees", { body: b }),
       update: (b: EmployeeInput) => request<Employee[] | ValidationError | ApiError>("PUT", "/admin/employees", { body: b }),
       remove: (id: string) => request<Employee[] | ApiError>("DELETE", "/admin/employees", { query: { id } }),
+    },
+    // Reservas de Booking que llegan por correo, por asignar a una cabaña. Solo con conexión.
+    booking: {
+      list: () => request<BookingInboxItem[]>("GET", "/admin/booking"),
+      assign: (ref: string, cabinTypeId: CabinTypeId, unit: number) =>
+        request<{ code: string; items: BookingInboxItem[] } | ApiError>("POST", "/admin/booking", {
+          body: { action: "assign", ref, cabinTypeId, unit } satisfies BookingInboxAction,
+        }),
+      dismiss: (ref: string) =>
+        request<BookingInboxItem[] | ApiError>("POST", "/admin/booking", { body: { action: "dismiss", ref } satisfies BookingInboxAction }),
     },
     // La contraseña nunca entra en la cola: cambiarla exige conexión.
     profile: (b: ProfileInput) => {

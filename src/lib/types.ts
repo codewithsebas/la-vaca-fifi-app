@@ -36,7 +36,12 @@ export type RateSeason = {
   precioPareja: number;
   personaAdicional: number;
   activa: boolean;
+  dayRates: SeasonDayRate[];
 };
+
+// Precio distinto para ciertas noches de la temporada: unos días de la semana (0 = domingo … 6 = sábado) o unas fechas
+// puntuales. Cada regla usa una de las dos. Una fecha puntual gana sobre un día de la semana; sin regla, el de la temporada.
+export type SeasonDayRate = { weekdays: number[]; dates: string[]; precioPareja: number; personaAdicional: number };
 
 export type Quote = {
   base: number;
@@ -243,7 +248,11 @@ export type NotificationKind =
   | "proof_approved"
   | "proof_rejected"
   | "balance_paid"
-  | "email_failed";
+  | "email_failed"
+  | "booking_pending"
+  | "booking_modified"
+  | "booking_cancelled"
+  | "booking_failed";
 
 export type AdminNotification = {
   id: number;
@@ -322,6 +331,23 @@ export type ImportRow = {
   notes: string;
 };
 export type ImportResult = { ref: string; ok: boolean; code?: string; error?: string };
+
+// Reserva de Booking que llegó por correo de Ayenda (booking_inbox). El correo no dice la cabaña: entra «pending» y el
+// equipo la asigna. ref: número único de Ayenda.
+export type BookingInboxStatus = "pending" | "assigned" | "cancelled" | "dismissed";
+export type BookingInboxItem = {
+  ref: string;
+  status: BookingInboxStatus;
+  guest: string;
+  email: string;
+  phone: string;
+  checkIn: string;
+  checkOut: string;
+  total: number;
+  reservationCode: string | null;
+  lastEmailAt: string;
+};
+export type BookingInboxAction = { action: "assign"; ref: string; cabinTypeId: CabinTypeId; unit: number } | { action: "dismiss"; ref: string };
 
 // Cuerpo de PUT /admin/site.
 export type SiteInput = { settings: SiteSettings; policies: SitePolicy[]; content: SiteTexts; theme: SiteTheme };

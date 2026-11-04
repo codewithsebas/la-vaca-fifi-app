@@ -4,7 +4,7 @@ import { LoginIcon } from "@/components/ui/icons";
 import { addDays, fmtDate, parseISO, plural, statusOf } from "@/lib/format";
 import { useAdmin } from "@/components/admin/context";
 import { useTip } from "@/components/ui/floating";
-import { DayName, type Unit, barColor, blocks, lastOfMonth, mondayOf, occupies, useCalBlocks } from "@/components/admin/calendar/shared";
+import { CalendarLegend, DayName, type Unit, barColor, blocks, lastOfMonth, mondayOf, occupies, useCalBlocks } from "@/components/admin/calendar/shared";
 
 // Cada día muestra una franja por unidad (reserva, bloqueo o libre) y cuántas quedan libres. Tocar un día abre su agenda.
 export function MonthGrid({ month, rows, today, onPick }: { month: string; rows: Unit[]; today: string; onPick: (d: string) => void }) {
@@ -103,6 +103,9 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
             </button>
           );
         })}
+      </div>
+      <div className="border-t border-line bg-canvas/50 px-4 py-2.5">
+        <CalendarLegend />
       </div>
     </div>
   );

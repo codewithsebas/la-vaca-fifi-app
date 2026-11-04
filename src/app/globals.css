@@ -925,10 +925,11 @@
   }
 }
 
-/* Menú del panel: al pasar el mouse (o llegar con el teclado), el icono de cada módulo hace un gesto corto y propio. Los
-   iconos separan en trazos lo que se mueve por aparte. Sin mouse o con movimiento reducido, se quedan quietos. */
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  [data-nav]:is(:hover, :focus-visible) {
+/* Menú del panel: al pasar el mouse, al llegar con el teclado y al hacer clic o tocarlo (data-tap, en shell.tsx), el icono
+   de cada módulo hace un gesto corto y propio. Los iconos separan en trazos lo que se mueve por aparte. Con movimiento
+   reducido se quedan quietos. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-nav]:is(:hover, :focus-visible, [data-tap]) {
     svg {
       overflow: visible;
     }
@@ -1027,6 +1028,18 @@
     &[data-nav="condiciones"] svg {
       animation: ec-nav-tilt 0.5s ease-in-out both;
     }
+    &[data-nav="booking"] svg > :nth-child(2) {
+      animation: ec-nav-lift 0.45s ease-in-out both;
+    }
+    &[data-nav="booking"] svg > :nth-child(3) {
+      animation: ec-nav-pop 0.45s ease-out 0.15s both;
+    }
+  }
+}
+/* En pantallas táctiles el :hover queda pegado después de tocar: ahí solo cuenta el toque. */
+@media (hover: none) {
+  [data-nav]:hover:not([data-tap], :focus-visible) :is(svg, svg *) {
+    animation: none !important;
   }
 }
 /* Botones de icono del panel (encabezado, buscador, contraer el menú, actualizar y calendario): los mismos gestos. */

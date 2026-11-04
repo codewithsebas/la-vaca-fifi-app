@@ -274,6 +274,10 @@ const navItem = (mini: boolean) =>
     mini ? "mx-auto size-10 justify-center" : "min-h-[38px] w-full gap-3 px-3.5 py-1.5 pointer-coarse:min-h-11"
   }`;
 const navIcon = "text-white/55 transition-colors group-hover:text-white/90";
+// Booking lleva su azul (el del tema claro del panel, fijo porque la barra es oscura en los dos temas y en el oscuro ese
+// token se oscurece): el icono, y al pasar el mouse un fondo azul tan suave como el gris de las demás filas.
+const bookingIcon = "text-[#91a9e0] transition-colors group-hover:text-[#dbe5f8]";
+const bookingHover = "text-white/72 hover:bg-[#b6c8ef]/20 hover:text-white";
 // Tooltips de la barra lateral contraída: al lado, desde el borde de la barra, y sin esperar.
 const SIDE_TIP = { placement: "right", delay: 60 } as const;
 
@@ -286,6 +290,22 @@ function NavTip({ label, badge }: { label: string; badge?: { n: number; label: s
       </span>
       {badge?.n ? <span className="text-[11.5px] opacity-70">{`${badge.n} ${badge.label}`}</span> : null}
     </span>
+  );
+}
+
+// Al hacer clic (o tocar) un módulo, su icono repite el gesto (globals.css, [data-tap]). Si el mouse ya está encima, el
+// gesto del :hover ya terminó: se vuelve a empezar.
+const tapTimers = new WeakMap<HTMLElement, number>();
+function replayGesture(el: HTMLElement) {
+  el.setAttribute("data-tap", "");
+  for (const a of el.getAnimations({ subtree: true })) {
+    a.cancel();
+    a.play();
+  }
+  window.clearTimeout(tapTimers.get(el));
+  tapTimers.set(
+    el,
+    window.setTimeout(() => el.removeAttribute("data-tap"), 1000),
   );
 }
 
@@ -325,14 +345,17 @@ function NavList({
               <Link
                 key={id}
                 href={href}
-                onClick={onNavigate}
+                onClick={(e) => {
+                  replayGesture(e.currentTarget);
+                  onNavigate?.();
+                }}
                 aria-current={active ? "page" : undefined}
                 data-nav={id}
                 {...(mini ? tip(() => <NavTip label={label} badge={b} />, SIDE_TIP) : {})}
-                className={`${navItem(mini)} ${active ? `text-pink ${mini ? "bg-white/10" : ""}` : "text-white/72 hover:bg-white/7 hover:text-white"}`}
+                className={`${navItem(mini)} ${active ? `text-pink ${mini ? "bg-white/10" : ""}` : id === "booking" ? bookingHover : "text-white/72 hover:bg-white/7 hover:text-white"}`}
               >
                 {active && !mini && <span aria-hidden="true" className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full bg-pink" />}
-                <Icon size={19} className={active ? "text-pink" : navIcon} />
+                <Icon size={19} className={id === "booking" ? bookingIcon : active ? "text-pink" : navIcon} />
                 <span className={mini ? "sr-only" : "flex-1"}>{label}</span>
                 {b?.n ? (
                   mini ? (

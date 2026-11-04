@@ -43,6 +43,20 @@ export const env = {
   get turnstileSecretKey() {
     return read("TURNSTILE_SECRET_KEY");
   },
+  // Buzón donde llegan los correos de Ayenda con las reservas de Booking (IMAP; en Gmail, una contraseña de aplicación).
+  get bookingImapHost() {
+    return read("BOOKING_IMAP_HOST") ?? "imap.gmail.com";
+  },
+  get bookingImapUser() {
+    return read("BOOKING_IMAP_USER");
+  },
+  get bookingImapPassword() {
+    return read("BOOKING_IMAP_PASSWORD");
+  },
+  // qa | pdn (sin definir en desarrollo local, que es QA).
+  get appEnv() {
+    return read("APP_ENV") ?? "qa";
+  },
   get isProduction() {
     return process.env.NODE_ENV === "production";
   },
@@ -53,6 +67,7 @@ const REQUIRED = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_
 const OPTIONAL: Record<string, string[]> = {
   "correos (Resend)": ["RESEND_API_KEY"],
   "avisos push": ["NEXT_PUBLIC_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"],
+  "reservas de Booking por correo": ["BOOKING_IMAP_USER", "BOOKING_IMAP_PASSWORD"],
 };
 
 // Proyecto de Supabase de cada entorno. APP_ENV dice dónde corre la app (qa | pdn); en desarrollo local es QA siempre.

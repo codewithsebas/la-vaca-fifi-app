@@ -2,16 +2,16 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { CalendarIcon, CheckIcon, HomeIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
-import { computeQuote, nightlyRate } from "@/lib/booking";
+import { CalendarIcon, CheckIcon, CloseIcon, HomeIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
+import { MAX_DAY_RATES, computeQuote, dayRateLabel, invalidDayRates, nightlyRate } from "@/lib/booking";
 import { api } from "@/lib/client/api";
-import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
-import type { CabinType, RateSeason, SeasonInput } from "@/lib/types";
+import { WD_FULL, WD_MIN, addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
+import type { CabinType, RateSeason, SeasonDayRate, SeasonInput } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam, useSetParams } from "@/components/admin/context";
 import { MODULES } from "@/components/admin/routes";
 import { Paginator, usePaged } from "@/components/admin/paginator";
-import { DateRangePicker } from "@/components/admin/date-picker";
+import { DatePicker, DateRangePicker } from "@/components/admin/date-picker";
 import { adminInput } from "@/components/admin/shared";
 import {
   Badge,
@@ -68,6 +68,7 @@ export function RatesView() {
           precioPareja: first?.precioPareja ?? 0,
           personaAdicional: first?.personaAdicional ?? 0,
           activa: true,
+          dayRates: [],
         }
       : found
         ? { ...found }
@@ -252,6 +253,15 @@ function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
         <p className="text-[13px] text-ink-muted">
           {c?.nombre ?? s.cabinTypeId} · noches del {fmtDate(s.from, true)} al {fmtDate(s.to, true)} ({plural(nights, "noche", "noches")})
         </p>
+        {(s.dayRates ?? []).length > 0 && (
+          <p className="mt-1 flex flex-wrap gap-1.5">
+            {s.dayRates.map((r) => (
+              <Badge key={dayRateLabel(r)} tone="info">
+                {dayRateLabel(r)} · {cop(r.precioPareja)}
+              </Badge>
+            ))}
+          </p>
+        )}
       </div>
       <div className="text-right">
         <p className="text-[15px] font-bold text-ink tabular-nums">{cop(s.precioPareja)}</p>
@@ -275,6 +285,7 @@ function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
 function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () => void }) {
   const { data, setData, toast, today, onAuthError } = useAdmin();
   const [s, setS] = useState<SeasonInput>(initial);
+  const [rules, setRules] = useState<DraftRule[]>((initial.dayRates ?? []).map((r) => ({ ...r, kind: r.dates.length ? "dates" : "weekdays" })));
   const [cabins, setCabins] = useState<string[]>(
     initial.id
       ? [initial.cabinTypeId]
@@ -302,6 +313,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
     cabins: !cabins.length ? "Elige al menos una cabaña." : "",
     dates: !s.from || !s.to ? "Elige la primera y la última noche." : "",
     price: s.precioPareja <= 0 ? "La tarifa debe ser mayor que cero." : "",
+    dayRates: s.from && s.to ? (invalidDayRates(rules.map(ruleOf), s.from, s.to) ?? "") : "",
   };
   const invalid = Object.values(errs).some(Boolean) || clash.length > 0;
 
@@ -312,7 +324,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
     try {
       let last: RateSeason[] | null = null;
       for (const id of cabins) {
-        const body = { ...s, nombre: s.nombre.trim(), cabinTypeId: id };
+        const body = { ...s, nombre: s.nombre.trim(), cabinTypeId: id, dayRates: rules.map(ruleOf) };
         const r = s.id ? await api.admin.updateSeason(body) : await api.admin.createSeason(body);
         if (r.status === 401 || r.status === 403) return onAuthError();
         if (r.status !== 200 || !Array.isArray(r.data)) {
@@ -435,6 +447,15 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
             {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={s.personaAdicional} onChange={(n) => set({ personaAdicional: n })} />}
           </Field>
         </div>
+        <DayRatesEditor
+          season={s}
+          rules={rules}
+          onChange={(r) => {
+            setRules(r);
+            setError("");
+          }}
+          error={tried ? errs.dayRates : undefined}
+        />
         <Switch
           checked={s.activa}
           onChange={(v) => set({ activa: v })}
@@ -465,6 +486,118 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
   );
 }
 
+/* ───────────── Precios por día ───────────── */
+
+// En el editor cada regla recuerda si es de días de la semana o de fechas (vacía, no se sabría).
+type DraftRule = SeasonDayRate & { kind: "weekdays" | "dates" };
+const ruleOf = ({ kind, ...r }: DraftRule): SeasonDayRate => (kind === "dates" ? { ...r, weekdays: [] } : { ...r, dates: [] });
+const WEEK = [1, 2, 3, 4, 5, 6, 0]; // la semana empieza el lunes
+
+// Dentro de la temporada, unas noches de la semana o unas fechas puntuales se cobran distinto. Una fecha puntual gana
+// sobre un día de la semana; las demás noches se cobran con el precio de la temporada.
+function DayRatesEditor({ season, rules, onChange, error }: { season: SeasonInput; rules: DraftRule[]; onChange: (r: DraftRule[]) => void; error?: string }) {
+  const update = (i: number, p: Partial<DraftRule>) => onChange(rules.map((r, j) => (j === i ? { ...r, ...p } : r)));
+  const add = (kind: DraftRule["kind"]) =>
+    onChange([...rules, { kind, weekdays: [], dates: [], precioPareja: season.precioPareja, personaAdicional: season.personaAdicional }]);
+  const takenDays = (i: number) => new Set(rules.flatMap((r, j) => (j !== i && r.kind === "weekdays" ? r.weekdays : [])));
+  const takenDates = (i: number) => new Set(rules.flatMap((r, j) => (j !== i && r.kind === "dates" ? r.dates : [])));
+  const full = rules.length >= MAX_DAY_RATES;
+
+  return (
+    <fieldset className="flex min-w-0 flex-col gap-3">
+      <div>
+        <legend className="text-[13px] font-semibold text-ink">Precios por día (opcional)</legend>
+        <p className="text-[12.5px] text-ink-muted">
+          Cobra distinto ciertas noches de la temporada: por ejemplo, viernes y sábado, o el 24 y el 31 de diciembre. Una fecha puntual gana sobre un día de la
+          semana.
+        </p>
+      </div>
+      {rules.map((r, i) => {
+        const days = takenDays(i);
+        const dates = takenDates(i);
+        return (
+          <div key={i} className="flex flex-col gap-3 rounded-[18px] bg-canvas/60 p-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-semibold text-ink">{r.kind === "weekdays" ? "Noches de la semana" : "Fechas puntuales"}</p>
+              <IconButton label="Quitar este precio por día" size="sm" variant="danger-ghost" onClick={() => onChange(rules.filter((_, j) => j !== i))}>
+                <TrashIcon size={14} />
+              </IconButton>
+            </div>
+            {r.kind === "weekdays" ? (
+              <div role="group" aria-label="Noches de la semana" className="flex flex-wrap gap-1.5">
+                {WEEK.map((d) => {
+                  const on = r.weekdays.includes(d);
+                  const used = days.has(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={WD_FULL[d]}
+                      title={used ? `${WD_FULL[d]} ya tiene otro precio` : WD_FULL[d]}
+                      disabled={used}
+                      onClick={() => update(i, { weekdays: on ? r.weekdays.filter((x) => x !== d) : [...r.weekdays, d] })}
+                      className={`grid size-9 place-items-center rounded-full text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${on ? "bg-ink text-paper" : "border border-line-strong text-ink-muted hover:not-disabled:text-ink"}`}
+                    >
+                      {WD_MIN[d]}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {r.dates.length > 0 && (
+                  <ul className="flex flex-wrap gap-1.5">
+                    {[...r.dates].sort().map((d) => (
+                      <li key={d} className="flex items-center gap-1 rounded-full bg-paper py-1 pr-1 pl-3 text-[13px] font-semibold text-ink">
+                        {fmtDate(d, true)}
+                        <IconButton label={`Quitar ${fmtDate(d, true)}`} size="sm" onClick={() => update(i, { dates: r.dates.filter((x) => x !== d) })}>
+                          <CloseIcon size={13} />
+                        </IconButton>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {season.from && season.to ? (
+                  <DatePicker
+                    value={null}
+                    min={season.from}
+                    max={season.to}
+                    disabled={(iso) => dates.has(iso) || r.dates.includes(iso)}
+                    placeholder="Agregar una fecha"
+                    onChange={(iso) => iso && update(i, { dates: [...r.dates, iso] })}
+                  />
+                ) : (
+                  <p className="text-[12.5px] text-ink-muted">Elige primero las noches de la temporada.</p>
+                )}
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Noche para 2" hint={`Temporada ${cop(season.precioPareja)}`}>
+                {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={r.precioPareja} onChange={(n) => update(i, { precioPareja: n })} />}
+              </Field>
+              <Field label="Persona adicional" hint={`Temporada ${cop(season.personaAdicional)}`}>
+                {(p) => (
+                  <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={r.personaAdicional} onChange={(n) => update(i, { personaAdicional: n })} />
+                )}
+              </Field>
+            </div>
+          </div>
+        );
+      })}
+      {error && <FieldError>{error}</FieldError>}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" icon={<PlusIcon size={13} />} disabled={full} onClick={() => add("weekdays")}>
+          Días de la semana
+        </Button>
+        <Button size="sm" icon={<PlusIcon size={13} />} disabled={full} onClick={() => add("dates")}>
+          Fechas puntuales
+        </Button>
+      </div>
+    </fieldset>
+  );
+}
+
 /* ───────────── Simulador ───────────── */
 
 // Responde «¿cuánto pagaría un huésped?» con las tarifas y temporadas actuales, noche a noche.
@@ -483,8 +616,9 @@ function Simulator() {
     const groups = new Map<string, { label: string; nights: number; couple: number; extra: number }>();
     for (let d = range.from; d < range.to; d = addDays(d, 1)) {
       const r = nightlyRate(c, data.seasons, d);
-      const key = r.season?.id ?? "base";
-      const g = groups.get(key) ?? { label: r.season ? r.season.nombre : "Tarifa base", nights: 0, couple: r.couple, extra: r.extra };
+      const key = `${r.season?.id ?? "base"}|${r.dayRate ? dayRateLabel(r.dayRate) : ""}`;
+      const label = r.season ? (r.dayRate ? `${r.season.nombre} · ${dayRateLabel(r.dayRate)}` : r.season.nombre) : "Tarifa base";
+      const g = groups.get(key) ?? { label, nights: 0, couple: r.couple, extra: r.extra };
       g.nights++;
       groups.set(key, g);
     }
