@@ -1,5 +1,6 @@
 "use client";
 
+import { personRatesText, personSteps } from "@/lib/booking";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,6 +33,10 @@ import {
   validate,
 } from "@/components/booking/wizard/form";
 import { Counter, Field } from "@/components/booking/wizard/fields";
+import { GroupBuilder, groupProblem, rowQuote, suggestRows, sumQuotes, type GroupRow } from "@/components/booking/wizard/group";
+
+// Personas en una búsqueda: más de las que caben en una cabaña se reparten en varias.
+const MAX_SEARCH_GUESTS = 40;
 
 // Días sin ninguna cabaña libre, del mes visible y el siguiente.
 async function unavailableDays(view: string, cabinIds: string[]) {
@@ -82,7 +87,7 @@ export function ReservationWizard() {
     return {
       ci,
       co,
-      adults: Math.min(6, Math.max(1, parseInt(params.get("adults") ?? "") || 2)),
+      adults: Math.min(MAX_SEARCH_GUESTS, Math.max(1, parseInt(params.get("adults") ?? "") || 2)),
       children: Math.max(0, parseInt(params.get("children") ?? "") || 0),
       type: type && cabins.some((x) => x.id === type) ? (type as CabinTypeId) : null,
       view: monthStart(ci || t),
@@ -110,6 +115,8 @@ export function ReservationWizard() {
   const [availLoading, setAvailLoading] = useState(!!(init.ci && init.co));
   const [availError, setAvailError] = useState(false);
   const [type, setType] = useState<CabinTypeId | null>(init.type);
+  // Varias cabañas: cada una con sus personas. null = una sola cabaña (`type`).
+  const [rowsState, setRows] = useState<GroupRow[] | null>(null);
   const [f, setF] = useState<Form>({ ...EMPTY_FORM, hasPet: init.pet ? "si" : "no", decoRequested: init.deco });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [showErrSummary, setShowErrSummary] = useState(false);
@@ -125,9 +132,9 @@ export function ReservationWizard() {
   // Aviso cuando la disponibilidad cambia en tiempo real y afecta lo que el huésped eligió.
   const [liveNotice, setLiveNotice] = useState<{ text: string; action?: "cabana" | "fechas" } | null>(null);
   // Selección actual para los callbacks asíncronos (respuestas de la API y avisos en tiempo real).
-  const sel = useRef({ ci, co, step, type });
+  const sel = useRef({ ci, co, step, type, group: !!rowsState });
   useEffect(() => {
-    sel.current = { ci, co, step, type };
+    sel.current = { ci, co, step, type, group: !!rowsState };
   });
 
   const today = todayISO();
@@ -187,11 +194,12 @@ export function ReservationWizard() {
           if (goNext.current) {
             goNext.current = false;
             setWaiting(false);
-            if (data.options.some((o) => o.available)) setStep(2);
+            // Un grupo más grande que cualquier cabaña sigue al paso 2 si hay cabañas libres (ahí se reparte).
+            if (data.options.some((o) => o.available || (o.unitsFree ?? 0) > 0)) setStep(2);
           }
           // Si la cabaña elegida ya no está disponible, se deselecciona (y, si pasó en tiempo real, se avisa).
           const s = sel.current;
-          if (s.type && !free(s.type)) {
+          if (s.type && !free(s.type) && !s.group) {
             setType(null);
             if (silent && s.step >= 2) {
               const others = data.options.some((o) => o.available);
@@ -286,12 +294,17 @@ export function ReservationWizard() {
 
   const nights = ci && co ? nightsBetween(ci, co) : 0;
   const option = avail && type ? avail.options.find((o) => o.cabinTypeId === type) : undefined;
-  const q = option?.quote;
   const total = adults + children;
   const maxGuests = types.length ? Math.max(...types.map((x) => x.maxPersonas)) : 4;
-  const typeList: Pick<CabinType, "id" | "nombre" | "precioPareja" | "personaAdicional" | "maxPersonas">[] = types.length
+  // Más personas de las que caben en la cabaña más grande: el grupo se reparte en varias.
+  const needGroup = total > maxGuests;
+  const typeList: Pick<CabinType, "id" | "nombre" | "precioPareja" | "personaAdicional" | "preciosPersonas" | "maxPersonas">[] = types.length
     ? types
-    : cabins.map((x) => ({ id: x.id, nombre: x.full, precioPareja: x.couple, personaAdicional: x.extra, maxPersonas: x.max }));
+    : cabins.map((x) => ({ id: x.id, nombre: x.full, precioPareja: x.couple, personaAdicional: x.extra, preciosPersonas: x.tiers, maxPersonas: x.max }));
+  // El reparto elegido o, si el grupo no cabe en una cabaña, el sugerido mientras no lo cambie.
+  const rows = rowsState ?? (needGroup && avail ? suggestRows(avail, typeList, adults, children) : null);
+  const groupQuotes = rows ? rows.map((r) => rowQuote(avail, r)) : null;
+  const q = groupQuotes ? (groupQuotes.every(Boolean) ? sumQuotes(groupQuotes as NonNullable<(typeof groupQuotes)[number]>[]) : null) : option?.quote;
   const nTxt = (n: number) => plural(n, "noche", "noches");
   const guestsTxt = `${total} huésped${total > 1 ? "es" : ""}`;
 
@@ -305,6 +318,7 @@ export function ReservationWizard() {
       setPick("out");
       setRangeError("");
       setAvail(null);
+      setRows(null);
       return;
     }
     for (let x = ci; x < d; x = addDays(x, 1))
@@ -316,6 +330,7 @@ export function ReservationWizard() {
     setPick("in");
     setRangeError("");
     setAvail(null);
+    setRows(null);
   };
   const changeMonth = (v: string) => {
     setView(v);
@@ -344,11 +359,12 @@ export function ReservationWizard() {
     }, 60);
 
   const body = (): ReservationInput => ({
-    cabinTypeId: type!,
+    cabinTypeId: rows ? rows[0].type : type!,
     checkIn: ci!,
     checkOut: co!,
-    adults,
-    children,
+    adults: rows ? rows[0].adults : adults,
+    children: rows ? rows[0].children : children,
+    ...(rows && { more: rows.slice(1).map((r) => ({ cabinTypeId: r.type, adults: r.adults, children: r.children })) }),
     pet: { hasPet: f.hasPet === "si", smallBreedConfirmed: f.hasPet === "si" && f.smallBreed },
     decoration: { requested: f.decoRequested, occasion: f.decoRequested ? f.occasion : "", notes: f.decoRequested ? f.decoNotes.trim() : "" },
     estimatedArrival: f.arrival,
@@ -370,7 +386,7 @@ export function ReservationWizard() {
   const waText = () =>
     [
       `Hola, quiero reservar en ${config.name}.`,
-      `Cabaña: ${type ? cabinName(type) : ""}`,
+      rows ? `Cabañas: ${rows.map((r) => `${cabinName(r.type)} (${r.adults + r.children})`).join(", ")}` : `Cabaña: ${type ? cabinName(type) : ""}`,
       `Llegada: ${ci ? fmtLong(ci) : ""}`,
       `Salida: ${co ? fmtLong(co) : ""}`,
       `Huéspedes: ${adults} adultos, ${children} niños`,
@@ -436,7 +452,7 @@ export function ReservationWizard() {
   const toStep2 = () => {
     if (!(ci && co) || waiting) return;
     if (avail && !availLoading) {
-      if (avail.options.some((o) => o.available)) setStep(2);
+      if (needGroup ? groupFits : avail.options.some((o) => o.available)) setStep(2);
       return;
     }
     goNext.current = true;
@@ -444,7 +460,11 @@ export function ReservationWizard() {
     if (availError || !availLoading) loadAvail({ ci, co, adults, children });
   };
   const needCabin = () => {
-    if (type) return false;
+    if (rows ? !groupProblem(avail, typeList, rows, adults, children) : type) return false;
+    if (rows) {
+      setLiveNotice({ text: "Revisa cómo repartiste el grupo entre las cabañas.", action: "cabana" });
+      return true;
+    }
     setLiveNotice({ text: "Elige una cabaña disponible para continuar.", action: "cabana" });
     return true;
   };
@@ -467,8 +487,11 @@ export function ReservationWizard() {
   // Resultado de la consulta junto a la acción del paso 1.
   const freeOpts = avail?.options.filter((o) => o.available) ?? [];
   const freeUnits = freeOpts.reduce((n, o) => n + o.unitsLeft, 0);
+  // Un grupo grande cabe si, sumando las cabañas libres, alcanza la capacidad.
+  const groupCap = (avail?.options ?? []).reduce((n, o) => n + (o.unitsFree ?? 0) * (typeList.find((x) => x.id === o.cabinTypeId)?.maxPersonas ?? 0), 0);
+  const groupFits = needGroup && groupCap >= total;
   const checking = !!(ci && co) && !availError && (availLoading || !avail);
-  const searchTone: "idle" | "ok" | "bad" = !(ci && co) || checking ? "idle" : availError || !freeOpts.length ? "bad" : "ok";
+  const searchTone: "idle" | "ok" | "bad" = !(ci && co) || checking ? "idle" : availError || !(needGroup ? groupFits : freeOpts.length) ? "bad" : "ok";
   const searchText = !ci
     ? "Elige la fecha de llegada en el calendario."
     : !co
@@ -477,15 +500,19 @@ export function ReservationWizard() {
         ? "No pudimos consultar la disponibilidad."
         : checking
           ? "Consultando disponibilidad…"
-          : freeOpts.length
-            ? `${plural(freeUnits, "cabaña libre", "cabañas libres")} · desde ${cop(Math.min(...freeOpts.map((o) => o.quote.total)))}`
-            : "No hay cabañas libres para estas fechas y huéspedes. Prueba otras fechas.";
+          : needGroup
+            ? groupFits
+              ? `Son ${total} personas: se reparten en varias cabañas`
+              : "No hay cabañas suficientes para todo el grupo en estas fechas. Prueba otras fechas."
+            : freeOpts.length
+              ? `${plural(freeUnits, "cabaña libre", "cabañas libres")} · desde ${cop(Math.min(...freeOpts.map((o) => o.quote.total)))}`
+              : "No hay cabañas libres para estas fechas y huéspedes. Prueba otras fechas.";
 
   const errKeys = Object.keys(errors);
   const pn = q?.base && nights ? q.base / nights : 0;
   const xpn = q?.extraGuests && nights ? q.extraAmount / (q.extraGuests * nights) : 0;
   const sumRows = [
-    { k: "Cabaña", v: type ? cabinName(type) : "Por elegir" },
+    rows ? { k: "Cabañas", v: rows.map((r) => cabinName(r.type)).join(", ") } : { k: "Cabaña", v: type ? cabinName(type) : "Por elegir" },
     { k: "Llegada", v: ci ? fmtDate(ci, true) : "—" },
     { k: "Salida", v: co ? fmtDate(co, true) : "—" },
     { k: "Noches", v: nights ? String(nights) : "—" },
@@ -678,14 +705,16 @@ export function ReservationWizard() {
                       sub="13 años o más"
                       count={adults}
                       decDisabled={adults <= 1}
-                      incDisabled={total >= maxGuests}
+                      incDisabled={total >= MAX_SEARCH_GUESTS}
                       onDec={() => {
                         setAdults(Math.max(1, adults - 1));
                         setAvail(null);
+                        setRows(null);
                       }}
                       onInc={() => {
-                        if (total < maxGuests) setAdults(adults + 1);
+                        if (total < MAX_SEARCH_GUESTS) setAdults(adults + 1);
                         setAvail(null);
+                        setRows(null);
                       }}
                     />
                     <Counter
@@ -693,18 +722,20 @@ export function ReservationWizard() {
                       sub="Hasta 12 años"
                       count={children}
                       decDisabled={children <= 0}
-                      incDisabled={total >= maxGuests}
+                      incDisabled={total >= MAX_SEARCH_GUESTS}
                       onDec={() => {
                         setChildren(Math.max(0, children - 1));
                         setAvail(null);
+                        setRows(null);
                       }}
                       onInc={() => {
-                        if (total < maxGuests) setChildren(children + 1);
+                        if (total < MAX_SEARCH_GUESTS) setChildren(children + 1);
                         setAvail(null);
+                        setRows(null);
                       }}
                     />
                     <p className="mt-auto rounded-sm bg-card-muted px-3 py-2.5 text-[.84rem]">
-                      {`Adultos y niños cuentan igual para la capacidad y la tarifa. La tarifa incluye 2 personas; desde la 3.ª se suma el valor por persona adicional. Máximo ${maxGuests} por cabaña.`}
+                      {`Adultos y niños cuentan igual para la capacidad y la tarifa. El precio depende de la cabaña y de cuántas personas se alojan. Máximo ${maxGuests} por cabaña: si son más, se reparten en varias.`}
                     </p>
                   </div>
                 </div>
@@ -766,7 +797,22 @@ export function ReservationWizard() {
                   </button>
                 </div>
               )}
-              {avail && !availLoading && ci && co && (
+              {avail && !availLoading && ci && co && (needGroup || rows) && (
+                <>
+                  <p className="font-semibold">{`${fmtDate(ci)} → ${fmtDate(co)} · ${nTxt(avail.nights)} · ${guestsTxt}`}</p>
+                  <GroupBuilder
+                    avail={avail}
+                    types={typeList}
+                    rows={rows ?? suggestRows(avail, typeList, adults, children)}
+                    adults={adults}
+                    kids={children}
+                    nights={avail.nights}
+                    onChange={setRows}
+                    onSingle={needGroup ? undefined : () => setRows(null)}
+                  />
+                </>
+              )}
+              {avail && !availLoading && ci && co && !needGroup && !rows && (
                 <>
                   <p className="font-semibold">{`${fmtDate(ci)} → ${fmtDate(co)} · ${nTxt(avail.nights)} · ${guestsTxt}`}</p>
                   <div role="radiogroup" aria-label="Tipo de cabaña" className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
@@ -795,7 +841,11 @@ export function ReservationWizard() {
                           </div>
                           <div className="flex flex-col gap-1.5 px-1.5 pb-1.5">
                             <h3 className="display text-[2rem] leading-none">{name}</h3>
-                            <p className="text-[.88rem]">{`${cop(ty?.precioPareja)} la noche para 2 personas · Persona adicional ${cop(ty?.personaAdicional)} · Máximo ${ty?.maxPersonas} personas`}</p>
+                            <p className="text-[.88rem]">
+                              {ty && personSteps(ty.preciosPersonas).length
+                                ? `${personRatesText(ty.preciosPersonas!)} · Máximo ${ty.maxPersonas} personas`
+                                : `${cop(ty?.precioPareja)} la noche para 2 personas · Persona adicional ${cop(ty?.personaAdicional)} · Máximo ${ty?.maxPersonas} personas`}
+                            </p>
                             {op.available ? (
                               <>
                                 <p className="text-[.85rem] font-bold">
@@ -827,13 +877,39 @@ export function ReservationWizard() {
                       );
                     })}
                   </div>
+                  {avail.options.reduce((n, o) => n + (o.unitsFree ?? 0), 0) >= 2 && (
+                    <p className="text-[.95rem]">
+                      ¿Vienen en grupo y prefieren varias cabañas?{" "}
+                      <button type="button" onClick={() => setRows(suggestRows(avail, typeList, adults, children))} className="font-bold underline">
+                        Reservar varias cabañas
+                      </button>
+                    </p>
+                  )}
                 </>
               )}
               <div className="flex flex-wrap justify-between gap-3">
                 <button type="button" onClick={back} className={backBtn}>
                   ← Cambiar fechas
                 </button>
-                <button type="button" onClick={() => option?.available && setStep(3)} disabled={!option?.available} className={nextBtn}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const g = rows ?? (needGroup && avail ? suggestRows(avail, typeList, adults, children) : null);
+                    if (g) {
+                      if (groupProblem(avail, typeList, g, adults, children)) return;
+                      setRows(g);
+                      setStep(3);
+                      return;
+                    }
+                    if (option?.available) setStep(3);
+                  }}
+                  disabled={
+                    needGroup || rows
+                      ? !avail || !!groupProblem(avail, typeList, rows ?? suggestRows(avail, typeList, adults, children), adults, children)
+                      : !option?.available
+                  }
+                  className={nextBtn}
+                >
                   Continuar con tus datos →
                 </button>
               </div>
@@ -1121,11 +1197,24 @@ export function ReservationWizard() {
                 4 · Revisa y paga
               </h2>
               <div className="flex flex-col gap-[18px] rounded-lg bg-card p-[clamp(18px,3vw,32px)] text-on-light">
-                <h3 className="text-[1.05rem] font-extrabold">Desglose · {type ? cabinName(type) : ""}</h3>
+                <h3 className="text-[1.05rem] font-extrabold">
+                  {rows ? `Desglose · ${plural(rows.length, "cabaña", "cabañas")}` : `Desglose · ${type ? cabinName(type) : ""}`}
+                </h3>
                 <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-5 gap-y-2.5 text-[.95rem]">
-                  <dt>{`${nTxt(nights)} × ${cop(pn)} (tarifa para 2)`}</dt>
-                  <dd className="text-right font-bold">{cop(q?.base)}</dd>
-                  {!!q?.extraGuests && (
+                  {rows ? (
+                    rows.map((r, i) => (
+                      <div key={i} className="contents">
+                        <dt>{`${cabinName(r.type)} · ${plural(r.adults + r.children, "persona", "personas")} · ${nTxt(nights)}`}</dt>
+                        <dd className="text-right font-bold">{cop(groupQuotes?.[i]?.total)}</dd>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <dt>{`${nTxt(nights)} × ${cop(pn)} (tarifa para ${q?.extraGuests || total <= 2 ? 2 : total})`}</dt>
+                      <dd className="text-right font-bold">{cop(q?.base)}</dd>
+                    </>
+                  )}
+                  {!rows && !!q?.extraGuests && (
                     <>
                       <dt>{`${plural(q.extraGuests, "persona adicional", "personas adicionales")} × ${cop(xpn)} × ${nTxt(nights)}`}</dt>
                       <dd className="text-right font-bold">{cop(q.extraAmount)}</dd>

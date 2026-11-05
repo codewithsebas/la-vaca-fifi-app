@@ -1,21 +1,25 @@
 "use client";
 
 // Nueva reserva tomada por el equipo (WhatsApp, teléfono, en persona). Retiene la cabaña con las mismas reglas que la web
-// hasta el plazo elegido para recibir el abono. Si no se registra a tiempo, las fechas se liberan solas.
-import { useMemo, useState } from "react";
-import { CalendarIcon, CheckIcon, HomeIcon, UsersIcon, WalletIcon, WarningIcon } from "@/components/ui/icons";
+// hasta el plazo elegido para recibir el abono; si no se registra a tiempo, las fechas se liberan solas. Si el huésped ya
+// pagó, se registra de una vez: son las mismas dos operaciones de siempre, crear y registrar el pago, una tras otra.
+// Varias cabañas («Agregar otra cabaña»): mismas fechas y huésped, un solo pago y un solo correo (lib/groups).
+import { useState } from "react";
+import { CalendarIcon, CheckIcon, CloseIcon, HomeIcon, PlusIcon, UsersIcon, WalletIcon, WarningIcon } from "@/components/ui/icons";
 import { api, type ApiError, type ValidationError } from "@/lib/client/api";
-import { computeQuote, findUnit, normalizePhone, unitFree, withTotal } from "@/lib/booking";
+import { MAX_GROUP_CABINS, computeQuote, findUnit, normalizePhone, splitTotal, unitFree, withTotal, type Occupancy } from "@/lib/booking";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
-import { DEFAULT_HOLD, HOLD_OPTIONS, manualDueAt } from "@/lib/payments";
-import type { DocType, ManualReservationInput, ManualReservationResult, Reservation } from "@/lib/types";
+import { DEFAULT_HOLD, HOLD_OPTIONS, depositPctOf, manualDueAt } from "@/lib/payments";
+import { groupMoney } from "@/lib/groups";
+import type { DocType, ManualReservationInput, ManualReservationResult, PayMethod, Quote, Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { typeMarks, unitMarks } from "@/lib/admin-metrics";
 import { useAdmin } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
+import { PaymentFields, type PayChoice, type PayOption } from "@/components/admin/payment-fields";
 import { paths } from "@/components/admin/routes";
 import { adminInput, fmtDeadline } from "@/components/admin/shared";
-import { Button, Callout, Field, FieldError, Modal, MoneyInput, Segmented, Stepper, Switch } from "@/components/admin/ui";
+import { Button, Callout, Field, FieldError, IconButton, Modal, MoneyInput, Segmented, Stepper, Switch } from "@/components/admin/ui";
 
 // Lo que llega ya elegido (desde el calendario: una cabaña y unas fechas).
 export type NewReservationDraft = { cabinTypeId?: string; unit?: number | null; checkIn?: string | null; checkOut?: string | null };
@@ -38,7 +42,15 @@ type Form = {
   special: boolean;
   total: number;
   hold: number;
+  payNow: boolean;
+  payChoice: PayChoice;
+  payCustom: number;
+  payMethod: PayMethod | null;
+  payNote: string;
 };
+
+// Otra cabaña de la misma reserva.
+type Extra = { type: string; unit: string; adults: number; children: number };
 
 const DOCS: { value: DocType; label: string }[] = [
   { value: "CC", label: "CC" },
@@ -49,10 +61,11 @@ const DOCS: { value: DocType; label: string }[] = [
 
 const ERRORS: Record<string, string> = {
   DATES_UNAVAILABLE: "Esas fechas ya no están libres en esa cabaña. Elige otras o deja que el sistema asigne una unidad.",
+  NEEDS_CONNECTION: "Una reserva con varias cabañas se crea con conexión. Vuelve a intentarlo cuando haya internet.",
 };
 
 export function NewReservationDialog({ draft, onClose }: { draft: NewReservationDraft; onClose: () => void }) {
-  const { data, setData, today, cabinLabel, onAuthError, toast, go } = useAdmin();
+  const { data, setData, reload, today, cabinLabel, onAuthError, toast, go } = useAdmin();
   const cabins = data.cabinTypes.filter((c) => c.activa && c.units > 0);
   const first = cabins.find((c) => c.id === draft.cabinTypeId) ?? cabins[0];
   const [f, setF] = useState<Form>({
@@ -73,13 +86,21 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
     special: false,
     total: 0,
     hold: DEFAULT_HOLD,
+    payNow: false,
+    payChoice: "deposit",
+    payCustom: 0,
+    payMethod: null,
+    payNote: "",
   });
   const set = (p: Partial<Form>) => setF((x) => ({ ...x, ...p }));
+  const [extra, setExtra] = useState<Extra[]>([]);
+  const setX = (i: number, p: Partial<Extra>) => setExtra((xs) => xs.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [server, setServer] = useState<Record<string, string>>({});
   const [done, setDone] = useState<ManualReservationResult | null>(null);
+  const [payFailed, setPayFailed] = useState(false);
 
   const type = cabins.find((c) => c.id === f.type);
   const units = type?.units ?? 0;
@@ -87,21 +108,52 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   const blocks = data.blocks;
   const occ = { reservations: data.reservations, blocks };
   const range = f.checkIn && f.checkOut && f.checkOut > f.checkIn ? { ci: f.checkIn, co: f.checkOut } : null;
-  const marks = useMemo(
-    () =>
-      type
-        ? unit
-          ? unitMarks(data.reservations, blocks, type.id, unit, today, addDays(today, 400))
-          : typeMarks(data.reservations, blocks, type.id, units, today, addDays(today, 400))
-        : {},
-    [type, unit, units, data.reservations, blocks, today],
-  );
-  const free = !type || !range ? true : unit ? unitFree(occ, units, type.id, unit, range.ci, range.co) : findUnit(occ, units, type.id, range.ci, range.co) > 0;
+  // Sin useMemo a mano: el compilador de React lo memoriza (allocate recibe las mismas listas).
+  const marks = type
+    ? unit
+      ? unitMarks(data.reservations, blocks, type.id, unit, today, addDays(today, 400))
+      : typeMarks(data.reservations, blocks, type.id, units, today, addDays(today, 400))
+    : {};
+  // Todas las cabañas: la primera y las agregadas. Cada una toma su unidad (la elegida o la primera libre) y la siguiente
+  // del mismo tipo ya no la ve, como lo hace el servidor.
+  const all: Extra[] = [{ type: f.type, unit: f.unit, adults: f.adults, children: f.children }, ...extra];
+  const typeOf = (id: string) => cabins.find((c) => c.id === id);
+  const alloc = allocate(all, cabins, { reservations: data.reservations, blocks }, range);
+  const free = !type || !range ? true : alloc[0] > 0;
   const guests = f.adults + f.children;
   const pct = data.site.settings.depositPct;
-  const rate = type && range ? computeQuote(type, range.ci, range.co, guests, data.seasons, pct) : null;
-  const quote = rate && f.special && f.total ? withTotal(rate, f.total, pct) : rate;
+  const rates = all.map((c) => {
+    const t = typeOf(c.type);
+    return t && range ? computeQuote(t, range.ci, range.co, c.adults + c.children, data.seasons, pct) : null;
+  });
+  const ready = rates.every((q): q is Quote => !!q);
+  const rate: Quote | null = ready ? sumQuotes(rates as Quote[]) : null;
+  // Precio especial: es del grupo; se reparte entre las cabañas en proporción a su tarifa.
+  const quotes: Quote[] | null = ready
+    ? f.special && f.total
+      ? splitTotal(rates as Quote[], f.total).map((t, i) => withTotal((rates as Quote[])[i], t, pct))
+      : (rates as Quote[])
+    : null;
+  const quote = quotes ? sumQuotes(quotes) : null;
   const due = range ? manualDueAt(range.ci, f.hold) : null;
+
+  // Pago recibido al crear: el abono solo se ofrece si es menos que el total (con un abono del 100 %, es lo mismo).
+  const offerDeposit = !!quote && quote.deposit > 0 && quote.deposit < quote.total;
+  const payChoice: PayChoice = f.payChoice === "deposit" && !offerDeposit ? "full" : f.payChoice;
+  const payAmount = !quote ? 0 : payChoice === "full" ? quote.total : payChoice === "deposit" ? quote.deposit : f.payCustom;
+  const payOptions: PayOption[] = [
+    { value: "full", label: "Pago completo", hint: quote ? cop(quote.total) : "Elige las fechas" },
+    ...(offerDeposit ? [{ value: "deposit" as const, label: `Abono del ${depositPctOf(quote)} %`, hint: cop(quote.deposit) }] : []),
+    { value: "custom", label: "Otro valor", hint: "El que recibiste" },
+  ];
+  const payAmountError =
+    payChoice !== "custom"
+      ? ""
+      : f.payCustom <= 0
+        ? "Escribe el valor que recibiste."
+        : quote && f.payCustom > quote.total
+          ? `No puede ser más que el total (${cop(quote.total)}).`
+          : "";
 
   const errs: Record<string, string> = {};
   if (!type) errs.cabinTypeId = "Elige la cabaña.";
@@ -109,14 +161,44 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   else if (!free) errs.checkIn = unit ? `${cabinLabel(type!.id, unit)} no está libre en esas fechas.` : "No hay unidades libres de esta cabaña en esas fechas.";
   else if (nightsBetween(range.ci, range.co) > 30) errs.checkIn = "La estadía máxima es de 30 noches.";
   if (type && guests > type.maxPersonas) errs.adults = `Máximo ${type.maxPersonas} personas en esta cabaña.`;
+  extra.forEach((c, i) => {
+    const t = typeOf(c.type);
+    if (!t) errs[`more.${i}`] = "Elige la cabaña.";
+    else if (c.adults + c.children > t.maxPersonas) errs[`more.${i}`] = `Máximo ${t.maxPersonas} personas en esta cabaña.`;
+    else if (range && !alloc[i + 1])
+      errs[`more.${i}`] = c.unit
+        ? `${cabinLabel(t.id, Number(c.unit))} no está libre en esas fechas.`
+        : "No quedan unidades libres de esta cabaña en esas fechas.";
+  });
   if (f.fullName.trim().length < 3) errs["guest.fullName"] = "Escribe el nombre completo.";
   if (!/^\+\d{8,15}$/.test(normalizePhone(f.phone))) errs["guest.phone"] = "Escribe el celular con WhatsApp.";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) errs["guest.email"] = "Escribe un correo válido: ahí le llega la confirmación.";
   if (!/^[A-Za-z0-9]{5,15}$/.test(f.docNumber.trim())) errs["guest.docNumber"] = "Escribe el número de documento (sin puntos).";
   if (f.special && (!f.total || f.total < 10_000)) errs.total = "Escribe el precio acordado.";
+  if (f.payNow && payAmountError) errs.payAmount = payAmountError;
+  if (f.payNow && !f.payMethod) errs.payMethod = "Elige si pagó en efectivo o por transferencia.";
   if (due?.tooShort) errs.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: crea la reserva y registra el pago manualmente.";
   const err = (k: string) => (tried ? (errs[k] ?? server[k]) : server[k]);
   const blocked = Object.keys(errs).length > 0;
+
+  // La reserva ya existe: si el pago no entra, no se pierde nada y se puede registrar desde su ficha.
+  async function registerPayment(code: string) {
+    try {
+      const r = await api.admin.action({
+        code,
+        action: "confirm",
+        method: f.payMethod!,
+        note: f.payNote.trim(),
+        ...(payChoice === "full" ? { full: true } : { amount: payAmount }),
+        ...(extra.length > 0 && { group: true }),
+      });
+      if (r.status !== 200) return false;
+      await reload();
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   async function save() {
     setTried(true);
@@ -136,15 +218,21 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       specialRequests: f.notes.trim(),
       total: f.special && f.total ? f.total : null,
       holdMinutes: f.hold,
+      ...(extra.length > 0 && {
+        more: extra.map((c) => ({ cabinTypeId: c.type, unit: c.unit ? Number(c.unit) : null, adults: c.adults, children: c.children })),
+      }),
     };
     try {
       const r = await api.admin.createReservation(body);
       if (r.status === 401 || r.status === 403) return onAuthError();
       if (r.status === 201 && r.data && "reservation" in r.data) {
         const result = r.data;
-        setData((d) => ({ ...d, reservations: [result.reservation, ...d.reservations] }));
+        const created = result.group ?? [result.reservation];
+        setData((d) => ({ ...d, reservations: [...created, ...d.reservations.filter((x) => !created.some((c) => c.code === x.code))] }));
+        const paid = f.payNow ? await registerPayment(result.reservation.code) : false;
+        if (f.payNow && !paid) setPayFailed(true);
         setDone(result);
-        toast(`Reserva ${result.reservation.code} creada`);
+        toast(paid ? `Reserva ${result.reservation.code} creada y pago de ${cop(payAmount)} registrado` : `Reserva ${result.reservation.code} creada`);
         return;
       }
       if (r.status === 422 && r.data && "fields" in r.data) {
@@ -164,6 +252,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
     return (
       <Created
         result={done}
+        payFailed={payFailed}
         onClose={onClose}
         onOpen={() => {
           onClose();
@@ -172,23 +261,35 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       />
     );
 
-  const unitOptions = [
-    { value: "", label: "La primera libre", description: "Como en la web: deja libres las que también se venden en Booking" },
-    ...Array.from({ length: units }, (_, i) => {
-      const u = i + 1;
-      const ok = !type || !range || unitFree(occ, units, type.id, u, range.ci, range.co);
-      return {
-        value: String(u),
-        label: cabinLabel(type?.id ?? "", u),
-        description: range ? (ok ? "Libre en esas fechas" : "Ocupada en esas fechas") : undefined,
-      };
-    }),
-  ];
+  const unitOptionsOf = (typeId: string) => {
+    const t = typeOf(typeId);
+    const n = t?.units ?? 0;
+    return [
+      { value: "", label: "La primera libre", description: "Como en la web: deja libres las que también se venden en Booking" },
+      ...Array.from({ length: n }, (_, i) => {
+        const u = i + 1;
+        const ok = !t || !range || unitFree(occ, n, t.id, u, range.ci, range.co);
+        return {
+          value: String(u),
+          label: cabinLabel(typeId, u),
+          description: range ? (ok ? "Libre en esas fechas" : "Ocupada en esas fechas") : undefined,
+        };
+      }),
+    ];
+  };
+  const unitOptions = unitOptionsOf(f.type);
+  const cabinOptions = cabins.map((c) => ({
+    value: c.id,
+    label: c.nombre,
+    description: `${plural(c.units, "unidad", "unidades")} · hasta ${c.maxPersonas} personas`,
+  }));
 
   return (
+    // Es un formulario largo: un clic afuera por error no debe borrar lo escrito. Se cierra con la X o con Cancelar.
     <Modal
       onClose={onClose}
       labelledBy="nr-title"
+      dismissOnBackdrop={false}
       initialFocus={range ? "[data-autofocus]" : "[data-dates] button"}
       className="m-auto w-[calc(100%-32px)] max-w-[760px] rounded-[26px] p-0"
     >
@@ -197,14 +298,17 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
           <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-success-soft text-success">
             <CalendarIcon size={18} variant="plus" />
           </span>
-          <div className="pt-1">
+          <div className="min-w-0 flex-1 pt-1">
             <h2 id="nr-title" className="text-[18px] font-bold tracking-[-0.02em] text-ink">
               Nueva reserva
             </h2>
             <p className="text-[13.5px] text-ink-muted">
-              Las fechas quedan apartadas hasta el plazo que elijas. Si no registras el abono a tiempo, se liberan solas.
+              Si ya pagó, registra el pago aquí mismo. Si no, las fechas quedan apartadas hasta el plazo que elijas y se liberan solas.
             </p>
           </div>
+          <IconButton label="Cerrar" onClick={onClose} className="flex-none">
+            <CloseIcon size={18} />
+          </IconButton>
         </div>
 
         {/* Estadía */}
@@ -215,18 +319,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
           </h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Cabaña" error={err("cabinTypeId")}>
-              {(p) => (
-                <Combobox
-                  id={p.id}
-                  value={f.type}
-                  onChange={(v) => set({ type: v, unit: "" })}
-                  options={cabins.map((c) => ({
-                    value: c.id,
-                    label: c.nombre,
-                    description: `${plural(c.units, "unidad", "unidades")} · hasta ${c.maxPersonas} personas`,
-                  }))}
-                />
-              )}
+              {(p) => <Combobox id={p.id} value={f.type} onChange={(v) => set({ type: v, unit: "" })} options={cabinOptions} />}
             </Field>
             <Field label="Unidad">{(p) => <Combobox id={p.id} value={f.unit} onChange={(v) => set({ unit: v })} options={unitOptions} />}</Field>
             <Field label="Llegada y salida" className="sm:col-span-2" error={err("checkIn")} hint="Los días marcados ya están ocupados (punto) o casi llenos.">
@@ -258,6 +351,47 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
                 )}
               </Field>
             </div>
+            {extra.map((c, i) => {
+              const t = typeOf(c.type);
+              return (
+                <fieldset key={i} className="grid grid-cols-1 gap-3 rounded-[18px] border border-line p-3 sm:col-span-2 sm:grid-cols-2">
+                  <legend className="flex w-full items-center justify-between gap-2 px-1 text-[13px] font-semibold text-ink">{`Cabaña ${i + 2}`}</legend>
+                  <div className="-mt-2 flex items-start justify-end sm:col-span-2">
+                    <Button size="sm" variant="ghost" icon={<CloseIcon size={14} />} onClick={() => setExtra((xs) => xs.filter((_, j) => j !== i))}>
+                      Quitar
+                    </Button>
+                  </div>
+                  <Field label="Cabaña" error={err(`more.${i}`)}>
+                    {(p) => <Combobox id={p.id} value={c.type} onChange={(v) => setX(i, { type: v, unit: "" })} options={cabinOptions} />}
+                  </Field>
+                  <Field label="Unidad">
+                    {(p) => <Combobox id={p.id} value={c.unit} onChange={(v) => setX(i, { unit: v })} options={unitOptionsOf(c.type)} />}
+                  </Field>
+                  <Field label="Adultos">
+                    {(p) => <Stepper id={p.id} value={c.adults} onChange={(v) => setX(i, { adults: v })} min={1} max={t?.maxPersonas ?? 20} />}
+                  </Field>
+                  <Field label="Niños">
+                    {(p) => (
+                      <Stepper id={p.id} value={c.children} onChange={(v) => setX(i, { children: v })} min={0} max={Math.max(0, (t?.maxPersonas ?? 20) - 1)} />
+                    )}
+                  </Field>
+                </fieldset>
+              );
+            })}
+            {all.length < MAX_GROUP_CABINS && (
+              <div className="sm:col-span-2">
+                <Button
+                  variant="secondary"
+                  icon={<PlusIcon size={14} />}
+                  onClick={() => setExtra((xs) => [...xs, { type: f.type, unit: "", adults: 2, children: 0 }])}
+                >
+                  Agregar otra cabaña
+                </Button>
+                {extra.length > 0 && (
+                  <p className="mt-1.5 text-[12.5px] text-ink-muted">Mismas fechas y huésped. Se crea con un solo código, un solo pago y un solo correo.</p>
+                )}
+              </div>
+            )}
             <div className="sm:col-span-2">
               <Switch checked={f.pet} onChange={(v) => set({ pet: v })} label="Viene con mascota" description="Sin costo adicional, según las políticas." />
             </div>
@@ -300,7 +434,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
                 />
               )}
             </Field>
-            <Field label="Correo" error={err("guest.email")} hint="Ahí le llega la confirmación cuando registres el abono.">
+            <Field label="Correo" error={err("guest.email")} hint="Ahí le llega la confirmación cuando se registre el pago.">
               {(p) => (
                 <input
                   {...p}
@@ -385,36 +519,83 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
               )}
             </Field>
           )}
-          <fieldset className="flex min-w-0 flex-col gap-1.5">
-            <legend className="mb-1.5 text-[13px] font-semibold text-ink">Plazo para pagar el abono</legend>
-            <Segmented
-              label="Plazo para pagar"
-              size="sm"
-              value={String(f.hold)}
-              onChange={(v) => set({ hold: Number(v) })}
-              options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
-              className="flex-wrap"
-            />
-            {due && !due.tooShort && (
-              <p className="text-[12.5px] text-ink-muted">
-                {`Si no registras el abono antes del ${fmtDeadline(due.dueAt)}, las fechas se liberan`}
-                {due.capped ? " (no puede pasar del día de llegada)" : ""}
-              </p>
-            )}
-            {err("holdMinutes") && <FieldError>{err("holdMinutes")}</FieldError>}
-          </fieldset>
+          <Switch
+            checked={f.payNow}
+            onChange={(v) => set({ payNow: v })}
+            label="El huésped ya pagó"
+            description="Registra el pago completo, el abono u otro valor. La reserva queda confirmada al crearla."
+          />
+          {f.payNow ? (
+            <>
+              <PaymentFields
+                options={payOptions}
+                choice={payChoice}
+                onChoice={(c) => set({ payChoice: c })}
+                custom={f.payCustom}
+                onCustom={(n) => set({ payCustom: n })}
+                amountError={payAmountError}
+                method={f.payMethod}
+                onMethod={(m) => set({ payMethod: m })}
+                note={f.payNote}
+                onNote={(s) => set({ payNote: s })}
+                tried={tried}
+              />
+              {err("holdMinutes") && <FieldError>{err("holdMinutes")}</FieldError>}
+            </>
+          ) : (
+            <fieldset className="flex min-w-0 flex-col gap-1.5">
+              <legend className="mb-1.5 text-[13px] font-semibold text-ink">Plazo para pagar el abono</legend>
+              <Segmented
+                label="Plazo para pagar"
+                size="sm"
+                value={String(f.hold)}
+                onChange={(v) => set({ hold: Number(v) })}
+                options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
+                className="flex-wrap"
+              />
+              {due && !due.tooShort && (
+                <p className="text-[12.5px] text-ink-muted">
+                  {`Si no registras el abono antes del ${fmtDeadline(due.dueAt)}, las fechas se liberan`}
+                  {due.capped ? " (no puede pasar del día de llegada)" : ""}
+                </p>
+              )}
+              {err("holdMinutes") && <FieldError>{err("holdMinutes")}</FieldError>}
+            </fieldset>
+          )}
         </section>
 
-        {quote && range && free && (
+        {quote && quotes && range && alloc.every(Boolean) && (
           <Callout tone="success">
-            <span className="font-semibold">{cabinLabel(type!.id, unit ?? undefined)}</span>
-            {unit ? "" : " (la unidad se asigna al crear)"} · {fmtDate(range.ci)} → {fmtDate(range.co)} ·{" "}
-            {plural(nightsBetween(range.ci, range.co), "noche", "noches")} · {plural(guests, "persona", "personas")}
+            {extra.length > 0 ? (
+              <>
+                <span className="font-semibold">{plural(all.length, "cabaña", "cabañas")}</span> · {fmtDate(range.ci)} → {fmtDate(range.co)} ·{" "}
+                {plural(nightsBetween(range.ci, range.co), "noche", "noches")}
+                <span className="mt-1 block">
+                  {all.map((c, i) => (
+                    <span key={i} className="block">
+                      {`${cabinLabel(c.type, alloc[i])} · ${plural(c.adults + c.children, "persona", "personas")} · ${cop(quotes[i].total)}`}
+                    </span>
+                  ))}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">{cabinLabel(type!.id, unit ?? undefined)}</span>
+                {unit ? "" : " (la unidad se asigna al crear)"} · {fmtDate(range.ci)} → {fmtDate(range.co)} ·{" "}
+                {plural(nightsBetween(range.ci, range.co), "noche", "noches")} · {plural(guests, "persona", "personas")}
+              </>
+            )}
             <span className="mt-1 block">
               Total <strong>{cop(quote.total)}</strong>
               {quote.adjustment ? ` (${quote.adjustment < 0 ? "descuento" : "recargo"} de ${cop(Math.abs(quote.adjustment))})` : ""} · abono para confirmar{" "}
               <strong>{cop(quote.deposit)}</strong>
             </span>
+            {f.payNow && payAmount > 0 && !payAmountError && (
+              <span className="mt-1 block">
+                {`Se registra un pago de ${cop(payAmount)}: la reserva queda confirmada`}
+                {payAmount < quote.total ? ` y con un saldo de ${cop(quote.total - payAmount)} por cobrar.` : " y pagada por completo."}
+              </span>
+            )}
           </Callout>
         )}
         {error && <FieldError>{error}</FieldError>}
@@ -428,18 +609,21 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
           icon={blocked && tried ? <WarningIcon size={14} /> : <CheckIcon size={14} />}
           onClick={save}
         >
-          Crear reserva
+          {f.payNow && payAmount > 0 && !payAmountError ? `Crear y registrar ${cop(payAmount)}` : "Crear reserva"}
         </Button>
       </div>
     </Modal>
   );
 }
 
-// Reserva creada: queda pendiente de abono hasta el plazo.
-function Created({ result, onClose, onOpen }: { result: ManualReservationResult; onClose: () => void; onOpen: () => void }) {
+// Reserva creada: confirmada si se registró un pago; si no, pendiente de abono hasta el plazo.
+function Created({ result, payFailed, onClose, onOpen }: { result: ManualReservationResult; payFailed: boolean; onClose: () => void; onOpen: () => void }) {
   const { data, cabinLabel } = useAdmin();
   // La reserva puede actualizarse en vivo (p. ej. otro miembro del equipo registró el abono): se muestra la versión más reciente.
-  const r: Reservation = data.reservations.find((x) => x.code === result.reservation.code) ?? result.reservation;
+  const lead: Reservation = data.reservations.find((x) => x.code === result.reservation.code) ?? result.reservation;
+  // Varias cabañas: el estado es el de la principal y los valores, los del grupo.
+  const group = (result.group ?? [result.reservation]).map((g) => data.reservations.find((x) => x.code === g.code) ?? g);
+  const r = groupMoney(group.length ? group : [lead]);
   const paid = r.status !== "pending_deposit";
   return (
     <Modal onClose={onClose} labelledBy="nr-done" className="m-auto w-[calc(100%-32px)] max-w-[600px] rounded-[26px] p-0">
@@ -453,13 +637,23 @@ function Created({ result, onClose, onOpen }: { result: ManualReservationResult;
               {`Reserva ${r.code} creada`}
             </h2>
             <p className="text-[13.5px] text-ink-muted">
-              {r.guest.fullName} · {cabinLabel(r.cabinTypeId, r.unit)} · {fmtDate(r.checkIn)} → {fmtDate(r.checkOut)}
+              {r.guest.fullName} · {group.length > 1 ? group.map((g) => cabinLabel(g.cabinTypeId, g.unit)).join(", ") : cabinLabel(r.cabinTypeId, r.unit)} ·{" "}
+              {fmtDate(r.checkIn)} → {fmtDate(r.checkOut)}
             </p>
           </div>
         </div>
+        {payFailed && !paid && (
+          <Callout tone="warning" role="alert">
+            La reserva quedó creada, pero <strong>el pago no se pudo registrar</strong>. Ábrela y regístralo desde su ficha.
+          </Callout>
+        )}
         {paid ? (
           <Callout tone="success">
-            {r.status === "confirmed" ? "El abono ya está registrado: la reserva está confirmada." : "La reserva ya no está pendiente de pago."}
+            {r.status === "confirmed"
+              ? r.paid >= r.quote.total
+                ? `Confirmada y pagada por completo (${cop(r.paid)}).`
+                : `Confirmada. Pago de ${cop(r.paid)} registrado; queda un saldo de ${cop(r.quote.total - r.paid)}.`
+              : "La reserva ya no está pendiente de pago."}
           </Callout>
         ) : (
           <p className="text-[14px] text-ink">
@@ -476,4 +670,34 @@ function Created({ result, onClose, onOpen }: { result: ManualReservationResult;
       </div>
     </Modal>
   );
+}
+
+// Suma de las tarifas de varias cabañas (el abono, el ajuste y el total del grupo).
+function sumQuotes(qs: Quote[]): Quote {
+  if (qs.length === 1) return qs[0];
+  const add = (f: (q: Quote) => number) => qs.reduce((s, q) => s + f(q), 0);
+  const adjustment = add((q) => q.adjustment ?? 0);
+  return {
+    ...qs[0],
+    base: add((q) => q.base),
+    extraAmount: add((q) => q.extraAmount),
+    total: add((q) => q.total),
+    deposit: add((q) => q.deposit),
+    balance: add((q) => q.balance),
+    ...(adjustment ? { adjustment } : { adjustment: undefined }),
+  };
+}
+
+// Unidad de cada cabaña (0 = sin cupo): la elegida si está libre o la primera libre; la siguiente del mismo tipo ya no ve
+// las anteriores, como lo hace el servidor.
+function allocate(all: Extra[], cabins: { id: string; units: number }[], occ: Occupancy, range: { ci: string; co: string } | null): number[] {
+  let taken = occ.blocks;
+  return all.map((c) => {
+    const t = cabins.find((x) => x.id === c.type);
+    if (!t || !range) return 0;
+    const o = { reservations: occ.reservations, blocks: taken };
+    const u = c.unit ? (unitFree(o, t.units, t.id, Number(c.unit), range.ci, range.co) ? Number(c.unit) : 0) : findUnit(o, t.units, t.id, range.ci, range.co);
+    if (u) taken = [...taken, { cabinTypeId: t.id, unit: u, from: range.ci, to: addDays(range.co, -1) }];
+    return u;
+  });
 }

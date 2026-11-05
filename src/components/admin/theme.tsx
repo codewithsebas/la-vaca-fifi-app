@@ -1,6 +1,6 @@
 "use client";
 
-// Contenido del sitio → Colores: paletas listas, ajuste color por color, aviso de contraste y vista previa en vivo.
+// Colores del sitio web (Configuración → Colores): paletas listas, ajuste color por color, aviso de contraste y vista previa en vivo.
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { CheckIcon, EyeIcon, MonitorIcon, PaletteIcon, RefreshIcon, SmartphoneIcon, WarningIcon } from "@/components/ui/icons";
 import {
@@ -92,7 +92,14 @@ export function ThemeEditor({ theme, saved, onChange }: { theme: SiteTheme; save
               <legend className="mb-2 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">{g.label}</legend>
               <div className="grid grid-cols-1 gap-3 @lg:grid-cols-2">
                 {g.fields.map((f) => (
-                  <ColorField key={f.key} k={f.key} value={theme[f.key]} onChange={(v) => set({ [f.key]: v })} />
+                  <ColorField
+                    key={f.key}
+                    label={f.label}
+                    hint={f.hint}
+                    value={theme[f.key]}
+                    original={DEFAULT_THEME[f.key]}
+                    onChange={(v) => set({ [f.key]: v })}
+                  />
                 ))}
               </div>
             </fieldset>
@@ -155,8 +162,19 @@ function Swatches({ t }: { t: SiteTheme }) {
 }
 
 // Muestra (selector nativo) + código. El código se puede escribir a medias: solo se aplica cuando es un color válido.
-function ColorField({ k, value, onChange }: { k: ThemeKey; value: string; onChange: (v: string) => void }) {
-  const f = themeField(k);
+export function ColorField({
+  label,
+  hint,
+  value,
+  original,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  original: string;
+  onChange: (v: string) => void;
+}) {
   const id = useId();
   const [draft, setDraft] = useState(value);
   const [prev, setPrev] = useState(value);
@@ -165,7 +183,7 @@ function ColorField({ k, value, onChange }: { k: ThemeKey; value: string; onChan
     setDraft(value);
   }
   const invalid = normalizeHex(draft) === null;
-  const changed = value !== DEFAULT_THEME[k];
+  const changed = value !== original;
 
   return (
     <div className="flex min-w-0 gap-3 rounded-[16px] bg-canvas/60 p-3">
@@ -173,21 +191,21 @@ function ColorField({ k, value, onChange }: { k: ThemeKey; value: string; onChan
         className="relative size-11 flex-none cursor-pointer overflow-hidden rounded-full ring-1 ring-black/15 focus-within:ring-2 focus-within:ring-focus"
         style={{ background: value }}
       >
-        <span className="sr-only">{`Elegir color: ${f.label}`}</span>
+        <span className="sr-only">{`Elegir color: ${label}`}</span>
         <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 size-full cursor-pointer opacity-0" />
       </label>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <label htmlFor={id} className="text-[13px] font-semibold text-ink">
-            {f.label}
+            {label}
           </label>
           {changed && (
             <button
               type="button"
-              onClick={() => onChange(DEFAULT_THEME[k])}
+              onClick={() => onChange(original)}
               className="rounded-sm text-[12px] font-semibold text-ink-muted underline-offset-2 hover:text-ink hover:underline"
             >
-              Original<span className="sr-only">: {f.label}</span>
+              Original<span className="sr-only">: {label}</span>
             </button>
           )}
         </div>
@@ -214,7 +232,7 @@ function ColorField({ k, value, onChange }: { k: ThemeKey; value: string; onChan
           className={`${adminInput} font-mono text-[13px] uppercase`}
         />
         <p id={`${id}-hint`} className="text-[12px] leading-snug text-ink-muted">
-          {f.hint}
+          {hint}
         </p>
       </div>
     </div>

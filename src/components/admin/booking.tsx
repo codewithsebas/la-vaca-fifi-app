@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckIcon, CloseIcon, ExternalLinkIcon, MailIcon, PhoneIcon } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
-import { findUnit, unitFree, type Occupancy } from "@/lib/booking";
+import { findUnit, unitFree, unitLabel, type Occupancy } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { cop, fmtDate, nightsBetween, plural, timeAgo } from "@/lib/format";
 import type { CabinTypeId } from "@/lib/config";
@@ -258,7 +258,7 @@ function PendingCard({
               onChange={setUnit}
               options={Array.from({ length: cabin?.units ?? 0 }, (_, k) => ({
                 value: String(k + 1),
-                label: `Unidad ${k + 1}`,
+                label: `Cabaña ${unitLabel(cabin, k + 1)}`,
                 description: free.includes(k + 1) ? "Libre" : "Ocupada en esas fechas",
                 disabled: !free.includes(k + 1),
               }))}

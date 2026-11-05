@@ -4,6 +4,12 @@ import {
   computeQuote,
   dayRateLabel,
   invalidDayRates,
+  cleanUnitLabels,
+  invalidPersonRates,
+  invalidUnitLabels,
+  rateFrom,
+  unitLabel,
+  tierPrice,
   normalizePhone,
   unitFree,
   validateReservation,
@@ -157,5 +163,101 @@ describe("precios por día de una temporada", () => {
 
   it("una temporada sin precios por día sigue como antes", () => {
     expect(computeQuote(cabin, "2026-12-25", "2026-12-26", 2, [season({ from: "2026-12-20", to: "2026-12-31" })]).base).toBe(200_000);
+  });
+});
+
+describe("precios por cantidad de personas", () => {
+  const familiar = { id: "familiar", precioPareja: 160000, personaAdicional: 40000, preciosPersonas: { "2": 200000, "3": 210000, "4": 280000 } };
+  const grande = { id: "grande", precioPareja: 160000, personaAdicional: 40000, preciosPersonas: { "4": 280000, "5": 350000, "6": 420000 } };
+  const season = (p: object) => ({
+    id: "s1",
+    cabinTypeId: "familiar",
+    nombre: "Alta",
+    from: "2026-12-20",
+    to: "2026-12-31",
+    precioPareja: 100000,
+    personaAdicional: 10000,
+    activa: true,
+    dayRates: [],
+    ...p,
+  });
+
+  it.each([
+    [2, 200000],
+    [3, 210000],
+    [4, 280000],
+  ])("%i personas pagan su precio, aunque no suba parejo", (guests, price) => {
+    const q = computeQuote(familiar, "2026-11-10", "2026-11-12", guests);
+    expect([q.total, q.base, q.extraGuests, q.extraAmount]).toEqual([price * 2, price * 2, 0, 0]);
+  });
+
+  it("con menos personas que la primera fila se cobra esa fila", () => {
+    expect(computeQuote(grande, "2026-11-10", "2026-11-11", 2).total).toBe(280000);
+    expect(tierPrice(grande.preciosPersonas, 1)).toBe(280000);
+  });
+
+  it("con más personas que la última fila se cobra la última", () => {
+    expect(tierPrice(familiar.preciosPersonas, 6)).toBe(280000);
+  });
+
+  it("sin tabla sigue siendo pareja + persona adicional", () => {
+    const q = computeQuote({ id: "doble", precioPareja: 160000, personaAdicional: 40000 }, "2026-11-10", "2026-11-11", 3);
+    expect([q.base, q.extraGuests, q.extraAmount, q.total]).toEqual([160000, 1, 40000, 200000]);
+  });
+
+  it("la temporada y el precio por día usan su propia tabla", () => {
+    const s = season({
+      preciosPersonas: { "2": 300000, "3": 320000 },
+      dayRates: [{ weekdays: [], dates: ["2026-12-24"], precioPareja: 0, personaAdicional: 0, preciosPersonas: { "2": 500000, "3": 550000 } }],
+    });
+    expect(computeQuote(familiar, "2026-12-23", "2026-12-24", 3, [s]).total).toBe(320000);
+    expect(computeQuote(familiar, "2026-12-24", "2026-12-25", 3, [s]).total).toBe(550000);
+  });
+
+  it("una temporada sin tabla cobra pareja + adicional, y mezcla bien con noches de tabla", () => {
+    const q = computeQuote(familiar, "2026-12-19", "2026-12-21", 3, [season({})]);
+    // 19 dic: tabla (210.000). 20 dic: temporada 100.000 + 1 adicional × 10.000.
+    expect([q.base, q.extraGuests, q.extraAmount, q.total]).toEqual([310000, 1, 10000, 320000]);
+    expect(q.extraPerNight).toBe(10000);
+  });
+
+  it("muestra el precio desde y para cuántas personas", () => {
+    expect(rateFrom(grande)).toEqual({ price: 280000, guests: 4 });
+    expect(rateFrom({ precioPareja: 160000 })).toEqual({ price: 160000, guests: 2 });
+  });
+
+  it("valida la tabla", () => {
+    expect(invalidPersonRates({})).toBeNull();
+    expect(invalidPersonRates(undefined)).toBeNull();
+    expect(invalidPersonRates(familiar.preciosPersonas)).toBeNull();
+    expect(invalidPersonRates({ "2": 100, "4": 200 })).toMatch(/no son válidos/);
+    expect(invalidPersonRates({ "2": 100, "3": 0 })).toMatch(/3 personas/);
+    expect(invalidPersonRates({ "13": 100 })).toMatch(/no son válidos/);
+  });
+});
+
+describe("números de unidad", () => {
+  it("muestra el número propio; sin él, la posición", () => {
+    const c = { unitLabels: ["9", "2", " "] };
+    expect([unitLabel(c, 1), unitLabel(c, 2), unitLabel(c, 3), unitLabel(c, 4)]).toEqual(["9", "2", "3", "4"]);
+    expect(unitLabel({}, 2)).toBe("2");
+    expect(unitLabel(undefined, 2)).toBe("2");
+  });
+
+  it("deja uno por unidad, sin lo que sobra", () => {
+    expect(cleanUnitLabels([" 9 ", "2", "12"], 2)).toEqual(["9", "2"]);
+    expect(cleanUnitLabels(["9"], 3)).toEqual(["9", "", ""]);
+    expect(cleanUnitLabels(undefined, 2)).toEqual(["", ""]);
+  });
+
+  it("valida el formato y que no se repitan", () => {
+    expect(invalidUnitLabels(["9", "2"], 2)).toBeNull();
+    expect(invalidUnitLabels(["10A", ""], 2)).toBeNull();
+    expect(invalidUnitLabels(undefined, 3)).toBeNull();
+    expect(invalidUnitLabels(["9", "9"], 2)).toMatch(/9 está repetido/);
+    // La unidad 2 en blanco se muestra como 2: chocaría con el número puesto en la 1.
+    expect(invalidUnitLabels(["2", ""], 2)).toMatch(/2 está repetido/);
+    expect(invalidUnitLabels(["<b>"], 1)).toMatch(/6 letras/);
+    expect(invalidUnitLabels(["1234567"], 1)).toMatch(/6 letras/);
   });
 });

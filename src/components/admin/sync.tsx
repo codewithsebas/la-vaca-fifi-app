@@ -22,7 +22,7 @@ export function useSyncStatus(engine: SyncEngine | null) {
   );
 }
 
-function chipOf(s: SyncStatus): { label: string; detail: string; tone: string; icon: typeof CheckIcon } {
+export function chipOf(s: SyncStatus): { label: string; detail: string; tone: string; icon: typeof CheckIcon; spin?: boolean } {
   if (s.authLost)
     return {
       label: "Ingresa de nuevo",
@@ -50,6 +50,7 @@ function chipOf(s: SyncStatus): { label: string; detail: string; tone: string; i
       detail: "Enviando los cambios guardados en este dispositivo.",
       tone: "bg-info-soft text-info",
       icon: RefreshIcon,
+      spin: true,
     };
   if (s.pending)
     return {
@@ -58,6 +59,8 @@ function chipOf(s: SyncStatus): { label: string; detail: string; tone: string; i
       tone: "bg-info-soft text-info",
       icon: ClockIcon,
     };
+  // Actualizando sin nada por enviar: solo cambia el icono, para que el encabezado no salte con cada actualización.
+  if (s.syncing) return { label: "En línea", detail: "Actualizando los datos…", tone: "bg-success-soft text-success", icon: RefreshIcon, spin: true };
   return { label: "En línea", detail: "Todo está sincronizado.", tone: "bg-success-soft text-success", icon: CheckIcon };
 }
 
@@ -87,7 +90,7 @@ export function SyncChip({ compact = false }: { compact?: boolean }) {
       aria-label={`${c.label}. ${c.detail}`}
       className={`flex h-9 flex-none items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold whitespace-nowrap ${c.tone}`}
     >
-      <c.icon size={14} className={status.syncing ? "motion-safe:animate-spin" : ""} />
+      <c.icon size={14} className={c.spin ? "motion-safe:animate-spin" : ""} />
       <span className={compact ? "max-sm:sr-only" : ""}>{c.label}</span>
       {compact && status.pending + status.conflicts > 0 && (
         <span aria-hidden="true" className="tabular-nums sm:hidden">

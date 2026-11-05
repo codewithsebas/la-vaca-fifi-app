@@ -1,6 +1,7 @@
 // Contenido editable del sitio (horarios, contacto, políticas, imágenes). Lo usan servidor y navegador.
 import { config, type Policy } from "@/lib/config";
 import { DEFAULT_SERVICES } from "@/lib/content";
+import { DEFAULT_PANEL_COLORS, type PanelColors } from "@/lib/panel-colors";
 import { DEFAULT_THEME, type SiteTheme } from "@/lib/theme";
 
 export type SiteSettings = {
@@ -38,6 +39,7 @@ export type SiteContent = {
   texts: SiteTexts;
   services: SiteService[]; // en el orden en que se muestran
   theme: SiteTheme; // colores del sitio público
+  panelColors: PanelColors; // colores del panel
 };
 
 // Configuración del negocio con los campos editables ya aplicados (misma forma que `config`).
@@ -254,4 +256,5 @@ export const defaultContent: SiteContent = {
     visible: true,
   })),
   theme: DEFAULT_THEME,
+  panelColors: DEFAULT_PANEL_COLORS,
 };

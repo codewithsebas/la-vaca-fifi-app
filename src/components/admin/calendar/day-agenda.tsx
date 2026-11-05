@@ -27,7 +27,7 @@ export function DayAgenda({
   const { data, cabinLabel, today, now } = useAdmin();
   const calBlocks = useCalBlocks();
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 content-start gap-3 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map((u) => {
         const stay = data.reservations.find((r) => occupies(r, u) && r.checkIn <= day && day < r.checkOut);
         const leaving = data.reservations.find((r) => occupies(r, u) && r.checkOut === day);
@@ -105,7 +105,7 @@ export function DayAgenda({
               </Link>
             ) : (
               <div className="flex flex-col gap-2 rounded-[16px] border border-dashed border-line-strong px-3 py-3 text-[13px] text-ink-muted">
-                <span>{`Disponible esta noche · ${cop(rate.couple)} para 2${rate.season ? ` (${rate.season.nombre})` : ""}`}</span>
+                <span>{`Disponible esta noche · ${cop(rate.couple)} para ${rate.fromGuests}${rate.season ? ` (${rate.season.nombre})` : ""}`}</span>
                 {day >= today && (
                   <span className="flex flex-wrap gap-1.5">
                     <Button

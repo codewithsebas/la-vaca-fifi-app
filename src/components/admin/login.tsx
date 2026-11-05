@@ -6,6 +6,7 @@ import { BrandName, Logo } from "@/components/brand/logo";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
+import { PanelFooter } from "@/components/admin/footer";
 import { adminInput } from "@/components/admin/shared";
 import { Button, Callout, Field } from "@/components/admin/ui";
 
@@ -70,7 +71,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   }
   const missing = (v: string) => (lg.error && !v ? ({ "aria-invalid": true } as const) : {});
   return (
-    <main className="admin-surface relative grid h-dvh place-items-center overflow-hidden bg-canvas px-4 py-4 text-ink">
+    <main className="admin-surface relative grid min-h-dvh grid-rows-[1fr_auto] place-items-center gap-4 bg-canvas px-4 py-4 text-ink">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={GRID} />
 
       <form
@@ -167,6 +168,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           </Link>
         </p>
       </form>
+      <PanelFooter className="relative w-full" />
     </main>
   );
 }

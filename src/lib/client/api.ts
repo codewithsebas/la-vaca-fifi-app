@@ -2,7 +2,7 @@
 // quedan guardadas en este dispositivo antes de enviarse; si no, van directas.
 import { formOf, request, upload } from "@/lib/client/http";
 import type { CabinTypeId } from "@/lib/config";
-import { cachedFile, cachedGet, mutate } from "@/lib/offline/runtime";
+import { cachedFile, cachedGet, mutate, onlineOnly } from "@/lib/offline/runtime";
 import type {
   AdminAction,
   AdminData,
@@ -41,6 +41,7 @@ import type {
   PaymentTerms,
   SiteInput,
 } from "@/lib/types";
+import type { PanelColors } from "@/lib/panel-colors";
 import type { NotificationGroup } from "@/lib/notification-groups";
 import type { SiteContent, SiteService } from "@/lib/site";
 
@@ -75,11 +76,16 @@ export const api = {
     data: () => request<AdminData>("GET", "/admin/data"),
     action: (b: AdminAction) => {
       const direct = () => request<Reservation>("POST", "/admin/action", { body: b });
+      // Pagos, plazo y cancelación de un grupo: con conexión (el reparto lo hace el servidor).
+      if ("group" in b && b.group) return onlineOnly(direct);
       if (b.action !== "guest") return mutate("reservation.action", b, direct);
       return mutate("reservation.guest", { code: b.code, ...b.guest }, direct);
     },
-    createReservation: (b: ManualReservationInput) =>
-      mutate("reservation.create", b, () => request<ManualReservationResult | ValidationError | ApiError>("POST", "/admin/reservations", { body: b })),
+    createReservation: (b: ManualReservationInput) => {
+      const direct = () => request<ManualReservationResult | ValidationError | ApiError>("POST", "/admin/reservations", { body: b });
+      // Varias cabañas: con conexión.
+      return b.more?.length ? onlineOnly(direct) : mutate("reservation.create", b, direct);
+    },
     addBlock: (b: BlockInput) => mutate("block.create", b, () => request<Block[]>("POST", "/admin/blocks", { body: b })),
     updateBlock: (b: BlockInput & { id: string }) => mutate("block.update", b, () => request<Block[]>("PUT", "/admin/blocks", { body: b })),
     deleteBlock: (id: string) => mutate("block.delete", { id }, () => request<Block[]>("DELETE", "/admin/blocks", { query: { id } })),
@@ -116,6 +122,7 @@ export const api = {
       mutate("email.retry", { id }, () => request<EmailRecord | ApiError>("POST", "/admin/emails", { body: { action: "retry", id } })),
     reset: () => request<object>("POST", "/admin/reset"),
     saveSite: (b: SiteInput) => mutate("site.save", b, () => request<SiteContent>("PUT", "/admin/site", { body: b })),
+    savePanelColors: (b: PanelColors) => mutate("panelColors.save", b, () => request<SiteContent>("PUT", "/admin/panel-colors", { body: b })),
     savePaymentTerms: (b: PaymentTerms) => mutate("terms.save", b, () => request<SiteContent>("PUT", "/admin/payment-terms", { body: b })),
     uploadPhoto: (slot: string, file: Blob, name: string) =>
       mutate("sitePhoto.set", { slot, file, name }, () => upload<Record<string, string>>("/admin/photos", formOf({ slot, file }, name))),

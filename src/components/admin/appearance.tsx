@@ -17,8 +17,11 @@ export const THEME_OPTIONS = [
   { value: "system", label: "Sistema", hint: "Igual que este dispositivo", icon: MonitorIcon },
 ] as const;
 
-// Color de la barra del navegador en el celular: el fondo del panel en cada modo.
-const BAR = { light: "#f7f2e8", dark: "#121110" };
+// Color de la barra del navegador en el celular: el fondo del panel en cada modo (también si se personalizó).
+export function syncBrowserBar() {
+  const bar = getComputedStyle(document.documentElement).getPropertyValue("--color-canvas").trim();
+  if (bar) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bar);
+}
 
 export function useThemePref() {
   const raw = usePref(PREF.theme, "light");
@@ -33,7 +36,7 @@ export function useApplyTheme() {
     const apply = () => {
       const mode = pref === "dark" || (pref === "system" && mq.matches) ? "dark" : "light";
       document.documentElement.dataset.adminTheme = mode;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", BAR[mode]);
+      syncBrowserBar();
     };
     apply();
     mq.addEventListener("change", apply);

@@ -195,6 +195,7 @@ const KIND: Record<NotificationKind, { icon: typeof BellIcon; tone: string; grou
   reservation_confirmed: { icon: LoginIcon, tone: "bg-success-soft text-success", group: "reservas" },
   reservation_cancelled: { icon: CloseIcon, tone: "bg-error-soft text-error", group: "cambios" },
   balance_paid: { icon: WalletIcon, tone: "bg-success-soft text-success", group: "pagos" },
+  checkout_pending: { icon: WalletIcon, tone: "bg-warning-soft text-warning", group: "pagos" },
   email_failed: { icon: MailIcon, tone: "bg-error-soft text-error", group: "cambios" },
   reservation_expired: { icon: ClockIcon, tone: "bg-warning-soft text-warning", group: "cambios" },
   proof_uploaded: { icon: FileTextIcon, tone: "bg-info-soft text-info", group: "pagos" },

@@ -39,8 +39,8 @@ export default async function PoliciesPage() {
         ))}
         <h2 className={h2}>Tarifas</h2>
         <p>
-          Las tarifas incluyen 2 personas. Desde la 3.ª persona se cobra un valor adicional por persona y por noche. Adultos y niños cuentan igual para la
-          capacidad y la tarifa. La decoración para ocasiones especiales tiene un valor adicional que se cotiza aparte.
+          El precio por noche depende de la cabaña y de cuántas personas se alojan; cada cabaña muestra el suyo al reservar. Adultos y niños cuentan igual para
+          la capacidad y la tarifa. La decoración para ocasiones especiales tiene un valor adicional que se cotiza aparte.
         </p>
       </section>
       <p>

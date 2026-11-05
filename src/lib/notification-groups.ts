@@ -13,8 +13,8 @@ export const NOTIFICATION_GROUPS: { id: NotificationGroup; label: string; descri
   {
     id: "pagos",
     label: "Pagos",
-    description: "Saldos pagados y comprobantes.",
-    kinds: ["balance_paid", "proof_uploaded", "proof_approved", "proof_rejected"],
+    description: "Saldos pagados, comprobantes y estadías que no se pueden finalizar por saldo pendiente.",
+    kinds: ["balance_paid", "checkout_pending", "proof_uploaded", "proof_approved", "proof_rejected"],
   },
   {
     id: "cambios",

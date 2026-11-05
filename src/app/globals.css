@@ -392,9 +392,6 @@
   padding-inline: max(16px, calc((100% - --value(integer) * 1px) / 2));
 }
 
-/* Pantallas con alto suficiente para que una vista ocupe exactamente el alto disponible (calendario del panel). */
-@custom-variant tall (@media (min-height: 600px));
-
 @utility no-scrollbar {
   scrollbar-width: none;
   &::-webkit-scrollbar {

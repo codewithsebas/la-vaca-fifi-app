@@ -13,17 +13,20 @@ import { offlineEnabled } from "@/lib/offline/config";
 import type { SyncEngine } from "@/lib/offline/engine";
 import { precacheShell } from "@/lib/offline/precache";
 import { closeSession, endSession, openSession } from "@/lib/offline/session";
+import { unitLabel } from "@/lib/booking";
 import { config } from "@/lib/config";
 import { todayISO } from "@/lib/format";
+import { mergePanelColors, panelColorsCss, type PanelColors } from "@/lib/panel-colors";
 import { themeCss, type SiteTheme } from "@/lib/theme";
 import type { AdminData, PanelRole } from "@/lib/types";
 import { AdminProvider, type AdminCtx } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
+import { PanelFooter } from "@/components/admin/footer";
 import { TipProvider, useLabelTip, useTip } from "@/components/ui/floating";
 import { Login, PanelLoader } from "@/components/admin/login";
 import { NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
-import { ThemeMenu, useApplyTheme } from "@/components/admin/appearance";
+import { ThemeMenu, syncBrowserBar, useApplyTheme } from "@/components/admin/appearance";
 import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, canOpen, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "@/components/admin/routes";
 import { AccessDenied, AccountMenu } from "@/components/admin/account";
 import { GlobalSearch } from "@/components/admin/global-search";
@@ -49,10 +52,16 @@ import {
 
 /* ───────────── Colores ───────────── */
 
-// El panel tiene sus propios colores (app/globals.css). La paleta publicada del sitio se declara igual, para las vistas
-// previas del sitio que muestra (fotos, colores, textos). La hoja se va con el panel al volver al sitio.
+// El panel tiene sus propios colores (app/globals.css), personalizables en Configuración → Colores. La paleta publicada
+// del sitio se declara igual, para las vistas previas del sitio que muestra (fotos, colores, textos). Las hojas se van
+// con el panel al volver al sitio.
 function PanelTheme({ theme }: { theme: SiteTheme }) {
   return <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />;
+}
+function PanelColorsStyle({ colors }: { colors: PanelColors }) {
+  useEffect(syncBrowserBar, [colors]);
+  // Se valida aquí porque esta hoja envuelve todo el panel: unos datos sin colores no deben tumbarlo.
+  return <style dangerouslySetInnerHTML={{ __html: panelColorsCss(mergePanelColors(colors)) }} />;
 }
 
 /* ───────────── Acceso ───────────── */
@@ -68,17 +77,17 @@ type Gate =
 export function AdminShell({ children }: { children: ReactNode }) {
   // Antes de entrar (carga, ingreso), los colores publicados que trae el sitio; dentro, los de los datos del panel,
   // que cambian apenas se publica otra paleta.
-  const { theme } = useSite();
+  const { theme, panelColors } = useSite();
   useApplyTheme();
   return (
     <>
       <PanelTheme theme={theme} />
-      <Gated>{children}</Gated>
+      <Gated panelColors={panelColors}>{children}</Gated>
     </>
   );
 }
 
-function Gated({ children }: { children: ReactNode }) {
+function Gated({ panelColors, children }: { panelColors: PanelColors; children: ReactNode }) {
   const [gate, setGate] = useState<Gate>({ status: "checking" });
   const check = useCallback(() => {
     const online = () =>
@@ -123,11 +132,25 @@ function Gated({ children }: { children: ReactNode }) {
     return () => closeSession();
   }, [check]);
 
-  if (gate.status === "checking") return <PanelLoader />;
-  if (gate.status === "login") return <Login onSuccess={recheck} />;
+  // Antes de entrar, los colores publicados; dentro, los de los datos del panel (Panel).
+  const pre = <PanelColorsStyle colors={panelColors} />;
+  if (gate.status === "checking")
+    return (
+      <>
+        {pre}
+        <PanelLoader />
+      </>
+    );
+  if (gate.status === "login")
+    return (
+      <>
+        {pre}
+        <Login onSuccess={recheck} />
+      </>
+    );
   if (gate.status === "error" || gate.status === "expired")
     return (
-      <div className="admin-surface grid min-h-dvh place-items-center bg-canvas px-4">
+      <div className="admin-surface grid min-h-dvh grid-rows-[1fr_auto] place-items-center bg-canvas px-4 pb-4">
         <div className="w-full max-w-[460px]">
           <ErrorState
             title={gate.status === "expired" ? "Conéctate para seguir" : "No pudimos abrir el panel"}
@@ -141,6 +164,8 @@ function Gated({ children }: { children: ReactNode }) {
             onRetry={recheck}
           />
         </div>
+        {pre}
+        <PanelFooter className="w-full" />
       </div>
     );
   return (
@@ -427,22 +452,6 @@ function Sidebar({
   );
 }
 
-// Pie del panel: derechos de autor a nombre del titular legal y quién lo desarrolló. Va al final de cada página (abajo
-// del todo si la página es corta). Mientras la razón social no esté en la configuración, solo el nombre comercial.
-function PanelFooter({ className = "" }: { className?: string }) {
-  const holder = config.razonSocial.startsWith("{") ? config.name : `${config.razonSocial} — ${config.name}`;
-  return (
-    <footer
-      className={`mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line pt-4 text-[12.5px] text-ink-subtle ${className}`}
-    >
-      <p>{`© ${todayISO().slice(0, 4)} ${holder}. Todos los derechos reservados.`}</p>
-      <p>
-        Desarrollado por <span className="font-semibold text-ink-muted">Joab Giraldo</span>
-      </p>
-    </footer>
-  );
-}
-
 // Atajo a Configuración en el encabezado.
 function SettingsLink() {
   const tip = useLabelTip("Configuración");
@@ -473,7 +482,9 @@ function crumbsFor(pathname: string, data: AdminData): Crumb[] {
             : `Editar ${data.cabinTypes.find((c) => c.id === seg)?.nombre ?? "cabaña"}`
           : mod === "contenido"
             ? (CONTENT_SECTIONS.find((s) => s.id === seg)?.label ?? "Sección")
-            : "Detalle";
+            : mod === "configuracion"
+              ? "Colores"
+              : "Detalle";
   return [root, section, { label: detail }];
 }
 
@@ -512,6 +523,7 @@ function Panel({
   const [now, setNow] = useState(() => Date.now());
   const [menu, setMenu] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [colorPreview, setColorPreview] = useState<PanelColors | null>(null);
   const mini = usePref(PREF.sidebar, "full") === "mini";
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const firstPath = useRef(true);
@@ -703,9 +715,11 @@ function Panel({
     now,
     cabin: (id) => cabinMap.get(id),
     cabinLabel: (id, unit) => {
-      const name = cabinMap.get(id)?.nombre ?? id;
-      return unit ? `${name} ${unit}` : name;
+      const c = cabinMap.get(id);
+      const name = c?.nombre ?? id;
+      return unit ? `${name} ${unitLabel(c, unit)}` : name;
     },
+    previewColors: setColorPreview,
   };
 
   const badges: Badges = {
@@ -714,14 +728,15 @@ function Panel({
     pagos: { n: data.proofs.filter((p) => p.status === "pending").length, label: "comprobantes por revisar" },
     notificaciones: { n: unread, label: "sin leer" },
   };
-  // El calendario usa todo el alto de la pantalla (si hay alto suficiente; si no, la página se desplaza).
-  const fullHeight = mod === "calendario";
+  // El calendario usa todo el ancho de la pantalla; su alto crece con las filas y se desplaza con la página.
+  const fullWidth = mod === "calendario";
   // La sección de contenido conserva su formulario al cambiar de pestaña: no se vuelve a montar.
   const pageKey = mod === "contenido" ? "contenido" : pathname;
 
   return (
     <AdminProvider value={ctx}>
       <PanelTheme theme={data.site.theme} />
+      <PanelColorsStyle colors={colorPreview ?? data.site.panelColors} />
       <TipProvider>
         <Suspense fallback={null}>
           <LegacyRedirect />
@@ -729,7 +744,7 @@ function Panel({
         <div className="admin-root min-h-dvh bg-canvas text-[15px] text-ink lg:flex" style={{ "--admin-sidebar": mini ? "104px" : "280px" } as CSSProperties}>
           <Sidebar current={mod} badges={badges} role={data.me.role} mini={mini} onToggle={() => writePref(PREF.sidebar, mini ? "full" : "mini")} />
 
-          <div className={`flex min-w-0 flex-1 flex-col ${fullHeight ? "tall:h-dvh" : ""}`}>
+          <div className="flex min-w-0 flex-1 flex-col">
             {/* Móvil y tableta: menú en cajón, marca, búsqueda y notificaciones */}
             <header className="admin-surface admin-header sticky top-0 z-30 flex flex-none flex-col lg:hidden">
               <div className="flex h-16 items-center justify-between gap-2 px-3">
@@ -779,9 +794,9 @@ function Panel({
 
             {/* Con una barra de guardado (fija al pie), el final de la página deja libre su alto para no quedar tapado. */}
             <main
-              className={`admin-surface mx-auto flex w-full ${fullHeight ? "max-w-none" : "max-w-[1440px]"} min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-10 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)] ${fullHeight ? "tall:min-h-0 tall:pb-5" : ""}`}
+              className={`admin-surface mx-auto flex w-full ${fullWidth ? "max-w-none" : "max-w-[1440px]"} min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)]`}
             >
-              {crumbs.length > 1 && <Breadcrumbs items={crumbs} className="-mb-2" />}
+              {crumbs.length > 1 && mod !== "calendario" && <Breadcrumbs items={crumbs} className="-mb-2" />}
               {loadError && (
                 <Callout tone="warning" role="alert">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -792,10 +807,10 @@ function Panel({
                   </div>
                 </Callout>
               )}
-              <div key={pageKey} className={`flex flex-col gap-6 motion-safe:animate-fade-in ${fullHeight ? "tall:min-h-0 tall:flex-1" : ""}`}>
+              <div key={pageKey} className="flex flex-col gap-6 motion-safe:animate-fade-in">
                 <Suspense fallback={<PageSkeleton />}>{mod && !canOpen(data.me.role, mod) ? <AccessDenied module={mod} /> : children}</Suspense>
               </div>
-              <PanelFooter className={fullHeight ? "tall:hidden" : ""} />
+              <PanelFooter />
             </main>
           </div>
 

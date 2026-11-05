@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { baseVersionOf, fail, json, readJson, requireAdmin, syncRoute } from "@/lib/server/http";
 import { loadSiteContent } from "@/lib/server/site";
 import { TEXT_LIMITS, mergeTexts } from "@/lib/site";
+import { mergePanelColors } from "@/lib/panel-colors";
 import { THEME_KEYS, mergeTheme, normalizeHex } from "@/lib/theme";
 import type { SiteInput } from "@/lib/types";
 
@@ -69,7 +70,7 @@ export const PUT = syncRoute(async (req: NextRequest) => {
   if (Object.keys(errors).length) return fail(422, "VALIDATION_ERROR", { fields: errors });
 
   // Las instrucciones de pago guardadas se conservan (las edita Condiciones de pago).
-  const { data: current } = await sb.from("site_settings").select("content, version").maybeSingle().throwOnError();
+  const { data: current } = await sb.from("site_settings").select("content, theme, version").maybeSingle().throwOnError();
   const base = baseVersionOf(req);
   if (base !== null && current && current.version !== base) return fail(409, "VERSION_CONFLICT");
   texts.payment = mergeTexts(current?.content).payment;
@@ -85,7 +86,8 @@ export const PUT = syncRoute(async (req: NextRequest) => {
       whatsapp,
       rnt: String(s.rnt ?? "").trim(),
       content: texts,
-      ...(b.theme !== undefined && { theme }),
+      // Los colores del panel tienen su página (Configuración → Colores, /api/admin/panel-colors) y se conservan.
+      ...(b.theme !== undefined && { theme: { ...theme, panel: mergePanelColors((current?.theme as { panel?: unknown } | null)?.panel) } }),
     })
     .throwOnError();
   // Primero se guardan las políticas y luego se borran las que ya no están: nunca queda la lista vacía.

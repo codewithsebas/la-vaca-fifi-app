@@ -28,6 +28,7 @@ import type {
   PublicReservation,
   Quote,
   RateSeason,
+  PersonRates,
   SeasonDayRate,
   Reservation,
   ReservationSource,
@@ -48,8 +49,11 @@ export function toCabinType(row: Tables<"cabin_types">): CabinType {
     nombre: row.nombre,
     precioPareja: row.precio_pareja,
     personaAdicional: row.persona_adicional,
+    preciosPersonas: row.precios_personas as PersonRates,
     maxPersonas: row.max_personas,
     units: row.units,
+    unitLabels: row.unit_labels,
+    dayRates: (row.day_rates ?? []) as SeasonDayRate[],
     badge: row.badge,
     descripcion: row.descripcion,
     caracteristicas: row.caracteristicas,
@@ -78,6 +82,7 @@ export const toSeason = (s: Tables<"rate_seasons">): RateSeason => ({
   to: s.to_date,
   precioPareja: s.precio_pareja,
   personaAdicional: s.persona_adicional,
+  preciosPersonas: s.precios_personas as PersonRates,
   activa: s.activa,
   dayRates: Array.isArray(s.day_rates) ? (s.day_rates as SeasonDayRate[]) : [],
 });
@@ -163,9 +168,44 @@ export const toEmail = (e: Tables<"email_outbox">): EmailRecord => ({
 });
 
 // Pagos de una reserva para el huésped (los 8 más recientes).
-async function loadPublicPayments(sb: Db, code: string) {
-  const { data } = await sb.from("payments").select("*").eq("reservation_code", code).order("created_at", { ascending: false }).limit(8).throwOnError();
+async function loadPublicPayments(sb: Db, codes: string[]) {
+  const { data } = await sb
+    .from("payments")
+    .select("*")
+    .in("reservation_code", codes)
+    .order("created_at", { ascending: false })
+    .limit(8 * codes.length)
+    .throwOnError();
   return data.map(toPublicPayment);
+}
+
+// Cabañas de un grupo, la principal primero. Las canceladas se omiten salvo que lo esté todo el grupo.
+export async function loadGroupRows(sb: Db, groupCode: string): Promise<ReservationRow[]> {
+  const { data } = await sb.from("reservations").select("*").eq("group_code", groupCode).order("code").throwOnError();
+  const live = data.filter((m) => m.status !== "cancelled");
+  const rows = live.length ? live : data;
+  return [...rows.filter((m) => m.code === groupCode), ...rows.filter((m) => m.code !== groupCode)];
+}
+
+// Lo que ve el huésped de una reserva con varias cabañas: la principal con las personas, valores y pagos del grupo.
+export function toPublicGroup(rows: ReservationRow[], payments?: PublicPayment[]): PublicReservation {
+  const [lead] = rows;
+  if (rows.length < 2) return toPublic(lead, payments);
+  const quotes = rows.map((m) => m.quote as Quote);
+  const add = (f: (q: Quote) => number) => quotes.reduce((sum, q) => sum + f(q), 0);
+  return {
+    ...toPublic(lead, payments),
+    quote: {
+      ...quotes[0],
+      base: add((q) => q.base),
+      extraAmount: add((q) => q.extraAmount),
+      total: add((q) => q.total),
+      deposit: add((q) => q.deposit),
+      balance: add((q) => q.balance),
+    },
+    paid: rows.reduce((sum, m) => sum + m.paid_amount, 0),
+    cabins: rows.map((m) => ({ cabinTypeId: m.cabin_type_id, adults: m.adults, children: m.children, total: (m.quote as Quote).total })),
+  };
 }
 
 export function toPublic(r: ReservationRow, payments?: PublicPayment[]): PublicReservation {
@@ -186,9 +226,17 @@ export function toPublic(r: ReservationRow, payments?: PublicPayment[]): PublicR
 }
 
 // Vista del huésped completa: pagos, canal en tiempo real y hora del servidor.
-export async function publicView(sb: Db, r: ReservationRow): Promise<PublicReservation> {
+export async function publicView(sb: Db, row: ReservationRow): Promise<PublicReservation> {
+  const rows = row.group_code ? await loadGroupRows(sb, row.group_code) : [row];
+  const r = rows[0] ?? row;
   return {
-    ...toPublic(r, await loadPublicPayments(sb, r.code)),
+    ...toPublicGroup(
+      rows.length ? rows : [row],
+      await loadPublicPayments(
+        sb,
+        rows.map((m) => m.code),
+      ),
+    ),
     guestFirstName: r.guest_full_name.split(" ")[0],
     liveKey: r.live_key,
     serverNow: new Date().toISOString(),
@@ -200,6 +248,7 @@ export function toReservation(r: ReservationRow & { reservation_notes?: { text: 
     ...toPublic(r),
     version: r.version,
     unit: r.unit,
+    groupCode: r.group_code,
     adults: r.adults,
     children: r.children,
     pet: r.pet as Reservation["pet"],

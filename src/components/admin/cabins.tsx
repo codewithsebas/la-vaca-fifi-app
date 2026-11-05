@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanUnitLabels, invalidUnitLabels, personRatesText, personSteps, rateFrom, unitLabel } from "@/lib/booking";
 import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, type DragEvent } from "react";
@@ -26,7 +27,7 @@ import { isMockApi } from "@/lib/config";
 import { cop, plural } from "@/lib/format";
 import { imageSize, resizeImage } from "@/lib/client/image-resize";
 import { CABIN_PHOTO } from "@/lib/site";
-import type { CabinInput, CabinType } from "@/lib/types";
+import type { CabinInput, PersonRates, CabinType } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { CabinBathrooms, cabinBathroomAlerts } from "@/components/admin/bathrooms";
 import { MODULES, paths } from "@/components/admin/routes";
@@ -42,6 +43,7 @@ import {
   CardHeader,
   EmptyState,
   Field,
+  FieldError,
   IconButton,
   MoneyInput,
   PageHeader,
@@ -173,11 +175,11 @@ export function CabinList() {
                     </div>
                     <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
                       <dt className="text-ink-muted">Unidades</dt>
-                      <dd className="font-semibold text-ink">{c.units}</dd>
+                      <dd className="font-semibold text-ink">{Array.from({ length: c.units }, (_, i) => unitLabel(c, i + 1)).join(", ") || "0"}</dd>
                     </div>
                     <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
-                      <dt className="text-ink-muted">Pareja/noche</dt>
-                      <dd className="font-semibold text-ink tabular-nums">{cop(c.precioPareja)}</dd>
+                      <dt className="text-ink-muted">{`Noche para ${rateFrom(c).guests}`}</dt>
+                      <dd className="font-semibold text-ink tabular-nums">{cop(rateFrom(c).price)}</dd>
                     </div>
                   </dl>
                   <p className="text-[12.5px] text-ink-muted">
@@ -275,6 +277,7 @@ export function CabinEditor({ id }: { id?: string }) {
         badge: current.badge,
         maxPersonas: current.maxPersonas,
         units: current.units,
+        unitLabels: cleanUnitLabels(current.unitLabels, current.units),
         precioPareja: current.precioPareja,
         personaAdicional: current.personaAdicional,
         activa: current.activa,
@@ -285,6 +288,13 @@ export function CabinEditor({ id }: { id?: string }) {
   const [busy, setBusy] = useState(false);
   const [feature, setFeature] = useState("");
   const dirty = JSON.stringify(v) !== JSON.stringify(base);
+  // Un número puesto a mano no debería estar también en otra cabaña: es la misma puerta. Se avisa, no se bloquea.
+  const repeatedElsewhere = cleanUnitLabels(v.unitLabels, v.units)
+    .filter(Boolean)
+    .flatMap((label) => {
+      const other = data.cabinTypes.find((c) => c.id !== current?.id && cleanUnitLabels(c.unitLabels, c.units).includes(label));
+      return other ? [{ label, cabin: other.nombre }] : [];
+    });
   const set = (p: Partial<CabinInput>) => setV((x) => ({ ...x, ...p }));
 
   if (id && !current)
@@ -317,6 +327,8 @@ export function CabinEditor({ id }: { id?: string }) {
     const e: Record<string, string> = {};
     if (v.nombre.trim().length < 3) e.nombre = "El nombre debe tener al menos 3 caracteres.";
     if (v.precioPareja <= 0) e.precioPareja = "Escribe la tarifa por noche para 2 personas.";
+    const badLabels = invalidUnitLabels(v.unitLabels, v.units);
+    if (badLabels) e.unitLabels = badLabels;
     setErrors(e);
     if (Object.keys(e).length) {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('main [aria-invalid="true"]')?.focus());
@@ -324,7 +336,13 @@ export function CabinEditor({ id }: { id?: string }) {
     }
     setBusy(true);
     try {
-      const body = { ...v, nombre: v.nombre.trim(), descripcion: v.descripcion.trim(), badge: v.badge.trim() };
+      const body = {
+        ...v,
+        unitLabels: cleanUnitLabels(v.unitLabels, v.units),
+        nombre: v.nombre.trim(),
+        descripcion: v.descripcion.trim(),
+        badge: v.badge.trim(),
+      };
       const r = current ? await api.admin.updateCabin({ ...body, id: current.id }) : await api.admin.createCabin(body);
       if (r.status === 401 || r.status === 403) return onAuthError();
       if (r.status === 422) return setErrors((r.data as { fields?: Record<string, string> }).fields ?? {});
@@ -428,20 +446,65 @@ export function CabinEditor({ id }: { id?: string }) {
                   <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.units} onChange={(n) => set({ units: n })} min={0} max={20} unit="cabañas" />
                 )}
               </Field>
-              <Field label="Noche para 2" error={errors.precioPareja}>
-                {(p) => (
-                  <MoneyInput
-                    id={p.id}
-                    describedBy={p["aria-describedby"]}
-                    invalid={!!p["aria-invalid"]}
-                    value={v.precioPareja}
-                    onChange={(n) => set({ precioPareja: n })}
-                  />
-                )}
-              </Field>
-              <Field label="Persona adicional por noche" hint="Desde la 3.ª persona." error={errors.personaAdicional}>
-                {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={v.personaAdicional} onChange={(n) => set({ personaAdicional: n })} />}
-              </Field>
+              {v.units > 0 && (
+                <fieldset className="flex min-w-0 flex-col gap-2 sm:col-span-2">
+                  <legend className="text-[13px] font-semibold text-ink">Números de las unidades (opcional)</legend>
+                  <p className="text-[12.5px] text-ink-muted">
+                    El número que tiene cada una en la finca. Se muestra en el calendario, las reservas y los bloqueos; en blanco, se usa el orden (1, 2, 3…).
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {cleanUnitLabels(v.unitLabels, v.units).map((label, i) => (
+                      <label key={i} className="flex min-w-0 flex-col gap-1 text-[12px] font-semibold text-ink-muted">
+                        {`Cabaña ${i + 1}`}
+                        <input
+                          type="text"
+                          autoComplete="off"
+                          maxLength={6}
+                          value={label}
+                          placeholder={String(i + 1)}
+                          aria-invalid={!!errors.unitLabels || undefined}
+                          onChange={(e) => {
+                            const next = cleanUnitLabels(v.unitLabels, v.units);
+                            next[i] = e.target.value;
+                            set({ unitLabels: next });
+                          }}
+                          className={`${adminInput} text-center`}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  {errors.unitLabels && <FieldError>{errors.unitLabels}</FieldError>}
+                  {repeatedElsewhere.length > 0 && (
+                    <Callout tone="warning">
+                      {`${repeatedElsewhere.map((x) => `El ${x.label} también está en ${x.cabin}`).join(". ")}. Revisa si es la misma cabaña física.`}
+                    </Callout>
+                  )}
+                </fieldset>
+              )}
+              {personSteps(current?.preciosPersonas).length > 0 ? (
+                <Callout className="sm:col-span-2">
+                  Esta cabaña cobra según la cantidad de personas ({personRatesText(current!.preciosPersonas!)}). Se cambia en <strong>Tarifas</strong>.
+                </Callout>
+              ) : (
+                <>
+                  <Field label="Noche para 2" error={errors.precioPareja}>
+                    {(p) => (
+                      <MoneyInput
+                        id={p.id}
+                        describedBy={p["aria-describedby"]}
+                        invalid={!!p["aria-invalid"]}
+                        value={v.precioPareja}
+                        onChange={(n) => set({ precioPareja: n })}
+                      />
+                    )}
+                  </Field>
+                  <Field label="Persona adicional por noche" hint="Desde la 3.ª persona." error={errors.personaAdicional}>
+                    {(p) => (
+                      <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={v.personaAdicional} onChange={(n) => set({ personaAdicional: n })} />
+                    )}
+                  </Field>
+                </>
+              )}
             </div>
           </Card>
 
@@ -519,7 +582,7 @@ export function CabinEditor({ id }: { id?: string }) {
         <div className="flex flex-col gap-4 xl:sticky xl:top-20">
           {current ? <PhotoManager c={current} /> : <Callout>Guarda la cabaña para agregar fotos.</Callout>}
           {current && <CabinBathrooms cabinTypeId={current.id} />}
-          <Preview v={v} photo={current?.fotos[0]} />
+          <Preview tiers={current?.preciosPersonas} v={v} photo={current?.fotos[0]} />
         </div>
       </div>
     </>
@@ -696,7 +759,7 @@ function PhotoManager({ c }: { c: CabinType }) {
 /* ───────────── Vista previa ───────────── */
 
 // Réplica de la tarjeta de la portada (mismos estilos del sitio) para ver el resultado antes de guardar.
-function Preview({ v, photo }: { v: CabinInput; photo?: string }) {
+function Preview({ v, photo, tiers }: { v: CabinInput; photo?: string; tiers?: PersonRates }) {
   const { data } = useAdmin();
   return (
     <section aria-labelledby="cb-prev" className="flex flex-col gap-2">
@@ -730,10 +793,21 @@ function Preview({ v, photo }: { v: CabinInput; photo?: string }) {
             </ul>
           )}
           <dl className="grid grid-cols-[auto_auto] justify-start gap-x-4 gap-y-0.5 text-[.8rem]">
-            <dt>Noche para 2</dt>
-            <dd className="font-extrabold">{cop(v.precioPareja)}</dd>
-            <dt>Persona adicional</dt>
-            <dd className="font-bold">{cop(v.personaAdicional)}</dd>
+            {personSteps(tiers).length ? (
+              personSteps(tiers).map((n) => (
+                <div key={n} className="contents">
+                  <dt>{`Noche para ${n}`}</dt>
+                  <dd className="font-extrabold">{cop(tiers![n])}</dd>
+                </div>
+              ))
+            ) : (
+              <>
+                <dt>Noche para 2</dt>
+                <dd className="font-extrabold">{cop(v.precioPareja)}</dd>
+                <dt>Persona adicional</dt>
+                <dd className="font-bold">{cop(v.personaAdicional)}</dd>
+              </>
+            )}
             <dt>Capacidad</dt>
             <dd className="font-bold">Máximo {v.maxPersonas} personas</dd>
           </dl>

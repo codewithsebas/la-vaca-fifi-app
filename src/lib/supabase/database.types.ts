@@ -308,6 +308,7 @@ export type Database = {
           badge: string
           caracteristicas: string[]
           created_at: string
+          day_rates: Json
           descripcion: string
           fotos: string[]
           id: string
@@ -315,7 +316,9 @@ export type Database = {
           nombre: string
           persona_adicional: number
           precio_pareja: number
+          precios_personas: Json
           sort: number
+          unit_labels: string[]
           units: number
           updated_at: string
           version: number
@@ -325,6 +328,7 @@ export type Database = {
           badge?: string
           caracteristicas?: string[]
           created_at?: string
+          day_rates?: Json
           descripcion?: string
           fotos?: string[]
           id: string
@@ -332,7 +336,9 @@ export type Database = {
           nombre: string
           persona_adicional: number
           precio_pareja: number
+          precios_personas?: Json
           sort?: number
+          unit_labels?: string[]
           units: number
           updated_at?: string
           version?: number
@@ -342,6 +348,7 @@ export type Database = {
           badge?: string
           caracteristicas?: string[]
           created_at?: string
+          day_rates?: Json
           descripcion?: string
           fotos?: string[]
           id?: string
@@ -349,7 +356,9 @@ export type Database = {
           nombre?: string
           persona_adicional?: number
           precio_pareja?: number
+          precios_personas?: Json
           sort?: number
+          unit_labels?: string[]
           units?: number
           updated_at?: string
           version?: number
@@ -676,6 +685,7 @@ export type Database = {
           nombre: string
           persona_adicional: number
           precio_pareja: number
+          precios_personas: Json
           to_date: string
           updated_at: string
           version: number
@@ -690,6 +700,7 @@ export type Database = {
           nombre: string
           persona_adicional: number
           precio_pareja: number
+          precios_personas?: Json
           to_date: string
           updated_at?: string
           version?: number
@@ -704,6 +715,7 @@ export type Database = {
           nombre?: string
           persona_adicional?: number
           precio_pareja?: number
+          precios_personas?: Json
           to_date?: string
           updated_at?: string
           version?: number
@@ -773,6 +785,7 @@ export type Database = {
           deposit_paid_at: string | null
           estimated_arrival: string
           external_ref: string | null
+          group_code: string | null
           guest_city: string
           guest_doc_number: string
           guest_doc_type: string
@@ -810,6 +823,7 @@ export type Database = {
           deposit_paid_at?: string | null
           estimated_arrival: string
           external_ref?: string | null
+          group_code?: string | null
           guest_city: string
           guest_doc_number: string
           guest_doc_type: string
@@ -847,6 +861,7 @@ export type Database = {
           deposit_paid_at?: string | null
           estimated_arrival?: string
           external_ref?: string | null
+          group_code?: string | null
           guest_city?: string
           guest_doc_number?: string
           guest_doc_type?: string

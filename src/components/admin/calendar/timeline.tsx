@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { BanIcon, BathIcon, ChevronDownIcon, ClockIcon, PlusIcon } from "@/components/ui/icons";
+import { BanIcon, BathIcon, ChevronDownIcon, PlusIcon } from "@/components/ui/icons";
 import { computeQuote, nightlyRate } from "@/lib/booking";
 import { addDays, cop, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
-import { pendingOf } from "@/lib/admin-metrics";
 import type { CabinType } from "@/lib/types";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { Popover, useTip } from "@/components/ui/floating";
@@ -23,11 +22,9 @@ import {
   blockHref,
   blockStyle,
   blocks,
-  initialsOf,
   kfmt,
   occupies,
   openInModal,
-  shortLeft,
   units,
   useCalBlocks,
 } from "@/components/admin/calendar/shared";
@@ -53,7 +50,7 @@ type Line = { kind: "group"; cabin: CabinType; units: Unit[] } | { kind: "unit";
 // (?unidades=doble,familiar: los tipos abiertos).
 // Arrastrar sobre noches libres de una unidad (con el mouse) abre «Nueva reserva» con esa cabaña y esas fechas.
 export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, footer = true, className = "" }: TimelineProps) {
-  const { data, cabinLabel, now } = useAdmin();
+  const { data, cabinLabel } = useAdmin();
   const calBlocks = useCalBlocks();
   const tip = useTip();
   const scroller = useRef<HTMLDivElement>(null);
@@ -68,11 +65,15 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
   const idx = (d: string) => nightsBetween(from, d);
   const compact = width < 640;
   // Columna de nombres y ancho mínimo de media jornada según el espacio: sin desplazamiento horizontal salvo que no haya otra opción.
-  const label = compact ? 104 : 168;
+  const label = compact ? 112 : 184;
   // Ancho mínimo de media jornada según cuántos días se ven (las columnas crecen para llenar el ancho): pocos días, más
   // aire; un mes completo, apretado. Desde 22 px cabe la tarifa.
-  const half = n <= 3 ? (compact ? 22 : 48) : n <= 7 ? (compact ? 14 : 34) : n <= 16 ? (compact ? 12 : 24) : 10;
+  const half = n <= 3 ? (compact ? 22 : 48) : n <= 7 ? (compact ? 14 : 30) : n <= 16 ? (compact ? 12 : width < 900 ? 14 : 22) : 10;
   const showRates = half >= 22;
+  // Si el periodo cabe, el desplazamiento es el de la página y los días quedan fijos bajo el encabezado del panel. Solo si
+  // no cabe (dos semanas en el celular) la tabla se desplaza a lo ancho; ahí los días no pueden seguir a la página.
+  const overflows = label + n * 2 * half > width;
+  const stick = overflows ? "top-0" : "top-16 lg:top-[76px]";
 
   const [openParam, setOpenParam] = useParam("unidades", "");
   const opened = useMemo(() => new Set(openParam.split(",").filter(Boolean)), [openParam]);
@@ -159,25 +160,25 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
     window.addEventListener("pointercancel", up);
   };
 
-  const rowHeight = compact ? 46 : 52;
+  const rowHeight = compact ? 48 : 56;
   const gridStyle: CSSProperties = {
     gridTemplateColumns: `${label}px repeat(${n * 2}, minmax(${half}px, 1fr))`,
-    gridTemplateRows: `auto ${lines.map((l) => (l.kind === "group" ? "32px" : l.kind === "idle" ? "34px" : `${rowHeight}px`)).join(" ")}`,
+    gridTemplateRows: `auto ${lines.map((l) => (l.kind === "group" ? "38px" : l.kind === "idle" ? "36px" : `${rowHeight}px`)).join(" ")}`,
     minWidth: label + n * 2 * half,
   };
   const rate = cell ? nightlyRate(cell.u.cabin, data.seasons, cell.d) : null;
 
   return (
-    <div className={`flex min-h-[300px] flex-col overflow-hidden rounded-[22px] bg-panel ${className}`}>
-      <div ref={scroller} className={`relative min-h-0 flex-1 overflow-auto overscroll-x-contain ${sel ? "cursor-col-resize select-none" : ""}`}>
+    <div className={`isolate flex flex-col overflow-clip rounded-[22px] bg-panel ${className}`}>
+      <div ref={scroller} className={`relative ${overflows ? "overflow-x-auto overscroll-x-contain" : ""} ${sel ? "cursor-col-resize select-none" : ""}`}>
         <div role="grid" aria-label="Ocupación por cabaña" aria-rowcount={lines.length + 1} className="grid" style={gridStyle}>
           {/* Encabezado de días */}
           <div role="row" className="contents">
             <div
               role="columnheader"
-              className="sticky top-0 left-0 z-30 flex items-end border-r border-b border-line bg-panel px-3 pb-2 text-[12px] font-semibold text-ink-muted"
+              className={`sticky left-0 z-30 flex items-center border-r border-b border-line bg-panel px-3 text-[13px] font-semibold text-ink-muted ${stick}`}
             >
-              Cabaña
+              Cabañas
             </div>
             {days.map((d, i) => {
               const dt = parseISO(d);
@@ -189,18 +190,22 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                   key={d}
                   role="columnheader"
                   aria-label={fmtDate(d, true)}
-                  className={`@container sticky top-0 z-20 flex flex-col items-center justify-end gap-0.5 border-b border-line px-0.5 pt-2 pb-1.5 ${wd === 0 || wd === 6 ? "bg-canvas" : "bg-panel"} ${i ? (firstOfMonth ? "border-l-2 border-l-line-strong" : "border-l border-l-line/70") : ""}`}
+                  className={`@container sticky z-20 border-b border-line px-0.5 py-1.5 ${stick} ${wd === 0 || wd === 6 ? "bg-canvas" : "bg-panel"} ${i ? (firstOfMonth ? "border-l-2 border-l-line-strong" : "border-l border-l-line/70") : ""}`}
                   style={{ gridColumn: `${2 + i * 2} / span 2` }}
                 >
-                  <DayName
-                    wd={wd}
-                    className={`max-w-full truncate text-[10.5px] font-semibold tracking-[.04em] uppercase ${isToday ? "text-ink" : "text-ink-subtle"}`}
-                  />
-                  <span
-                    className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-[12.5px] font-bold tabular-nums ${isToday ? "bg-ink text-paper" : "text-ink"}`}
-                  >
-                    {dt.getUTCDate()}
-                  </span>
+                  {/* El número al lado del día; en columnas muy angostas no cabe y va debajo. */}
+                  <div className="flex flex-col items-center justify-center gap-0.5 @min-[44px]:flex-row @min-[44px]:gap-1.5">
+                    <DayName
+                      inline
+                      wd={wd}
+                      className={`max-w-full truncate text-[11.5px] font-semibold tracking-[.04em] uppercase ${isToday ? "text-ink" : "text-ink-subtle"}`}
+                    />
+                    <span
+                      className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-[13.5px] font-bold tabular-nums ${isToday ? "bg-ink text-paper" : "text-ink"}`}
+                    >
+                      {dt.getUTCDate()}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -244,13 +249,13 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                     className="sticky left-0 z-10 flex min-w-0 items-center gap-2 border-r border-b border-line bg-canvas px-3"
                     style={{ gridRow }}
                   >
-                    <span className="truncate text-[12px] font-bold tracking-[.02em] text-ink">{line.cabin.nombre.replace(/^Cabaña\s+/i, "")}</span>
+                    <span className="truncate text-[13.5px] font-bold tracking-[.02em] text-ink">{line.cabin.nombre.replace(/^Cabaña\s+/i, "")}</span>
                     {!line.cabin.activa && <span className="flex-none rounded-full bg-ink/8 px-1.5 text-[10.5px] font-semibold text-ink-muted">Inactivo</span>}
                   </div>
                   {days.map((d, i) => {
                     const f = all.filter((u) => free(u, d)).length;
                     const r = nightlyRate(line.cabin, data.seasons, d);
-                    const text = `${line.cabin.nombre} · ${fmtDate(d)}: ${f === 0 ? "sin unidades libres" : `${f} de ${total} libres`} · ${cop(r.couple)} la noche para 2 personas${r.season ? ` (${r.season.nombre})` : ""}`;
+                    const text = `${line.cabin.nombre} · ${fmtDate(d)}: ${f === 0 ? "sin unidades libres" : `${f} de ${total} libres`} · ${cop(r.couple)} la noche para ${r.fromGuests} personas${r.season ? ` (${r.season.nombre})` : ""}`;
                     const tone = f === 0 ? "text-error" : f < total ? "text-warning" : "text-ink-subtle/70";
                     return (
                       <div
@@ -261,7 +266,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                         className={`@container flex items-center justify-center gap-1 border-b border-line bg-canvas px-0.5 ${i ? "border-l border-l-line/70" : ""} ${d === today ? "bg-pink/30" : ""}`}
                         style={{ gridRow, gridColumn: `${2 + i * 2} / span 2` }}
                       >
-                        <span className={`text-[11.5px] font-bold tabular-nums ${tone}`}>
+                        <span className={`text-[13px] font-bold tabular-nums ${tone}`}>
                           {f === 0 ? (
                             <>
                               <span className="@min-[52px]:hidden">0</span>
@@ -272,7 +277,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                           )}
                         </span>
                         {showRates && f > 0 && (
-                          <span className={`hidden text-[10.5px] font-semibold tabular-nums @min-[72px]:inline ${r.season ? "text-info" : "text-ink-subtle"}`}>
+                          <span className={`hidden text-[11.5px] font-semibold tabular-nums @min-[72px]:inline ${r.season ? "text-info" : "text-ink-subtle"}`}>
                             {kfmt(r.couple)}
                           </span>
                         )}
@@ -293,7 +298,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                   style={{ gridRow }}
                 >
                   <span aria-hidden="true" className="h-5 w-[3px] flex-none rounded-full bg-line-strong" />
-                  <span className="truncate text-[12.5px] font-semibold text-ink sm:text-[13px]">{compact ? u.short : u.label}</span>
+                  <span className="truncate text-[13px] font-semibold text-ink sm:text-[14px]">{compact ? u.short : u.label}</span>
                   {bath.length > 0 && (
                     <span
                       tabIndex={0}
@@ -373,7 +378,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                         href={blockHref(b)}
                         aria-label={`Bloqueo ${b.reason}, ${fmtDate(b.from)} a ${fmtDate(b.to)}`}
                         {...tip(() => <BlockTip b={b} cabin={cabinLabel(b.cabinTypeId, b.unit)} />)}
-                        className={`@container relative z-1 my-auto flex h-[calc(100%-14px)] min-w-0 items-center gap-1.5 overflow-hidden px-2.5 text-left text-[12px] font-semibold text-ink-muted transition-[filter,box-shadow] duration-150 hover:shadow-panel hover:brightness-95 ${
+                        className={`@container relative z-1 my-auto flex h-[30px] min-w-0 items-center gap-1.5 overflow-hidden px-2.5 text-left text-[12px] font-semibold text-ink-muted transition-[filter,box-shadow] duration-150 hover:shadow-panel hover:brightness-95 ${
                           cut.l ? "rounded-l-none" : "ml-0.5 rounded-l-full"
                         } ${cut.r ? "rounded-r-none" : "mr-0.5 rounded-r-full"}`}
                         style={{ gridRow, gridColumn: `${start} / ${end}`, ...blockStyle() }}
@@ -416,11 +421,6 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                     const start = r.checkIn < from ? 2 : 3 + idx(r.checkIn) * 2;
                     const end = r.checkOut > to ? 2 + n * 2 : 3 + idx(r.checkOut) * 2;
                     const cut = { l: r.checkIn < from, r: r.checkOut > to };
-                    const first = r.guest.fullName.split(" ")[0];
-                    const pending = r.status === "pending_deposit";
-                    const owed = pendingOf(r).total;
-                    // Media jornada al borde del periodo: el padding normal + el borde no caben en la columna.
-                    const narrowBar = end - start <= 1;
                     return (
                       <Link
                         key={r.code}
@@ -428,35 +428,13 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                         aria-label={`${r.guest.fullName}, ${r.code}, ${statusOf(r.status).label}, ${fmtDate(r.checkIn)} a ${fmtDate(r.checkOut)}`}
                         onClick={openInModal(onOpen, r.code)}
                         {...tip(() => <ReservationTip r={r} cabin={cabinLabel(r.cabinTypeId, r.unit)} />)}
-                        className={`@container relative z-2 my-auto flex h-[calc(100%-14px)] min-w-0 items-center gap-1.5 overflow-hidden text-left text-ink transition-[filter,box-shadow,transform] duration-150 hover:z-3 hover:shadow-panel hover:brightness-[.97] motion-safe:hover:-translate-y-px ${narrowBar ? "px-1" : "pr-1.5 pl-1.5"} ${
-                          cut.l ? "rounded-l-none" : "rounded-l-full"
-                        } ${cut.r ? "rounded-r-none" : "rounded-r-full"} ${r.status === "completed" ? "opacity-80" : ""}`}
-                        style={{ gridRow, gridColumn: `${start} / ${end}`, ...barStyle(r) }}
+                        className={`relative z-2 my-auto flex h-[30px] min-w-0 items-center overflow-hidden border border-ink px-2.5 text-left text-[13px] leading-none font-bold text-ink transition-[filter,box-shadow,transform] duration-150 hover:z-3 hover:shadow-panel hover:brightness-[.97] motion-safe:hover:-translate-y-px ${
+                          cut.l ? "rounded-l-none border-l-0" : "rounded-l-full"
+                        } ${cut.r ? "rounded-r-none border-r-0" : "rounded-r-full"}`}
+                        style={{ gridRow, gridColumn: `${start} / ${end}`, ...barStyle(r), boxShadow: undefined }}
                       >
-                        {/* El contenido crece con el ancho de la barra: iniciales y nombre → noches y código → lo que falta por cobrar o el plazo. */}
-                        <span
-                          aria-hidden="true"
-                          className="hidden size-7 flex-none place-items-center rounded-full bg-paper/80 text-[10.5px] font-bold text-ink @min-[104px]:grid"
-                        >
-                          {initialsOf(r.guest.fullName)}
-                        </span>
-                        <span className={`flex min-w-0 flex-1 flex-col justify-center ${narrowBar ? "" : "pl-1 @min-[104px]:pl-0"}`}>
-                          <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] leading-tight font-bold">
-                            {r.status === "checked_in" && <span aria-hidden="true" className="size-1.5 flex-none rounded-full bg-success" />}
-                            <span className="truncate @min-[120px]:hidden">{first}</span>
-                            <span className="hidden truncate @min-[120px]:inline">{r.guest.fullName}</span>
-                          </span>
-                          <span className="hidden truncate text-[11px] leading-tight text-ink/70 @min-[96px]:block">
-                            {plural(nightsBetween(r.checkIn, r.checkOut), "noche", "noches")} · {r.code}
-                            {!pending && owed > 0 ? <span className="hidden @min-[200px]:inline">{` · debe ${cop(owed)}`}</span> : null}
-                          </span>
-                        </span>
-                        {pending && (
-                          <span className="hidden flex-none items-center gap-0.5 rounded-full bg-paper/85 px-1.5 py-px text-[10.5px] font-bold text-warning tabular-nums @min-[86px]:inline-flex">
-                            <ClockIcon size={11} />
-                            {shortLeft(r.depositDueAt, now)}
-                          </span>
-                        )}
+                        {/* Nombre y apellidos; si no caben, con puntos suspensivos. El nombre completo está en el tooltip. */}
+                        <span className="truncate">{r.guest.fullName}</span>
                       </Link>
                     );
                   })}
@@ -513,7 +491,9 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
               <p className="text-[12px] font-bold tracking-[.04em] text-success uppercase">Libre</p>
               <p className="mt-0.5 text-[15px] font-bold text-ink">{cabinLabel(cell.u.cabin.id, cell.u.unit)}</p>
               <p className="text-[13px] text-ink-muted">{fmtFullDate(cell.d)}</p>
-              {rate && <p className="mt-1 text-[13px] text-ink">{`Noche para 2: ${cop(rate.couple)}${rate.season ? ` · ${rate.season.nombre}` : ""}`}</p>}
+              {rate && (
+                <p className="mt-1 text-[13px] text-ink">{`Noche para ${rate.fromGuests}: ${cop(rate.couple)}${rate.season ? ` · ${rate.season.nombre}` : ""}`}</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Button

@@ -307,7 +307,10 @@ export function LookupForm() {
                 {r.code}
               </h2>
               <p className="font-bold">
-                {cabinName(r.cabinTypeId)} · {plural(nights, "noche", "noches")}
+                {r.cabins && r.cabins.length > 1
+                  ? `${r.cabins.map((x) => `${cabinName(x.cabinTypeId)} (${plural(x.adults + x.children, "persona", "personas")})`).join(", ")}`
+                  : cabinName(r.cabinTypeId)}{" "}
+                · {plural(nights, "noche", "noches")}
               </p>
             </div>
             {liveNote && (

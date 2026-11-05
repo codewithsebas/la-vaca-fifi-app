@@ -25,7 +25,7 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] bg-panel">
+    <div className="flex flex-col overflow-hidden rounded-[22px] bg-panel">
       <div role="row" className="grid grid-cols-7 border-b border-line bg-canvas/70">
         {[1, 2, 3, 4, 5, 6, 0].map((wd) => (
           <div key={wd} role="columnheader" className="@container py-2 text-center">
@@ -33,7 +33,7 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
           </div>
         ))}
       </div>
-      <div role="grid" aria-label="Ocupación del mes" className="grid min-h-0 flex-1 auto-rows-[minmax(64px,1fr)] grid-cols-7 overflow-y-auto">
+      <div role="grid" aria-label="Ocupación del mes" className="grid auto-rows-[minmax(88px,auto)] grid-cols-7">
         {days.map((d, i) => {
           const inMonth = d.slice(0, 7) === month.slice(0, 7);
           const states = rows.map((u) => ({ u, s: stateOf(u, d) }));

@@ -1,3 +1,4 @@
+import { cleanUnitLabels, invalidUnitLabels } from "@/lib/booking";
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { ACTIVE_STATUSES, slugify } from "@/lib/booking";
@@ -22,6 +23,8 @@ function clean(b: CabinInput | null) {
   if (caracteristicas.length > 20 || caracteristicas.some((x) => x.length > 60)) errors.caracteristicas = "Hasta 20 características de máximo 60 caracteres.";
   if (!Number.isInteger(b.maxPersonas) || b.maxPersonas < 1 || b.maxPersonas > 12) errors.maxPersonas = "La capacidad debe estar entre 1 y 12 personas.";
   if (!Number.isInteger(b.units) || b.units < 0 || b.units > 20) errors.units = "El número de cabañas debe estar entre 0 y 20.";
+  const badLabels = Number.isInteger(b.units) ? invalidUnitLabels(b.unitLabels, b.units) : null;
+  if (badLabels) errors.unitLabels = badLabels;
   if (!money(b.precioPareja)) errors.precioPareja = "Escribe una tarifa válida.";
   if (!money(b.personaAdicional)) errors.personaAdicional = "Escribe una tarifa válida.";
   const row = {
@@ -31,6 +34,8 @@ function clean(b: CabinInput | null) {
     caracteristicas,
     max_personas: b.maxPersonas,
     units: b.units,
+    // Sin el campo (un panel abierto antes de existir) se conservan los guardados.
+    ...(b.unitLabels !== undefined && { unit_labels: cleanUnitLabels(b.unitLabels, b.units) }),
     precio_pareja: b.precioPareja,
     persona_adicional: b.personaAdicional,
     activa: !!b.activa,

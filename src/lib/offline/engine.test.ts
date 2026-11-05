@@ -540,3 +540,42 @@ describe("aislamiento", () => {
     other.close();
   });
 });
+
+describe("nueva reserva con pago", () => {
+  const input = {
+    cabinTypeId: "c1",
+    unit: null,
+    checkIn: "2099-07-01",
+    checkOut: "2099-07-03",
+    adults: 2,
+    children: 0,
+    pet: { hasPet: false, smallBreedConfirmed: false },
+    guest: { fullName: "Ana Pruebas", docType: "CC", docNumber: "12345678", email: "ana@ejemplo.test", phone: "3001234567", city: "" },
+    estimatedArrival: "",
+    specialRequests: "",
+    total: null,
+    holdMinutes: 1440,
+  };
+
+  it("sin conexión: la reserva queda confirmada en la vista y salen en orden, crear y luego el pago", async () => {
+    const srv = fakeServer();
+    const { engine } = await start(srv, false);
+    const created = await engine.mutate<{ reservation: { code: string; quote: { total: number } } }>("reservation.create", input);
+    expect(created.status).toBe(201);
+    const { code, quote } = created.data!.reservation;
+    const paid = await engine.mutate("reservation.action", { code, action: "confirm", method: "cash", note: "", amount: 300 });
+    expect(paid.status).toBe(200);
+
+    const r = engine.data.reservations.find((x) => x.code === code)!;
+    expect([r.status, r.paid]).toEqual(["confirmed", 300]);
+    expect(quote.total - r.paid).toBeGreaterThan(0);
+    expect(engine.data.payments.filter((p) => p.reservationCode === code).map((p) => p.amount)).toEqual([300]);
+    expect(engine.status.pending).toBe(2);
+
+    srv.state.respond = (c) => (c.req.path === "/admin/reservations" ? { status: 201, data: { reservation: r } } : { status: 200, data: r });
+    await engine.probe();
+    expect(engine.status.pending).toBe(0);
+    expect(srv.calls.map((c) => c.req.path)).toEqual(["/admin/reservations", "/admin/action"]);
+    expect((srv.calls[1].req.body as { code: string }).code).toBe(code);
+  });
+});

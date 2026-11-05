@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { DEFAULT_PHOTOS, defaultContent, mergeSite, mergeTexts, type SiteContent } from "@/lib/site";
+import { mergePanelColors } from "@/lib/panel-colors";
 import { mergeTheme } from "@/lib/theme";
 import { createServiceClient, hasServiceConfig } from "@/lib/supabase/server";
 import type { Db } from "@/lib/server/db";
@@ -42,6 +43,7 @@ export async function loadSiteContent(sb: Db): Promise<SiteContent> {
     // Todos, también los ocultos (el panel los necesita); las páginas públicas muestran solo los visibles.
     services,
     theme: mergeTheme(s?.theme),
+    panelColors: mergePanelColors((s?.theme as { panel?: unknown } | null)?.panel),
   };
 }
 

@@ -4,7 +4,11 @@ import {
   ACTIVE_STATUSES,
   EMAIL_RE,
   cleanDayRates,
+  cleanPersonRates,
+  cleanUnitLabels,
   computeQuote,
+  invalidPersonRates,
+  invalidUnitLabels,
   findUnit,
   invalidDayRates,
   newReservationCode,
@@ -46,6 +50,7 @@ import type {
   SeasonInput,
   SiteInput,
 } from "@/lib/types";
+import type { PanelColors } from "@/lib/panel-colors";
 
 export type OpState = "pending" | "confirmed" | "conflict";
 
@@ -756,6 +761,7 @@ const seasonFrom = (p: SeasonInput) => ({
   to: p.to,
   precioPareja: p.precioPareja,
   personaAdicional: p.personaAdicional,
+  preciosPersonas: cleanPersonRates(p.preciosPersonas),
   activa: !!p.activa,
   dayRates: cleanDayRates(p.dayRates ?? []),
 });
@@ -764,6 +770,8 @@ function seasonErrors(p: SeasonInput, d: AdminData) {
   const fields: Record<string, string> = {};
   const nombre = String(p.nombre ?? "").trim();
   if (!nombre || nombre.length > 80) fields.nombre = "Escribe un nombre (máximo 80 caracteres).";
+  const badTiers = invalidPersonRates(p.preciosPersonas);
+  if (badTiers) fields.preciosPersonas = badTiers;
   if (!isISO(p.from) || !isISO(p.to) || p.to < p.from) fields.dates = "Elige un rango de fechas válido.";
   else {
     const bad = invalidDayRates(p.dayRates ?? [], p.from, p.to);
@@ -782,6 +790,8 @@ const cabinErrors = (b: CabinInput) => {
   if (nombre.length < 3 || nombre.length > 60) fields.nombre = "El nombre debe tener entre 3 y 60 caracteres.";
   if (!Number.isInteger(b.maxPersonas) || b.maxPersonas < 1 || b.maxPersonas > 12) fields.maxPersonas = "La capacidad debe estar entre 1 y 12 personas.";
   if (!Number.isInteger(b.units) || b.units < 0 || b.units > 20) fields.units = "El número de cabañas debe estar entre 0 y 20.";
+  const badLabels = Number.isInteger(b.units) ? invalidUnitLabels(b.unitLabels, b.units) : null;
+  if (badLabels) fields.unitLabels = badLabels;
   return Object.keys(fields).length ? fieldErr(fields) : null;
 };
 
@@ -792,6 +802,7 @@ const cabinFields = (b: CabinInput) => ({
   caracteristicas: b.caracteristicas ?? [],
   maxPersonas: b.maxPersonas,
   units: b.units,
+  ...(b.unitLabels !== undefined && { unitLabels: cleanUnitLabels(b.unitLabels, b.units) }),
   precioPareja: b.precioPareja,
   personaAdicional: b.personaAdicional,
   activa: !!b.activa,
@@ -870,6 +881,7 @@ const cabinOps = {
             to: s.to,
             precioPareja: s.precioPareja,
             personaAdicional: s.personaAdicional,
+            preciosPersonas: s.preciosPersonas ?? {},
             activa: s.activa,
           }
         : null;
@@ -1047,6 +1059,16 @@ const contentOps = {
     result: (d) => d.site,
     version: (d) => d.site.version,
   } satisfies OpDef<SiteInput>,
+  "panelColors.save": {
+    perm: "content",
+    label: () => "Colores del panel",
+    entities: () => ["site:site"],
+    request: (body) => ({ method: "PUT", path: "/admin/panel-colors", body }),
+    apply: (d, p) => withSite(d, { panelColors: p }),
+    result: (d) => d.site,
+    version: (d) => d.site.version,
+    view: (d) => d.site.panelColors,
+  } satisfies OpDef<PanelColors>,
   "terms.save": {
     perm: "rates",
     label: () => "Condiciones de pago",

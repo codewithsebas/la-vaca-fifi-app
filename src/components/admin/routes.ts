@@ -161,7 +161,7 @@ export const MODULES: Record<ModuleId, Module> = {
     href: "/admin/configuracion",
     icon: SlidersIcon,
     group: "Administración",
-    description: "Apariencia, sonido, tiempo real y preferencias de este navegador.",
+    description: "Apariencia, colores, sonido, tiempo real y preferencias de este navegador.",
     nav: false,
   },
   sincronizacion: {
@@ -274,6 +274,7 @@ const withQuery = (path: string, q?: Query) => {
 
 export const paths = {
   dashboard: "/admin",
+  colores: "/admin/configuracion/colores",
   calendario: (q?: Query) => withQuery("/admin/calendario", q),
   reservas: (q?: Query) => withQuery("/admin/reservas", q),
   reserva: (code: string) => `/admin/reservas/${encodeURIComponent(code)}`,
