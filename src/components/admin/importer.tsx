@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { AlertIcon, CheckIcon, CloseIcon, HomeIcon, ListIcon, RefreshIcon, SpreadsheetIcon, UploadIcon, WarningIcon } from "@/components/ui/icons";
-import { ACTIVE_STATUSES, EMAIL_RE, invalidImportRow, normalizePhone } from "@/lib/booking";
+import { ACTIVE_STATUSES, busyBlocks, EMAIL_RE, invalidImportRow, normalizePhone } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import type { AdminData, ImportResult, ImportRow } from "@/lib/types";
@@ -209,7 +209,7 @@ function review(sheet: Sheet, map: Mapping, withCancelled: boolean, data: AdminD
             row.checkIn < r.checkOut,
         );
         if (clash) return item("problem", `Las fechas chocan con la reserva ${clash.code}.`);
-        const block = data.blocks.find((b) => b.cabinTypeId === row.cabinTypeId && b.unit === row.unit && b.from < row.checkOut && row.checkIn <= b.to);
+        const block = busyBlocks(data).find((b) => b.cabinTypeId === row.cabinTypeId && b.unit === row.unit && b.from < row.checkOut && row.checkIn <= b.to);
         if (block) return item("problem", `Las fechas chocan con un bloqueo (${fmtDate(block.from)} → ${fmtDate(block.to)}).`);
         const twin = taken.find((t) => t.cabin === row.cabinTypeId && t.unit === row.unit && t.from < row.checkOut && row.checkIn < t.to);
         if (twin) return item("problem", `Se cruza con la reserva ${twin.ref.slice(4)} del mismo archivo.`);

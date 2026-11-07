@@ -96,7 +96,7 @@ export function DayAgenda({
                 )}
               </Link>
             ) : block ? (
-              <Link href={blockHref(block)} className="flex flex-col gap-1 rounded-[16px] p-3 text-left" style={blockStyle()}>
+              <Link href={blockHref(block)} className="flex flex-col gap-1 rounded-[16px] p-3 text-left" style={blockStyle(block)}>
                 <strong className="text-[14px] text-ink">{block.reason}</strong>
                 <span className="text-[12.5px] text-ink-muted">
                   {`${fmtDate(block.from)} → ${fmtDate(block.to)}`}

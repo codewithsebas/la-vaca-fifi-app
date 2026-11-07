@@ -7,7 +7,20 @@
 import { useState } from "react";
 import { CalendarIcon, CheckIcon, CloseIcon, HomeIcon, PlusIcon, UsersIcon, WalletIcon, WarningIcon } from "@/components/ui/icons";
 import { api, type ApiError, type ValidationError } from "@/lib/client/api";
-import { MAX_GROUP_CABINS, computeQuote, findUnit, normalizePhone, splitTotal, unitFree, withTotal, type Occupancy } from "@/lib/booking";
+import {
+  MAX_GROUP_CABINS,
+  busyBlocks,
+  computeQuote,
+  findUnit,
+  normalizePhone,
+  personSteps,
+  rateFrom,
+  splitTotal,
+  unitFree,
+  unitLabel,
+  withTotal,
+  type Occupancy,
+} from "@/lib/booking";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import { DEFAULT_HOLD, HOLD_OPTIONS, depositPctOf, manualDueAt } from "@/lib/payments";
 import { groupMoney } from "@/lib/groups";
@@ -59,6 +72,16 @@ const DOCS: { value: DocType; label: string }[] = [
   { value: "PPT", label: "PPT" },
 ];
 
+// Valor del selector de cabaña: «tipo:unidad»; sin unidad, cualquiera libre de ese tipo.
+const pickValue = (typeId: string, unit: string) => `${typeId}:${unit}`;
+
+// "2 personas" · "2 a 4 personas" · "hasta 4 personas": para cuántos es una cabaña según su tabla de precios.
+function peopleText(c: { maxPersonas: number; preciosPersonas?: Record<string, number> }) {
+  const from = personSteps(c.preciosPersonas)[0];
+  if (!from) return c.maxPersonas <= 2 ? plural(c.maxPersonas, "persona", "personas") : `hasta ${c.maxPersonas} personas`;
+  return from >= c.maxPersonas ? plural(c.maxPersonas, "persona", "personas") : `${from} a ${c.maxPersonas} personas`;
+}
+
 const ERRORS: Record<string, string> = {
   DATES_UNAVAILABLE: "Esas fechas ya no están libres en esa cabaña. Elige otras o deja que el sistema asigne una unidad.",
   NEEDS_CONNECTION: "Una reserva con varias cabañas se crea con conexión. Vuelve a intentarlo cuando haya internet.",
@@ -105,7 +128,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   const type = cabins.find((c) => c.id === f.type);
   const units = type?.units ?? 0;
   const unit = f.unit ? Number(f.unit) : null;
-  const blocks = data.blocks;
+  const blocks = busyBlocks(data);
   const occ = { reservations: data.reservations, blocks };
   const range = f.checkIn && f.checkOut && f.checkOut > f.checkIn ? { ci: f.checkIn, co: f.checkOut } : null;
   // Sin useMemo a mano: el compilador de React lo memoriza (allocate recibe las mismas listas).
@@ -261,28 +284,47 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       />
     );
 
-  const unitOptionsOf = (typeId: string) => {
-    const t = typeOf(typeId);
-    const n = t?.units ?? 0;
-    return [
-      { value: "", label: "La primera libre", description: "Como en la web: deja libres las que también se venden en Booking" },
-      ...Array.from({ length: n }, (_, i) => {
-        const u = i + 1;
-        const ok = !t || !range || unitFree(occ, n, t.id, u, range.ci, range.co);
-        return {
-          value: String(u),
-          label: cabinLabel(typeId, u),
-          description: range ? (ok ? "Libre en esas fechas" : "Ocupada en esas fechas") : undefined,
-        };
-      }),
-    ];
+  // Una sola lista, por número de cabaña como se conocen en la finca: cada una con su tipo, personas, precio y si está libre.
+  // Al final, «cualquiera libre» por tipo: el sistema asigna como en la web.
+  const cabinOptions = [
+    ...cabins
+      .flatMap((c) =>
+        Array.from({ length: c.units }, (_, i) => {
+          const u = i + 1;
+          const ok = !range || unitFree(occ, c.units, c.id, u, range.ci, range.co);
+          return {
+            n: unitLabel(c, u),
+            value: pickValue(c.id, String(u)),
+            label: `Cabaña ${unitLabel(c, u)}`,
+            description: `${c.nombre} · ${peopleText(c)} · desde ${cop(rateFrom(c).price)}${range ? (ok ? " · Libre" : " · Ocupada en esas fechas") : ""}`,
+            keywords: c.nombre,
+          };
+        }),
+      )
+      .sort((x, y) => (Number(x.n) || Infinity) - (Number(y.n) || Infinity) || x.n.localeCompare(y.n))
+      .map((o) => ({ value: o.value, label: o.label, description: o.description, keywords: o.keywords })),
+    ...cabins
+      .filter((c) => c.units > 1)
+      .map((c) => ({
+        value: pickValue(c.id, ""),
+        label: `Cualquiera libre · ${c.nombre}`,
+        description: `${peopleText(c)} · desde ${cop(rateFrom(c).price)} · como en la web: deja libres las que también se venden en Booking`,
+        keywords: c.nombre,
+      })),
+  ];
+  const picked = (typeId: string, u: string) => pickValue(typeId, u || (typeOf(typeId)?.units === 1 ? "1" : ""));
+  const pick = (v: string) => {
+    const [typeId, u] = v.split(":");
+    return { type: typeId, unit: u ?? "" };
   };
-  const unitOptions = unitOptionsOf(f.type);
-  const cabinOptions = cabins.map((c) => ({
-    value: c.id,
-    label: c.nombre,
-    description: `${plural(c.units, "unidad", "unidades")} · hasta ${c.maxPersonas} personas`,
-  }));
+  // Si cobra desde más personas de las que vienen, se avisa: se cobra la primera fila de su tabla.
+  const minNote = (typeId: string, people: number) => {
+    const t = typeOf(typeId);
+    const from = personSteps(t?.preciosPersonas)[0];
+    return t && from && people < from
+      ? `Esta cabaña cobra desde ${plural(from, "persona", "personas")}: con ${people} se cobra la tarifa de ${from}.`
+      : undefined;
+  };
 
   return (
     // Es un formulario largo: un clic afuera por error no debe borrar lo escrito. Se cierra con la X o con Cancelar.
@@ -318,10 +360,18 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
             Estadía
           </h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Cabaña" error={err("cabinTypeId")}>
-              {(p) => <Combobox id={p.id} value={f.type} onChange={(v) => set({ type: v, unit: "" })} options={cabinOptions} />}
+            <Field label="Cabaña" className="sm:col-span-2" error={err("cabinTypeId")} hint={minNote(f.type, guests)}>
+              {(p) => (
+                <Combobox
+                  id={p.id}
+                  describedBy={p["aria-describedby"]}
+                  value={picked(f.type, f.unit)}
+                  onChange={(v) => set(pick(v))}
+                  options={cabinOptions}
+                  searchPlaceholder="Número o tipo de cabaña…"
+                />
+              )}
             </Field>
-            <Field label="Unidad">{(p) => <Combobox id={p.id} value={f.unit} onChange={(v) => set({ unit: v })} options={unitOptions} />}</Field>
             <Field label="Llegada y salida" className="sm:col-span-2" error={err("checkIn")} hint="Los días marcados ya están ocupados (punto) o casi llenos.">
               {(p) => (
                 <div data-dates className="contents">
@@ -361,11 +411,17 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
                       Quitar
                     </Button>
                   </div>
-                  <Field label="Cabaña" error={err(`more.${i}`)}>
-                    {(p) => <Combobox id={p.id} value={c.type} onChange={(v) => setX(i, { type: v, unit: "" })} options={cabinOptions} />}
-                  </Field>
-                  <Field label="Unidad">
-                    {(p) => <Combobox id={p.id} value={c.unit} onChange={(v) => setX(i, { unit: v })} options={unitOptionsOf(c.type)} />}
+                  <Field label="Cabaña" className="sm:col-span-2" error={err(`more.${i}`)} hint={minNote(c.type, c.adults + c.children)}>
+                    {(p) => (
+                      <Combobox
+                        id={p.id}
+                        describedBy={p["aria-describedby"]}
+                        value={picked(c.type, c.unit)}
+                        onChange={(v) => setX(i, pick(v))}
+                        options={cabinOptions}
+                        searchPlaceholder="Número o tipo de cabaña…"
+                      />
+                    )}
                   </Field>
                   <Field label="Adultos">
                     {(p) => <Stepper id={p.id} value={c.adults} onChange={(v) => setX(i, { adults: v })} min={1} max={t?.maxPersonas ?? 20} />}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { MONTHS, WD, WD_FULL, WD_MIN, addDays, cop, countdown, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
-import { unitLabel } from "@/lib/booking";
+import { channelBlocks, isChannelBlock, unitLabel } from "@/lib/booking";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { Block, CabinType, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
@@ -53,12 +53,18 @@ export const fridayOf = (d: string) => {
 };
 export const BLOCK_BG =
   "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-status-block) 32%, var(--color-panel)) 0 5px, color-mix(in srgb, var(--color-status-block) 14%, var(--color-panel)) 5px 10px)";
-export const blockStyle = (): CSSProperties => ({ background: BLOCK_BG });
-export const blockHref = (b: Block) => paths.bloqueos({ editar: b.id });
+// Noches ocupadas en Booking.com: azul de Booking. No se editan aquí (se gestionan en el extranet de Booking).
+export const BOOKING_STYLE: CSSProperties = {
+  background: "color-mix(in srgb, var(--color-status-booking) 22%, var(--color-panel))",
+  boxShadow: "inset 3px 0 0 var(--color-status-booking)",
+};
+export const blockStyle = (b?: Block): CSSProperties => (b && isChannelBlock(b) ? BOOKING_STYLE : { background: BLOCK_BG });
+export const blockHref = (b: Block) => (isChannelBlock(b) ? paths.booking : paths.bloqueos({ editar: b.id }));
 
-// Bloqueos que dibuja el calendario.
+// Bloqueos del panel y noches de Booking.com juntos: el calendario los dibuja igual (Booking con su color y sin editar).
 export function useCalBlocks() {
-  return useAdmin().data.blocks;
+  const { data } = useAdmin();
+  return useMemo(() => [...data.blocks, ...channelBlocks(data.channelStays ?? [])], [data.blocks, data.channelStays]);
 }
 
 // Color de la barra de cada estado (app/globals.css: el pastel pleno en claro y su tono profundo en oscuro, para que la
@@ -201,11 +207,22 @@ export function ReservationTip({ r, cabin }: { r: Reservation; cabin: string }) 
 export function BlockTip({ b, cabin }: { b: Block; cabin: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <strong className="text-[13px]">{`Bloqueado · ${b.reason}`}</strong>
-      <span className="text-paper/85">{cabin}</span>
-      <span>{`${fmtDate(b.from)} → ${fmtDate(b.to)} · ${plural(nightsBetween(b.from, b.to) + 1, "día", "días")}`}</span>
-      {b.notes && <span className="text-paper/85">{b.notes}</span>}
-      <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Clic para editar el bloqueo</span>
+      {isChannelBlock(b) ? (
+        <>
+          <strong className="text-[13px]">Booking.com · reserva o cierre</strong>
+          <span className="text-paper/85">{cabin}</span>
+          <span>{`${fmtDate(b.from)} → ${fmtDate(addDays(b.to, 1))} · ${plural(nightsBetween(b.from, b.to) + 1, "noche", "noches")}`}</span>
+          <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Se gestiona en el extranet de Booking.com</span>
+        </>
+      ) : (
+        <>
+          <strong className="text-[13px]">{`Bloqueado · ${b.reason}`}</strong>
+          <span className="text-paper/85">{cabin}</span>
+          <span>{`${fmtDate(b.from)} → ${fmtDate(b.to)} · ${plural(nightsBetween(b.from, b.to) + 1, "día", "días")}`}</span>
+          {b.notes && <span className="text-paper/85">{b.notes}</span>}
+          <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Clic para editar el bloqueo</span>
+        </>
+      )}
     </div>
   );
 }
@@ -221,6 +238,7 @@ const LEGEND: { label: string; style: CSSProperties; bare?: boolean }[] = [
   { label: "En estadía", style: barStyle({ status: "checked_in" }) },
   { label: "Finalizada", style: barStyle({ status: "completed" }) },
   { label: "Bloqueo", style: { background: BLOCK_BG }, bare: true },
+  { label: "Booking.com", style: { background: "var(--color-status-booking)" }, bare: true },
 ];
 
 export function CalendarLegend() {

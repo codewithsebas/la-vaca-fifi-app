@@ -2,28 +2,26 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
-import { CalendarIcon, CheckIcon, CloseIcon, HomeIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
+import { CalendarIcon, CheckIcon, CloseIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
 import {
   MAX_DAY_RATES,
   cleanPersonRates,
   computeQuote,
   dayRateLabel,
-  cleanDayRates,
-  invalidBaseDayRates,
   invalidDayRates,
   invalidPersonRates,
   nightlyRate,
-  personRatesText,
   personSteps,
   rateFrom,
   tierPrice,
 } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { WD_FULL, WD_MIN, addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
-import type { CabinType, PersonRates, RateSeason, SeasonDayRate, SeasonInput } from "@/lib/types";
+import type { PersonRates, RateSeason, SeasonDayRate, SeasonInput } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam, useSetParams } from "@/components/admin/context";
 import { MODULES } from "@/components/admin/routes";
+import { RatesTable } from "@/components/admin/rates-table";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { DatePicker, DateRangePicker } from "@/components/admin/date-picker";
 import { adminInput } from "@/components/admin/shared";
@@ -95,22 +93,10 @@ export function RatesView() {
     <>
       <PageHeader
         title={MODULES.tarifas.label}
-        description="El precio base aplica todo el año. Las temporadas reemplazan el precio base en sus fechas (por ejemplo, fin de año o puentes festivos)."
+        description="Una sola tabla con el precio de todas las cabañas, como el % de abono. Las temporadas lo reemplazan en sus fechas (por ejemplo, fin de año o puentes festivos)."
       />
 
-      <section aria-labelledby="rt-base" className="flex flex-col gap-3">
-        <h2 id="rt-base" className="text-[18px] font-semibold tracking-[-0.015em] text-ink">
-          Tarifa base por cabaña
-        </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.cabinTypes.map((c) => (
-            <BaseRateCard
-              key={`${c.id}-${c.precioPareja}-${c.personaAdicional}-${JSON.stringify(c.preciosPersonas ?? {})}-${JSON.stringify(c.dayRates ?? [])}`}
-              c={c}
-            />
-          ))}
-        </div>
-      </section>
+      <RatesTable />
 
       <Card aria-labelledby="rt-seasons" className="flex flex-col gap-4 p-4 sm:p-5">
         <CardHeader
@@ -232,126 +218,6 @@ function PersonRatesEditor({
         </div>
       )}
     </div>
-  );
-}
-
-/* ───────────── Tarifa base ───────────── */
-
-function BaseRateCard({ c }: { c: CabinType }) {
-  const { ask } = useAdmin();
-  const saved = {
-    precioPareja: c.precioPareja,
-    personaAdicional: c.personaAdicional,
-    preciosPersonas: c.preciosPersonas ?? {},
-    // Precios por día de la semana (todo el año): mismo editor que en las temporadas, sin fechas puntuales.
-    rules: (c.dayRates ?? []).map((r): DraftRule => ({ ...r, kind: "weekdays" })),
-  };
-  const [v, setV] = useState(saved);
-  const hasTiers = personSteps(v.preciosPersonas).length > 0;
-  const sameTiers = personRatesText(v.preciosPersonas) === personRatesText(saved.preciosPersonas);
-  const dayRates = v.rules.map(ruleOf);
-  const sameDays = JSON.stringify(cleanDayRates(dayRates)) === JSON.stringify(cleanDayRates(saved.rules.map(ruleOf)));
-  const dirty = v.precioPareja !== c.precioPareja || v.personaAdicional !== c.personaAdicional || !sameTiers || !sameDays;
-  const tiersError = invalidPersonRates(v.preciosPersonas);
-  const daysError = invalidBaseDayRates(dayRates);
-  const invalid = (hasTiers ? !!tiersError : v.precioPareja <= 0) || !!daysError;
-
-  const save = () =>
-    ask({
-      title: "Guardar tarifa base",
-      text: `${c.nombre}. Aplica a las cotizaciones desde ahora; las reservas existentes conservan su valor.`,
-      details: [
-        ...(v.precioPareja !== c.precioPareja ? [{ k: "Noche para 2", v: `${cop(c.precioPareja)} → ${cop(v.precioPareja)}` }] : []),
-        ...(v.personaAdicional !== c.personaAdicional ? [{ k: "Persona adicional", v: `${cop(c.personaAdicional)} → ${cop(v.personaAdicional)}` }] : []),
-        ...(!sameTiers ? [{ k: "Por personas", v: personRatesText(v.preciosPersonas) || "Sin tabla: pareja + adicional" }] : []),
-        ...(!sameDays
-          ? [
-              {
-                k: "Por día",
-                v: dayRates.length
-                  ? dayRates
-                      .map((r) => `${dayRateLabel(r)}: ${personSteps(r.preciosPersonas).length ? personRatesText(r.preciosPersonas!) : cop(r.precioPareja)}`)
-                      .join(" · ")
-                  : "Mismo precio todos los días",
-              },
-            ]
-          : []),
-      ],
-      okLabel: "Guardar tarifa",
-      done: `Tarifa de ${c.nombre} guardada`,
-      run: () =>
-        api.admin.saveRates({
-          [c.id]: {
-            precioPareja: v.precioPareja,
-            personaAdicional: v.personaAdicional,
-            preciosPersonas: v.preciosPersonas,
-            dayRates,
-            maxPersonas: c.maxPersonas,
-          },
-        }),
-    });
-
-  return (
-    <Card aria-labelledby={`rb-${c.id}`} className={`flex flex-col gap-4 p-4 sm:p-5 ${dirty ? "ring-2 ring-pink-deep/60" : ""}`}>
-      <CardHeader
-        id={`rb-${c.id}`}
-        icon={<HomeIcon size={18} />}
-        title={c.nombre}
-        subtitle={`Máximo ${plural(c.maxPersonas, "persona", "personas")} · ${plural(c.units, "unidad", "unidades")}`}
-        actions={!c.activa ? <Badge>Inactivo</Badge> : undefined}
-      />
-      {!hasTiers && (
-        <>
-          <Field label="Noche para 2" error={invalid ? "La tarifa debe ser mayor que cero." : undefined}>
-            {(p) => (
-              <MoneyInput
-                id={p.id}
-                describedBy={p["aria-describedby"]}
-                invalid={invalid}
-                value={v.precioPareja}
-                onChange={(n) => setV({ ...v, precioPareja: n })}
-              />
-            )}
-          </Field>
-          <Field label="Persona adicional por noche" hint="Desde la 3.ª persona.">
-            {(p) => (
-              <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={v.personaAdicional} onChange={(n) => setV({ ...v, personaAdicional: n })} />
-            )}
-          </Field>
-        </>
-      )}
-      <PersonRatesEditor
-        value={v.preciosPersonas}
-        max={c.maxPersonas}
-        couple={v.precioPareja}
-        extra={v.personaAdicional}
-        error={tiersError ?? undefined}
-        onChange={(preciosPersonas) => setV({ ...v, preciosPersonas })}
-      />
-      <DayRatesEditor
-        base
-        season={{ ...v, from: "", to: "" }}
-        capacity={c.maxPersonas}
-        rules={v.rules}
-        error={daysError ?? undefined}
-        onChange={(rules) => setV({ ...v, rules })}
-      />
-      <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
-        <p aria-live="polite" className="text-[12.5px] text-ink-muted">
-          {dirty ? "Cambios sin guardar" : "Guardada"}
-        </p>
-        <div className="flex gap-2">
-          {dirty && (
-            <Button size="sm" variant="ghost" onClick={() => setV(saved)}>
-              Descartar
-            </Button>
-          )}
-          <Button size="sm" variant="primary" disabled={!dirty || invalid} onClick={save}>
-            Guardar
-          </Button>
-        </div>
-      </div>
-    </Card>
   );
 }
 
@@ -684,21 +550,18 @@ const WEEK = [1, 2, 3, 4, 5, 6, 0]; // la semana empieza el lunes
 
 // Dentro de la temporada, unas noches de la semana o unas fechas puntuales se cobran distinto. Una fecha puntual gana
 // sobre un día de la semana; las demás noches se cobran con el precio de la temporada.
-// `base`: precios por día de la tarifa base (todo el año, solo días de la semana); si no, los de una temporada.
 function DayRatesEditor({
   season,
   capacity,
   rules,
   onChange,
   error,
-  base = false,
 }: {
   season: Pick<SeasonInput, "precioPareja" | "personaAdicional" | "preciosPersonas" | "from" | "to">;
   capacity: number;
   rules: DraftRule[];
   onChange: (r: DraftRule[]) => void;
   error?: string;
-  base?: boolean;
 }) {
   const update = (i: number, p: Partial<DraftRule>) => onChange(rules.map((r, j) => (j === i ? { ...r, ...p } : r)));
   const add = (kind: DraftRule["kind"]) =>
@@ -720,11 +583,10 @@ function DayRatesEditor({
   return (
     <fieldset className="flex min-w-0 flex-col gap-3">
       <div>
-        <legend className="text-[13px] font-semibold text-ink">{base ? "Precio por día de la semana (opcional)" : "Precios por día (opcional)"}</legend>
+        <legend className="text-[13px] font-semibold text-ink">Precios por día (opcional)</legend>
         <p className="text-[12.5px] text-ink-muted">
-          {base
-            ? "Cobra distinto ciertas noches todo el año: por ejemplo, viernes, sábado y domingo. Una temporada lo reemplaza en sus fechas."
-            : "Cobra distinto ciertas noches de la temporada: por ejemplo, viernes y sábado, o el 24 y el 31 de diciembre. Una fecha puntual gana sobre un día de la semana."}
+          Cobra distinto ciertas noches de la temporada: por ejemplo, viernes y sábado, o el 24 y el 31 de diciembre. Una fecha puntual gana sobre un día de la
+          semana.
         </p>
       </div>
       {rules.map((r, i) => {
@@ -788,13 +650,12 @@ function DayRatesEditor({
               </div>
             )}
             {!personSteps(r.preciosPersonas).length && (
-              // En la tarjeta de la tarifa base (angosta) van uno debajo del otro.
-              <div className={`grid grid-cols-1 gap-3 ${base ? "" : "sm:grid-cols-2"}`}>
-                <Field label="Noche para 2" hint={`${base ? "Base" : "Temporada"} ${cop(season.precioPareja)}`}>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Noche para 2" hint={`Temporada ${cop(season.precioPareja)}`}>
                   {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={r.precioPareja} onChange={(n) => update(i, { precioPareja: n })} />}
                 </Field>
                 {capacity > 2 && (
-                  <Field label="Persona adicional" hint={`${base ? "Base" : "Temporada"} ${cop(season.personaAdicional)}`}>
+                  <Field label="Persona adicional" hint={`Temporada ${cop(season.personaAdicional)}`}>
                     {(p) => (
                       <MoneyInput
                         id={p.id}
@@ -822,11 +683,9 @@ function DayRatesEditor({
         <Button size="sm" icon={<PlusIcon size={13} />} disabled={full} onClick={() => add("weekdays")}>
           Días de la semana
         </Button>
-        {!base && (
-          <Button size="sm" icon={<PlusIcon size={13} />} disabled={full} onClick={() => add("dates")}>
-            Fechas puntuales
-          </Button>
-        )}
+        <Button size="sm" icon={<PlusIcon size={13} />} disabled={full} onClick={() => add("dates")}>
+          Fechas puntuales
+        </Button>
       </div>
     </fieldset>
   );
@@ -840,14 +699,21 @@ function Simulator() {
   const active = data.cabinTypes.filter((c) => c.activa);
   const [cabinId, setCabinId] = useState(active[0]?.id ?? "");
   const [range, setRange] = useState<{ from: string | null; to: string | null }>({ from: addDays(today, 7), to: addDays(today, 9) });
-  const [guests, setGuests] = useState(2);
+  const [wanted, setGuests] = useState(2);
   const c = data.cabinTypes.find((x) => x.id === cabinId);
+  // Al pasar a una cabaña más pequeña no se cotiza por encima de su capacidad.
+  const guests = Math.min(wanted, c?.maxPersonas ?? wanted);
   const pct = data.site.settings.depositPct;
+  const minPeople = personSteps(c?.preciosPersonas)[0];
 
+  // Cada renglón es lo que vale una noche para estos huéspedes y de dónde sale; la suma de los renglones es el total.
   const result = useMemo(() => {
     if (!c || !range.from || !range.to || range.to <= range.from) return null;
     const q = computeQuote(c, range.from, range.to, guests, data.seasons, pct);
-    const groups = new Map<string, { label: string; nights: number; couple: number; extra: number }>();
+    const weekend = (c.dayRates ?? []).find((r) => r.weekdays.length);
+    const weekdaysLabel = weekend ? dayRateLabel({ ...weekend, weekdays: WEEK.filter((d) => !weekend.weekdays.includes(d)), dates: [] }) : "";
+    const extra = Math.max(0, guests - 2);
+    const groups = new Map<string, { label: string; nights: number; price: number; detail: string }>();
     for (let d = range.from; d < range.to; d = addDays(d, 1)) {
       const r = nightlyRate(c, data.seasons, d);
       const key = `${r.season?.id ?? "base"}|${r.dayRate ? dayRateLabel(r.dayRate) : ""}`;
@@ -857,8 +723,19 @@ function Simulator() {
           : r.season.nombre
         : r.dayRate
           ? `Tarifa base · ${dayRateLabel(r.dayRate)}`
-          : "Tarifa base";
-      const g = groups.get(key) ?? { label, nights: 0, couple: r.tiers ? tierPrice(r.tiers, guests) : r.couple, extra: r.extra };
+          : weekdaysLabel
+            ? `Tarifa base · ${weekdaysLabel}`
+            : "Tarifa base";
+      const step = r.tiers ? ([...personSteps(r.tiers)].reverse().find((n) => n <= guests) ?? personSteps(r.tiers)[0]) : 0;
+      const price = r.tiers ? tierPrice(r.tiers, guests) : r.couple + extra * r.extra;
+      const detail = r.tiers
+        ? step === guests
+          ? `para ${plural(guests, "persona", "personas")}`
+          : `tarifa de ${plural(step, "persona", "personas")}`
+        : extra && r.extra
+          ? `pareja ${cop(r.couple)} + ${plural(extra, "adicional", "adicionales")} × ${cop(r.extra)}`
+          : "para 2 personas";
+      const g = groups.get(key) ?? { label, nights: 0, price, detail };
       g.nights++;
       groups.set(key, g);
     }
@@ -882,24 +759,24 @@ function Simulator() {
           {(p) => <DateRangePicker id={p.id} mode="nights" from={range.from} to={range.to} onChange={(from, to) => setRange({ from, to })} clearable={false} />}
         </Field>
         <Field label="Huéspedes">{(p) => <Stepper id={p.id} value={guests} onChange={setGuests} min={1} max={c?.maxPersonas ?? 12} />}</Field>
+        {minPeople && guests < minPeople && (
+          <p className="-mt-1 text-[12.5px] text-ink-muted sm:col-span-3">{`${c?.nombre} cobra desde ${plural(minPeople, "persona", "personas")}: con ${guests} se cobra la tarifa de ${minPeople}.`}</p>
+        )}
       </div>
       {result ? (
         <div className="grid grid-cols-1 gap-4 rounded-[18px] bg-canvas/70 p-4 sm:grid-cols-[1fr_auto]">
           <ul className="flex flex-col gap-1.5 text-[13.5px]">
             {result.groups.map((g) => (
-              <li key={g.label} className="flex flex-wrap justify-between gap-x-4">
+              <li key={g.label} data-sim-line className="flex flex-wrap justify-between gap-x-4">
                 <span className="text-ink">
-                  {plural(g.nights, "noche", "noches")} × {cop(g.couple)} <span className="text-ink-muted">· {g.label}</span>
+                  {plural(g.nights, "noche", "noches")} × {cop(g.price)}{" "}
+                  <span className="text-ink-muted">
+                    · {g.label} · {g.detail}
+                  </span>
                 </span>
-                <span className="font-semibold text-ink tabular-nums">{cop(g.nights * g.couple)}</span>
+                <span className="font-semibold text-ink tabular-nums">{cop(g.nights * g.price)}</span>
               </li>
             ))}
-            {result.q.extraGuests > 0 && (
-              <li className="flex flex-wrap justify-between gap-x-4">
-                <span className="text-ink">{plural(result.q.extraGuests, "persona adicional", "personas adicionales")}</span>
-                <span className="font-semibold text-ink tabular-nums">{cop(result.q.extraAmount)}</span>
-              </li>
-            )}
           </ul>
           <div className="flex flex-col items-start gap-0.5 sm:items-end sm:border-l sm:border-line sm:pl-5">
             <span className="text-[12.5px] text-ink-muted">Total</span>

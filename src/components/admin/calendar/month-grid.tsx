@@ -52,7 +52,13 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
                   {states.map(({ u, s }) => (
                     <span key={u.key}>
                       {u.label}:{" "}
-                      {s.kind === "res" ? `${s.r.guest.fullName} (${statusOf(s.r.status).label})` : s.kind === "block" ? `Bloqueada · ${s.b.reason}` : "Libre"}
+                      {s.kind === "res"
+                        ? `${s.r.guest.fullName} (${statusOf(s.r.status).label})`
+                        : s.kind === "block"
+                          ? s.b.reason === "Booking.com"
+                            ? "Booking.com"
+                            : `Bloqueada · ${s.b.reason}`
+                          : "Libre"}
                     </span>
                   ))}
                 </span>

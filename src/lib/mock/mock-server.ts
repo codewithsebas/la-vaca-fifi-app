@@ -688,6 +688,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       me,
       bathrooms: bathroomsOf(db).bathrooms,
       bathroomBlocks: bathroomsOf(db).blocks,
+      channelStays: [],
     });
   // En modo simulado el contenido se guarda solo en este navegador y no cambia las páginas públicas.
   if (method === "PUT" && path === "/admin/payment-terms") {

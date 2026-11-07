@@ -992,10 +992,18 @@ export function Stars({ value, onChange, size = 16 }: { value: number | null; on
 
 /* ───────────── Campos numéricos ───────────── */
 
-type NumProps = { id?: string; value: number; onChange: (v: number) => void; invalid?: boolean; describedBy?: string; className?: string };
+type NumProps = {
+  id?: string;
+  "aria-label"?: string;
+  value: number;
+  onChange: (v: number) => void;
+  invalid?: boolean;
+  describedBy?: string;
+  className?: string;
+};
 
 // Pesos colombianos con separador de miles mientras se escribe ("290.000").
-export function MoneyInput({ id, value, onChange, invalid, describedBy, className = "" }: NumProps) {
+export function MoneyInput({ id, "aria-label": ariaLabel, value, onChange, invalid, describedBy, className = "" }: NumProps) {
   return (
     <div className={`relative ${className}`}>
       <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[15px] text-ink-muted">
@@ -1006,6 +1014,7 @@ export function MoneyInput({ id, value, onChange, invalid, describedBy, classNam
         type="text"
         inputMode="numeric"
         autoComplete="off"
+        aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
         value={value ? value.toLocaleString("es-CO") : ""}

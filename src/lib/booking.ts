@@ -4,7 +4,9 @@ import { DEFAULT_HOLD, HOLD_OPTIONS } from "@/lib/payments";
 import { WD, WD_FULL, addDays, cop, fmtDate, isISO, nightsBetween, parseISO } from "@/lib/format";
 import type {
   Availability,
+  Block,
   CabinType,
+  ChannelStay,
   ExtraCabin,
   FieldErrors,
   ImportRow,
@@ -471,3 +473,28 @@ export const slugify = (s: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
+
+/* ───────────── Booking.com (calendarios iCal) ───────────── */
+
+export const CHANNEL_ID = "booking:";
+
+// Las noches ocupadas en Booking entran a la disponibilidad como bloqueos (hasta la última noche, incluida): así cuentan
+// en freeUnits, findUnit y el calendario del panel sin reglas aparte. No cuentan las canceladas (removedAt) ni los ecos
+// (las noches que Booking cerró porque ya estaban ocupadas en el panel).
+export function channelBlocks(stays: ChannelStay[]): Block[] {
+  return stays
+    .filter((s) => !s.removedAt && !s.echo)
+    .map((s) => ({
+      id: CHANNEL_ID + s.id,
+      cabinTypeId: s.cabinTypeId,
+      unit: s.unit,
+      from: s.checkIn,
+      to: addDays(s.checkOut, -1),
+      reason: "Booking.com",
+      notes: s.summary,
+    }));
+}
+export const isChannelBlock = (b: Pick<Block, "id">) => b.id.startsWith(CHANNEL_ID);
+
+// Bloqueos del panel más las noches de Booking: lo que ocupa una cabaña al calcular disponibilidad en el panel.
+export const busyBlocks = (d: { blocks: Block[]; channelStays?: ChannelStay[] }): Block[] => [...d.blocks, ...channelBlocks(d.channelStays ?? [])];
