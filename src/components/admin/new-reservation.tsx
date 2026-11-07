@@ -351,7 +351,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
         {/* Tres columnas en pantallas anchas: estadía, huésped y pago (con el resumen). En el celular, una debajo de otra. */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-0">
           {/* Estadía */}
-          <section aria-labelledby="nr-stay" className="flex min-w-0 flex-col gap-3 lg:pr-6 pb-4">
+          <section aria-labelledby="nr-stay" className="flex min-w-0 flex-col gap-3 pb-4 lg:pr-6">
             <h3 id="nr-stay" className="flex items-center gap-2 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
               <HomeIcon size={14} />
               Estadía
@@ -537,11 +537,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
                   />
                 )}
               </Field>
-              <Field
-                label="Notas (opcional)"
-                className="col-span-2"
-                error={err("specialRequests")}
-              >
+              <Field label="Notas (opcional)" className="col-span-2" error={err("specialRequests")}>
                 {(p) => (
                   <textarea
                     {...p}
