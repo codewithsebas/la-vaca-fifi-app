@@ -14,24 +14,35 @@ function Wordmark({ className = "" }: { className?: string }) {
   return <span className={`font-wordmark whitespace-nowrap ${className}`}>La Vaca Fifí</span>;
 }
 
-// «La Vaca Fifí / cabañas · restaurante · café».
-export function BrandName({ wordSize, eyebrowSize = ".5em", className = "" }: { wordSize: string; eyebrowSize?: string; className?: string }) {
+// «La Vaca Fifí / cabañas · restaurante · café». El panel usa una línea más corta (eyebrow) para que su menú sea más angosto.
+const EYEBROW = "cabañas · restaurante · café";
+export function BrandName({
+  wordSize,
+  eyebrowSize = ".5em",
+  eyebrow = EYEBROW,
+  className = "",
+}: {
+  wordSize: string;
+  eyebrowSize?: string;
+  eyebrow?: string;
+  className?: string;
+}) {
   return (
     <span className={`flex min-w-0 flex-col gap-[.14em] leading-none ${className}`} style={{ fontSize: wordSize }}>
       <Wordmark />
       <span className="brand-eyebrow font-body font-extrabold tracking-[.12em] whitespace-nowrap uppercase opacity-80" style={{ fontSize: eyebrowSize }}>
-        cabañas · restaurante · café
+        {eyebrow}
       </span>
     </span>
   );
 }
 
 // Logo + nombre.
-export function Brand({ size = 46, wordSize = "1.4rem", eyebrowSize = ".5em", eager = false }) {
+export function Brand({ size = 46, wordSize = "1.4rem", eyebrowSize = ".5em", eyebrow = EYEBROW, eager = false }) {
   return (
     <>
       <Logo size={size} eager={eager} />
-      <BrandName wordSize={wordSize} eyebrowSize={eyebrowSize} />
+      <BrandName wordSize={wordSize} eyebrowSize={eyebrowSize} eyebrow={eyebrow} />
     </>
   );
 }

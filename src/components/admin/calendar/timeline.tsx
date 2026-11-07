@@ -70,10 +70,9 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
   // aire; un mes completo, apretado. Desde 22 px cabe la tarifa.
   const half = n <= 3 ? (compact ? 22 : 48) : n <= 7 ? (compact ? 14 : 30) : n <= 16 ? (compact ? 12 : width < 900 ? 14 : 22) : 10;
   const showRates = half >= 22;
-  // Si el periodo cabe, el desplazamiento es el de la página y los días quedan fijos bajo el encabezado del panel. Solo si
-  // no cabe (dos semanas en el celular) la tabla se desplaza a lo ancho; ahí los días no pueden seguir a la página.
+  // Si el periodo no cabe (dos semanas en el celular) la tabla se desplaza a lo ancho. La fila de los días no queda fija
+  // al bajar: se desplaza con la página.
   const overflows = label + n * 2 * half > width;
-  const stick = overflows ? "top-0" : "top-16 lg:top-[76px]";
 
   const [openParam, setOpenParam] = useParam("unidades", "");
   const opened = useMemo(() => new Set(openParam.split(",").filter(Boolean)), [openParam]);
@@ -176,7 +175,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
           <div role="row" className="contents">
             <div
               role="columnheader"
-              className={`sticky left-0 z-30 flex items-center border-r border-b border-line bg-panel px-3 text-[13px] font-semibold text-ink-muted ${stick}`}
+              className="sticky left-0 z-30 flex items-center border-r border-b border-line bg-panel px-3 text-[13px] font-semibold text-ink-muted"
             >
               Cabañas
             </div>
@@ -190,7 +189,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                   key={d}
                   role="columnheader"
                   aria-label={fmtDate(d, true)}
-                  className={`@container sticky z-20 border-b border-line px-0.5 py-1.5 ${stick} ${wd === 0 || wd === 6 ? "bg-canvas" : "bg-panel"} ${i ? (firstOfMonth ? "border-l-2 border-l-line-strong" : "border-l border-l-line/70") : ""}`}
+                  className={`@container relative z-20 border-b border-line px-0.5 py-1.5 ${wd === 0 || wd === 6 ? "bg-canvas" : "bg-panel"} ${i ? (firstOfMonth ? "border-l-2 border-l-line-strong" : "border-l border-l-line/70") : ""}`}
                   style={{ gridColumn: `${2 + i * 2} / span 2` }}
                 >
                   {/* El número al lado del día; en columnas muy angostas no cabe y va debajo. */}

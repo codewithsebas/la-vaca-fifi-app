@@ -25,7 +25,7 @@ export function PanelSkeleton() {
       role="status"
       aria-live="polite"
       className="admin-root min-h-dvh bg-canvas text-[15px] text-ink lg:flex"
-      style={{ "--admin-sidebar": mini ? "104px" : "280px" } as CSSProperties}
+      style={{ "--admin-sidebar": mini ? "88px" : "252px" } as CSSProperties}
     >
       <span className="sr-only">Cargando el panel…</span>
       <SidebarSkeleton mini={mini} />
@@ -91,7 +91,7 @@ function SidebarSkeleton({ mini }: { mini: boolean }) {
     <aside aria-hidden="true" className="sticky top-0 z-40 hidden h-dvh w-(--admin-sidebar) flex-none p-3 lg:block">
       <div className="admin-dark relative flex h-full flex-col overflow-hidden rounded-[28px] bg-sidebar text-white">
         <div className={`flex min-w-0 items-center gap-3 pt-6 pb-5 ${mini ? "justify-center px-2" : "px-5"}`}>
-          {mini ? <Logo size={40} eager /> : <Brand size={40} wordSize="1.1rem" eyebrowSize=".47rem" eager />}
+          {mini ? <Logo size={32} eager /> : <Brand size={40} wordSize="1.1rem" eyebrowSize=".47rem" eyebrow="cabañas · restaurante" eager />}
         </div>
         <div className={`flex flex-col ${mini ? "gap-2.5 px-2" : "gap-4 px-3"}`}>
           {groups.map((n, gi) => (

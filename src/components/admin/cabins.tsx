@@ -32,7 +32,6 @@ import { useAdmin } from "@/components/admin/context";
 import { CabinBathrooms, cabinBathroomAlerts } from "@/components/admin/bathrooms";
 import { MODULES, paths } from "@/components/admin/routes";
 import { useRouteParam } from "@/components/admin/route-param";
-import { useTip } from "@/components/ui/floating";
 import { adminInput } from "@/components/admin/shared";
 import { themeStyle } from "@/components/admin/theme";
 import {
@@ -72,7 +71,6 @@ const SUGGESTED = [
 
 export function CabinList() {
   const { data, ask, setData, toast, onAuthError, today } = useAdmin();
-  const tip = useTip();
   const cabins = data.cabinTypes;
   const count = (id: string) => data.reservations.filter((r) => r.cabinTypeId === id).length;
 
@@ -134,101 +132,99 @@ export function CabinList() {
         }
       />
       {cabins.length ? (
-        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {cabins.map((c, i) => {
-            const n = count(c.id);
-            const bathAlerts = cabinBathroomAlerts(data, c.id, today);
-            return (
-              <li key={c.id} className={`flex flex-col overflow-hidden rounded-[22px] bg-panel transition-opacity ${c.activa ? "" : "opacity-80"}`}>
-                <div className="relative aspect-[16/10] bg-canvas">
-                  {c.fotos[0] ? (
-                    <Image src={c.fotos[0]} alt={c.nombre} fill sizes="(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw" className="object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 grid place-items-center text-ink-muted">
-                      <span className="flex flex-col items-center gap-1 text-[13px]">
-                        <ImageIcon size={24} className="opacity-60" />
-                        Sin fotos
-                      </span>
-                    </div>
-                  )}
-                  <span className="absolute top-2.5 left-2.5 flex gap-1.5">
-                    <Badge tone={c.activa ? "success" : "neutral"} className="shadow-panel">
-                      {c.activa ? "Activa" : "Inactiva"}
-                    </Badge>
-                    {/* La etiqueta de la cabaña, como en el sitio. No usa Badge: su fondo neutro le gana al resaltado y no se lee sobre la foto. */}
-                    {c.badge && (
-                      <span className="inline-flex items-center rounded-full bg-yellow px-2.5 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-ink shadow-panel">
-                        {c.badge}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex flex-1 flex-col gap-3 p-4">
-                  <div>
-                    <h2 className="text-[16px] font-bold text-ink">{c.nombre}</h2>
-                    {c.descripcion && <p className="mt-0.5 line-clamp-2 text-[13px] text-ink-muted">{c.descripcion}</p>}
-                  </div>
-                  <dl className="grid grid-cols-3 gap-2 text-[12.5px]">
-                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
-                      <dt className="text-ink-muted">Capacidad</dt>
-                      <dd className="font-semibold text-ink">{plural(c.maxPersonas, "persona", "personas")}</dd>
-                    </div>
-                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
-                      <dt className="text-ink-muted">Cabañas</dt>
-                      <dd className="font-semibold text-ink">{Array.from({ length: c.units }, (_, i) => unitLabel(c, i + 1)).join(", ") || "Ninguna"}</dd>
-                    </div>
-                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
-                      <dt className="text-ink-muted">{`Noche para ${rateFrom(c).guests}`}</dt>
-                      <dd className="font-semibold text-ink tabular-nums">{cop(rateFrom(c).price)}</dd>
-                    </div>
-                  </dl>
-                  <p className="text-[12.5px] text-ink-muted">
-                    {plural(c.fotos.length, "foto", "fotos")} · {plural(c.caracteristicas.length, "característica", "características")} ·{" "}
-                    {plural(n, "reserva", "reservas")}
-                  </p>
-                  {bathAlerts.length > 0 && (
-                    <p className="flex items-center gap-2 rounded-[14px] bg-yellow-soft px-3 py-2 text-[12.5px] font-semibold text-warning">
-                      <BathIcon size={14} />
-                      {bathAlerts.length === 1 ? `${bathAlerts[0].name}: fuera de servicio hoy` : `${bathAlerts.length} baños fuera de servicio hoy`}
-                    </p>
-                  )}
-                  <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
-                    <Link href={paths.cabana(c.id)} className={buttonClass("primary", "sm")}>
-                      <PencilIcon size={13} />
-                      Editar
-                    </Link>
-                    <Button size="sm" onClick={() => toggle(c)}>
-                      {c.activa ? "Desactivar" : "Activar"}
-                    </Button>
-                    <span className="ml-auto flex gap-0.5">
-                      <IconButton label="Subir en el orden" size="sm" disabled={i === 0} onClick={() => move(i, -1)}>
-                        <ArrowUpIcon size={15} />
-                      </IconButton>
-                      <IconButton label="Bajar en el orden" size="sm" disabled={i === cabins.length - 1} onClick={() => move(i, 1)}>
-                        <ArrowDownIcon size={15} />
-                      </IconButton>
-                      {n ? (
-                        <span
-                          {...tip(() => "Tiene reservas: no se puede eliminar. Desactívala para ocultarla del sitio.")}
-                          tabIndex={0}
-                          className="inline-grid"
-                        >
-                          <IconButton label="No se puede eliminar: tiene reservas" size="sm" variant="danger-ghost" disabled>
-                            <TrashIcon size={15} />
-                          </IconButton>
+        <div className="@container">
+          {/* Columnas según el espacio de las tarjetas (no el de la ventana): 4 desde ~1000 px de contenido. */}
+          <ul className="grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
+            {cabins.map((c, i) => {
+              const n = count(c.id);
+              const bathAlerts = cabinBathroomAlerts(data, c.id, today);
+              return (
+                <li key={c.id} className={`flex flex-col overflow-hidden rounded-[20px] bg-panel transition-opacity ${c.activa ? "" : "opacity-80"}`}>
+                  <div className="relative aspect-[16/9] bg-canvas">
+                    {c.fotos[0] ? (
+                      <Image src={c.fotos[0]} alt={c.nombre} fill sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 grid place-items-center text-ink-muted">
+                        <span className="flex flex-col items-center gap-1 text-[13px]">
+                          <ImageIcon size={20} className="opacity-60" />
+                          Sin fotos
                         </span>
-                      ) : (
-                        <IconButton label={`Eliminar ${c.nombre}`} size="sm" variant="danger-ghost" onClick={() => remove(c)}>
-                          <TrashIcon size={15} />
-                        </IconButton>
+                      </div>
+                    )}
+                    <span className="absolute top-2.5 left-2.5 flex gap-1.5">
+                      <Badge tone={c.activa ? "success" : "neutral"} className="shadow-panel">
+                        {c.activa ? "Activa" : "Inactiva"}
+                      </Badge>
+                      {/* La etiqueta de la cabaña, como en el sitio. No usa Badge: su fondo neutro le gana al resaltado y no se lee sobre la foto. */}
+                      {c.badge && (
+                        <span className="inline-flex items-center rounded-full bg-yellow px-2.5 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-ink shadow-panel">
+                          {c.badge}
+                        </span>
                       )}
                     </span>
                   </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+                    <div>
+                      <h2 className="text-[15px] leading-tight font-bold text-ink">{c.nombre}</h2>
+                      {c.descripcion && <p className="mt-1 line-clamp-2 text-[12.5px] text-ink-muted">{c.descripcion}</p>}
+                    </div>
+                    <dl className="grid grid-cols-3 gap-1.5 text-[12px]">
+                      <div className="min-w-0 rounded-[12px] bg-canvas/70 px-2.5 py-1.5">
+                        <dt className="text-ink-muted">Capacidad</dt>
+                        <dd className="font-semibold text-ink">{plural(c.maxPersonas, "persona", "personas")}</dd>
+                      </div>
+                      <div className="min-w-0 rounded-[12px] bg-canvas/70 px-2.5 py-1.5">
+                        <dt className="text-ink-muted">Cabañas</dt>
+                        <dd className="font-semibold text-ink">{Array.from({ length: c.units }, (_, i) => unitLabel(c, i + 1)).join(", ") || "Ninguna"}</dd>
+                      </div>
+                      <div className="min-w-0 rounded-[12px] bg-canvas/70 px-2.5 py-1.5">
+                        <dt className="text-ink-muted">{`Noche para ${rateFrom(c).guests}`}</dt>
+                        <dd className="font-semibold text-ink tabular-nums">{cop(rateFrom(c).price)}</dd>
+                      </div>
+                    </dl>
+                    <p className="text-[12px] text-ink-muted">
+                      {plural(c.fotos.length, "foto", "fotos")} · {plural(c.caracteristicas.length, "característica", "características")} ·{" "}
+                      {plural(n, "reserva", "reservas")}
+                    </p>
+                    {bathAlerts.length > 0 && (
+                      <p className="flex items-center gap-2 rounded-[14px] bg-yellow-soft px-3 py-2 text-[12.5px] font-semibold text-warning">
+                        <BathIcon size={14} />
+                        {bathAlerts.length === 1 ? `${bathAlerts[0].name}: fuera de servicio hoy` : `${bathAlerts.length} baños fuera de servicio hoy`}
+                      </p>
+                    )}
+                    <div className="mt-auto flex flex-col gap-2 border-t border-line pt-2.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <Link href={paths.cabana(c.id)} className={buttonClass("primary", "sm", "w-full")}>
+                          <PencilIcon size={13} />
+                          Editar
+                        </Link>
+                        <Button size="sm" className="w-full" onClick={() => toggle(c)}>
+                          {c.activa ? "Desactivar" : "Activar"}
+                        </Button>
+                      </div>
+                      {/* Orden al centro; eliminar a la derecha, solo si se puede (sin reservas). */}
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center">
+                        <span className="col-start-2 flex gap-0.5">
+                          <IconButton label="Subir en el orden" size="sm" disabled={i === 0} onClick={() => move(i, -1)}>
+                            <ArrowUpIcon size={15} />
+                          </IconButton>
+                          <IconButton label="Bajar en el orden" size="sm" disabled={i === cabins.length - 1} onClick={() => move(i, 1)}>
+                            <ArrowDownIcon size={15} />
+                          </IconButton>
+                        </span>
+                        {!n && (
+                          <IconButton label={`Eliminar ${c.nombre}`} size="sm" variant="danger-ghost" className="justify-self-end" onClick={() => remove(c)}>
+                            <TrashIcon size={15} />
+                          </IconButton>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ) : (
         <Card className="p-4">
           <EmptyState

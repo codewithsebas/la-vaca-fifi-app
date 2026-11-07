@@ -132,35 +132,38 @@ export function CalendarView() {
     setViewParam("dia");
   };
 
+  const showsToday = today >= from && today <= to;
+
   return (
     <div ref={wrap} className="flex flex-col gap-3">
-      {/* Una línea en pantallas anchas: el periodo a la izquierda y, pegados a su derecha, el mes, la vista,
-          las cabañas y «Nueva reserva». En el celular, los controles en una cuadrícula de dos columnas. */}
+      {/* Una línea en pantallas anchas: el periodo a la izquierda y, a la derecha, las flechas con «Hoy», el mes, la
+          vista, las cabañas y «Nueva reserva». En el celular, los controles en una cuadrícula de dos columnas. */}
       <header className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex min-w-0 items-center gap-3">
           <h1 id="ad-title" tabIndex={-1} className="sr-only">
             Calendario
           </h1>
-          <div className="flex flex-none items-center gap-0.5 rounded-full border border-line-strong p-0.5">
-            <IconButton label={prevLabel} size="sm" onClick={() => step(-1)}>
-              <ChevronLeftIcon size={17} />
-            </IconButton>
-            <Button size="sm" variant="ghost" onClick={() => setAnchor(today)} disabled={today >= from && today <= to} className="px-3">
-              Hoy
-            </Button>
-            <IconButton label={nextLabel} size="sm" onClick={() => step(1)}>
-              <ChevronRightIcon size={17} />
-            </IconButton>
-          </div>
           <p
             aria-live="polite"
-            className="truncate text-[clamp(1.3rem,2.1vw,1.75rem)] leading-tight font-bold tracking-[-0.03em] text-ink first-letter:uppercase"
+            className="truncate text-[clamp(1.15rem,1.6vw,1.4rem)] leading-tight font-bold tracking-[-0.03em] text-ink first-letter:uppercase"
           >
             {title}
           </p>
         </div>
         <div className="grid w-full grid-cols-2 items-center gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-          <div className="min-w-0 sm:w-[206px]">
+          {/* Anterior, «Hoy» y siguiente en una sola pieza del color de «Nueva reserva», pegada al mes. */}
+          <div className="flex h-9 flex-none items-center justify-between gap-0.5 rounded-full bg-ink p-0.5 text-paper">
+            <IconButton label={prevLabel} size="sm" variant="primary" onClick={() => step(-1)}>
+              <ChevronLeftIcon size={15} />
+            </IconButton>
+            <Button size="sm" variant="primary" onClick={() => setAnchor(today)} aria-current={showsToday ? "date" : undefined} className="px-3">
+              Hoy
+            </Button>
+            <IconButton label={nextLabel} size="sm" variant="primary" onClick={() => step(1)}>
+              <ChevronRightIcon size={15} />
+            </IconButton>
+          </div>
+          <div className="min-w-0 sm:w-[184px]">
             <label htmlFor="cal-mes" className="sr-only">
               Mes del calendario
             </label>
@@ -170,13 +173,13 @@ export function CalendarView() {
               value={monthStart(anchor)}
               onChange={(m) => setAnchor(m === monthStart(today) ? today : m)}
               options={months}
-              searchPlaceholder="Buscar mes…"
+              searchable={false}
               selectedFirst
-              icon={<CalendarIcon size={15} className="text-ink-muted" />}
-              className="h-10 min-h-10 text-[13.5px]"
+              icon={<CalendarIcon size={14} className="text-ink-muted" />}
+              className="h-9! min-h-9! text-[13px]!"
             />
           </div>
-          <div className="min-w-0 sm:w-[164px]">
+          <div className="min-w-0 sm:w-[146px]">
             <label htmlFor="cal-vista" className="sr-only">
               Vista del calendario
             </label>
@@ -186,20 +189,25 @@ export function CalendarView() {
               onChange={(v) => setViewParam(v as CalView)}
               options={view === "dia" ? [{ value: "dia", label: "Día" }, ...CALENDAR_VIEWS] : CALENDAR_VIEWS}
               searchable={false}
-              icon={<CalendarIcon size={15} className="text-ink-muted" />}
-              className="h-10 min-h-10 text-[13.5px]"
+              icon={<CalendarIcon size={14} className="text-ink-muted" />}
+              className="h-9! min-h-9! text-[13px]!"
             />
           </div>
-          <div className="min-w-0 sm:w-[206px]">
+          <div className="min-w-0 sm:w-[188px]">
             <Combobox
               value={filter}
               onChange={setFilter}
               options={cabinOptions}
-              icon={<HomeIcon size={15} className="text-ink-muted" />}
-              className="h-10 min-h-10 text-[13.5px]"
+              icon={<HomeIcon size={14} className="text-ink-muted" />}
+              className="h-9! min-h-9! text-[13px]!"
             />
           </div>
-          <Button variant="primary" icon={<PlusIcon size={16} />} onClick={() => setDraft({ cabinTypeId: filter || undefined })}>
+          <Button
+            variant="primary"
+            icon={<PlusIcon size={15} />}
+            onClick={() => setDraft({ cabinTypeId: filter || undefined })}
+            className="h-9! px-4! text-[13px]!"
+          >
             Nueva reserva
           </Button>
         </div>

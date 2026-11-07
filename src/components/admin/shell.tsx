@@ -435,9 +435,10 @@ function Sidebar({
           {...(mini ? tip(() => <NavTip label="Ir al dashboard" />, SIDE_TIP) : {})}
           className={`flex min-w-0 items-center gap-3 rounded-[20px] pt-6 pb-5 ${mini ? "justify-center px-2" : "px-5"}`}
         >
-          {mini ? <Logo size={40} eager /> : <Brand size={40} wordSize="1.1rem" eyebrowSize=".47rem" eager />}
+          {mini ? <Logo size={32} eager /> : <Brand size={40} wordSize="1.1rem" eyebrowSize=".47rem" eyebrow="cabañas · restaurante" eager />}
         </Link>
-        {/* Centrado con el logo: 24 px de margen + 20 px (medio logo) − 14 px (medio botón) = 30 px. Dorado pastel fijo en
+        {/* Centrado con el logo: 24 px de margen + medio logo − 14 px (medio botón): 30 px abierto (logo de 40), 26 px
+            contraído (logo de 32, centrado con los íconos; el botón sale un poco más para no taparlo). Dorado pastel fijo en
             los dos modos: la barra lateral es negra siempre y el dorado oscuro del modo oscuro no se vería. */}
         <button
           type="button"
@@ -446,7 +447,7 @@ function Sidebar({
           data-gesture={mini ? "next" : "prev"}
           {...tip(() => <NavTip label={mini ? "Expandir el menú" : "Contraer el menú"} />, SIDE_TIP)}
           aria-expanded={!mini}
-          className="absolute top-7.5 -right-3.5 grid size-7 place-items-center rounded-full bg-[#f5d462] text-[#171614] ring-[3px] ring-canvas transition-colors hover:bg-[#e9bf38]"
+          className={`absolute grid size-7 ${mini ? "top-[26px] -right-[18px]" : "top-7.5 -right-3.5"} place-items-center rounded-full bg-[#f5d462] text-[#171614] ring-[3px] ring-canvas transition-colors hover:bg-[#e9bf38]`}
         >
           {mini ? <ChevronRightIcon size={15} /> : <ChevronLeftIcon size={15} />}
         </button>
@@ -756,7 +757,7 @@ function Panel({
         <div
           className="admin-root min-h-dvh bg-canvas text-[15px] text-ink lg:flex"
           data-entering={entering ? "" : undefined}
-          style={{ "--admin-sidebar": mini ? "104px" : "280px" } as CSSProperties}
+          style={{ "--admin-sidebar": mini ? "88px" : "252px" } as CSSProperties}
         >
           <Sidebar current={mod} badges={badges} role={data.me.role} mini={mini} onToggle={() => writePref(PREF.sidebar, mini ? "full" : "mini")} />
 
