@@ -1,6 +1,6 @@
 import { after, type NextRequest } from "next/server";
 import { computeQuote, normalizePhone, splitTotal, validateExtraCabins, validateManualReservation, withTotal } from "@/lib/booking";
-import { manualDueAt } from "@/lib/payments";
+import { unpaidUntil } from "@/lib/payments";
 import { loadPricing, runDeadlines, toReservation } from "@/lib/server/db";
 import { fail, json, operationDay, readJson, requireStaff, syncRoute } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
@@ -26,9 +26,6 @@ export const POST = syncRoute(async (req: NextRequest) => {
   const { types, units, seasons, depositPct } = await loadPricing(sb);
   const input: ManualReservationInput = { ...b, unit: b.unit ?? null, total: b.total ?? null, guest: { ...b.guest, phone: normalizePhone(b.guest.phone) } };
   const fields = { ...validateManualReservation(input, types, units, operationDay(req)), ...validateExtraCabins(input.more, types, units) };
-  const due = manualDueAt(input.checkIn, input.holdMinutes);
-  if (!fields.checkIn && !fields.holdMinutes && due.tooShort)
-    fields.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: registra el pago manualmente.";
   if (Object.keys(fields).length) return validation(fields);
 
   const type = types.find((t) => t.id === input.cabinTypeId)!;
@@ -72,7 +69,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
     // Reserva tomada por el equipo: el huésped no pasó por los consentimientos de la web.
     consents: { policies: false, dataProcessing: false, marketing: false },
     quote: finalQuote,
-    deposit_due_at: due.dueAt,
+    deposit_due_at: unpaidUntil(input.checkIn), // sin plazo: hasta su día de llegada
   };
 
   if (cabins.length > 1) {

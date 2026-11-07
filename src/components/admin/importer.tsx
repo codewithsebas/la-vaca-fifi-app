@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { AlertIcon, CheckIcon, CloseIcon, HomeIcon, ListIcon, RefreshIcon, SpreadsheetIcon, UploadIcon, WarningIcon } from "@/components/ui/icons";
-import { ACTIVE_STATUSES, busyBlocks, EMAIL_RE, invalidImportRow, normalizePhone } from "@/lib/booking";
+import { BLOCKING_STATUSES, busyBlocks, EMAIL_RE, invalidImportRow, normalizePhone } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import type { AdminData, ImportResult, ImportRow } from "@/lib/types";
@@ -202,7 +202,7 @@ function review(sheet: Sheet, map: Mapping, withCancelled: boolean, data: AdminD
       if (status === "confirmed") {
         const clash = data.reservations.find(
           (r) =>
-            ACTIVE_STATUSES.includes(r.status) &&
+            BLOCKING_STATUSES.includes(r.status) &&
             r.cabinTypeId === row.cabinTypeId &&
             r.unit === row.unit &&
             r.checkIn < row.checkOut &&

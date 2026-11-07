@@ -1215,10 +1215,32 @@ export type Database = {
         }
         Returns: string
       }
+      bump_unpaid: {
+        Args: { p_from: string; p_to: string; p_type: string }
+        Returns: undefined
+      }
       enqueue_arrival_reminders: { Args: never; Returns: undefined }
+      free_unit: {
+        Args: {
+          p_ci: string
+          p_co: string
+          p_ignore?: string
+          p_prefer?: number
+          p_taken?: string[]
+          p_type: string
+        }
+        Returns: number
+      }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       panel_role: { Args: never; Returns: string }
+      place_unpaid: {
+        Args: {
+          p_members: Database["public"]["Tables"]["reservations"]["Row"][]
+          p_shift: number
+        }
+        Returns: number[]
+      }
       purge_sync_log: { Args: never; Returns: undefined }
       register_manual_payment: {
         Args: {

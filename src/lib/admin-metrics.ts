@@ -1,5 +1,5 @@
 // Cálculos del panel (clientes y finanzas) sobre los datos ya cargados. Funciones puras: sin red ni estado.
-import { ACTIVE_STATUSES } from "@/lib/booking";
+import { ACTIVE_STATUSES, BLOCKING_STATUSES } from "@/lib/booking";
 import { MS, addDays, dateOf, nightsBetween, parseISO } from "@/lib/format";
 import type { Block, CabinType, ClientProfile, PaymentRecord, Reservation, ReservationStatus } from "@/lib/types";
 
@@ -240,7 +240,7 @@ export function typeMarks(reservations: Reservation[], blocks: Block[], typeId: 
   for (let d = from; d <= to; d = addDays(d, 1)) {
     const busy = new Set<number>();
     for (const r of reservations)
-      if (r.code !== ignoreCode && r.cabinTypeId === typeId && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= d && d < r.checkOut) busy.add(r.unit);
+      if (r.code !== ignoreCode && r.cabinTypeId === typeId && BLOCKING_STATUSES.includes(r.status) && r.checkIn <= d && d < r.checkOut) busy.add(r.unit);
     for (const b of blocks) if (b.cabinTypeId === typeId && b.from <= d && d <= b.to) busy.add(b.unit);
     const free = units - busy.size;
     if (free <= 0) out[d] = "busy";
@@ -257,7 +257,7 @@ export function unitMarks(reservations: Reservation[], blocks: Block[], typeId: 
     if (b.id !== ignoreBlock && b.cabinTypeId === typeId && hit(b.unit))
       for (let d = b.from > from ? b.from : from; d <= b.to && d <= to; d = addDays(d, 1)) out[d] = "blocked";
   for (const r of reservations)
-    if (r.cabinTypeId === typeId && hit(r.unit) && ACTIVE_STATUSES.includes(r.status))
+    if (r.cabinTypeId === typeId && hit(r.unit) && BLOCKING_STATUSES.includes(r.status))
       for (let d = r.checkIn > from ? r.checkIn : from; d < r.checkOut && d <= to; d = addDays(d, 1)) out[d] = "busy";
   return out;
 }

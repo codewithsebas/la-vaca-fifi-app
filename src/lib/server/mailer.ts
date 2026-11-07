@@ -185,8 +185,10 @@ async function renderReservation(ctx: Ctx, row: Row, c: SiteConfig, logoUrl: str
           whatsappUrl,
         }),
       );
-    case "reservation_rescheduled": {
+    case "reservation_rescheduled":
+    case "reservation_moved": {
       // Las fechas de este cambio quedan en la fila: si se reprograma otra vez, cada correo cuenta el suyo.
+      // reservation_moved: no tenía abono y otra reserva pagó primero sus fechas; se corrió a las próximas libres.
       const d = row.payload as { checkInAnterior: string; checkOutAnterior: string; checkIn: string; checkOut: string };
       const email = reservationRescheduledEmail(c, {
         ...stay,
@@ -201,6 +203,7 @@ async function renderReservation(ctx: Ctx, row: Row, c: SiteConfig, logoUrl: str
         plazo: r.deposit_due_at,
         miReservaUrl,
         whatsappUrl,
+        movida: row.kind === "reservation_moved",
       });
       const calendar = ics({ code: r.code, checkIn: d.checkIn, checkOut: d.checkOut, cabinTypeId: r.cabin_type_id }, c, cabana);
       return { ...guest(email), attachments: [{ filename: `reserva-${r.code}.ics`, content: Buffer.from(calendar).toString("base64") }] };

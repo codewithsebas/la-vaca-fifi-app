@@ -1,6 +1,6 @@
 // Reglas de reserva compartidas por el servidor (Supabase) y el modo simulado.
 import { config, type CabinTypeId } from "@/lib/config";
-import { DEFAULT_HOLD, HOLD_OPTIONS } from "@/lib/payments";
+import { unpaidUntil } from "@/lib/payments";
 import { WD, WD_FULL, addDays, cop, fmtDate, isISO, nightsBetween, parseISO } from "@/lib/format";
 import type {
   Availability,
@@ -20,6 +20,9 @@ import type {
 } from "@/lib/types";
 
 export const ACTIVE_STATUSES: ReservationStatus[] = ["pending_deposit", "confirmed", "rescheduled", "checked_in"];
+// Las que apartan fechas. Una reserva sin abono (pending_deposit) sigue activa pero no ocupa: sus fechas quedan libres y,
+// si otra las paga, la base de datos la corre a las próximas libres (migración 20261107000000_reservas_sin_plazo).
+export const BLOCKING_STATUSES: ReservationStatus[] = ["confirmed", "rescheduled", "checked_in"];
 
 // Desde qué estados aplica cada acción del panel, y a cuál lleva (la API y el panel sin conexión validan lo mismo).
 export const TRANSITIONS: Record<string, { from: ReservationStatus[]; to?: ReservationStatus }> = {
@@ -317,7 +320,6 @@ export function validateManualReservation(b: ManualReservationInput, types: Cabi
   if (b.estimatedArrival && !/^\d{2}:\d{2}$/.test(b.estimatedArrival)) f.estimatedArrival = "Hora de llegada no válida.";
   if ((b.specialRequests ?? "").length > 1000) f.specialRequests = "El texto es demasiado largo.";
   if (b.total !== null && (!Number.isInteger(b.total) || b.total < SPECIAL_TOTAL.min || b.total > SPECIAL_TOTAL.max)) f.total = "Escribe un precio válido.";
-  if (!HOLD_OPTIONS.some((o) => o.value === b.holdMinutes)) f.holdMinutes = "Elige el plazo para pagar.";
   return f;
 }
 
@@ -325,7 +327,7 @@ export function validateManualReservation(b: ManualReservationInput, types: Cabi
 function freeUnits(occ: Occupancy, units: number, typeId: string, date: string, ignoreCode?: string) {
   const busy = new Set<number>();
   for (const r of occ.reservations)
-    if (r.code !== ignoreCode && r.cabinTypeId === typeId && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut) busy.add(r.unit);
+    if (r.code !== ignoreCode && r.cabinTypeId === typeId && BLOCKING_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut) busy.add(r.unit);
   for (const b of occ.blocks) if (b.cabinTypeId === typeId && b.from <= date && date <= b.to) busy.add(b.unit);
   const free: number[] = [];
   for (let u = 1; u <= units; u++) if (!busy.has(u)) free.push(u);
@@ -450,14 +452,14 @@ export function newReservationCode() {
   return "VF-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
-// Las fechas se retienen mientras se paga el abono; si no se aprueba a tiempo, la retención vence y se liberan.
-export function depositDueAt(now = Date.now()) {
-  return new Date(now + DEFAULT_HOLD * 6e4).toISOString();
+// Sin plazo: una reserva sin abono sigue pendiente hasta el final de su día de llegada (ver unpaidUntil).
+export function depositDueAt(checkIn: string) {
+  return unpaidUntil(checkIn);
 }
 
 // Reservas activas de una unidad que chocan con un bloqueo de `from` a `to` (incluido).
 export function clashingReservations<R extends Occupancy["reservations"][number]>(rs: R[], cabinTypeId: string, unit: number, from: string, to: string) {
-  return rs.filter((r) => r.cabinTypeId === cabinTypeId && r.unit === unit && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= to && from < r.checkOut);
+  return rs.filter((r) => r.cabinTypeId === cabinTypeId && r.unit === unit && BLOCKING_STATUSES.includes(r.status) && r.checkIn <= to && from < r.checkOut);
 }
 
 // ¿Está libre la unidad todas las noches de [ci, co)?

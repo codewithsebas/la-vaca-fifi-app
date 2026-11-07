@@ -202,7 +202,9 @@ export function AccessDenied({ module }: { module: ModuleId }) {
           title={off ? "Esta sección está desactivada por ahora" : "Tu rol no incluye esta sección"}
           text={
             off
-              ? "Se volverá a activar más adelante. Mientras tanto, el sitio muestra el contenido que ya estaba guardado."
+              ? module === "contenido"
+                ? "Se volverá a activar más adelante. Mientras tanto, el sitio muestra el contenido que ya estaba guardado."
+                : "Se volverá a activar más adelante."
               : `Entraste como ${ROLE_LABEL[data.me.role]}. Si necesitas acceso, pídeselo a un administrador del panel.`
           }
           action={

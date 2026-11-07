@@ -16,30 +16,13 @@ export function manualPaymentNote(method: PayMethod | undefined, note: string | 
   return [label, text].filter(Boolean).join(" · ").slice(0, 300);
 }
 
-/* ───────────── Plazo para pagar el abono ───────────── */
+/* ───────────── Sin plazo para el abono ───────────── */
 
-// Plazos que el equipo puede dar para pagar el abono (minutos). Si no se registra a tiempo, las fechas se liberan.
-export const HOLD_OPTIONS: { value: number; label: string }[] = [
-  { value: 60, label: "1 hora" },
-  { value: 180, label: "3 horas" },
-  { value: 360, label: "6 horas" },
-  { value: 720, label: "12 horas" },
-  { value: 1440, label: "24 horas" },
-  { value: 2880, label: "48 horas" },
-];
-export const DEFAULT_HOLD = 1440;
-// Horas que se retienen las fechas de una reserva hecha en la web mientras el huésped paga el abono por transferencia.
-export const WEB_HOLD_HOURS = DEFAULT_HOLD / 60;
-// Plazo mínimo útil.
-const MIN_HOLD_MS = 10 * 6e4;
-
-// Fecha límite para pagar el abono: ahora + el plazo elegido, pero nunca después del día de llegada (23:59, hora de
-// Colombia): las fechas no se retienen más allá de la estadía. `capped`: el plazo se acortó por eso.
-export function manualDueAt(checkIn: string, minutes: number, now = Date.now()) {
-  const limit = Date.parse(`${checkIn}T23:59:00-05:00`);
-  const wanted = now + minutes * 6e4;
-  const due = Math.min(wanted, limit);
-  return { dueAt: new Date(due).toISOString(), capped: due < wanted, tooShort: due - now < MIN_HOLD_MS };
+// Una reserva sin abono no aparta fechas ni tiene plazo para pagar: sigue pendiente hasta el final de su día de llegada
+// (hora de Colombia) y ahí vence. Si otra reserva paga esas fechas antes, la base de datos la corre a las próximas libres.
+// La base de datos fija esta misma fecha (trigger reservations_unpaid_until_arrival); aquí se usa para mostrarla.
+export function unpaidUntil(checkIn: string) {
+  return new Date(Date.parse(`${checkIn}T00:00:00-05:00`) + 864e5).toISOString();
 }
 
 // Porcentaje del abono de una reserva según su cotización (el configurado cuando se cotizó; puede ser distinto del actual).
@@ -57,8 +40,8 @@ export function moneyOf(r: Money) {
 
 /**
  * Etapa de la reserva para el huésped:
- * awaiting_deposit   fechas retenidas, falta el abono o el total (la reserva aún no está confirmada)
- * hold_expired       la retención venció sin abono
+ * awaiting_deposit   falta el abono o el total: la reserva aún no está confirmada ni aparta las fechas
+ * hold_expired       llegó el día de llegada sin abono
  * confirmed          reserva confirmada (si queda saldo, se paga antes de llegar o en recepción)
  * balance_due        en estadía con saldo pendiente
  * paid_in_full       en estadía con todo pagado (el equipo ya puede hacer el check-out)

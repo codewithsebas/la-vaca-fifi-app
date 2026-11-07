@@ -14,7 +14,7 @@ import {
   PlusIcon,
   WalletIcon,
 } from "@/components/ui/icons";
-import { ACTIVE_STATUSES } from "@/lib/booking";
+import { BLOCKING_STATUSES } from "@/lib/booking";
 import { MONTHS, MS, addDays, fmtDate, fmtFullDate, isISO, monthStart, parseISO, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
@@ -113,7 +113,7 @@ export function CalendarView() {
   for (const d of days)
     for (const u of rows) {
       const b = calBlocks.find((x) => blocks(x, u) && x.from <= d && d <= x.to);
-      if (data.reservations.some((r) => occupies(r, u) && ACTIVE_STATUSES.concat(["completed"]).includes(r.status) && r.checkIn <= d && d < r.checkOut))
+      if (data.reservations.some((r) => occupies(r, u) && BLOCKING_STATUSES.concat(["completed"]).includes(r.status) && r.checkIn <= d && d < r.checkOut))
         busyNights++;
       else if (b) blockedNights++;
     }
@@ -143,10 +143,7 @@ export function CalendarView() {
           <h1 id="ad-title" tabIndex={-1} className="sr-only">
             Calendario
           </h1>
-          <p
-            aria-live="polite"
-            className="truncate text-[clamp(1.15rem,1.6vw,1.4rem)] leading-tight font-bold tracking-[-0.03em] text-ink first-letter:uppercase"
-          >
+          <p aria-live="polite" className="truncate text-[25px] leading-tight font-bold tracking-[-0.03em] text-ink first-letter:uppercase">
             {title}
           </p>
         </div>
@@ -156,7 +153,7 @@ export function CalendarView() {
             <IconButton label={prevLabel} size="sm" variant="primary" onClick={() => step(-1)}>
               <ChevronLeftIcon size={15} />
             </IconButton>
-            <Button size="sm" variant="primary" onClick={() => setAnchor(today)} aria-current={showsToday ? "date" : undefined} className="px-3">
+            <Button size="sm" variant="primary" onClick={() => setAnchor(today)} aria-current={showsToday ? "date" : undefined} className="h-8! px-3!">
               Hoy
             </Button>
             <IconButton label={nextLabel} size="sm" variant="primary" onClick={() => step(1)}>
@@ -176,7 +173,6 @@ export function CalendarView() {
               searchable={false}
               selectedFirst
               icon={<CalendarIcon size={14} className="text-ink-muted" />}
-              className="h-9! min-h-9! text-[13px]!"
             />
           </div>
           <div className="min-w-0 sm:w-[146px]">
@@ -190,24 +186,12 @@ export function CalendarView() {
               options={view === "dia" ? [{ value: "dia", label: "Día" }, ...CALENDAR_VIEWS] : CALENDAR_VIEWS}
               searchable={false}
               icon={<CalendarIcon size={14} className="text-ink-muted" />}
-              className="h-9! min-h-9! text-[13px]!"
             />
           </div>
           <div className="min-w-0 sm:w-[188px]">
-            <Combobox
-              value={filter}
-              onChange={setFilter}
-              options={cabinOptions}
-              icon={<HomeIcon size={14} className="text-ink-muted" />}
-              className="h-9! min-h-9! text-[13px]!"
-            />
+            <Combobox value={filter} onChange={setFilter} options={cabinOptions} icon={<HomeIcon size={14} className="text-ink-muted" />} />
           </div>
-          <Button
-            variant="primary"
-            icon={<PlusIcon size={15} />}
-            onClick={() => setDraft({ cabinTypeId: filter || undefined })}
-            className="h-9! px-4! text-[13px]!"
-          >
+          <Button variant="primary" icon={<PlusIcon size={15} />} onClick={() => setDraft({ cabinTypeId: filter || undefined })}>
             Nueva reserva
           </Button>
         </div>

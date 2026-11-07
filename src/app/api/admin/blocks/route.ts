@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { ACTIVE_STATUSES, BLOCK_REASONS } from "@/lib/booking";
+import { BLOCKING_STATUSES, BLOCK_REASONS } from "@/lib/booking";
 import { isISO, nightsBetween } from "@/lib/format";
 import { type Db, isExclusionViolation, loadCabinTypes, toBlock } from "@/lib/server/db";
 import { baseVersionOf, fail, json, readJson, requireAdmin, requireStaff, staleOrMissing, syncRoute } from "@/lib/server/http";
@@ -34,7 +34,7 @@ async function clashes(sb: Db, cabinTypeId: string, units: number[], from: strin
     .select("code")
     .eq("cabin_type_id", cabinTypeId)
     .in("unit", units)
-    .in("status", ACTIVE_STATUSES)
+    .in("status", BLOCKING_STATUSES)
     .lte("check_in", to)
     .gt("check_out", from)
     .throwOnError();

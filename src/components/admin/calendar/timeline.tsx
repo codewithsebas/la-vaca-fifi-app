@@ -23,6 +23,7 @@ import {
   blockStyle,
   blocks,
   kfmt,
+  holds,
   occupies,
   openInModal,
   units,
@@ -105,7 +106,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
   }, [from]);
 
   const free = (u: Unit, d: string) =>
-    !data.reservations.some((r) => occupies(r, u) && r.checkIn <= d && d < r.checkOut) && !calBlocks.some((b) => blocks(b, u) && b.from <= d && d <= b.to);
+    !data.reservations.some((r) => holds(r, u) && r.checkIn <= d && d < r.checkOut) && !calBlocks.some((b) => blocks(b, u) && b.from <= d && d <= b.to);
 
   // Noches libres seguidas desde `a` hacia `target` (dentro del periodo y desde hoy): la selección no salta reservas.
   const reach = (u: Unit, a: string, target: string) => {
@@ -434,7 +435,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                         aria-label={`${r.guest.fullName}, ${r.code}, ${statusOf(r.status).label}, ${fmtDate(r.checkIn)} a ${fmtDate(r.checkOut)}`}
                         onClick={openInModal(onOpen, r.code)}
                         {...tip(() => <ReservationTip r={r} cabin={cabinLabel(r.cabinTypeId, r.unit)} />)}
-                        className={`relative z-2 my-auto flex h-[30px] min-w-0 items-center overflow-hidden border border-ink px-2.5 text-left text-[13px] leading-none font-bold text-ink transition-[filter,box-shadow,transform] duration-150 hover:z-3 hover:shadow-panel hover:brightness-[.97] motion-safe:hover:-translate-y-px ${
+                        className={`relative my-auto flex h-[30px] min-w-0 items-center overflow-hidden border border-ink px-2.5 ${r.status === "pending_deposit" ? "z-1 border-dashed opacity-75" : "z-2"} text-left text-[13px] leading-none font-bold text-ink transition-[filter,box-shadow,transform] duration-150 hover:z-3 hover:shadow-panel hover:brightness-[.97] motion-safe:hover:-translate-y-px ${
                           cut.l ? "rounded-l-none border-l-0" : "rounded-l-full"
                         } ${cut.r ? "rounded-r-none border-r-0" : "rounded-r-full"}`}
                         style={{ gridRow, gridColumn: `${start} / ${end}`, ...barStyle(r), boxShadow: undefined }}

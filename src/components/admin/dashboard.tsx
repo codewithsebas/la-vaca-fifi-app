@@ -24,7 +24,7 @@ import {
 import { StatusPill } from "@/components/ui/status-pill";
 import { Combobox } from "@/components/ui/combobox";
 import { balanceDue, pendingOf } from "@/lib/admin-metrics";
-import { ACTIVE_STATUSES, busyBlocks } from "@/lib/booking";
+import { BLOCKING_STATUSES, busyBlocks } from "@/lib/booking";
 import { MONTHS, addDays, cop, countdown, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, waTo } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
@@ -61,7 +61,7 @@ function occupancy(d: Data, date: string) {
     if (!c.activa && !d.reservations.some((r) => r.cabinTypeId === c.id)) continue;
     total += c.units;
     const set = new Set<number>();
-    d.reservations.forEach((r) => r.cabinTypeId === c.id && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut && set.add(r.unit));
+    d.reservations.forEach((r) => r.cabinTypeId === c.id && BLOCKING_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut && set.add(r.unit));
     busyBlocks(d).forEach((b) => b.cabinTypeId === c.id && b.from <= date && date <= b.to && set.add(b.unit));
     busy += set.size;
   }
@@ -102,7 +102,7 @@ export function Dashboard() {
   const upcoming = R.filter((r) => r.checkIn > today && r.checkIn <= addDays(today, 7) && ARRIVING.includes(r.status)).sort((a, b) =>
     a.checkIn < b.checkIn ? -1 : 1,
   );
-  // Pagos por completar: abonos de fechas retenidas (el plazo más cercano primero) y saldos de huéspedes en estadía.
+  // Pagos por completar: abonos de reservas sin confirmar (la llegada más cercana primero) y saldos de huéspedes en estadía.
   const deadlineOf = (r: Reservation) => (r.status === "pending_deposit" ? r.depositDueAt : "");
   const pend = R.filter((r) => r.status === "pending_deposit" || balanceDue(r)).sort((a, b) => (deadlineOf(a) < deadlineOf(b) ? -1 : 1));
 
@@ -893,7 +893,7 @@ function Agenda({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]; pe
         time: hhmm(r.depositDueAt),
         r,
         title: r.guest.fullName,
-        meta: `Vence la retención · abono ${cop(r.quote.deposit)}`,
+        meta: `Llega sin abono · vence hoy · abono ${cop(r.quote.deposit)}`,
         accent: "yellow" as const,
         icon: <ClockIcon size={16} />,
         kind: "plazo" as const,

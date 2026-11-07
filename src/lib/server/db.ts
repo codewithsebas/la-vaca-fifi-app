@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ACTIVE_STATUSES, channelBlocks, type Occupancy, type Units } from "@/lib/booking";
+import { BLOCKING_STATUSES, channelBlocks, type Occupancy, type Units } from "@/lib/booking";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import { config } from "@/lib/config";
 import { addDays, todayISO } from "@/lib/format";
@@ -117,7 +117,7 @@ export async function loadOccupancy(sb: Db, firstNight: string, lastNight: strin
   let rq = sb
     .from("reservations")
     .select("code, cabin_type_id, unit, check_in, check_out, status")
-    .in("status", ACTIVE_STATUSES)
+    .in("status", BLOCKING_STATUSES)
     .lte("check_in", lastNight)
     .gt("check_out", firstNight);
   let bq = sb.from("blocks").select("cabin_type_id, unit, from_date, to_date").lte("from_date", lastNight).gte("to_date", firstNight);

@@ -4,10 +4,10 @@
 // Los pagos se hacen por transferencia y el equipo los registra. El plazo del abono viene del servidor (depositDueAt) y la
 // cuenta regresiva usa su hora (serverNow); cuando llega a cero se vuelve a consultar la API, que es la que decide.
 import { useEffect, useRef, useState } from "react";
-import { cop, dateOf, fmtClock, fmtDate, fmtDateTime, todayISO, wa } from "@/lib/format";
+import { cop, fmtDateTime, wa } from "@/lib/format";
 import { PAYMENT_STATUS, depositPctOf, kindLabel, moneyOf, stageOf, type Stage } from "@/lib/payments";
 import type { PublicPayment, PublicReservation } from "@/lib/types";
-import { CheckIcon, ClockIcon, WhatsAppIcon } from "@/components/ui/icons";
+import { CheckIcon, WhatsAppIcon } from "@/components/ui/icons";
 import { useSite } from "@/components/site/site-provider";
 
 /* ───────────── Hora del servidor ───────────── */
@@ -111,17 +111,8 @@ export function PaymentStage({ r, onRefresh }: { r: PublicReservation; onRefresh
       return (
         <Panel t="wait" eyebrow="Pago pendiente · reserva sin confirmar" title="Paga el abono para confirmar tu reserva">
           <p className="font-semibold">
-            Tus fechas quedan apartadas hasta {dateOf(r.depositDueAt) === todayISO() ? "las " : `el ${fmtDate(dateOf(r.depositDueAt))} a las `}
-            <strong>{fmtClock(r.depositDueAt)}</strong>{" "}
-            <span
-              className="inline-flex items-center gap-1 rounded-full bg-card px-2.5 py-0.5 text-[.88rem] font-extrabold tabular-nums"
-              role="timer"
-              aria-live="off"
-            >
-              <ClockIcon size={14} />
-              {fmtLeft(Date.parse(r.depositDueAt) - now)}
-            </span>
-            . Tu reserva se confirma cuando recibamos el abono.
+            Tu reserva está registrada. Las fechas se aseguran cuando recibamos tu abono: mientras tanto siguen disponibles y, si alguien las paga antes, te
+            movemos a las próximas fechas libres con el mismo valor y te avisamos por correo.
           </p>
           <Amounts
             rows={[

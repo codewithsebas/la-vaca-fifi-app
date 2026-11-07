@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
-import { MONTHS, WD, WD_FULL, WD_MIN, addDays, cop, countdown, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
+import { MONTHS, WD, WD_FULL, WD_MIN, addDays, cop, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
 import { cabinName, channelBlocks, isChannelBlock } from "@/lib/booking";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { Block, CabinType, Reservation } from "@/lib/types";
@@ -171,6 +171,8 @@ export function units(cabins: CabinType[], filter: string): Unit[] {
 }
 
 export const occupies = (r: Reservation, u: Unit) => r.cabinTypeId === u.cabin.id && r.unit === u.unit && !["cancelled", "expired"].includes(r.status);
+// Si aparta las noches: una reserva sin abono se dibuja en su cabaña tentativa, pero esas noches siguen libres.
+export const holds = (r: Reservation, u: Unit) => occupies(r, u) && r.status !== "pending_deposit";
 export const blocks = (b: Block, u: Unit) => b.cabinTypeId === u.cabin.id && b.unit === u.unit;
 
 /* ───────────── Contenido de los tooltips ───────────── */
@@ -192,7 +194,7 @@ export function ReservationTip({ r, cabin }: { r: Reservation; cabin: string }) 
         <span>Total {cop(r.quote.total)}</span>
         {p.total > 0 && <span className="text-yellow">Pendiente {cop(p.total)}</span>}
       </span>
-      {r.status === "pending_deposit" && <span className="text-yellow">{`Sin pagar · la retención vence en ${countdown(r.depositDueAt)}`}</span>}
+      {r.status === "pending_deposit" && <span className="text-yellow">Sin confirmar · no aparta las fechas hasta el abono</span>}
       {r.source === "panel" && <span className="text-paper/70">Creada por el equipo</span>}
       <span className="mt-0.5 flex items-center justify-between gap-2 border-t border-paper/15 pt-1.5">
         <span className="rounded-full px-2 py-px text-[11px] font-bold text-ink" style={{ background: statusOf(r.status).bg }}>

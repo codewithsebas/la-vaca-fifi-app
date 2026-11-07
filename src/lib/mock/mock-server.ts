@@ -29,7 +29,7 @@ import { can, type Permission } from "@/lib/permissions";
 import { MOCK_DB_KEY } from "@/lib/mock/keys";
 import { groupMoney, groupOf } from "@/lib/groups";
 import { addDays, sleep, todayISO } from "@/lib/format";
-import { HOLD_OPTIONS, manualDueAt, manualPaymentNote } from "@/lib/payments";
+import { manualPaymentNote, unpaidUntil } from "@/lib/payments";
 import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "@/lib/site";
 import { mergePanelColors, type PanelColors } from "@/lib/panel-colors";
 import { mergeTheme } from "@/lib/theme";
@@ -598,7 +598,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       unit,
       status: "pending_deposit",
       quote: quoteFor(db, body.cabinTypeId, body.checkIn, body.checkOut, body.adults + body.children),
-      depositDueAt: depositDueAt(),
+      depositDueAt: depositDueAt(body.checkIn),
       createdAt: new Date().toISOString(),
       notes: [],
       depositPaidAt: null,
@@ -763,8 +763,6 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       guest: { ...raw.guest, phone: normalizePhone(raw.guest?.phone ?? "") },
     };
     const f = { ...validateManualReservation(b, activeTypes(db), unitsOf(db), todayISO()), ...validateExtraCabins(b.more, activeTypes(db), unitsOf(db)) };
-    const due = manualDueAt(b.checkIn, b.holdMinutes);
-    if (!f.checkIn && !f.holdMinutes && due.tooShort) f.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: registra el pago manualmente.";
     if (Object.keys(f).length) return invalid(f);
     const cabins = [{ cabinTypeId: b.cabinTypeId, unit: b.unit, adults: b.adults, children: b.children }, ...(b.more ?? [])];
     const units = allocateUnits(db, cabins, b.checkIn, b.checkOut);
@@ -796,7 +794,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       unit,
       status: "pending_deposit",
       quote: quotes[0] ?? quote,
-      depositDueAt: due.dueAt,
+      depositDueAt: unpaidUntil(b.checkIn),
       createdAt: new Date().toISOString(),
       notes: [],
       depositPaidAt: null,
@@ -850,11 +848,9 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       return ok(r);
     }
     if (body.action === "extend_hold" && group.length > 1) {
-      const minutes = Number((opts.body as { holdMinutes?: number }).holdMinutes);
-      if (!HOLD_OPTIONS.some((o) => o.value === minutes)) return { status: 400, data: { error: "INVALID_BODY" } };
-      const due = manualDueAt(r.checkIn, minutes);
-      if (due.tooShort) return { status: 422, data: { error: "HOLD_TOO_SHORT" } };
-      group.forEach((x) => Object.assign(x, { status: "pending_deposit", depositDueAt: due.dueAt }));
+      const due = unpaidUntil(r.checkIn);
+      if (Date.parse(due) <= Date.now()) return { status: 422, data: { error: "HOLD_TOO_SHORT" } };
+      group.forEach((x) => Object.assign(x, { status: "pending_deposit", depositDueAt: due }));
       save(db);
       return ok(r);
     }
@@ -869,13 +865,10 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     }
     if (body.action === "extend_hold") {
       if (r.status !== "pending_deposit" && r.status !== "expired") return { status: 422, data: { error: "INVALID_TRANSITION" } };
-      const minutes = Number((opts.body as { holdMinutes?: number }).holdMinutes);
-      if (!HOLD_OPTIONS.some((o) => o.value === minutes)) return { status: 400, data: { error: "INVALID_BODY" } };
-      const due = manualDueAt(r.checkIn, minutes);
-      if (due.tooShort) return { status: 422, data: { error: "HOLD_TOO_SHORT" } };
-      if (r.status === "expired" && !unitFree(occ(db), unitsOf(db)[r.cabinTypeId] ?? 0, r.cabinTypeId, r.unit, r.checkIn, r.checkOut, r.code))
-        return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
-      Object.assign(r, { status: "pending_deposit", depositDueAt: due.dueAt });
+      // Sin plazo: vuelve a quedar sin abono (no aparta fechas) hasta su día de llegada.
+      const due = unpaidUntil(r.checkIn);
+      if (Date.parse(due) <= Date.now()) return { status: 422, data: { error: "HOLD_TOO_SHORT" } };
+      Object.assign(r, { status: "pending_deposit", depositDueAt: due });
       save(db);
       return ok(r);
     }

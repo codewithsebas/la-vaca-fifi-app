@@ -11,7 +11,7 @@ import { useAdmin } from "@/components/admin/context";
 import { type NewReservationDraft } from "@/components/admin/new-reservation";
 import { paths } from "@/components/admin/routes";
 import { Button, buttonClass } from "@/components/admin/ui";
-import { type Unit, barStyle, blockHref, blockStyle, blocks, occupies, openInModal, shortLeft, useCalBlocks } from "@/components/admin/calendar/shared";
+import { type Unit, barStyle, blockHref, blockStyle, blocks, occupies, openInModal, useCalBlocks } from "@/components/admin/calendar/shared";
 
 export function DayAgenda({
   day,
@@ -24,7 +24,7 @@ export function DayAgenda({
   onNew: (d: NewReservationDraft) => void;
   onOpen: (code: string) => void;
 }) {
-  const { data, cabinLabel, today, now } = useAdmin();
+  const { data, cabinLabel, today } = useAdmin();
   const calBlocks = useCalBlocks();
   return (
     <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -87,7 +87,7 @@ export function DayAgenda({
                 {stay.status === "pending_deposit" ? (
                   <span className="flex items-center gap-1 text-[12.5px] font-semibold text-warning">
                     <ClockIcon size={13} />
-                    {`Sin pagar · la retención vence en ${shortLeft(stay.depositDueAt, now)}`}
+                    Sin confirmar · no aparta las fechas hasta el abono
                   </span>
                 ) : (
                   pendingOf(stay).total > 0 && (

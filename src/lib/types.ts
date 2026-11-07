@@ -189,8 +189,8 @@ export type Reservation = ReservationInput & {
   groupCode?: string | null; // reserva con varias cabañas: código de la principal (la principal tiene el suyo)
 };
 
-// Cuerpo de POST /admin/reservations: reserva tomada por el equipo. Queda retenida hasta que el equipo registre el abono
-// (holdMinutes, como máximo hasta el día de llegada).
+// Cuerpo de POST /admin/reservations: reserva tomada por el equipo. Queda sin confirmar (y sin apartar fechas) hasta que
+// el equipo registre el abono o el pago total.
 export type ManualReservationInput = {
   code?: string; // generado en el navegador (reservas creadas sin conexión)
   expectedTotal?: number; // el valor que vio quien la creó sin conexión
@@ -206,7 +206,6 @@ export type ManualReservationInput = {
   estimatedArrival: string; // "HH:MM" o "" (inicio del check-in)
   specialRequests: string;
   total: number | null; // precio especial; null = tarifa vigente
-  holdMinutes: number;
 };
 
 export type ManualReservationResult = { reservation: Reservation; group?: Reservation[] }; // group: todas las cabañas, la principal primero
@@ -280,7 +279,8 @@ export type NotificationKind =
   | "booking_cancelled"
   | "booking_failed"
   | "channel_conflict"
-  | "channel_sync_failed";
+  | "channel_sync_failed"
+  | "reservation_moved"; // sin abono: otra reserva pagó sus fechas y se corrió a las próximas libres
 
 export type AdminNotification = {
   id: number;
@@ -459,7 +459,7 @@ export type AdminAction =
     }
   | { code: string; action: "reschedule"; checkIn: string; checkOut: string }
   // Plazo nuevo para pagar el abono: amplía (o reactiva, si venció) la retención de una reserva sin abono.
-  | { code: string; action: "extend_hold"; holdMinutes: number; group?: boolean }
+  | { code: string; action: "extend_hold"; group?: boolean } // reactiva una vencida, sin plazo
   | { code: string; action: "note"; text: string }
   // Corregir o completar los datos del huésped (p. ej. el documento de una reserva importada).
   | { code: string; action: "guest"; guest: Guest };

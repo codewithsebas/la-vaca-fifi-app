@@ -6,7 +6,7 @@ import { baseVersionOf, businessError, fail, json, occurredAtOf, opIdOf, operati
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
 import { originOf, siteUrl } from "@/lib/server/site";
-import { HOLD_OPTIONS, PAY_METHODS, manualDueAt, manualPaymentNote } from "@/lib/payments";
+import { PAY_METHODS, manualPaymentNote, unpaidUntil } from "@/lib/payments";
 import { can } from "@/lib/permissions";
 import type { AdminAction, Quote } from "@/lib/types";
 
@@ -84,11 +84,10 @@ export const POST = syncRoute(async (req: NextRequest) => {
       const { error: noteErr } = await sb.from("reservation_notes").insert({ reservation_code: current.code, text, client_op_id: opId });
       if (noteErr && noteErr.code !== "23505") throw noteErr;
     } else if (b.action === "extend_hold") {
-      // El plazo nunca pasa del día de llegada.
-      if (!HOLD_OPTIONS.some((o) => o.value === b.holdMinutes)) return fail(400, "INVALID_BODY");
-      const due = manualDueAt(current.check_in, b.holdMinutes);
-      if (due.tooShort) return fail(422, "HOLD_TOO_SHORT");
-      const target = sb.from("reservations").update({ status: "pending_deposit", deposit_due_at: due.dueAt });
+      // Reactivar una vencida: vuelve a quedar sin abono (sin plazo) hasta su día de llegada, si no ha pasado.
+      const due = unpaidUntil(current.check_in);
+      if (Date.parse(due) <= Date.now()) return fail(422, "HOLD_TOO_SHORT");
+      const target = sb.from("reservations").update({ status: "pending_deposit", deposit_due_at: due });
       if (groupCode) await target.eq("group_code", groupCode).in("status", rule.from).throwOnError();
       else await target.eq("code", current.code).throwOnError();
     } else if (b.action === "confirm" || b.action === "balance") {

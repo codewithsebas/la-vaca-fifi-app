@@ -5,23 +5,78 @@
 // del panel para importarlo en Booking (así Booking cierra las noches ocupadas en el panel).
 import { useCallback, useEffect, useState } from "react";
 import { RefreshIcon } from "@/components/ui/icons";
+import { useSyncStatus } from "@/components/admin/sync";
 import { api, type Channels } from "@/lib/client/api";
 import { fmtDate, plural, timeAgo, todayISO } from "@/lib/format";
 import type { ChannelCalendar, ChannelStay } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { adminInput } from "@/components/admin/shared";
-import { Badge, Button, Card, CardHeader, CopyButton, ErrorState, Field, Skeleton } from "@/components/admin/ui";
+import { Badge, Button, Card, CardHeader, CopyButton, ErrorState, Field, IconButton, Skeleton } from "@/components/admin/ui";
 
 const ERRORS: Record<string, string> = {
   INVALID_URL: "Pega el enlace de exportación de Booking: empieza por https://ical.booking.com/…",
   NOT_FOUND: "Ese calendario ya no existe. Recarga la página.",
 };
 
+// Evento con el estado de los calendarios después de leer Booking (lo escucha la tarjeta de calendarios).
+const BOOKING_SYNCED = "vf:booking-synced";
+
+// «Leer Booking ahora»: lee todos los calendarios de Booking y avisa cómo le fue. Lo usan la tarjeta de calendarios y el
+// botón junto a Booking en el menú lateral.
+export function useBookingSync() {
+  const { onAuthError, toast, sync } = useAdmin();
+  const offline = useSyncStatus(sync).network === "offline";
+  const [syncing, setSyncing] = useState(false);
+  const run = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const r = await api.admin.channels.sync();
+      if (r.status === 401 || r.status === 403) return onAuthError();
+      const d = r.data as Channels;
+      if (r.status !== 200 || !Array.isArray(d?.calendars)) return toast("No se pudo leer Booking. Inténtalo de nuevo.", "error");
+      window.dispatchEvent(new CustomEvent(BOOKING_SYNCED, { detail: d }));
+      const results = d.results ?? [];
+      const bad = results.filter((x) => !x.ok).length;
+      toast(
+        results.length === 0
+          ? "Booking ya se leyó hace un momento."
+          : bad
+            ? `${plural(bad, "calendario no se pudo leer", "calendarios no se pudieron leer")}.`
+            : "Booking leído.",
+        bad ? "error" : "ok",
+      );
+    } catch {
+      toast("Sin conexión con el servidor. Inténtalo de nuevo.", "error");
+    } finally {
+      setSyncing(false);
+    }
+  };
+  return { syncing, offline, run };
+}
+
+// Botón de recarga junto a Booking en el menú lateral (barra negra): la misma acción que «Leer Booking ahora».
+export function BookingSyncButton({ className = "" }: { className?: string }) {
+  const { syncing, offline, run } = useBookingSync();
+  return (
+    <IconButton
+      label={offline ? "Leer Booking ahora · sin conexión" : "Leer Booking ahora"}
+      size="sm"
+      data-gesture="refresh"
+      aria-busy={syncing || undefined}
+      disabled={offline}
+      onClick={run}
+      className={`size-7! text-white/60 hover:bg-white/10! hover:text-white ${className}`}
+    >
+      <RefreshIcon size={14} className={syncing ? "animate-spin-fast" : ""} />
+    </IconButton>
+  );
+}
+
 export function BookingCalendars({ offline }: { offline: boolean }) {
-  const { onAuthError, toast } = useAdmin();
+  const { onAuthError } = useAdmin();
   const [state, setState] = useState<Channels | null>(null);
   const [failed, setFailed] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   const apply = useCallback(
     (r: { status: number; data: unknown }) => {
@@ -50,28 +105,13 @@ export function BookingCalendars({ offline }: { offline: boolean }) {
     load();
   }, [load]);
 
-  const syncAll = async () => {
-    setSyncing(true);
-    try {
-      const r = await api.admin.channels.sync();
-      const err = apply(r);
-      if (err) return toast("No se pudo leer Booking. Inténtalo de nuevo.", "error");
-      const results = (r.data as Channels).results ?? [];
-      const bad = results.filter((x) => !x.ok).length;
-      toast(
-        results.length === 0
-          ? "Booking ya se leyó hace un momento."
-          : bad
-            ? `${plural(bad, "calendario no se pudo leer", "calendarios no se pudieron leer")}.`
-            : "Booking leído.",
-        bad ? "error" : "ok",
-      );
-    } catch {
-      toast("Sin conexión con el servidor. Inténtalo de nuevo.", "error");
-    } finally {
-      setSyncing(false);
-    }
-  };
+  const { syncing, run: syncAll } = useBookingSync();
+  // Leído desde aquí o desde el botón del menú lateral: la lista se actualiza igual.
+  useEffect(() => {
+    const on = (e: Event) => setState((e as CustomEvent<Channels>).detail);
+    window.addEventListener(BOOKING_SYNCED, on);
+    return () => window.removeEventListener(BOOKING_SYNCED, on);
+  }, []);
 
   const linked = state?.calendars.filter((c) => c.importUrl).length ?? 0;
 

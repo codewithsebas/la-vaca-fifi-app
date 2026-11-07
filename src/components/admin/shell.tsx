@@ -1,6 +1,6 @@
 "use client";
 
-// Estructura común del panel (app/admin/layout.tsx): sesión, datos, tiempo real, navegación, migas de pan, avisos y confirmaciones.
+// Estructura común del panel (app/admin/layout.tsx): sesión, datos, tiempo real, navegación, avisos y confirmaciones.
 // Cada módulo es una página propia (app/admin/<modulo>/page.tsx) que se monta dentro de este marco.
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -28,13 +28,13 @@ import { PanelSkeleton } from "@/components/admin/skeletons";
 import { NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
 import { ThemeMenu, syncBrowserBar, useApplyTheme } from "@/components/admin/appearance";
+import { BookingSyncButton } from "@/components/admin/booking-calendars";
 import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, canOpen, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "@/components/admin/routes";
 import { AccessDenied, AccountMenu } from "@/components/admin/account";
 import { GlobalSearch } from "@/components/admin/global-search";
 import { SyncChip } from "@/components/admin/sync";
 import { type Ask, type ConfirmCfg, adminInput } from "@/components/admin/shared";
 import {
-  Breadcrumbs,
   Button,
   Callout,
   CountBadge,
@@ -321,22 +321,6 @@ function NavTip({ label, badge }: { label: string; badge?: { n: number; label: s
   );
 }
 
-// Al hacer clic (o tocar) un módulo, su icono repite el gesto (globals.css, [data-tap]). Si el mouse ya está encima, el
-// gesto del :hover ya terminó: se vuelve a empezar.
-const tapTimers = new WeakMap<HTMLElement, number>();
-function replayGesture(el: HTMLElement) {
-  el.setAttribute("data-tap", "");
-  for (const a of el.getAnimations({ subtree: true })) {
-    a.cancel();
-    a.play();
-  }
-  window.clearTimeout(tapTimers.get(el));
-  tapTimers.set(
-    el,
-    window.setTimeout(() => el.removeAttribute("data-tap"), 1000),
-  );
-}
-
 // Menú de módulos por grupos: el mismo en la barra lateral (escritorio) y en el cajón (móvil y tableta).
 function NavList({
   current,
@@ -359,7 +343,7 @@ function NavList({
   // Turno de cada módulo en la entrada del panel: uno tras otro, de arriba abajo.
   let order = 0;
   return (
-    <nav aria-label="Módulos del panel" className={`flex flex-col ${mini ? "gap-2.5" : "gap-4"}`}>
+    <nav aria-label="Módulos del panel" className={`flex flex-col ${mini ? "gap-2.5" : "gap-2"}`}>
       {groups.map(({ g, ids }, gi) => (
         <div key={g} className="flex flex-col gap-0.5">
           {mini ? (
@@ -371,19 +355,18 @@ function NavList({
             const { label, icon: Icon, href } = MODULES[id];
             const active = current === id;
             const b = badges[id];
-            return (
+            // Junto a Booking (solo administradores, que son quienes leen Booking), un botón para leerlo ya.
+            const reloadBooking = id === "booking" && role === "admin" && !mini;
+            const link = (
               <Link
                 key={id}
                 href={href}
-                onClick={(e) => {
-                  replayGesture(e.currentTarget);
-                  onNavigate?.();
-                }}
+                onClick={() => onNavigate?.()}
                 aria-current={active ? "page" : undefined}
                 data-nav={id}
                 {...enter(1 + order++ * 0.5, "side")}
                 {...(mini ? tip(() => <NavTip label={label} badge={b} />, SIDE_TIP) : {})}
-                className={`${navItem(mini)} ${active ? `text-pink ${mini ? "bg-white/10" : ""}` : id === "booking" ? bookingHover : "text-white/72 hover:bg-white/7 hover:text-white"}`}
+                className={`${navItem(mini)} ${reloadBooking ? "pr-10" : ""} ${active ? `text-pink ${mini ? "bg-white/10" : ""}` : id === "booking" ? bookingHover : "text-white/72 hover:bg-white/7 hover:text-white"}`}
               >
                 {active && !mini && <span aria-hidden="true" className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full bg-pink" />}
                 <Icon size={19} className={id === "booking" ? bookingIcon : active ? "text-pink" : navIcon} />
@@ -399,6 +382,14 @@ function NavList({
                   )
                 ) : null}
               </Link>
+            );
+            return reloadBooking ? (
+              <div key={id} className="relative">
+                {link}
+                <BookingSyncButton className="absolute top-1/2 right-1.5 -translate-y-1/2" />
+              </div>
+            ) : (
+              link
             );
           })}
         </div>
@@ -469,7 +460,7 @@ function SettingsLink() {
   );
 }
 
-// Migas de pan a partir de la ruta: Dashboard / Módulo / Detalle.
+// Ruta de la página (Dashboard / Módulo / Detalle): da el nombre de la página actual.
 function crumbsFor(pathname: string, data: AdminData): Crumb[] {
   const mod = moduleOf(pathname);
   const root: Crumb = { label: MODULES.dashboard.label, href: paths.dashboard };
@@ -826,7 +817,6 @@ function Panel({
             <main
               className={`admin-surface mx-auto flex w-full ${fullWidth ? "max-w-none" : "max-w-[1440px]"} min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)]`}
             >
-              {crumbs.length > 1 && mod !== "calendario" && <Breadcrumbs items={crumbs} className="-mb-2" />}
               {loadError && (
                 <Callout tone="warning" role="alert">
                   <div className="flex flex-wrap items-center justify-between gap-2">

@@ -459,7 +459,6 @@ describe("reservas sin conexión", () => {
     estimatedArrival: "",
     specialRequests: "",
     total: null,
-    holdMinutes: 1440,
   };
 
   it("crea con código local, asigna unidad y la deja consultable", async () => {
@@ -475,16 +474,20 @@ describe("reservas sin conexión", () => {
     expect((await engine.mutate("reservation.action", { code: made.code, action: "confirm", amount: 1 })).queued).toBe(true);
   });
 
-  it("no acepta más reservas que unidades libres, y el servidor manda sobre fechas ocupadas", async () => {
+  it("sin abono no aparta: acepta más reservas que unidades, pero no confirma una sin cabaña libre; el servidor manda", async () => {
     const srv = fakeServer();
     const { engine } = await start(srv, false);
-    await engine.mutate("reservation.create", input);
-    await engine.mutate("reservation.create", input);
-    const third = await engine.mutate("reservation.create", input);
+    const made: Reservation[] = [];
+    for (let i = 0; i < 3; i++) made.push((await engine.mutate<{ reservation: Reservation }>("reservation.create", input)).data!.reservation);
+    expect(made.every((r) => r.status === "pending_deposit")).toBe(true);
+    // Las dos unidades se confirman con un pago; la tercera ya no tiene cabaña libre.
+    expect((await engine.mutate("reservation.action", { code: made[0].code, action: "confirm", full: true })).queued).toBe(true);
+    expect((await engine.mutate("reservation.action", { code: made[1].code, action: "confirm", full: true })).queued).toBe(true);
+    const third = await engine.mutate("reservation.action", { code: made[2].code, action: "confirm", full: true });
     expect(third.status).toBe(409);
     srv.state.respond = () => ({ status: 409, data: { error: "DATES_UNAVAILABLE" } });
     await engine.probe();
-    expect(engine.status.conflicts).toBe(2);
+    expect(engine.status.conflicts).toBe(3);
     expect(engine.list()[0].conflict?.code).toBe("DATES_UNAVAILABLE");
   });
 
@@ -554,7 +557,6 @@ describe("nueva reserva con pago", () => {
     estimatedArrival: "",
     specialRequests: "",
     total: null,
-    holdMinutes: 1440,
   };
 
   it("sin conexión: la reserva queda confirmada en la vista y salen en orden, crear y luego el pago", async () => {

@@ -34,9 +34,9 @@ import { api } from "@/lib/client/api";
 import { config } from "@/lib/config";
 import { can } from "@/lib/permissions";
 import { groupMoney, groupOf } from "@/lib/groups";
-import { addDays, cop, countdown, dateOf, fmtClock, fmtDate, fmtDateTime, nightsBetween, plural, timeAgo, waTo } from "@/lib/format";
+import { addDays, cop, dateOf, fmtClock, fmtDate, fmtDateTime, nightsBetween, plural, timeAgo, waTo } from "@/lib/format";
 import { PaymentFields, type PayChoice, type PayOption } from "@/components/admin/payment-fields";
-import { DEFAULT_HOLD, HOLD_OPTIONS, PAYMENT_STATUS, depositPctOf, kindLabel, manualDueAt } from "@/lib/payments";
+import { PAYMENT_STATUS, depositPctOf, kindLabel, unpaidUntil } from "@/lib/payments";
 import { fmtTime } from "@/lib/site";
 import type { DocType, EmailRecord, Guest, PayMethod, PaymentRecord, Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
@@ -47,7 +47,7 @@ import { ProofCard } from "@/components/admin/proofs";
 import { paths } from "@/components/admin/routes";
 import { SyncMark } from "@/components/admin/sync";
 import { useRouteParam } from "@/components/admin/route-param";
-import { EMAIL_KIND, TRUST, type ConfirmCfg, adminInput, fmtDeadline } from "@/components/admin/shared";
+import { EMAIL_KIND, TRUST, type ConfirmCfg, adminInput } from "@/components/admin/shared";
 import {
   ACCENT,
   Badge,
@@ -62,7 +62,6 @@ import {
   Modal,
   ModalPresence,
   PageHeader,
-  Segmented,
   StatCard,
   Stars,
   buttonClass,
@@ -70,7 +69,8 @@ import {
 
 const OCC: Record<string, string> = { aniversario: "Aniversario", cumpleanos: "Cumpleaños", propuesta: "Propuesta", otra: "Otra" };
 
-type Action = { label: string; primary: boolean; danger: boolean; disabled?: string; run: () => void };
+export type ActionKind = "pay" | "checkin" | "checkout" | "reschedule" | "cancel" | "cancel-group";
+export type Action = { id: ActionKind; label: string; primary: boolean; danger: boolean; disabled?: string; run: () => void };
 type ActionId = "checkin" | "checkout" | "cancel" | "reschedule";
 
 /* ───────────── Página y modal ───────────── */
@@ -145,9 +145,8 @@ export function ReservationModal({ code, onClose }: { code: string; onClose: () 
 /* ───────────── Vista ───────────── */
 
 function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean }) {
-  const { data, ask, cabinLabel, today, reload } = useAdmin();
+  const { data, cabinLabel, today } = useAdmin();
   const [editing, setEditing] = useState(false);
-  const [paying, setPaying] = useState<string | null>(null); // título del diálogo de pago abierto
   const cabin = cabinLabel(r.cabinTypeId, r.unit);
   // Reserva con varias cabañas: pagos, comprobantes y correos son del grupo; los valores se suman.
   const group = groupOf(data.reservations, r);
@@ -159,88 +158,10 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
   const payments = data.payments.filter((p) => codes.has(p.reservationCode));
   const emails = data.emails.filter((e) => !!e.reservationCode && codes.has(e.reservationCode));
   const pendingProof = proofs.some((p) => p.status === "pending");
-  const units = data.cabinTypes.find((c) => c.id === r.cabinTypeId)?.units ?? 1;
   const due = balanceDue(m);
   const nights = nightsBetween(r.checkIn, r.checkOut);
 
-  const act = (label: string, action: ActionId, opts: Partial<ConfirmCfg> & { primary?: boolean; disabled?: string; group?: boolean } = {}): Action => ({
-    label,
-    primary: !!opts.primary,
-    danger: !!opts.danger,
-    disabled: opts.disabled,
-    run: () =>
-      ask({
-        title: label,
-        text: `${r.code} · ${r.guest.fullName}`,
-        okLabel: label,
-        done: `${label}: listo`,
-        run: (cf) => {
-          if (action === "reschedule") {
-            if (!cf.ci || !cf.co || cf.co <= cf.ci) return Promise.resolve({ status: 400, data: null });
-            return api.admin.action({ code: r.code, action, checkIn: cf.ci, checkOut: cf.co });
-          }
-          if (action === "cancel" && r.groupCode)
-            // Todo el grupo o solo esta cabaña: lo hace el servidor; después se recargan las demás.
-            return api.admin.action({ code: r.code, action, group: !!opts.group }).then(async (res) => {
-              if (res.status === 200) await reload();
-              return res;
-            });
-          return api.admin.action({ code: r.code, action });
-        },
-        ...opts,
-      }),
-  });
-  // Registrar un pago abre su propio diálogo (valor, medio y nota).
-  const pay = (label: string, primary: boolean): Action => ({ label, primary, danger: false, run: () => setPaying(label) });
-
-  const actions: Action[] = [];
-  if (r.status === "pending_deposit" || r.status === "expired")
-    actions.push(pay(r.status === "expired" ? "Registrar pago y reactivar" : "Registrar pago", true));
-  const earlyDue = (r.status === "confirmed" || r.status === "rescheduled") && !m.balancePaidAt ? Math.max(0, m.quote.total - m.paid) : 0;
-  if (r.status === "confirmed" || r.status === "rescheduled")
-    actions.push(
-      act("Marcar check-in", "checkin", {
-        primary: true,
-        text: earlyDue
-          ? `Queda un saldo de ${cop(earlyDue)} por cobrar en recepción. El check-out se habilita cuando lo registres.`
-          : "La estadía ya está pagada: no queda saldo por cobrar.",
-      }),
-    );
-  if (earlyDue) actions.push(pay(m.depositPaidAt ? "Registrar pago del saldo" : "Registrar pago", false));
-  if (r.status === "checked_in") {
-    if (due) actions.push(pay("Registrar pago del saldo", true));
-    actions.push(act("Marcar check-out", "checkout", { primary: !due, disabled: due ? "Disponible cuando el saldo esté pagado" : undefined }));
-  }
-  if (["pending_deposit", "confirmed", "rescheduled"].includes(r.status)) {
-    actions.push(
-      act("Reprogramar", "reschedule", {
-        reschedule: true,
-        ci: r.checkIn,
-        co: r.checkOut,
-        marks: typeMarks(data.reservations, busyBlocks(data), r.cabinTypeId, units, today, addDays(today, 365), r.code),
-        text: "Elige las nuevas fechas. Se valida la disponibilidad de la misma cabaña y se recalcula el total con las tarifas vigentes (lo ya pagado se conserva).",
-      }),
-    );
-    const refund = m.depositPaidAt ? "El abono recibido no es reembolsable según las políticas." : "Las fechas quedarán libres.";
-    if (can(data.me.role, "cancel") && !inGroup) actions.push(act("Cancelar reserva", "cancel", { danger: true, text: `${r.code} · ${refund}` }));
-    if (can(data.me.role, "cancel") && inGroup) {
-      // La principal lleva el código del grupo: se cancela con todas. Las demás pueden salir solas.
-      if (r.code !== r.groupCode)
-        actions.push(
-          act("Cancelar esta cabaña", "cancel", {
-            danger: true,
-            text: `${r.code} · ${cabin} sale de la reserva ${r.groupCode} y sus fechas quedan libres. Lo pagado por esta cabaña se queda con ella. El huésped recibe un correo.`,
-          }),
-        );
-      actions.push(
-        act("Cancelar todo el grupo", "cancel", {
-          danger: true,
-          group: true,
-          text: `${r.groupCode} · ${plural(group.length, "cabaña", "cabañas")}. ${refund}`,
-        }),
-      );
-    }
-  }
+  const { actions, earlyDue, whatsapp, dialog } = useReservationActions(r);
 
   const client = buildClients(
     data.reservations.filter((x) => x.clientKey === r.clientKey),
@@ -252,7 +173,7 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
   const days = nightsBetween(today, r.checkIn);
   const next: { value: string; hint: string } =
     r.status === "pending_deposit"
-      ? { value: "Registrar el abono", hint: `La retención vence en ${countdown(r.depositDueAt)}` }
+      ? { value: "Registrar el abono", hint: "Sin abono no aparta las fechas" }
       : r.status === "expired"
         ? { value: "Reactivar o liberar", hint: "La retención venció sin abono" }
         : r.status === "confirmed" || r.status === "rescheduled"
@@ -270,7 +191,6 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
               : { value: "Cancelada", hint: "Las fechas quedaron libres" };
   const pct = m.quote.total ? Math.min(100, Math.round((m.paid / m.quote.total) * 100)) : 0;
   const owed = pendingOf(m).total;
-  const whatsapp = waTo(r.guest.phone, `Hola ${r.guest.fullName.split(" ")[0]}, te escribimos de ${config.name} por tu reserva ${r.code}.`);
 
   const badges = (
     <div className="flex flex-wrap items-center gap-2">
@@ -284,7 +204,7 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
           Comprobante por revisar
         </Badge>
       )}
-      {r.status === "pending_deposit" && <Badge tone="warning">{`Retención vence en ${countdown(r.depositDueAt)}`}</Badge>}
+      {r.status === "pending_deposit" && <Badge tone="warning">Sin confirmar · no aparta fechas</Badge>}
       {due && <Badge tone="warning">{`Saldo por cobrar: ${cop(due.amount)}`}</Badge>}
     </div>
   );
@@ -398,7 +318,7 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
       </div>
 
       <ModalPresence>{editing && <GuestEditor r={r} onClose={() => setEditing(false)} />}</ModalPresence>
-      <ModalPresence>{paying && <PaymentDialog r={m} group={inGroup} title={paying} onClose={() => setPaying(null)} />}</ModalPresence>
+      {dialog}
     </>
   );
 }
@@ -873,42 +793,36 @@ function GroupCard({ r, group }: { r: Reservation; group: Reservation[] }) {
   );
 }
 
-// Plazo para pagar el abono: cambiarlo o, si la retención venció, reactivarla con un plazo nuevo.
+// Sin abono no hay plazo: la reserva no aparta fechas y, si otra las paga primero, se corre a las próximas libres. Una
+// vencida (llegó su día sin abono) se puede reactivar mientras no haya pasado la llegada.
 function HoldCard({ r }: { r: Reservation }) {
   const { setData, toast, onAuthError, now, reload } = useAdmin();
-  const [hold, setHold] = useState(DEFAULT_HOLD);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState(false);
-  const expired = r.status === "expired" || Date.parse(r.depositDueAt) <= now;
-  const due = manualDueAt(r.checkIn, hold, now);
+  const late = Date.parse(unpaidUntil(r.checkIn)) <= now;
 
   async function apply() {
     if (busy) return;
     setBusy(true);
     setError("");
     try {
-      const res = await api.admin.action({ code: r.code, action: "extend_hold", holdMinutes: hold, ...(r.groupCode && { group: true }) });
+      const res = await api.admin.action({ code: r.code, action: "extend_hold", ...(r.groupCode && { group: true }) });
       if (res.status === 401 || res.status === 403) return onAuthError();
       if (res.status !== 200 || !res.data) {
         const code = (res.data as { error?: string } | null)?.error;
         setError(
           code === "HOLD_TOO_SHORT"
-            ? "Ya no queda tiempo antes de la llegada: registra el pago directamente."
-            : res.status === 409
-              ? "Esas fechas ya no están libres: la reserva no se puede reactivar."
-              : code === "NEEDS_CONNECTION"
-                ? "En una reserva con varias cabañas, el plazo se cambia con conexión."
-                : "No se pudo cambiar el plazo. Inténtalo de nuevo.",
+            ? "Ya pasó el día de llegada: registra el pago directamente."
+            : code === "NEEDS_CONNECTION"
+              ? "En una reserva con varias cabañas, se reactiva con conexión."
+              : "No se pudo reactivar. Inténtalo de nuevo.",
         );
         return;
       }
       const updated = res.data;
       setData((d) => ({ ...d, reservations: d.reservations.map((x) => (x.code === updated.code ? updated : x)) }));
-      // En un grupo el plazo cambia en todas las cabañas.
       if (r.groupCode) await reload();
-      setEditing(false);
-      toast(r.status === "expired" ? "Reserva reactivada" : `Nuevo plazo: hasta el ${fmtDeadline(updated.depositDueAt)}`);
+      toast("Reserva reactivada sin confirmar");
     } catch {
       setError("Error de conexión. Inténtalo de nuevo.");
     } finally {
@@ -921,48 +835,21 @@ function HoldCard({ r }: { r: Reservation }) {
       <CardHeader
         id="dt-hold"
         icon={<ClockIcon size={18} />}
-        title="Plazo del abono"
+        title={r.status === "expired" ? "Venció sin abono" : "Sin confirmar"}
         subtitle={
           r.status === "expired"
-            ? "La retención venció sin abono y las fechas se liberaron. Si siguen libres, puedes reactivarla con un plazo nuevo."
-            : `Las fechas quedan retenidas hasta el ${fmtDeadline(r.depositDueAt)}. Si no registras el abono antes, se liberan solas.`
+            ? "Llegó el día de llegada sin abono. Si el huésped todavía quiere venir, puedes reactivarla: vuelve a quedar sin confirmar."
+            : "No aparta las fechas hasta que se registre el abono o el pago total. Si otra reserva las paga primero, se corre a las próximas fechas libres con el mismo valor y le avisamos al huésped por correo. Si no paga, vence al terminar su día de llegada."
         }
         actions={
-          r.status === "pending_deposit" && !expired && !editing ? (
-            <Button size="sm" variant="ghost" icon={<ClockIcon size={14} />} onClick={() => setEditing(true)}>
-              Cambiar plazo
+          r.status === "expired" && !late ? (
+            <Button size="sm" variant="primary" loading={busy} onClick={apply}>
+              Reactivar
             </Button>
           ) : undefined
         }
       />
-      {(editing || expired) && (
-        <div className="flex flex-col gap-2 rounded-[16px] bg-canvas/70 p-3">
-          <Segmented
-            label="Plazo para pagar"
-            size="sm"
-            value={String(hold)}
-            onChange={(v) => setHold(Number(v))}
-            options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
-            className="flex-wrap"
-          />
-          <p className="text-[12.5px] text-ink-muted">
-            {due.tooShort
-              ? "Ya no queda tiempo antes de la llegada."
-              : `Vencerá el ${fmtDeadline(due.dueAt)}${due.capped ? " (no puede pasar del día de llegada)" : ""}`}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="primary" size="sm" loading={busy} disabled={due.tooShort} onClick={apply}>
-              {r.status === "expired" ? "Reactivar con este plazo" : "Aplicar nuevo plazo"}
-            </Button>
-            {editing && (
-              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                Cancelar
-              </Button>
-            )}
-          </div>
-          {error && <FieldError>{error}</FieldError>}
-        </div>
-      )}
+      {error && <FieldError>{error}</FieldError>}
     </Card>
   );
 }
@@ -982,6 +869,106 @@ const PAY_ERRORS: Record<string, string> = {
 // Pago recibido en persona: todo lo que falta, el abono del 30 % o un valor a elección, con el medio (efectivo o
 // transferencia) y una nota. Cualquier pago confirma una reserva pendiente; lo que falte queda como saldo.
 // `group`: reserva con varias cabañas; `r` trae los valores del grupo y el servidor reparte el pago entre las cabañas.
+/* ───────────── Acciones de una reserva ───────────── */
+
+// Lo que se puede hacer con una reserva según su estado (pagos, check-in/out, reprogramar, cancelar) y el enlace de
+// WhatsApp. Lo usan el detalle y cada fila de la lista de reservas; `dialog` es el diálogo de pago, que va en la página.
+export function useReservationActions(r: Reservation) {
+  const { data, ask, cabinLabel, today, reload } = useAdmin();
+  const [paying, setPaying] = useState<string | null>(null); // título del diálogo de pago abierto
+  const cabin = cabinLabel(r.cabinTypeId, r.unit);
+  const group = groupOf(data.reservations, r);
+  const inGroup = group.length > 1;
+  const gm = groupMoney(group);
+  const m: Reservation = inGroup ? { ...r, quote: gm.quote, paid: gm.paid, depositPaidAt: gm.depositPaidAt, balancePaidAt: gm.balancePaidAt } : r;
+  const units = data.cabinTypes.find((c) => c.id === r.cabinTypeId)?.units ?? 1;
+  const due = balanceDue(m);
+
+  const act = (label: string, action: ActionId, opts: Partial<ConfirmCfg> & { primary?: boolean; disabled?: string; group?: boolean } = {}): Action => ({
+    id: (action === "cancel" && opts.group ? "cancel-group" : action) as ActionKind,
+    label,
+    primary: !!opts.primary,
+    danger: !!opts.danger,
+    disabled: opts.disabled,
+    run: () =>
+      ask({
+        title: label,
+        text: `${r.code} · ${r.guest.fullName}`,
+        okLabel: label,
+        done: `${label}: listo`,
+        run: (cf) => {
+          if (action === "reschedule") {
+            if (!cf.ci || !cf.co || cf.co <= cf.ci) return Promise.resolve({ status: 400, data: null });
+            return api.admin.action({ code: r.code, action, checkIn: cf.ci, checkOut: cf.co });
+          }
+          if (action === "cancel" && r.groupCode)
+            // Todo el grupo o solo esta cabaña: lo hace el servidor; después se recargan las demás.
+            return api.admin.action({ code: r.code, action, group: !!opts.group }).then(async (res) => {
+              if (res.status === 200) await reload();
+              return res;
+            });
+          return api.admin.action({ code: r.code, action });
+        },
+        ...opts,
+      }),
+  });
+  // Registrar un pago abre su propio diálogo (valor, medio y nota).
+  const pay = (label: string, primary: boolean): Action => ({ id: "pay", label, primary, danger: false, run: () => setPaying(label) });
+
+  const actions: Action[] = [];
+  if (r.status === "pending_deposit" || r.status === "expired")
+    actions.push(pay(r.status === "expired" ? "Registrar pago y reactivar" : "Registrar pago", true));
+  const earlyDue = (r.status === "confirmed" || r.status === "rescheduled") && !m.balancePaidAt ? Math.max(0, m.quote.total - m.paid) : 0;
+  if (r.status === "confirmed" || r.status === "rescheduled")
+    actions.push(
+      act("Marcar check-in", "checkin", {
+        primary: true,
+        text: earlyDue
+          ? `Queda un saldo de ${cop(earlyDue)} por cobrar en recepción. El check-out se habilita cuando lo registres.`
+          : "La estadía ya está pagada: no queda saldo por cobrar.",
+      }),
+    );
+  if (earlyDue) actions.push(pay(m.depositPaidAt ? "Registrar pago del saldo" : "Registrar pago", false));
+  if (r.status === "checked_in") {
+    if (due) actions.push(pay("Registrar pago del saldo", true));
+    actions.push(act("Marcar check-out", "checkout", { primary: !due, disabled: due ? "Disponible cuando el saldo esté pagado" : undefined }));
+  }
+  if (["pending_deposit", "confirmed", "rescheduled"].includes(r.status)) {
+    actions.push(
+      act("Reprogramar", "reschedule", {
+        reschedule: true,
+        ci: r.checkIn,
+        co: r.checkOut,
+        marks: typeMarks(data.reservations, busyBlocks(data), r.cabinTypeId, units, today, addDays(today, 365), r.code),
+        text: "Elige las nuevas fechas. Se valida la disponibilidad de la misma cabaña y se recalcula el total con las tarifas vigentes (lo ya pagado se conserva).",
+      }),
+    );
+    const refund = m.depositPaidAt ? "El abono recibido no es reembolsable según las políticas." : "Las fechas quedarán libres.";
+    if (can(data.me.role, "cancel") && !inGroup) actions.push(act("Cancelar reserva", "cancel", { danger: true, text: `${r.code} · ${refund}` }));
+    if (can(data.me.role, "cancel") && inGroup) {
+      // La principal lleva el código del grupo: se cancela con todas. Las demás pueden salir solas.
+      if (r.code !== r.groupCode)
+        actions.push(
+          act("Cancelar esta cabaña", "cancel", {
+            danger: true,
+            text: `${r.code} · ${cabin} sale de la reserva ${r.groupCode} y sus fechas quedan libres. Lo pagado por esta cabaña se queda con ella. El huésped recibe un correo.`,
+          }),
+        );
+      actions.push(
+        act("Cancelar todo el grupo", "cancel", {
+          danger: true,
+          group: true,
+          text: `${r.groupCode} · ${plural(group.length, "cabaña", "cabañas")}. ${refund}`,
+        }),
+      );
+    }
+  }
+
+  const whatsapp = waTo(r.guest.phone, `Hola ${r.guest.fullName.split(" ")[0]}, te escribimos de ${config.name} por tu reserva ${r.code}.`);
+  const dialog = <ModalPresence>{paying && <PaymentDialog r={m} group={inGroup} title={paying} onClose={() => setPaying(null)} />}</ModalPresence>;
+  return { actions, whatsapp, earlyDue, dialog };
+}
+
 function PaymentDialog({ r, title, group = false, onClose }: { r: Reservation; title: string; group?: boolean; onClose: () => void }) {
   const { reload, toast, onAuthError } = useAdmin();
   const owed = Math.max(0, r.quote.total - r.paid);
@@ -1169,7 +1156,7 @@ function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentReco
           r.depositPaidAt
             ? `Recibido el ${fmtDate(dateOf(r.depositPaidAt))}${fullPayment ? " · pago total" : ""}`
             : r.status === "pending_deposit"
-              ? `Fechas retenidas · vence en ${countdown(r.depositDueAt)}`
+              ? "Sin confirmar · no aparta las fechas"
               : r.status === "expired"
                 ? "No se pagó a tiempo"
                 : "No recibido",

@@ -1,5 +1,5 @@
 import "server-only";
-import { ACTIVE_STATUSES } from "@/lib/booking";
+import { BLOCKING_STATUSES } from "@/lib/booking";
 import { config } from "@/lib/config";
 import { addDays, fmtDate, nightsBetween, todayISO } from "@/lib/format";
 import { buildIcs, parseIcs, type IcsEvent } from "@/lib/server/ical";
@@ -115,7 +115,7 @@ async function panelBusy(sb: Db, cal: CalendarRow, first: string, last: string) 
       .select("code, check_in, check_out, updated_at")
       .eq("cabin_type_id", cal.cabin_type_id)
       .eq("unit", cal.unit)
-      .in("status", ACTIVE_STATUSES)
+      .in("status", BLOCKING_STATUSES)
       .lt("check_in", last)
       .gt("check_out", first)
       .throwOnError(),
@@ -283,7 +283,7 @@ export async function exportCalendar(token: string, base: string): Promise<strin
       .select("check_in, check_out")
       .eq("cabin_type_id", cal.cabin_type_id)
       .eq("unit", cal.unit)
-      .in("status", ACTIVE_STATUSES)
+      .in("status", BLOCKING_STATUSES)
       .gt("check_out", since)
       .throwOnError(),
     sb.from("blocks").select("from_date, to_date").eq("cabin_type_id", cal.cabin_type_id).eq("unit", cal.unit).gte("to_date", since).throwOnError(),

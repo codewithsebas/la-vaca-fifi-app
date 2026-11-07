@@ -22,7 +22,7 @@ import {
   type Occupancy,
 } from "@/lib/booking";
 import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
-import { DEFAULT_HOLD, HOLD_OPTIONS, depositPctOf, manualDueAt } from "@/lib/payments";
+import { depositPctOf } from "@/lib/payments";
 import { groupMoney } from "@/lib/groups";
 import type { DocType, ManualReservationInput, ManualReservationResult, PayMethod, Quote, Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
@@ -31,7 +31,7 @@ import { useAdmin } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
 import { PaymentFields, type PayChoice, type PayOption } from "@/components/admin/payment-fields";
 import { paths } from "@/components/admin/routes";
-import { adminInput, fmtDeadline } from "@/components/admin/shared";
+import { adminInput } from "@/components/admin/shared";
 import { Button, Callout, Field, FieldError, IconButton, Modal, MoneyInput, Segmented, Stepper, Switch } from "@/components/admin/ui";
 
 // Lo que llega ya elegido (desde el calendario: una cabaña y unas fechas).
@@ -54,7 +54,6 @@ type Form = {
   notes: string;
   special: boolean;
   total: number;
-  hold: number;
   payNow: boolean;
   payChoice: PayChoice;
   payCustom: number;
@@ -108,7 +107,6 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
     notes: "",
     special: false,
     total: 0,
-    hold: DEFAULT_HOLD,
     payNow: false,
     payChoice: "deposit",
     payCustom: 0,
@@ -158,7 +156,6 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       : (rates as Quote[])
     : null;
   const quote = quotes ? sumQuotes(quotes) : null;
-  const due = range ? manualDueAt(range.ci, f.hold) : null;
 
   // Pago recibido al crear: el abono solo se ofrece si es menos que el total (con un abono del 100 %, es lo mismo).
   const offerDeposit = !!quote && quote.deposit > 0 && quote.deposit < quote.total;
@@ -200,7 +197,6 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   if (f.special && (!f.total || f.total < 10_000)) errs.total = "Escribe el precio acordado.";
   if (f.payNow && payAmountError) errs.payAmount = payAmountError;
   if (f.payNow && !f.payMethod) errs.payMethod = "Elige si pagó en efectivo o por transferencia.";
-  if (due?.tooShort) errs.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: crea la reserva y registra el pago manualmente.";
   const err = (k: string) => (tried ? (errs[k] ?? server[k]) : server[k]);
   const blocked = Object.keys(errs).length > 0;
 
@@ -240,7 +236,6 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       estimatedArrival: "",
       specialRequests: f.notes.trim(),
       total: f.special && f.total ? f.total : null,
-      holdMinutes: f.hold,
       ...(extra.length > 0 && {
         more: extra.map((c) => ({ cabinTypeId: c.type, unit: c.unit ? Number(c.unit) : null, adults: c.adults, children: c.children })),
       }),
@@ -285,7 +280,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
     );
 
   // Una sola lista, por número de cabaña como se conocen en la finca: cada una con su tipo, personas, precio y si está libre.
-  // Al final, «cualquiera libre» por tipo: el sistema asigna como en la web.
+  // Al final, «cualquiera libre» por tipo: al guardar se asigna la primera cabaña libre todas las noches (como en la web).
   const cabinOptions = [
     ...cabins
       .flatMap((c) =>
@@ -308,7 +303,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       .map((c) => ({
         value: pickValue(c.id, ""),
         label: `Cualquiera libre · ${c.nombre}`,
-        description: `${peopleText(c)} · desde ${cop(rateFrom(c).price)} · como en la web: deja libres las que también se venden en Booking`,
+        description: `${peopleText(c)} · desde ${cop(rateFrom(c).price)} · se asigna la primera libre en esas fechas`,
         keywords: c.nombre,
       })),
   ];
@@ -333,9 +328,9 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
       labelledBy="nr-title"
       dismissOnBackdrop={false}
       initialFocus={range ? "[data-autofocus]" : "[data-dates] button"}
-      className="m-auto w-[calc(100%-32px)] max-w-[760px] rounded-[26px] p-0"
+      className="m-auto w-[calc(100%-32px)] max-w-[1240px] rounded-[26px] p-0"
     >
-      <div className="flex flex-col gap-5 p-5 sm:p-6">
+      <div className="flex flex-col gap-5 p-4 pb-0 sm:p-5 sm:pb-0">
         <div className="flex items-start gap-3.5">
           <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-success-soft text-success">
             <CalendarIcon size={18} variant="plus" />
@@ -345,7 +340,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
               Nueva reserva
             </h2>
             <p className="text-[13.5px] text-ink-muted">
-              Si ya pagó, registra el pago aquí mismo. Si no, las fechas quedan apartadas hasta el plazo que elijas y se liberan solas.
+              Si ya pagó, registra el pago aquí mismo. Si no, la reserva queda sin confirmar y no aparta las fechas hasta que llegue el abono.
             </p>
           </div>
           <IconButton label="Cerrar" onClick={onClose} className="flex-none">
@@ -353,236 +348,242 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
           </IconButton>
         </div>
 
-        {/* Estadía */}
-        <section aria-labelledby="nr-stay" className="flex flex-col gap-3">
-          <h3 id="nr-stay" className="flex items-center gap-2 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
-            <HomeIcon size={14} />
-            Estadía
-          </h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Cabaña" className="sm:col-span-2" error={err("cabinTypeId")} hint={minNote(f.type, guests)}>
-              {(p) => (
-                <Combobox
-                  id={p.id}
-                  describedBy={p["aria-describedby"]}
-                  value={picked(f.type, f.unit)}
-                  onChange={(v) => set(pick(v))}
-                  options={cabinOptions}
-                  searchPlaceholder="Número o tipo de cabaña…"
-                />
-              )}
-            </Field>
-            <Field label="Llegada y salida" className="sm:col-span-2" error={err("checkIn")} hint="Los días marcados ya están ocupados (punto) o casi llenos.">
-              {(p) => (
-                <div data-dates className="contents">
-                  <DateRangePicker
+        {/* Tres columnas en pantallas anchas: estadía, huésped y pago (con el resumen). En el celular, una debajo de otra. */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-0">
+          {/* Estadía */}
+          <section aria-labelledby="nr-stay" className="flex min-w-0 flex-col gap-3 lg:pr-6 pb-4">
+            <h3 id="nr-stay" className="flex items-center gap-2 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
+              <HomeIcon size={14} />
+              Estadía
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Cabaña" className="col-span-2" error={err("cabinTypeId")} hint={minNote(f.type, guests)}>
+                {(p) => (
+                  <Combobox
                     id={p.id}
                     describedBy={p["aria-describedby"]}
-                    invalid={!!p["aria-invalid"]}
-                    mode="nights"
-                    from={f.checkIn}
-                    to={f.checkOut}
-                    min={today}
-                    marks={marks}
-                    legend
-                    onChange={(checkIn, checkOut) => set({ checkIn, checkOut })}
-                    placeholder="Elegir fechas"
+                    value={picked(f.type, f.unit)}
+                    onChange={(v) => set(pick(v))}
+                    options={cabinOptions}
+                    searchPlaceholder="Número o tipo de cabaña…"
                   />
+                )}
+              </Field>
+              <Field label="Llegada y salida" className="col-span-2" error={err("checkIn")}>
+                {(p) => (
+                  <div data-dates className="contents">
+                    <DateRangePicker
+                      id={p.id}
+                      describedBy={p["aria-describedby"]}
+                      invalid={!!p["aria-invalid"]}
+                      mode="nights"
+                      from={f.checkIn}
+                      to={f.checkOut}
+                      min={today}
+                      marks={marks}
+                      legend
+                      onChange={(checkIn, checkOut) => set({ checkIn, checkOut })}
+                      placeholder="Elegir fechas"
+                    />
+                  </div>
+                )}
+              </Field>
+              <div className="col-span-2 grid grid-cols-2 gap-3">
+                <Field label="Adultos" error={err("adults")}>
+                  {(p) => <Stepper id={p.id} value={f.adults} onChange={(v) => set({ adults: v })} min={1} max={type?.maxPersonas ?? 20} />}
+                </Field>
+                <Field label="Niños">
+                  {(p) => (
+                    <Stepper id={p.id} value={f.children} onChange={(v) => set({ children: v })} min={0} max={Math.max(0, (type?.maxPersonas ?? 20) - 1)} />
+                  )}
+                </Field>
+              </div>
+              {extra.map((c, i) => {
+                const t = typeOf(c.type);
+                return (
+                  <fieldset key={i} className="col-span-2 grid grid-cols-2 gap-3 rounded-[18px] border border-line p-3">
+                    <legend className="flex w-full items-center justify-between gap-2 px-1 text-[13px] font-semibold text-ink">{`Cabaña ${i + 2}`}</legend>
+                    <div className="col-span-2 -mt-2 flex items-start justify-end">
+                      <Button size="sm" variant="ghost" icon={<CloseIcon size={14} />} onClick={() => setExtra((xs) => xs.filter((_, j) => j !== i))}>
+                        Quitar
+                      </Button>
+                    </div>
+                    <Field label="Cabaña" className="col-span-2" error={err(`more.${i}`)} hint={minNote(c.type, c.adults + c.children)}>
+                      {(p) => (
+                        <Combobox
+                          id={p.id}
+                          describedBy={p["aria-describedby"]}
+                          value={picked(c.type, c.unit)}
+                          onChange={(v) => setX(i, pick(v))}
+                          options={cabinOptions}
+                          searchPlaceholder="Número o tipo de cabaña…"
+                        />
+                      )}
+                    </Field>
+                    <Field label="Adultos">
+                      {(p) => <Stepper id={p.id} value={c.adults} onChange={(v) => setX(i, { adults: v })} min={1} max={t?.maxPersonas ?? 20} />}
+                    </Field>
+                    <Field label="Niños">
+                      {(p) => (
+                        <Stepper
+                          id={p.id}
+                          value={c.children}
+                          onChange={(v) => setX(i, { children: v })}
+                          min={0}
+                          max={Math.max(0, (t?.maxPersonas ?? 20) - 1)}
+                        />
+                      )}
+                    </Field>
+                  </fieldset>
+                );
+              })}
+              {all.length < MAX_GROUP_CABINS && (
+                <div className="col-span-2">
+                  <Button
+                    variant="secondary"
+                    icon={<PlusIcon size={14} />}
+                    onClick={() => setExtra((xs) => [...xs, { type: f.type, unit: "", adults: 2, children: 0 }])}
+                  >
+                    Agregar otra cabaña
+                  </Button>
+                  {extra.length > 0 && (
+                    <p className="mt-1.5 text-[12.5px] text-ink-muted">Mismas fechas y huésped. Se crea con un solo código, un solo pago y un solo correo.</p>
+                  )}
                 </div>
               )}
-            </Field>
-            <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-              <Field label="Adultos" error={err("adults")}>
-                {(p) => <Stepper id={p.id} value={f.adults} onChange={(v) => set({ adults: v })} min={1} max={type?.maxPersonas ?? 20} />}
-              </Field>
-              <Field label="Niños">
-                {(p) => (
-                  <Stepper id={p.id} value={f.children} onChange={(v) => set({ children: v })} min={0} max={Math.max(0, (type?.maxPersonas ?? 20) - 1)} />
-                )}
-              </Field>
-            </div>
-            {extra.map((c, i) => {
-              const t = typeOf(c.type);
-              return (
-                <fieldset key={i} className="grid grid-cols-1 gap-3 rounded-[18px] border border-line p-3 sm:col-span-2 sm:grid-cols-2">
-                  <legend className="flex w-full items-center justify-between gap-2 px-1 text-[13px] font-semibold text-ink">{`Cabaña ${i + 2}`}</legend>
-                  <div className="-mt-2 flex items-start justify-end sm:col-span-2">
-                    <Button size="sm" variant="ghost" icon={<CloseIcon size={14} />} onClick={() => setExtra((xs) => xs.filter((_, j) => j !== i))}>
-                      Quitar
-                    </Button>
-                  </div>
-                  <Field label="Cabaña" className="sm:col-span-2" error={err(`more.${i}`)} hint={minNote(c.type, c.adults + c.children)}>
-                    {(p) => (
-                      <Combobox
-                        id={p.id}
-                        describedBy={p["aria-describedby"]}
-                        value={picked(c.type, c.unit)}
-                        onChange={(v) => setX(i, pick(v))}
-                        options={cabinOptions}
-                        searchPlaceholder="Número o tipo de cabaña…"
-                      />
-                    )}
-                  </Field>
-                  <Field label="Adultos">
-                    {(p) => <Stepper id={p.id} value={c.adults} onChange={(v) => setX(i, { adults: v })} min={1} max={t?.maxPersonas ?? 20} />}
-                  </Field>
-                  <Field label="Niños">
-                    {(p) => (
-                      <Stepper id={p.id} value={c.children} onChange={(v) => setX(i, { children: v })} min={0} max={Math.max(0, (t?.maxPersonas ?? 20) - 1)} />
-                    )}
-                  </Field>
-                </fieldset>
-              );
-            })}
-            {all.length < MAX_GROUP_CABINS && (
-              <div className="sm:col-span-2">
-                <Button
-                  variant="secondary"
-                  icon={<PlusIcon size={14} />}
-                  onClick={() => setExtra((xs) => [...xs, { type: f.type, unit: "", adults: 2, children: 0 }])}
-                >
-                  Agregar otra cabaña
-                </Button>
-                {extra.length > 0 && (
-                  <p className="mt-1.5 text-[12.5px] text-ink-muted">Mismas fechas y huésped. Se crea con un solo código, un solo pago y un solo correo.</p>
-                )}
+              <div className="col-span-2">
+                <Switch checked={f.pet} onChange={(v) => set({ pet: v })} label="Viene con mascota" description="Sin costo adicional, según las políticas." />
               </div>
-            )}
-            <div className="sm:col-span-2">
-              <Switch checked={f.pet} onChange={(v) => set({ pet: v })} label="Viene con mascota" description="Sin costo adicional, según las políticas." />
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Huésped */}
-        <section aria-labelledby="nr-guest" className="flex flex-col gap-3 border-t border-line pt-4">
-          <h3 id="nr-guest" className="flex items-center gap-2 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
-            <UsersIcon size={14} />
-            Huésped
-          </h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Nombre completo" error={err("guest.fullName")}>
-              {(p) => (
-                <input
-                  {...p}
-                  data-autofocus
-                  type="text"
-                  autoComplete="off"
-                  maxLength={120}
-                  value={f.fullName}
-                  onChange={(e) => set({ fullName: e.target.value })}
-                  className={adminInput}
-                />
-              )}
-            </Field>
-            <Field label="Celular (WhatsApp)" error={err("guest.phone")} hint="Si no es de Colombia, con indicativo: +1 555…">
-              {(p) => (
-                <input
-                  {...p}
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="off"
-                  maxLength={24}
-                  value={f.phone}
-                  onChange={(e) => set({ phone: e.target.value })}
-                  placeholder="300 123 4567"
-                  className={adminInput}
-                />
-              )}
-            </Field>
-            <Field label="Correo" error={err("guest.email")} hint="Ahí le llega la confirmación cuando se registre el pago.">
-              {(p) => (
-                <input
-                  {...p}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="off"
-                  maxLength={160}
-                  value={f.email}
-                  onChange={(e) => set({ email: e.target.value })}
-                  className={adminInput}
-                />
-              )}
-            </Field>
-            <Field label="Ciudad (opcional)" error={err("guest.city")}>
-              {(p) => (
-                <input
-                  {...p}
-                  type="text"
-                  autoComplete="off"
-                  maxLength={80}
-                  value={f.city}
-                  onChange={(e) => set({ city: e.target.value })}
-                  className={adminInput}
-                />
-              )}
-            </Field>
-            <fieldset className="flex min-w-0 flex-col gap-1.5">
-              <legend className="mb-1.5 text-[13px] font-semibold text-ink">Tipo de documento</legend>
-              <Segmented label="Tipo de documento" size="sm" value={f.docType} onChange={(v) => set({ docType: v })} options={DOCS} />
-            </fieldset>
-            <Field label="Número de documento" error={err("guest.docNumber")}>
-              {(p) => (
-                <input
-                  {...p}
-                  type="text"
-                  autoComplete="off"
-                  maxLength={15}
-                  value={f.docNumber}
-                  onChange={(e) => set({ docNumber: e.target.value.replace(/[^A-Za-z0-9]/g, "") })}
-                  className={adminInput}
-                />
-              )}
-            </Field>
-            <Field
-              label="Notas (opcional)"
-              className="sm:col-span-2"
-              error={err("specialRequests")}
-              hint="Peticiones del huésped o acuerdos. Las ve el equipo en la ficha."
-            >
-              {(p) => (
-                <textarea
-                  {...p}
-                  rows={2}
-                  maxLength={1000}
-                  value={f.notes}
-                  onChange={(e) => set({ notes: e.target.value })}
-                  className={`${adminInput} resize-y`}
-                />
-              )}
-            </Field>
-          </div>
-        </section>
+          {/* Huésped */}
+          <section aria-labelledby="nr-guest" className="flex min-w-0 flex-col gap-3 border-t border-line pt-4 pb-3 lg:border-t-0 lg:border-l lg:px-6 lg:pt-0">
+            <h3 id="nr-guest" className="flex items-center gap-2 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
+              <UsersIcon size={14} />
+              Huésped
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Nombre completo" className="col-span-2" error={err("guest.fullName")}>
+                {(p) => (
+                  <input
+                    {...p}
+                    data-autofocus
+                    type="text"
+                    autoComplete="off"
+                    maxLength={120}
+                    value={f.fullName}
+                    onChange={(e) => set({ fullName: e.target.value })}
+                    className={adminInput}
+                  />
+                )}
+              </Field>
+              <Field label="Celular (WhatsApp)" error={err("guest.phone")}>
+                {(p) => (
+                  <input
+                    {...p}
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="off"
+                    maxLength={24}
+                    value={f.phone}
+                    onChange={(e) => set({ phone: e.target.value })}
+                    placeholder="300 123 4567"
+                    className={adminInput}
+                  />
+                )}
+              </Field>
+              <Field label="Ciudad (opcional)" error={err("guest.city")}>
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    autoComplete="off"
+                    maxLength={80}
+                    value={f.city}
+                    onChange={(e) => set({ city: e.target.value })}
+                    className={adminInput}
+                  />
+                )}
+              </Field>
+              <Field label="Correo" className="col-span-2" error={err("guest.email")}>
+                {(p) => (
+                  <input
+                    {...p}
+                    type="email"
+                    inputMode="email"
+                    autoComplete="off"
+                    maxLength={160}
+                    value={f.email}
+                    onChange={(e) => set({ email: e.target.value })}
+                    className={adminInput}
+                  />
+                )}
+              </Field>
+              <fieldset className="col-span-2 flex min-w-0 flex-col gap-1.5">
+                <legend className="mb-1.5 text-[13px] font-semibold text-ink">Tipo de documento</legend>
+                <Segmented label="Tipo de documento" size="sm" value={f.docType} onChange={(v) => set({ docType: v })} options={DOCS} />
+              </fieldset>
+              <Field label="Número de documento" className="col-span-2" error={err("guest.docNumber")}>
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    autoComplete="off"
+                    maxLength={15}
+                    value={f.docNumber}
+                    onChange={(e) => set({ docNumber: e.target.value.replace(/[^A-Za-z0-9]/g, "") })}
+                    className={adminInput}
+                  />
+                )}
+              </Field>
+              <Field
+                label="Notas (opcional)"
+                className="col-span-2"
+                error={err("specialRequests")}
+              >
+                {(p) => (
+                  <textarea
+                    {...p}
+                    rows={2}
+                    maxLength={1000}
+                    value={f.notes}
+                    onChange={(e) => set({ notes: e.target.value })}
+                    className={`${adminInput} resize-y`}
+                  />
+                )}
+              </Field>
+            </div>
+          </section>
 
-        {/* Pago */}
-        <section aria-labelledby="nr-pay" className="flex flex-col gap-3 border-t border-line pt-4">
-          <h3 id="nr-pay" className="flex items-center gap-2 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
-            <WalletIcon size={14} />
-            Pago
-          </h3>
-          <Switch
-            checked={f.special}
-            onChange={(v) => set({ special: v, total: v && !f.total && rate ? rate.total : f.total })}
-            label="Precio especial"
-            description={
-              rate ? `Tarifa vigente: ${cop(rate.total)}. Úsalo si acordaste otro valor con el huésped.` : "Úsalo si acordaste otro valor con el huésped."
-            }
-          />
-          {f.special && (
-            <Field label="Total acordado" error={err("total")} className="max-w-[260px]">
-              {(p) => (
-                <MoneyInput id={p.id} value={f.total} onChange={(v) => set({ total: v })} invalid={!!p["aria-invalid"]} describedBy={p["aria-describedby"]} />
-              )}
-            </Field>
-          )}
-          <Switch
-            checked={f.payNow}
-            onChange={(v) => set({ payNow: v })}
-            label="El huésped ya pagó"
-            description="Registra el pago completo, el abono u otro valor. La reserva queda confirmada al crearla."
-          />
-          {f.payNow ? (
-            <>
+          {/* Pago */}
+          <section aria-labelledby="nr-pay" className="flex min-w-0 flex-col gap-3 border-t border-line pt-4 pb-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+            <h3 id="nr-pay" className="flex items-center gap-2 text-[12px] font-bold tracking-[.06em] text-ink-muted uppercase">
+              <WalletIcon size={14} />
+              Pago
+            </h3>
+            <Switch
+              checked={f.special}
+              onChange={(v) => set({ special: v, total: v && !f.total && rate ? rate.total : f.total })}
+              label="Precio especial"
+              description={
+                rate ? `Tarifa vigente: ${cop(rate.total)}. Úsalo si acordaste otro valor con el huésped.` : "Úsalo si acordaste otro valor con el huésped."
+              }
+            />
+            {f.special && (
+              <Field label="Total acordado" error={err("total")} className="max-w-[260px]">
+                {(p) => (
+                  <MoneyInput id={p.id} value={f.total} onChange={(v) => set({ total: v })} invalid={!!p["aria-invalid"]} describedBy={p["aria-describedby"]} />
+                )}
+              </Field>
+            )}
+            <Switch
+              checked={f.payNow}
+              onChange={(v) => set({ payNow: v })}
+              label="El huésped ya pagó"
+              description="Registra el pago completo, el abono u otro valor. La reserva queda confirmada al crearla."
+            />
+            {f.payNow ? (
               <PaymentFields
                 options={payOptions}
                 choice={payChoice}
@@ -596,65 +597,49 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
                 onNote={(s) => set({ payNote: s })}
                 tried={tried}
               />
-              {err("holdMinutes") && <FieldError>{err("holdMinutes")}</FieldError>}
-            </>
-          ) : (
-            <fieldset className="flex min-w-0 flex-col gap-1.5">
-              <legend className="mb-1.5 text-[13px] font-semibold text-ink">Plazo para pagar el abono</legend>
-              <Segmented
-                label="Plazo para pagar"
-                size="sm"
-                value={String(f.hold)}
-                onChange={(v) => set({ hold: Number(v) })}
-                options={HOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
-                className="flex-wrap"
-              />
-              {due && !due.tooShort && (
-                <p className="text-[12.5px] text-ink-muted">
-                  {`Si no registras el abono antes del ${fmtDeadline(due.dueAt)}, las fechas se liberan`}
-                  {due.capped ? " (no puede pasar del día de llegada)" : ""}
-                </p>
-              )}
-              {err("holdMinutes") && <FieldError>{err("holdMinutes")}</FieldError>}
-            </fieldset>
-          )}
-        </section>
-
-        {quote && quotes && range && alloc.every(Boolean) && (
-          <Callout tone="success">
-            {extra.length > 0 ? (
-              <>
-                <span className="font-semibold">{plural(all.length, "cabaña", "cabañas")}</span> · {fmtDate(range.ci)} → {fmtDate(range.co)} ·{" "}
-                {plural(nightsBetween(range.ci, range.co), "noche", "noches")}
-                <span className="mt-1 block">
-                  {all.map((c, i) => (
-                    <span key={i} className="block">
-                      {`${cabinLabel(c.type, alloc[i])} · ${plural(c.adults + c.children, "persona", "personas")} · ${cop(quotes[i].total)}`}
-                    </span>
-                  ))}
-                </span>
-              </>
             ) : (
-              <>
-                <span className="font-semibold">{cabinLabel(type!.id, unit ?? undefined)}</span>
-                {unit ? "" : " (la unidad se asigna al crear)"} · {fmtDate(range.ci)} → {fmtDate(range.co)} ·{" "}
-                {plural(nightsBetween(range.ci, range.co), "noche", "noches")} · {plural(guests, "persona", "personas")}
-              </>
+              <p className="rounded-[14px] bg-warning-soft px-3 py-2.5 text-[12.5px] leading-relaxed text-warning">
+                Sin pago, la reserva queda <strong>sin confirmar</strong>: no aparta las fechas. Si otra reserva las paga primero, se corre a las próximas
+                libres con el mismo valor y le avisamos al huésped. Si no paga, vence al terminar su día de llegada.
+              </p>
             )}
-            <span className="mt-1 block">
-              Total <strong>{cop(quote.total)}</strong>
-              {quote.adjustment ? ` (${quote.adjustment < 0 ? "descuento" : "recargo"} de ${cop(Math.abs(quote.adjustment))})` : ""} · abono para confirmar{" "}
-              <strong>{cop(quote.deposit)}</strong>
-            </span>
-            {f.payNow && payAmount > 0 && !payAmountError && (
-              <span className="mt-1 block">
-                {`Se registra un pago de ${cop(payAmount)}: la reserva queda confirmada`}
-                {payAmount < quote.total ? ` y con un saldo de ${cop(quote.total - payAmount)} por cobrar.` : " y pagada por completo."}
-              </span>
+            {quote && quotes && range && alloc.every(Boolean) && (
+              <Callout tone="success">
+                {extra.length > 0 ? (
+                  <>
+                    <span className="font-semibold">{plural(all.length, "cabaña", "cabañas")}</span> · {fmtDate(range.ci)} → {fmtDate(range.co)} ·{" "}
+                    {plural(nightsBetween(range.ci, range.co), "noche", "noches")}
+                    <span className="mt-1 block">
+                      {all.map((c, i) => (
+                        <span key={i} className="block">
+                          {`${cabinLabel(c.type, alloc[i])} · ${plural(c.adults + c.children, "persona", "personas")} · ${cop(quotes[i].total)}`}
+                        </span>
+                      ))}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold">{cabinLabel(type!.id, unit ?? undefined)}</span>
+                    {unit ? "" : " (la unidad se asigna al crear)"} · {fmtDate(range.ci)} → {fmtDate(range.co)} ·{" "}
+                    {plural(nightsBetween(range.ci, range.co), "noche", "noches")} · {plural(guests, "persona", "personas")}
+                  </>
+                )}
+                <span className="mt-1 block">
+                  Total <strong>{cop(quote.total)}</strong>
+                  {quote.adjustment ? ` (${quote.adjustment < 0 ? "descuento" : "recargo"} de ${cop(Math.abs(quote.adjustment))})` : ""} · abono para confirmar{" "}
+                  <strong>{cop(quote.deposit)}</strong>
+                </span>
+                {f.payNow && payAmount > 0 && !payAmountError && (
+                  <span className="mt-1 block">
+                    {`Se registra un pago de ${cop(payAmount)}: la reserva queda confirmada`}
+                    {payAmount < quote.total ? ` y con un saldo de ${cop(quote.total - payAmount)} por cobrar.` : " y pagada por completo."}
+                  </span>
+                )}
+              </Callout>
             )}
-          </Callout>
-        )}
-        {error && <FieldError>{error}</FieldError>}
+            {error && <FieldError>{error}</FieldError>}
+          </section>
+        </div>
       </div>
       <div className="flex flex-col-reverse gap-2 rounded-b-[26px] border-t border-line bg-canvas/70 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
         <Button onClick={onClose}>Cancelar</Button>
@@ -672,7 +657,7 @@ export function NewReservationDialog({ draft, onClose }: { draft: NewReservation
   );
 }
 
-// Reserva creada: confirmada si se registró un pago; si no, pendiente de abono hasta el plazo.
+// Reserva creada: confirmada si se registró un pago; si no, sin confirmar (no aparta fechas) hasta que llegue el abono.
 function Created({ result, payFailed, onClose, onOpen }: { result: ManualReservationResult; payFailed: boolean; onClose: () => void; onOpen: () => void }) {
   const { data, cabinLabel } = useAdmin();
   // La reserva puede actualizarse en vivo (p. ej. otro miembro del equipo registró el abono): se muestra la versión más reciente.
@@ -713,8 +698,9 @@ function Created({ result, payFailed, onClose, onOpen }: { result: ManualReserva
           </Callout>
         ) : (
           <p className="text-[14px] text-ink">
-            Queda pendiente del abono de <strong>{cop(r.quote.deposit)}</strong> (o el total de <strong>{cop(r.quote.total)}</strong>) hasta el{" "}
-            <strong>{fmtDeadline(r.depositDueAt)}</strong>. Cuando el huésped pague, regístralo en la reserva: se confirma y le llega el correo.
+            Queda <strong>sin confirmar</strong> hasta que pague el abono de <strong>{cop(r.quote.deposit)}</strong> (o el total de{" "}
+            <strong>{cop(r.quote.total)}</strong>). Mientras tanto no aparta las fechas: si otra reserva las paga primero, se corre a las próximas libres.
+            Cuando el huésped pague, regístralo en la reserva: se confirma y le llega el correo.
           </p>
         )}
       </div>

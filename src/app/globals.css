@@ -792,15 +792,16 @@
   }
 
   /* Variante compacta del mismo campo, para el panel (densidad de herramienta, campo de papel sobre la tarjeta arena). */
+  /* Mismo alto y letra que los botones del panel (36 px, 13 px): campos, desplegables y selectores de fecha. */
   .field-input.field-compact {
-    min-height: 42px;
-    padding: 8px 14px;
+    min-height: 36px;
+    padding: 0 14px;
     border-width: 1px;
     border-color: var(--color-line-strong);
     border-radius: 14px;
     background-color: var(--color-paper);
     color: var(--color-ink);
-    font-size: 14.5px;
+    font-size: 13px;
     transition:
       border-color 0.15s ease,
       box-shadow 0.15s ease,
@@ -856,10 +857,15 @@
     background-repeat: no-repeat;
     background-position: right 14px center;
   }
+  textarea.field-input.field-compact {
+    padding: 8px 14px;
+  }
+  /* En pantallas táctiles, lo que se escribe va a 16 px: con menos, iOS hace zoom al enfocar. El alto no cambia. */
   @media (pointer: coarse) {
-    .field-input.field-compact {
-      min-height: 44px;
-      font-size: 16px; /* evita el zoom automático de iOS */
+    input.field-input.field-compact,
+    textarea.field-input.field-compact,
+    select.field-input.field-compact {
+      font-size: 16px;
     }
   }
 
@@ -969,11 +975,11 @@
   }
 }
 
-/* Menú del panel: al pasar el mouse, al llegar con el teclado y al hacer clic o tocarlo (data-tap, en shell.tsx), el icono
-   de cada módulo hace un gesto corto y propio. Los iconos separan en trazos lo que se mueve por aparte. Con movimiento
+/* Menú del panel: al pasar el mouse (y al llegar con el teclado) el icono de cada módulo hace un gesto corto y propio;
+   al hacer clic no se repite. Los iconos separan en trazos lo que se mueve por aparte. Con movimiento
    reducido se quedan quietos. */
 @media (prefers-reduced-motion: no-preference) {
-  [data-nav]:is(:hover, :focus-visible, [data-tap]) {
+  [data-nav]:is(:hover, :focus-visible) {
     svg {
       overflow: visible;
     }
@@ -1080,9 +1086,9 @@
     }
   }
 }
-/* En pantallas táctiles el :hover queda pegado después de tocar: ahí solo cuenta el toque. */
+/* En pantallas táctiles no hay hover: el :hover que queda pegado al tocar no anima el icono. */
 @media (hover: none) {
-  [data-nav]:hover:not([data-tap], :focus-visible) :is(svg, svg *) {
+  [data-nav]:hover:not(:focus-visible) :is(svg, svg *) {
     animation: none !important;
   }
 }
@@ -1125,6 +1131,19 @@
     }
     &[data-gesture="calendar"] svg > :nth-child(2) {
       animation: ec-nav-lift 0.45s ease-in-out both;
+    }
+    /* Acciones de cada reserva en la lista. */
+    &:is([data-gesture="checkin"], [data-gesture="checkout"]) svg {
+      animation: ec-nav-next 0.45s ease-in-out both;
+    }
+    &[data-gesture="pay"] svg {
+      animation: ec-nav-hop 0.5s ease-in-out both;
+    }
+    &[data-gesture="cancel"] svg {
+      animation: ec-nav-swing 0.55s ease-in-out both;
+    }
+    &[data-gesture="chat"] svg {
+      animation: ec-nav-ring 0.6s ease-in-out both;
     }
   }
 }

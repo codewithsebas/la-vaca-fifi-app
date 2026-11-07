@@ -1,6 +1,6 @@
 // Correos transaccionales: HTML de 600 px con tablas, estilos inline y colores hex (funciona en Gmail, Outlook y Apple Mail).
 // Todos (los automáticos de la reserva y el mensaje del equipo) se generan con funciones que reciben los datos.
-import { cop, fmtDate, fmtDateTime, nightsBetween, plural } from "@/lib/format";
+import { cop, fmtDate, nightsBetween, plural } from "@/lib/format";
 import { fmtTime, type SiteConfig } from "@/lib/site";
 
 type Cfg = SiteConfig;
@@ -263,13 +263,13 @@ const stayOf = (d: StayData) => `${fmtDate(d.checkIn, true)} → ${fmtDate(d.che
 // Los datos de pago se editan en el panel (Contenido → Pagos); mientras sigan con el marcador no se muestran.
 const payInfo = (c: Cfg) => (c.datosPagoAbono.trim().startsWith("{") ? "" : c.datosPagoAbono.trim());
 
-/* ───────────── Reserva recibida (automático, al crearse con las fechas retenidas) ───────────── */
+/* ───────────── Reserva recibida (automático, al crearse; sin abono no aparta las fechas) ───────────── */
 
 type ReceivedEmailData = StayData & {
   mascota: boolean;
   total: number;
   abono: number;
-  plazo: string; // ISO: hasta cuándo se retienen las fechas sin el abono
+  plazo: string; // ISO: fin del día de llegada (si no llega el abono, ahí vence)
   miReservaUrl: string; // vacío: sin el sitio público
   whatsappUrl: string;
 };
@@ -277,7 +277,6 @@ type ReceivedEmailData = StayData & {
 export function reservationReceivedEmail(c: Cfg, d: ReceivedEmailData): RenderedEmail {
   const first = firstName(d.nombre);
   const nights = plural(nightsBetween(d.checkIn, d.checkOut), "noche", "noches");
-  const plazo = fmtDateTime(d.plazo);
   const datos = payInfo(c);
   const payHtml = datos
     ? p(esc(datos).replace(/\n/g, "<br>")) +
@@ -286,7 +285,9 @@ export function reservationReceivedEmail(c: Cfg, d: ReceivedEmailData): Rendered
   const body =
     pill("Reserva recibida", "yellow") +
     h1(`¡Gracias, ${esc(first)}!`) +
-    p(`Recibimos tu reserva y <strong>retenemos tus fechas hasta el ${esc(plazo)}</strong>. Para confirmarla, paga el abono antes de ese momento.`) +
+    p(
+      `Recibimos tu reserva. <strong>Tus fechas se aseguran cuando recibamos el abono</strong>: mientras tanto siguen disponibles y, si alguien las paga antes, te movemos a las próximas fechas libres con el mismo valor y te avisamos.`,
+    ) +
     codeBox(esc(d.codigo), "Pendiente de abono", "yellow") +
     h2("Tu estadía") +
     kv([
@@ -298,7 +299,7 @@ export function reservationReceivedEmail(c: Cfg, d: ReceivedEmailData): Rendered
     amounts([
       ["Valor total", cop(d.total)],
       ["Saldo al llegar", cop(Math.max(0, d.total - d.abono))],
-      ["Abono para confirmar", cop(d.abono), `Antes del ${esc(plazo)}`],
+      ["Abono para confirmar", cop(d.abono), "Asegura tus fechas"],
     ]) +
     h2("Cómo pagar el abono") +
     payHtml +
@@ -306,17 +307,17 @@ export function reservationReceivedEmail(c: Cfg, d: ReceivedEmailData): Rendered
       ["Ver mi reserva", d.miReservaUrl, X.hl, X.ink],
       ["Escribir por WhatsApp", d.whatsappUrl, X.brand, X.cream],
     ]) +
-    small("Si el abono no llega a tiempo, la reserva vence y las fechas quedan libres para otros huéspedes. El abono no es reembolsable.");
+    small("Si no recibimos el abono antes de tu día de llegada, la reserva vence. El abono no es reembolsable.");
   const text =
     `¡Gracias, ${first}! Recibimos tu reserva.\n\n` +
     `Código: ${d.codigo} (pendiente de abono)\nCabaña: ${d.cabana}\nFechas: ${stayOf(d)} · ${nights}\nHuéspedes: ${guestsOf(d)}${d.mascota ? " · con mascota" : ""}\n\n` +
-    `PARA CONFIRMAR\nValor total: ${cop(d.total)}\nAbono: ${cop(d.abono)} antes del ${plazo}\nSaldo al llegar: ${cop(Math.max(0, d.total - d.abono))}\n\n` +
+    `PARA CONFIRMAR\nValor total: ${cop(d.total)}\nAbono: ${cop(d.abono)} (asegura tus fechas)\nSaldo al llegar: ${cop(Math.max(0, d.total - d.abono))}\n\n` +
     `CÓMO PAGAR EL ABONO\n${datos || "Escríbenos por WhatsApp y te enviamos los datos para transferir."}\n\n` +
-    `${linkLine("Ver mi reserva", d.miReservaUrl)}WhatsApp: ${d.whatsappUrl}\n\nSi el abono no llega a tiempo, la reserva vence y las fechas quedan libres.` +
+    `${linkLine("Ver mi reserva", d.miReservaUrl)}WhatsApp: ${d.whatsappUrl}\n\nTus fechas se aseguran cuando recibamos el abono. Si alguien las paga antes, te movemos a las próximas libres con el mismo valor.` +
     footText(c);
   return finish(c, d.logoUrl, {
     subject: `Recibimos tu reserva ${d.codigo} · paga el abono para confirmarla`,
-    preheader: `Retenemos tus fechas hasta el ${plazo}. Abono: ${cop(d.abono)}.`,
+    preheader: `Paga el abono de ${cop(d.abono)} para asegurar tus fechas.`,
     body,
     text,
   });
@@ -329,7 +330,7 @@ type EndedEmailData = StayData & { vencida: boolean; pagado: number; reservarUrl
 export function reservationEndedEmail(c: Cfg, d: EndedEmailData): RenderedEmail {
   const first = firstName(d.nombre);
   const what = d.vencida
-    ? `tu reserva ${d.codigo} para la ${d.cabana} (${stayOf(d)}) venció porque no recibimos el abono dentro del plazo, y las fechas quedaron libres.`
+    ? `tu reserva ${d.codigo} para la ${d.cabana} (${stayOf(d)}) venció porque no recibimos el abono antes del día de llegada.`
     : `has cancelado tu reserva ${d.codigo} en La Vaca Fifí para la ${d.cabana} (${stayOf(d)}). Las fechas quedaron libres.`;
   // El abono solo se menciona si se pagó: sin pago no hay nada que retener.
   const next = d.vencida
@@ -421,9 +422,10 @@ type RescheduledEmailData = StayData & {
   total: number;
   pagado: number;
   abono: number; // para la que sigue sin abono
-  plazo: string; // ISO: hasta cuándo se retienen las fechas sin el abono
+  plazo: string; // ISO: fin del día de llegada (si no llega el abono, ahí vence)
   miReservaUrl: string; // vacío: sin el sitio público
   whatsappUrl: string;
+  movida?: boolean; // sin abono: otra reserva pagó sus fechas y se corrió a las próximas libres
 };
 
 export function reservationRescheduledEmail(c: Cfg, d: RescheduledEmailData): RenderedEmail {
@@ -432,11 +434,12 @@ export function reservationRescheduledEmail(c: Cfg, d: RescheduledEmailData): Re
   const saldo = Math.max(0, d.total - d.pagado);
   const antes = stayOf({ ...d, checkIn: d.checkInAnterior, checkOut: d.checkOutAnterior });
   const ahora = stayOf(d);
-  const plazo = fmtDateTime(d.plazo);
   // El mensaje cambia según lo pagado: nada todavía, el abono (o parte) o todo.
   const estado = !d.pagado ? "sin_abono" : saldo ? "abono" : "total";
   const message = {
-    sin_abono: `Tus fechas siguen retenidas. Para confirmar tu reserva, paga el abono de ${cop(d.abono)} antes del ${plazo}`,
+    sin_abono: d.movida
+      ? `Otra persona pagó primero tus fechas anteriores, así que te movimos a las próximas fechas libres con el mismo valor. Paga el abono de ${cop(d.abono)} para asegurarlas.`
+      : `Para confirmar tu reserva y asegurar las fechas, paga el abono de ${cop(d.abono)}.`,
     abono: `Lo que ya abonaste (${cop(d.pagado)}) se mantiene para las nuevas fechas. Te queda un saldo de ${cop(saldo)}, que puedes pagar por transferencia antes de llegar o en recepción.`,
     total: "Ya hiciste tu pago total, así que no tienes saldo pendiente. Solo queda disfrutar tu estadía en La Vaca Fifí en las nuevas fechas.",
   }[estado];
@@ -446,7 +449,7 @@ export function reservationRescheduledEmail(c: Cfg, d: RescheduledEmailData): Re
       ? [
           ["Valor total", cop(d.total)],
           ["Saldo al llegar", cop(Math.max(0, d.total - d.abono))],
-          ["Abono para confirmar", cop(d.abono), `Antes del ${esc(plazo)}`],
+          ["Abono para confirmar", cop(d.abono), "Asegura tus fechas"],
         ]
       : [
           ["Valor total", cop(d.total)],
@@ -454,9 +457,9 @@ export function reservationRescheduledEmail(c: Cfg, d: RescheduledEmailData): Re
           ["Saldo pendiente", cop(saldo), saldo ? "Por transferencia antes de llegar o en recepción." : "No tienes saldo pendiente."],
         ];
   const body =
-    pill("Reserva reprogramada", "blue") +
+    pill(d.movida ? "Cambiamos tus fechas" : "Reserva reprogramada", "blue") +
     h1(`Nuevas fechas, ${esc(first)}`) +
-    p(`Reprogramamos tu reserva para el <strong>${esc(ahora)}</strong>. ${esc(message)}`) +
+    p(`${d.movida ? "Movimos" : "Reprogramamos"} tu reserva para el <strong>${esc(ahora)}</strong>. ${esc(message)}`) +
     codeBox(esc(d.codigo), status, "blue") +
     h2("Tu estadía") +
     kv([
@@ -474,7 +477,7 @@ export function reservationRescheduledEmail(c: Cfg, d: RescheduledEmailData): Re
     small(`Adjuntamos <strong>reserva-${esc(d.codigo)}.ics</strong> con las nuevas fechas para tu calendario.`) +
     small("Con menos de 5 días (120 horas) antes de la llegada ya no se permiten nuevos cambios.");
   const text =
-    `Nuevas fechas, ${first}. Reprogramamos tu reserva para el ${ahora}.\n\n${message}\n\n` +
+    `Nuevas fechas, ${first}. ${d.movida ? "Movimos" : "Reprogramamos"} tu reserva para el ${ahora}.\n\n${message}\n\n` +
     `Código: ${d.codigo} (${status.toLowerCase()})\nCabaña: ${d.cabana}\nAntes: ${antes}\nAhora: ${ahora} · ${nights}\nHuéspedes: ${guestsOf(d)}${d.mascota ? " · con mascota" : ""}\n\n` +
     `PAGOS\n${rows.map(([k, v]) => `${k}: ${v.replace("&#10003; ", "")}`).join("\n")}\n\n` +
     `${linkLine("Ver mi reserva", d.miReservaUrl)}WhatsApp: ${d.whatsappUrl}\nAdjunto: reserva-${d.codigo}.ics\n\nCon menos de 5 días (120 horas) antes de la llegada ya no se permiten nuevos cambios.` +
@@ -599,17 +602,18 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
     const movedDeposit = reservationRescheduledEmail(c, { ...moved, pagado: 141000 });
     const movedFull = reservationRescheduledEmail(c, { ...moved, pagado: 470000 });
     const movedPending = reservationRescheduledEmail(c, { ...moved, pagado: 0 });
+    const bumped = reservationRescheduledEmail(c, { ...moved, pagado: 0, movida: true });
     const reminder = arrivalReminderEmail(c, { ...stay, saldo: 329000, comoLlegarUrl: "#", miReservaUrl: "#", whatsappUrl: "#" });
-    return { confirmed, team, received, cancelled, expired, reminder, balancePaid, movedDeposit, movedFull, movedPending };
+    return { confirmed, team, received, cancelled, expired, reminder, balancePaid, movedDeposit, movedFull, movedPending, bumped };
   };
-  const { confirmed, team, received, cancelled, expired, reminder, balancePaid, movedDeposit, movedFull, movedPending } = preview("{{logoUrl}}");
+  const { confirmed, team, received, cancelled, expired, reminder, balancePaid, movedDeposit, movedFull, movedPending, bumped } = preview("{{logoUrl}}");
   const auto = (name: string, to: string, e: RenderedEmail, vars: string): EmailTemplate => ({ name, to, sent: "auto", vars, ...e });
   return [
     auto(
       "Reserva recibida",
       "Huésped",
       received,
-      "Se envía al crearse la reserva con las fechas retenidas (web o panel): abono, plazo y datos de pago (Contenido → Pagos).",
+      "Se envía al crearse la reserva (web o panel): abono para asegurar las fechas y datos de pago (Contenido → Pagos).",
     ),
     {
       name: "Reserva confirmada",
@@ -633,7 +637,7 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
     },
     auto("Recordatorio 2 días antes", "Huésped", reminder, "Se envía a las 9:00 dos días antes de la llegada a las reservas confirmadas."),
     auto("Reserva cancelada", "Huésped", cancelled, "Se envía cuando el equipo cancela la reserva."),
-    auto("Reserva vencida", "Huésped", expired, "Se envía cuando vence el plazo del abono y las fechas se liberan."),
+    auto("Reserva vencida", "Huésped", expired, "Se envía cuando llega el día de llegada sin abono."),
     auto("Pago total recibido", "Huésped", balancePaid, "Se envía cuando el equipo registra el pago que completa el saldo de una reserva ya confirmada."),
     auto(
       "Reprogramada · con abono",
@@ -646,7 +650,13 @@ export function emailTemplates(c: Cfg): EmailTemplate[] {
       "Reprogramada · sin abono",
       "Huésped",
       movedPending,
-      "Se envía al cambiar las fechas de una retención que aún no tiene abono. Adjunta el .ics con las nuevas fechas.",
+      "Se envía al cambiar las fechas de una reserva que aún no tiene abono. Adjunta el .ics con las nuevas fechas.",
+    ),
+    auto(
+      "Fechas movidas · sin abono",
+      "Huésped",
+      bumped,
+      "Se envía cuando otra reserva paga primero las fechas de una que no tenía abono y esta se corre a las próximas libres, con el mismo valor.",
     ),
   ];
 }

@@ -9,7 +9,6 @@ import { touches, useAvailabilitySync, type AvailabilityChanges } from "@/lib/cl
 import { config, isMockApi, type CabinTypeId } from "@/lib/config";
 import { addDays, cop, fmtDate, fmtLong, isISO, monthStart, nightsBetween, plural, todayISO, wa } from "@/lib/format";
 import { saveLastReservation } from "@/lib/client/last-reservation";
-import { WEB_HOLD_HOURS } from "@/lib/payments";
 import type { Availability, CabinType, DocType, FieldErrors, PublicReservation, ReservationInput } from "@/lib/types";
 import { GiftIcon, PawIcon, WhatsAppIcon } from "@/components/ui/icons";
 import { PhotoSlot } from "@/components/site/photo-slot";
@@ -1296,7 +1295,7 @@ export function ReservationWizard() {
                 )}
               </div>
               <p className="rounded-lg bg-surface px-5 py-4 text-[.92rem] font-semibold">
-                {`Al enviar, tus fechas quedan apartadas ${WEB_HOLD_HOURS} horas. Paga el abono por transferencia y envíanos el comprobante: la reserva se confirma cuando lo recibamos.`}
+                {`Al enviar, registramos tu reserva. Tus fechas se aseguran cuando recibamos el abono por transferencia: envíanos el comprobante y la confirmamos. Si alguien paga esas fechas antes, te movemos a las próximas libres con el mismo valor.`}
               </p>
               <div className="flex flex-wrap justify-between gap-3">
                 <button type="button" onClick={back} disabled={submitting} className={backBtn}>
@@ -1335,7 +1334,7 @@ export function ReservationWizard() {
             <strong className="display text-[2.6rem] leading-none">{sumTotal}</strong>
             <span className="text-[.86rem]">{depositLine}</span>
           </div>
-          <p className="text-[.8rem] text-on-dark-muted">{`Tus fechas se apartan ${WEB_HOLD_HOURS} horas mientras pagas el abono del ${c.depositPct} % o el total. La reserva se confirma cuando lo recibimos.`}</p>
+          <p className="text-[.8rem] text-on-dark-muted">{`Tus fechas se aseguran cuando recibimos el abono del ${c.depositPct} % o el total. La reserva se confirma con ese pago.`}</p>
         </aside>
       </div>
 

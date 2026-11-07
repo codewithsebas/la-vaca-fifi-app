@@ -60,7 +60,7 @@ export const POST = route(async (req: NextRequest) => {
     consents: { policies: true, dataProcessing: true, marketing: !!b.consents.marketing },
     quote: computeQuote(type, b.checkIn, b.checkOut, guests, seasons, depositPct),
     idempotency_key: idemKey,
-    deposit_due_at: depositDueAt(),
+    deposit_due_at: depositDueAt(b.checkIn),
   };
 
   // Reserva con varias cabañas: mismas fechas y huésped; cada una con sus personas y su tarifa.

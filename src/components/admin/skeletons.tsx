@@ -198,7 +198,7 @@ export function DashboardSkeleton() {
       <div className="flex min-w-0 flex-col gap-7">
         {/* Saludo y resumen del día */}
         <div className="flex flex-col gap-3">
-          <Skeleton className="h-[clamp(1.6rem,2.5vw,2.1rem)] w-56 rounded-full" />
+          <Skeleton className="h-[28px] w-56 rounded-full" />
           <Skeleton className="h-4 w-[min(520px,100%)] rounded-full" />
           {/* Sin la columna derecha (pantallas medianas y pequeñas), los botones van bajo el saludo. */}
           <div className="mt-1 flex gap-2 xl:hidden">
