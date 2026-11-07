@@ -1,13 +1,17 @@
 // Reglas de reserva compartidas por el servidor (Supabase) y el modo simulado.
 import { config, type CabinTypeId } from "@/lib/config";
-import { DEFAULT_HOLD, HOLD_OPTIONS } from "@/lib/payments";
-import { WD, WD_FULL, addDays, fmtDate, isISO, nightsBetween, parseISO } from "@/lib/format";
+import { unpaidUntil } from "@/lib/payments";
+import { WD, WD_FULL, addDays, cop, fmtDate, isISO, nightsBetween, parseISO } from "@/lib/format";
 import type {
   Availability,
+  Block,
   CabinType,
+  ChannelStay,
+  ExtraCabin,
   FieldErrors,
   ImportRow,
   ManualReservationInput,
+  PersonRates,
   Quote,
   RateSeason,
   ReservationInput,
@@ -16,6 +20,9 @@ import type {
 } from "@/lib/types";
 
 export const ACTIVE_STATUSES: ReservationStatus[] = ["pending_deposit", "confirmed", "rescheduled", "checked_in"];
+// Las que apartan fechas. Una reserva sin abono (pending_deposit) sigue activa pero no ocupa: sus fechas quedan libres y,
+// si otra las paga, la base de datos la corre a las próximas libres (migración 20261107000000_reservas_sin_plazo).
+export const BLOCKING_STATUSES: ReservationStatus[] = ["confirmed", "rescheduled", "checked_in"];
 
 // Desde qué estados aplica cada acción del panel, y a cuál lleva (la API y el panel sin conexión validan lo mismo).
 export const TRANSITIONS: Record<string, { from: ReservationStatus[]; to?: ReservationStatus }> = {
@@ -85,7 +92,66 @@ export type Occupancy = {
 
 export type Units = Partial<Record<CabinTypeId, number>>;
 
-type Priced = Pick<CabinType, "id" | "precioPareja" | "personaAdicional">;
+type Priced = Pick<CabinType, "id" | "precioPareja" | "personaAdicional" | "preciosPersonas" | "dayRates">;
+
+// Número con el que se muestra una unidad: el propio, si tiene; si no, su posición. Internamente siempre es la posición.
+export const unitLabel = (c: { unitLabels?: string[] } | null | undefined, unit: number) => c?.unitLabels?.[unit - 1]?.trim() || String(unit);
+
+// Nombre de una cabaña física, como en Booking: «Cabaña 3». El tipo (Doble, Familiar…) se muestra aparte cuando hace falta.
+export const cabinName = (c: { unitLabels?: string[] } | null | undefined, unit: number) => `Cabaña ${unitLabel(c, unit)}`;
+
+// Números de unidad limpios: uno por unidad, sin espacios y sin nada de más (al reducir unidades se descartan los que sobran).
+export const cleanUnitLabels = (labels: unknown, units: number): string[] =>
+  Array.from({ length: units }, (_, i) => String((Array.isArray(labels) ? labels[i] : "") ?? "").trim());
+
+// Hasta 6 letras o números, sin repetirse dentro de la cabaña (también contra la posición de las que quedan en blanco).
+export function invalidUnitLabels(labels: unknown, units: number): string | null {
+  const clean = cleanUnitLabels(labels, units);
+  if (clean.some((x) => x && !/^[\p{L}\p{N}-]{1,6}$/u.test(x))) return "Cada número de unidad admite hasta 6 letras o números.";
+  const shown = clean.map((x, i) => x || String(i + 1));
+  const repeated = shown.find((x, i) => shown.indexOf(x) !== i);
+  return repeated ? `El número ${repeated} está repetido en esta cabaña.` : null;
+}
+
+// Cantidades de personas con precio propio, de menor a mayor. Sin tabla: vacío.
+export const personSteps = (r?: PersonRates | null) =>
+  Object.keys(r ?? {})
+    .map(Number)
+    .sort((a, b) => a - b);
+
+// Precio de una noche según las personas: su fila; si no la hay, la más cercana por debajo; con menos que la primera, la primera.
+export function tierPrice(r: PersonRates, guests: number) {
+  const steps = personSteps(r);
+  const step = [...steps].reverse().find((n) => n <= guests) ?? steps[0];
+  return r[step];
+}
+
+// Desde cuánto se cobra y para cuántas personas (precios «desde» del panel y del sitio).
+export function rateFrom(x: { precioPareja: number; preciosPersonas?: PersonRates }) {
+  const first = personSteps(x.preciosPersonas)[0];
+  return first ? { price: x.preciosPersonas![first], guests: first } : { price: x.precioPareja, guests: 2 };
+}
+
+// "2 personas: $200.000 · 3 personas: $210.000"
+export const personRatesText = (r: PersonRates) =>
+  personSteps(r)
+    .map((n) => `${n} ${n === 1 ? "persona" : "personas"}: ${cop(r[n])}`)
+    .join(" · ");
+
+// Tabla válida: vacía, o personas enteras seguidas (entre 1 y 12) y cada una con precio. Devuelve el error en palabras.
+export function invalidPersonRates(r: unknown): string | null {
+  if (r === undefined || r === null) return null;
+  if (typeof r !== "object" || Array.isArray(r)) return "Los precios por personas no son válidos.";
+  const rates = r as PersonRates;
+  const steps = personSteps(rates);
+  if (steps.some((n, i) => !Number.isInteger(n) || n < 1 || n > 12 || (i > 0 && n !== steps[i - 1] + 1))) return "Los precios por personas no son válidos.";
+  const bad = steps.find((n) => !Number.isInteger(rates[n]) || rates[n] <= 0 || rates[n] > 50_000_000);
+  return bad ? `Escribe el precio para ${bad} ${bad === 1 ? "persona" : "personas"}.` : null;
+}
+
+// Solo las filas válidas de una tabla (personas enteras y precios), hasta la capacidad de la cabaña si se indica.
+export const cleanPersonRates = (r?: PersonRates | null, max = 12): PersonRates =>
+  Object.fromEntries(personSteps(r).flatMap((n) => (Number.isInteger(n) && n >= 1 && n <= max ? [[String(n), r![n]]] : [])));
 
 // Regla de precio por día que aplica a una noche de la temporada: primero una fecha puntual, luego un día de la semana.
 export function dayRateFor(s: Pick<RateSeason, "dayRates">, night: string) {
@@ -95,14 +161,15 @@ export function dayRateFor(s: Pick<RateSeason, "dayRates">, night: string) {
 }
 
 // Tarifa de una noche: la temporada activa que la cubre (con su precio por día, si lo tiene) o, si no hay, la tarifa
-// base de la cabaña.
+// base de la cabaña (con su precio por día de la semana, si lo tiene).
 export function nightlyRate(t: Priced, seasons: RateSeason[], night: string) {
   const s = seasons.find((x) => x.activa && x.cabinTypeId === t.id && x.from <= night && night <= x.to);
-  if (!s) return { couple: t.precioPareja, extra: t.personaAdicional, season: null, dayRate: null };
-  const r = dayRateFor(s, night);
-  return r
-    ? { couple: r.precioPareja, extra: r.personaAdicional, season: s, dayRate: r }
-    : { couple: s.precioPareja, extra: s.personaAdicional, season: s, dayRate: null };
+  const r = s ? dayRateFor(s, night) : dayRateFor({ dayRates: t.dayRates ?? [] }, night);
+  const source = r ?? s ?? t;
+  const from = rateFrom(source);
+  const tiers = personSteps(source.preciosPersonas).length ? source.preciosPersonas! : null;
+  // couple: lo mínimo que cuesta la noche, para fromGuests personas (2, si no hay tabla).
+  return { couple: from.price, fromGuests: from.guests, extra: tiers ? 0 : source.personaAdicional, tiers, season: s ?? null, dayRate: r };
 }
 
 // "Vie y Sáb" · "Lun a Jue" · "24 dic, 31 dic": para qué noches es una regla de precio por día.
@@ -143,9 +210,20 @@ export function invalidDayRates(rules: unknown, from: string, to: string): strin
       dates.add(d);
     }
     const money = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 50_000_000;
-    if (!money(r.precioPareja) || r.precioPareja <= 0 || !money(r.personaAdicional)) return "Escribe el precio de cada precio por día.";
+    const badTiers = invalidPersonRates(r.preciosPersonas);
+    if (badTiers) return badTiers;
+    if (!money(r.precioPareja) || (r.precioPareja <= 0 && !personSteps(r.preciosPersonas).length) || !money(r.personaAdicional))
+      return "Escribe el precio de cada precio por día.";
   }
   return null;
+}
+
+// Precios por día de la tarifa base: solo días de la semana (las fechas puntuales son de las temporadas).
+export function invalidBaseDayRates(rules: unknown): string | null {
+  if (rules === undefined) return null;
+  if (!Array.isArray(rules)) return "Los precios por día no son válidos.";
+  if (rules.some((r: SeasonDayRate) => Array.isArray(r?.dates) && r.dates.length > 0)) return "La tarifa base solo admite días de la semana.";
+  return invalidDayRates(rules, "1900-01-01", "9999-12-31");
 }
 
 // Copia limpia de las reglas (solo los campos conocidos, días y fechas ordenados y sin repetir).
@@ -155,22 +233,29 @@ export const cleanDayRates = (rules: SeasonDayRate[]): SeasonDayRate[] =>
     dates: [...new Set(r.dates)].sort(),
     precioPareja: r.precioPareja,
     personaAdicional: r.personaAdicional,
+    preciosPersonas: cleanPersonRates(r.preciosPersonas),
   }));
 
 // Cotización noche a noche (cada noche puede caer en una temporada distinta).
 // depositPct: abono para confirmar (Condiciones de pago); por defecto, el de lib/config.
 export function computeQuote(t: Priced, checkIn: string, checkOut: string, guests: number, seasons: RateSeason[] = [], depositPct = config.depositPct): Quote {
   const nights = nightsBetween(checkIn, checkOut);
-  const extraGuests = Math.max(0, guests - 2);
+  const adicionales = Math.max(0, guests - 2);
   let base = 0;
   let extraAmount = 0;
   let seasonNights = 0;
+  let extraNights = 0; // noches que cobran «pareja + adicional»: las de tabla por personas ya incluyen a todos en la base
   for (let d = checkIn; d < checkOut; d = addDays(d, 1)) {
     const r = nightlyRate(t, seasons, d);
-    base += r.couple;
-    extraAmount += extraGuests * r.extra;
+    if (r.tiers) base += tierPrice(r.tiers, guests);
+    else {
+      base += r.couple;
+      extraAmount += adicionales * r.extra;
+      extraNights++;
+    }
     if (r.season) seasonNights++;
   }
+  const extraGuests = extraNights ? adicionales : 0;
   const total = base + extraAmount;
   const deposit = Math.round((total * depositPct) / 100);
   return {
@@ -183,7 +268,7 @@ export function computeQuote(t: Priced, checkIn: string, checkOut: string, guest
     nights,
     seasonNights,
     pricePerNight: nights ? Math.round(base / nights) : t.precioPareja,
-    extraPerNight: nights && extraGuests ? Math.round(extraAmount / (nights * extraGuests)) : t.personaAdicional,
+    extraPerNight: extraNights && extraGuests ? Math.round(extraAmount / (extraNights * extraGuests)) : t.personaAdicional,
   };
 }
 
@@ -235,7 +320,6 @@ export function validateManualReservation(b: ManualReservationInput, types: Cabi
   if (b.estimatedArrival && !/^\d{2}:\d{2}$/.test(b.estimatedArrival)) f.estimatedArrival = "Hora de llegada no válida.";
   if ((b.specialRequests ?? "").length > 1000) f.specialRequests = "El texto es demasiado largo.";
   if (b.total !== null && (!Number.isInteger(b.total) || b.total < SPECIAL_TOTAL.min || b.total > SPECIAL_TOTAL.max)) f.total = "Escribe un precio válido.";
-  if (!HOLD_OPTIONS.some((o) => o.value === b.holdMinutes)) f.holdMinutes = "Elige el plazo para pagar.";
   return f;
 }
 
@@ -243,7 +327,7 @@ export function validateManualReservation(b: ManualReservationInput, types: Cabi
 function freeUnits(occ: Occupancy, units: number, typeId: string, date: string, ignoreCode?: string) {
   const busy = new Set<number>();
   for (const r of occ.reservations)
-    if (r.code !== ignoreCode && r.cabinTypeId === typeId && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut) busy.add(r.unit);
+    if (r.code !== ignoreCode && r.cabinTypeId === typeId && BLOCKING_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut) busy.add(r.unit);
   for (const b of occ.blocks) if (b.cabinTypeId === typeId && b.from <= date && date <= b.to) busy.add(b.unit);
   const free: number[] = [];
   for (let u = 1; u <= units; u++) if (!busy.has(u)) free.push(u);
@@ -289,12 +373,16 @@ export function availability(
       for (let d = ci; d < co; d = addDays(d, 1)) left = Math.min(left, freeUnits(occ, units[t.id] ?? 0, t.id, d).length);
       if (!isFinite(left)) left = 0;
       const fits = guests <= t.maxPersonas;
+      const n = units[t.id] ?? 0;
       return {
         cabinTypeId: t.id,
         available: left > 0 && fits,
         unitsLeft: left,
         reason: !fits ? "capacity" : left > 0 ? null : "dates",
         quote: computeQuote(t, ci, co, guests, seasons, depositPct),
+        // Para reservar varias cabañas: unidades libres todas las noches y la tarifa según cuántos se alojen en cada una.
+        unitsFree: Array.from({ length: n }, (_, i) => i + 1).filter((u) => unitFree(occ, n, t.id, u, ci, co)).length,
+        quoteBy: Object.fromEntries(Array.from({ length: t.maxPersonas }, (_, i) => [String(i + 1), computeQuote(t, ci, co, i + 1, seasons, depositPct)])),
       };
     }),
   };
@@ -329,6 +417,34 @@ export function validateReservation(b: ReservationInput, types: CabinType[], tod
   return f;
 }
 
+// Reparte un total acordado entre las cabañas de un grupo en proporción a su tarifa; el redondeo queda en la primera.
+export function splitTotal(quotes: Pick<Quote, "total">[], total: number): number[] {
+  const sum = quotes.reduce((s, q) => s + q.total, 0);
+  const parts = quotes.map((q) => (sum > 0 ? Math.floor((q.total * total) / sum) : Math.floor(total / quotes.length)));
+  parts[0] += total - parts.reduce((s, p) => s + p, 0);
+  return parts;
+}
+
+// Hasta cuántas cabañas puede tener una reserva.
+export const MAX_GROUP_CABINS = 12;
+
+// Las demás cabañas de una reserva con varias (`more`): tipo, personas y, en el panel, la unidad. Errores en "more.<i>".
+export function validateExtraCabins(more: unknown, types: CabinType[], units?: Partial<Record<string, number>>): FieldErrors {
+  const f: FieldErrors = {};
+  if (more === undefined || more === null) return f;
+  if (!Array.isArray(more) || more.length > MAX_GROUP_CABINS - 1) return { more: `Una reserva admite hasta ${MAX_GROUP_CABINS} cabañas.` };
+  more.forEach((m: Partial<ExtraCabin> | null, i) => {
+    const t = types.find((x) => x.id === m?.cabinTypeId && x.activa !== false);
+    const adults = Number(m?.adults);
+    const children = Number(m?.children ?? 0);
+    if (!t) f[`more.${i}`] = "Elige el tipo de cabaña.";
+    else if (!Number.isInteger(adults) || adults < 1 || !Number.isInteger(children) || children < 0) f[`more.${i}`] = "Número de huéspedes no válido.";
+    else if (adults + children > t.maxPersonas) f[`more.${i}`] = `${t.nombre}: máximo ${t.maxPersonas} personas.`;
+    else if (m?.unit != null && (!Number.isInteger(m.unit) || m.unit < 1 || m.unit > (units?.[t.id] ?? 0))) f[`more.${i}`] = "Número de cabaña no válido.";
+  });
+  return f;
+}
+
 // Código legible sin caracteres ambiguos (0/O, 1/I).
 export function newReservationCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -336,14 +452,14 @@ export function newReservationCode() {
   return "VF-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
-// Las fechas se retienen mientras se paga el abono; si no se aprueba a tiempo, la retención vence y se liberan.
-export function depositDueAt(now = Date.now()) {
-  return new Date(now + DEFAULT_HOLD * 6e4).toISOString();
+// Sin plazo: una reserva sin abono sigue pendiente hasta el final de su día de llegada (ver unpaidUntil).
+export function depositDueAt(checkIn: string) {
+  return unpaidUntil(checkIn);
 }
 
 // Reservas activas de una unidad que chocan con un bloqueo de `from` a `to` (incluido).
 export function clashingReservations<R extends Occupancy["reservations"][number]>(rs: R[], cabinTypeId: string, unit: number, from: string, to: string) {
-  return rs.filter((r) => r.cabinTypeId === cabinTypeId && r.unit === unit && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= to && from < r.checkOut);
+  return rs.filter((r) => r.cabinTypeId === cabinTypeId && r.unit === unit && BLOCKING_STATUSES.includes(r.status) && r.checkIn <= to && from < r.checkOut);
 }
 
 // ¿Está libre la unidad todas las noches de [ci, co)?
@@ -362,3 +478,28 @@ export const slugify = (s: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
+
+/* ───────────── Booking.com (calendarios iCal) ───────────── */
+
+export const CHANNEL_ID = "booking:";
+
+// Las noches ocupadas en Booking entran a la disponibilidad como bloqueos (hasta la última noche, incluida): así cuentan
+// en freeUnits, findUnit y el calendario del panel sin reglas aparte. No cuentan las canceladas (removedAt) ni los ecos
+// (las noches que Booking cerró porque ya estaban ocupadas en el panel).
+export function channelBlocks(stays: ChannelStay[]): Block[] {
+  return stays
+    .filter((s) => !s.removedAt && !s.echo)
+    .map((s) => ({
+      id: CHANNEL_ID + s.id,
+      cabinTypeId: s.cabinTypeId,
+      unit: s.unit,
+      from: s.checkIn,
+      to: addDays(s.checkOut, -1),
+      reason: "Booking.com",
+      notes: s.summary,
+    }));
+}
+export const isChannelBlock = (b: Pick<Block, "id">) => b.id.startsWith(CHANNEL_ID);
+
+// Bloqueos del panel más las noches de Booking: lo que ocupa una cabaña al calcular disponibilidad en el panel.
+export const busyBlocks = (d: { blocks: Block[]; channelStays?: ChannelStay[] }): Block[] => [...d.blocks, ...channelBlocks(d.channelStays ?? [])];

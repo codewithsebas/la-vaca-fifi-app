@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { ClockIcon, DownloadIcon, FileTextIcon, HomeIcon, TrendIcon, WalletIcon } from "@/components/ui/icons";
 import { balanceDue, finance, pendingOf, paymentsOf, recordsByCode, type Payment } from "@/lib/admin-metrics";
-import { cop, countdown, download, fmtDate, plural } from "@/lib/format";
+import { cop, download, fmtDate, plural } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
@@ -306,7 +306,7 @@ function DueTab({ rows }: { rows: Reservation[] }) {
                       <span className="block truncate text-[12px] text-ink-muted">
                         {r.code} · llega {fmtDate(r.checkIn)}
                         {p.deposit
-                          ? ` · retención vence en ${countdown(r.depositDueAt)}`
+                          ? " · sin confirmar, no aparta las fechas"
                           : bd
                             ? " · en estadía, saldo por cobrar"
                             : " · saldo antes de llegar o en recepción"}

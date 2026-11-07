@@ -12,6 +12,8 @@ export type Cabin = {
   couple: number;
   extra: number;
   max: number;
+  tiers?: Record<string, number>; // precio por noche según las personas (si existe, reemplaza a couple + extra)
+  fromGuests?: number; // para cuántas personas es `couple`; sin definir, 2
   badge: string;
   description: string;
   features: string[];

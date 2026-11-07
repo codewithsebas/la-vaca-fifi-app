@@ -5,8 +5,8 @@ import { isExclusionViolation, loadCabinTypes, loadDepositPct, loadOccupancy, lo
 import { baseVersionOf, businessError, fail, json, occurredAtOf, opIdOf, operationDay, readJson, requireStaff, syncRoute } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
-import { siteUrl } from "@/lib/server/site";
-import { HOLD_OPTIONS, PAY_METHODS, manualDueAt, manualPaymentNote } from "@/lib/payments";
+import { originOf, siteUrl } from "@/lib/server/site";
+import { PAY_METHODS, manualPaymentNote, unpaidUntil } from "@/lib/payments";
 import { can } from "@/lib/permissions";
 import type { AdminAction, Quote } from "@/lib/types";
 
@@ -28,6 +28,13 @@ export const POST = syncRoute(async (req: NextRequest) => {
   // `status`: la aplicación reconoce así que otra persona ya hizo lo mismo.
   if (!rule.from.includes(current.status)) return fail(422, "INVALID_TRANSITION", { status: current.status });
   const opId = opIdOf(req);
+  // Reserva con varias cabañas: el huésped, el plazo y los pagos son del grupo.
+  const groupCode = current.group_code;
+  const groupPaid = groupCode
+    ? (await sb.from("reservations").select("paid_amount,status").eq("group_code", groupCode).throwOnError()).data
+        .filter((m) => m.status !== "cancelled")
+        .reduce((sum, m) => sum + m.paid_amount, 0)
+    : current.paid_amount;
 
   try {
     if (b.action === "guest") {
@@ -52,6 +59,22 @@ export const POST = syncRoute(async (req: NextRequest) => {
       if (base !== null) q = q.eq("version", base);
       const { data: changed } = await q.select("code").throwOnError();
       if (!changed.length) return fail(409, "VERSION_CONFLICT");
+      if (groupCode) {
+        const { data: same } = await sb.from("reservations").select("*").eq("code", current.code).single().throwOnError();
+        await sb
+          .from("reservations")
+          .update({
+            guest_full_name: same.guest_full_name,
+            guest_doc_type: same.guest_doc_type,
+            guest_doc_number: same.guest_doc_number,
+            guest_email: same.guest_email,
+            guest_phone: same.guest_phone,
+            guest_city: same.guest_city,
+          })
+          .eq("group_code", groupCode)
+          .neq("code", current.code)
+          .throwOnError();
+      }
     } else if (b.action === "note") {
       const text = String(b.text ?? "")
         .trim()
@@ -61,11 +84,12 @@ export const POST = syncRoute(async (req: NextRequest) => {
       const { error: noteErr } = await sb.from("reservation_notes").insert({ reservation_code: current.code, text, client_op_id: opId });
       if (noteErr && noteErr.code !== "23505") throw noteErr;
     } else if (b.action === "extend_hold") {
-      // El plazo nunca pasa del día de llegada.
-      if (!HOLD_OPTIONS.some((o) => o.value === b.holdMinutes)) return fail(400, "INVALID_BODY");
-      const due = manualDueAt(current.check_in, b.holdMinutes);
-      if (due.tooShort) return fail(422, "HOLD_TOO_SHORT");
-      await sb.from("reservations").update({ status: "pending_deposit", deposit_due_at: due.dueAt }).eq("code", current.code).throwOnError();
+      // Reactivar una vencida: vuelve a quedar sin abono (sin plazo) hasta su día de llegada, si no ha pasado.
+      const due = unpaidUntil(current.check_in);
+      if (Date.parse(due) <= Date.now()) return fail(422, "HOLD_TOO_SHORT");
+      const target = sb.from("reservations").update({ status: "pending_deposit", deposit_due_at: due });
+      if (groupCode) await target.eq("group_code", groupCode).in("status", rule.from).throwOnError();
+      else await target.eq("code", current.code).throwOnError();
     } else if (b.action === "confirm" || b.action === "balance") {
       // Valor recibido: todo lo que falta (full), uno a elección (amount) o, sin ninguno, el abono (o el saldo). La base de
       // datos rechaza un valor mayor a lo que falta.
@@ -74,7 +98,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
       if (b.method !== undefined && !PAY_METHODS.some((m) => m.value === b.method)) return fail(400, "INVALID_BODY");
       const kind = b.full ? "full" : b.action === "balance" ? "balance" : "deposit";
       // Registrado sin conexión: si mientras tanto entró otro pago, podría ser el mismo dinero. Lo decide quien lo registró.
-      if (b.basePaid !== undefined && !b.force && b.basePaid !== current.paid_amount) return fail(409, "PAID_CHANGED", { paid: current.paid_amount });
+      if (b.basePaid !== undefined && !b.force && b.basePaid !== groupPaid) return fail(409, "PAID_CHANGED", { paid: groupPaid });
       const occurredAt = occurredAtOf(req);
       await sb
         .rpc("register_manual_payment", {
@@ -87,7 +111,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
         })
         .throwOnError();
       // Confirmar el abono o completar el saldo encola su correo: se envía después de responder.
-      after(() => processOutbox(siteUrl(req.nextUrl.origin)).then(() => dispatchPush()));
+      after(() => processOutbox(siteUrl(originOf(req))).then(() => dispatchPush()));
     } else if (b.action === "reschedule") {
       const { checkIn: ci, checkOut: co } = b;
       if (!isISO(ci) || !isISO(co) || co <= ci || ci < operationDay(req) || nightsBetween(ci, co) > 30) return fail(400, "INVALID_DATES");
@@ -118,11 +142,22 @@ export const POST = syncRoute(async (req: NextRequest) => {
         .eq("code", current.code)
         .throwOnError();
       // Cambiar las fechas encola el correo al huésped (lo hace la base de datos): se envía después de responder.
-      after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+      after(() => processOutbox(siteUrl(originOf(req))));
+    } else if (b.action === "cancel" && groupCode) {
+      if (b.group) {
+        // La principal al final: su aviso y su correo hablan por el grupo.
+        await sb.from("reservations").update({ status: "cancelled" }).eq("group_code", groupCode).neq("code", groupCode).in("status", rule.from).throwOnError();
+        await sb.from("reservations").update({ status: "cancelled" }).eq("code", groupCode).in("status", rule.from).throwOnError();
+      } else {
+        // Una sola cabaña sale del grupo y se avisa como reserva suelta. La principal se cancela con todo el grupo.
+        if (current.code === groupCode) return fail(422, "GROUP_LEAD");
+        await sb.from("reservations").update({ status: "cancelled", group_code: null }).eq("code", current.code).throwOnError();
+      }
+      after(() => processOutbox(siteUrl(originOf(req))));
     } else {
       await sb.from("reservations").update({ status: rule.to! }).eq("code", current.code).throwOnError();
       // Cancelar encola el correo al huésped (lo hace la base de datos): se envía después de responder.
-      if (b.action === "cancel") after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+      if (b.action === "cancel") after(() => processOutbox(siteUrl(originOf(req))));
     }
   } catch (e) {
     // Confirmar una retención vencida o reprogramar puede chocar con otra reserva activa.

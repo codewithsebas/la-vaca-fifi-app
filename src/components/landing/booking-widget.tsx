@@ -1,5 +1,6 @@
 "use client";
 
+import { personRatesText } from "@/lib/booking";
 import Link from "next/link";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "@/lib/client/api";
@@ -405,7 +406,7 @@ export function BookingWidget() {
                     >
                       <span className="flex flex-col">
                         <strong className="text-[.95rem]">{c.full}</strong>
-                        <span className="text-[.8rem]">{`${cop(c.couple)} la noche para 2 personas · máx. ${c.max} personas`}</span>
+                        <span className="text-[.8rem]">{`${cop(c.couple)} la noche para ${c.fromGuests ?? 2} personas · máx. ${c.max} personas`}</span>
                       </span>
                       <span aria-hidden="true" className={`font-extrabold ${sel ? "" : "opacity-0"}`}>
                         ✓
@@ -458,7 +459,11 @@ export function BookingWidget() {
                     </button>
                   </div>
                 </div>
-                <p className="rounded-sm bg-card-muted px-3 py-2.5 text-[.8rem]">{`La tarifa incluye 2 personas. Desde la 3.ª persona se suman ${cop(cab.extra)} por persona, por noche.`}</p>
+                <p className="rounded-sm bg-card-muted px-3 py-2.5 text-[.8rem]">
+                  {cab.tiers
+                    ? `Precio por noche: ${personRatesText(cab.tiers)}.`
+                    : `La tarifa incluye 2 personas. Desde la 3.ª persona se suman ${cop(cab.extra)} por persona, por noche.`}
+                </p>
                 <button type="button" onClick={() => set({ open: null })} className="btn btn-cta min-h-12 font-bold">
                   Listo
                 </button>

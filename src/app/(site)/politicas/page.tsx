@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/config";
 import { wa } from "@/lib/format";
-import { WEB_HOLD_HOURS } from "@/lib/payments";
 import { getSite } from "@/lib/server/site";
 
 export const metadata: Metadata = {
@@ -27,8 +26,9 @@ export default async function PoliciesPage() {
         </p>
         <h2 className={h2}>Abono, confirmación y saldo</h2>
         <p>
-          La reserva se confirma cuando recibimos el abono del {c.depositPct} % del valor total, o el valor total si prefieres pagarlo de una vez. Mientras
-          pagas, las fechas quedan apartadas durante {WEB_HOLD_HOURS} horas; si el abono no llega en ese tiempo, se liberan.
+          La reserva se confirma cuando recibimos el abono del {c.depositPct} % del valor total, o el valor total si prefieres pagarlo de una vez. Las fechas se
+          aseguran con ese pago: mientras no llegue, siguen disponibles y, si otra persona las paga primero, movemos tu reserva a las próximas fechas libres con
+          el mismo valor y te avisamos. Si el abono no llega antes de tu día de llegada, la reserva vence.
         </p>
         <p>El saldo se puede pagar por transferencia antes de llegar o en recepción el día del check-in. El check-out se realiza con el saldo pagado.</p>
         {c.policies.map((p) => (
@@ -39,8 +39,8 @@ export default async function PoliciesPage() {
         ))}
         <h2 className={h2}>Tarifas</h2>
         <p>
-          Las tarifas incluyen 2 personas. Desde la 3.ª persona se cobra un valor adicional por persona y por noche. Adultos y niños cuentan igual para la
-          capacidad y la tarifa. La decoración para ocasiones especiales tiene un valor adicional que se cotiza aparte.
+          El precio por noche depende de la cabaña y de cuántas personas se alojan; cada cabaña muestra el suyo al reservar. Adultos y niños cuentan igual para
+          la capacidad y la tarifa. La decoración para ocasiones especiales tiene un valor adicional que se cotiza aparte.
         </p>
       </section>
       <p>

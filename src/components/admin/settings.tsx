@@ -1,19 +1,22 @@
 "use client";
 
-import { BellIcon, CalendarIcon, ExternalLinkIcon, LogoutIcon, MoonIcon, RefreshIcon, VolumeIcon } from "@/components/ui/icons";
+import Link from "next/link";
+import { BellIcon, CalendarIcon, ExternalLinkIcon, LogoutIcon, MoonIcon, PaletteIcon, RefreshIcon, VolumeIcon } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
+import { can } from "@/lib/permissions";
 import { useAdmin } from "@/components/admin/context";
 import { Combobox } from "@/components/ui/combobox";
 import { LIVE_LABEL, LiveDot, SOUND_GROUPS, previewSound, useSound } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
 import { PushSettingsCard } from "@/components/admin/push";
 import { ThemeSwitch } from "@/components/admin/appearance";
+import { paths } from "@/components/admin/routes";
 import { Button, Callout, Card, CardHeader, Field, PageHeader, Switch, buttonClass } from "@/components/admin/ui";
 import { CALENDAR_VIEWS } from "@/components/admin/calendar/shared";
 
 export function SettingsView() {
-  const { live, logout, ask } = useAdmin();
+  const { data, live, logout, ask } = useAdmin();
   const [sound, setSound] = useSound();
   const muted = usePref(PREF.mutedSounds, "").split(",").filter(Boolean);
   const calendarView = usePref(PREF.calendarView, "auto");
@@ -33,7 +36,7 @@ export function SettingsView() {
     <>
       <PageHeader
         title="Configuración"
-        description="Preferencias de este navegador: apariencia, notificaciones, sonido de los avisos, vista del calendario y sesión. No cambian nada en el sitio."
+        description="Preferencias de este navegador: apariencia, notificaciones, sonido de los avisos, vista del calendario y sesión. Los colores, en cambio, son para todo el equipo."
       />
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
@@ -83,6 +86,25 @@ export function SettingsView() {
             </div>
           </Card>
 
+          {can(data.me.role, "content") && (
+            <Card aria-labelledby="st-colors" className="flex flex-col gap-4 p-4 sm:p-5">
+              <CardHeader
+                id="st-colors"
+                icon={<PaletteIcon size={18} />}
+                title="Colores de la plataforma"
+                subtitle="Negros, azules, fondos y estados del panel, y los colores del sitio web. Se aplican para todo el equipo."
+              />
+              <div className="flex flex-wrap gap-2">
+                <Link href={paths.colores} className={buttonClass("primary")}>
+                  Colores del panel
+                </Link>
+                <Link href={`${paths.colores}?para=sitio`} className={buttonClass()}>
+                  Colores del sitio web
+                </Link>
+              </div>
+            </Card>
+          )}
+
           <PushSettingsCard />
 
           <Card aria-labelledby="st-live" className="flex flex-col gap-3 p-4 sm:p-5">
@@ -107,7 +129,7 @@ export function SettingsView() {
             <CardHeader id="st-cal" icon={<CalendarIcon size={18} />} title="Calendario" subtitle="Vista con la que se abre el calendario en este navegador." />
             <Field
               label="Vista predeterminada"
-              hint="«Automática» elige según el ancho de la pantalla: pocos días en el celular, la semana en la tableta y el mes en el computador."
+              hint="«Automática» elige según el ancho de la pantalla: la semana en el celular y la tableta, y el mes en el computador."
             >
               {(p) => (
                 <Combobox

@@ -39,6 +39,48 @@ export async function holdReservation(sb: Db, row: NewReservation, opts: { units
   return { error: "DATES_UNAVAILABLE" };
 }
 
+// Reserva con varias cabañas: todas con las mismas fechas, insertadas en una sola sentencia (todas o ninguna).
+// La primera es la principal: su código es el del grupo. `unit` de cada una: la pedida por el equipo o null (la primera libre).
+export async function holdGroup(
+  sb: Db,
+  rows: (NewReservation & { unit: number | null })[],
+  opts: { units: Record<string, number>; code?: string },
+): Promise<{ rows: Tables<"reservations">[] } | { error: "DATES_UNAVAILABLE" | "IDEMPOTENCY_CONFLICT" | "ID_TAKEN" }> {
+  const { check_in: ci, check_out: co } = rows[0];
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const occByType = new Map<string, Occupancy>();
+    for (const typeId of new Set(rows.map((r) => r.cabin_type_id))) occByType.set(typeId, await loadOccupancy(sb, ci, addDays(co, -1), typeId));
+    const units: number[] = [];
+    for (const r of rows) {
+      const typeId = r.cabin_type_id;
+      const total = opts.units[typeId] ?? 0;
+      const loaded = occByType.get(typeId)!;
+      const occ = r.unit ? onlyUnit(loaded, total, typeId, r.unit, ci, co) : loaded;
+      const unit = findUnit(occ, total, typeId, ci, co);
+      if (!unit) return { error: "DATES_UNAVAILABLE" };
+      units.push(unit);
+      // La siguiente cabaña del mismo tipo no puede tomar esta.
+      occByType.set(typeId, { ...loaded, blocks: [...loaded.blocks, { cabinTypeId: typeId, unit, from: ci, to: addDays(co, -1) }] });
+    }
+    const codes: string[] = [];
+    while (codes.length < rows.length) {
+      const c = codes.length === 0 && opts.code ? opts.code : newReservationCode();
+      if (!codes.includes(c)) codes.push(c);
+    }
+    const { data, error } = await sb
+      .from("reservations")
+      .insert(rows.map((r, i) => ({ ...r, code: codes[i], unit: units[i], group_code: codes[0], ...(i > 0 && { idempotency_key: null }) })))
+      .select("*");
+    if (!error) return { rows: codes.map((c) => data.find((d) => d.code === c)!) };
+    if (error.code === "23P01") continue;
+    if (error.code === "23505" && error.message.includes("idempotency")) return { error: "IDEMPOTENCY_CONFLICT" };
+    if (error.code === "23505" && opts.code) return { error: "ID_TAKEN" };
+    if (error.code === "23505") continue;
+    throw error;
+  }
+  return { error: "DATES_UNAVAILABLE" };
+}
+
 // Reserva que ya se hizo por otro canal (archivo importado o Booking): entra confirmada, finalizada o cancelada, sin
 // pagos registrados; el equipo registra los pagos después. `r` ya viene validada (invalidImportRow).
 export async function insertImported(

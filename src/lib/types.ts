@@ -9,14 +9,21 @@ export type ReservationStatus = "pending_deposit" | "confirmed" | "cancelled" | 
 // SD: sin documento (reservas importadas); el número es el teléfono, así el cliente se agrupa por teléfono.
 export type DocType = "CC" | "CE" | "Pasaporte" | "PPT" | "SD";
 
+// Precio por noche según cuántas personas se alojan: { "2": 200000, "3": 210000, "4": 280000 }. Vacío o sin definir: se cobra
+// «noche para 2 + persona adicional». Con menos personas que la primera fila se cobra esa fila.
+export type PersonRates = Record<string, number>;
+
 export type CabinType = {
   version?: number;
   id: CabinTypeId;
   nombre: string;
   precioPareja: number;
   personaAdicional: number;
+  preciosPersonas?: PersonRates;
   maxPersonas: number;
   units: number;
+  unitLabels?: string[]; // número propio de cada unidad, por posición: ["9", "2"]. En blanco: la posición.
+  dayRates?: SeasonDayRate[]; // tarifa base por día de la semana (solo `weekdays`); vacío: la misma todos los días
   badge: string;
   descripcion: string;
   caracteristicas: string[];
@@ -35,13 +42,14 @@ export type RateSeason = {
   to: string;
   precioPareja: number;
   personaAdicional: number;
+  preciosPersonas?: PersonRates;
   activa: boolean;
   dayRates: SeasonDayRate[];
 };
 
 // Precio distinto para ciertas noches de la temporada: unos días de la semana (0 = domingo … 6 = sábado) o unas fechas
 // puntuales. Cada regla usa una de las dos. Una fecha puntual gana sobre un día de la semana; sin regla, el de la temporada.
-export type SeasonDayRate = { weekdays: number[]; dates: string[]; precioPareja: number; personaAdicional: number };
+export type SeasonDayRate = { weekdays: number[]; dates: string[]; precioPareja: number; personaAdicional: number; preciosPersonas?: PersonRates };
 
 export type Quote = {
   base: number;
@@ -64,6 +72,8 @@ export type AvailabilityOption = {
   unitsLeft: number;
   reason: "capacity" | "dates" | null;
   quote: Quote;
+  unitsFree?: number; // unidades libres todas las noches (para varias cabañas del mismo tipo)
+  quoteBy?: Record<string, Quote>; // tarifa por cantidad de personas en una cabaña ("1" … maxPersonas)
 };
 
 export type Availability = { nights: number; options: AvailabilityOption[] };
@@ -77,8 +87,12 @@ export type Guest = {
   city: string;
 };
 
+// Otra cabaña de la misma reserva (mismas fechas y huésped). unit: solo el panel la elige; null = la primera libre.
+export type ExtraCabin = { cabinTypeId: CabinTypeId; adults: number; children: number; unit?: number | null };
+
 export type ReservationInput = {
   cabinTypeId: CabinTypeId;
+  more?: ExtraCabin[]; // reserva con varias cabañas: las demás, además de la primera
   checkIn: string;
   checkOut: string;
   adults: number;
@@ -172,15 +186,17 @@ export type Reservation = ReservationInput & {
   channel?: string; // canal de venta (Booking.com, recepción…); vacío en las de la web y el panel
   commission?: number; // comisión del canal
   demo?: boolean;
+  groupCode?: string | null; // reserva con varias cabañas: código de la principal (la principal tiene el suyo)
 };
 
-// Cuerpo de POST /admin/reservations: reserva tomada por el equipo. Queda retenida hasta que el equipo registre el abono
-// (holdMinutes, como máximo hasta el día de llegada).
+// Cuerpo de POST /admin/reservations: reserva tomada por el equipo. Queda sin confirmar (y sin apartar fechas) hasta que
+// el equipo registre el abono o el pago total.
 export type ManualReservationInput = {
   code?: string; // generado en el navegador (reservas creadas sin conexión)
   expectedTotal?: number; // el valor que vio quien la creó sin conexión
   cabinTypeId: CabinTypeId;
   unit: number | null; // null: la primera libre (como en la web)
+  more?: ExtraCabin[]; // reserva con varias cabañas (requiere conexión)
   checkIn: string;
   checkOut: string;
   adults: number;
@@ -190,10 +206,9 @@ export type ManualReservationInput = {
   estimatedArrival: string; // "HH:MM" o "" (inicio del check-in)
   specialRequests: string;
   total: number | null; // precio especial; null = tarifa vigente
-  holdMinutes: number;
 };
 
-export type ManualReservationResult = { reservation: Reservation };
+export type ManualReservationResult = { reservation: Reservation; group?: Reservation[] }; // group: todas las cabañas, la principal primero
 
 // Lo que ve el huésped. `payments`: sus pagos registrados, del más reciente al más antiguo.
 // `liveKey`: nombra el canal de avisos en tiempo real de la reserva (solo con código y correo).
@@ -201,7 +216,14 @@ export type ManualReservationResult = { reservation: Reservation };
 export type PublicReservation = Pick<
   Reservation,
   "code" | "status" | "checkIn" | "checkOut" | "cabinTypeId" | "quote" | "depositDueAt" | "depositPaidAt" | "balancePaidAt" | "paid" | "checkedInAt"
-> & { guestFirstName?: string; payments?: PublicPayment[]; liveKey?: string; serverNow?: string };
+> & {
+  guestFirstName?: string;
+  payments?: PublicPayment[];
+  liveKey?: string;
+  serverNow?: string;
+  // Reserva con varias cabañas: el huésped ve el grupo con el código principal; quote, paid y personas son del grupo.
+  cabins?: { cabinTypeId: CabinTypeId; adults: number; children: number; total: number }[];
+};
 
 export type Block = {
   version?: number;
@@ -217,7 +239,9 @@ export type Block = {
 // `ids`: identificadores generados en el navegador, uno por unidad afectada (operaciones sin conexión).
 export type BlockInput = Omit<Block, "id" | "unit" | "version"> & { unit: number | "all"; ids?: string[] };
 
-export type Rates = Partial<Record<CabinTypeId, { precioPareja: number; personaAdicional: number; maxPersonas: number }>>;
+export type Rates = Partial<
+  Record<CabinTypeId, { precioPareja: number; personaAdicional: number; maxPersonas: number; preciosPersonas?: PersonRates; dayRates?: SeasonDayRate[] }>
+>;
 
 // Valoración interna de un cliente: solo la ve el equipo, nunca se expone en rutas públicas.
 export type Trust = "sin_evaluar" | "alta" | "media" | "baja" | "no_recomendado";
@@ -248,11 +272,15 @@ export type NotificationKind =
   | "proof_approved"
   | "proof_rejected"
   | "balance_paid"
+  | "checkout_pending"
   | "email_failed"
   | "booking_pending"
   | "booking_modified"
   | "booking_cancelled"
-  | "booking_failed";
+  | "booking_failed"
+  | "channel_conflict"
+  | "channel_sync_failed"
+  | "reservation_moved"; // sin abono: otra reserva pagó sus fechas y se corrió a las próximas libres
 
 export type AdminNotification = {
   id: number;
@@ -280,6 +308,7 @@ export type AdminData = {
   me: PanelUser; // quién usa el panel
   bathrooms: Bathroom[];
   bathroomBlocks: BathroomBlock[];
+  channelStays: ChannelStay[]; // noches ocupadas en Booking.com (lib/server/channels)
 };
 
 /* ───────────── Equipo ───────────── */
@@ -311,6 +340,40 @@ export type Bathroom = {
 export type BathroomInput = { id?: string; name?: string; status?: BathroomStatus; cabinTypeId?: CabinTypeId | null; unit?: number | null; notes?: string };
 export type BathroomBlock = { version?: number; id: string; bathroomId: string; from: string; to: string; reason: string; notes: string };
 export type BathroomBlockInput = Omit<BathroomBlock, "id" | "version"> & { id?: string };
+
+/* ───────────── Booking.com (calendarios iCal) ───────────── */
+
+// Noches ocupadas en Booking de una cabaña (checkOut exclusivo, como las reservas). echo: Booking las cerró porque ya
+// estaban ocupadas en el panel (no ocupan). removedAt: dejaron de venir en el calendario (se cancelaron).
+export type ChannelStay = {
+  id: string;
+  calendarId: string;
+  cabinTypeId: CabinTypeId;
+  unit: number;
+  checkIn: string;
+  checkOut: string;
+  summary: string;
+  echo: boolean;
+  firstSeenAt: string;
+  removedAt: string | null;
+};
+
+// Un calendario por cabaña: importUrl es el enlace de exportación de Booking; exportUrl, el que Booking importa del panel.
+export type ChannelCalendar = {
+  id: string;
+  label: string;
+  cabinTypeId: CabinTypeId;
+  unit: number;
+  importUrl: string | null;
+  exportUrl: string;
+  lastSyncedAt: string | null;
+  lastFetchedAt: string | null;
+  lastStatus: "ok" | "error" | null;
+  lastError: string;
+  lastEventCount: number;
+};
+
+export type ChannelSyncResult = { calendarId: string; ok: boolean; error?: string; events: number; added: number; removed: number; conflicts: string[] };
 
 /* ───────────── Importación ───────────── */
 
@@ -363,6 +426,7 @@ export type CabinInput = {
   badge: string;
   maxPersonas: number;
   units: number;
+  unitLabels?: string[];
   precioPareja: number;
   personaAdicional: number;
   activa: boolean;
@@ -374,15 +438,28 @@ export type SeasonInput = Omit<RateSeason, "id" | "version"> & { id?: string };
 export type PayMethod = "cash" | "transfer";
 
 export type AdminAction =
-  | { code: string; action: "cancel" | "checkin" | "checkout" }
+  | { code: string; action: "checkin" | "checkout" }
+  // En una reserva con varias cabañas: `group` cancela todas; sin él, solo esta (sale del grupo; la principal no puede).
+  | { code: string; action: "cancel"; group?: boolean }
   // Pago recibido en persona: "confirm" = de una reserva pendiente (la confirma), "balance" = de una ya confirmada.
   // Valor: `full` = todo lo que falta, `amount` = un valor a elección; sin ninguno, el abono (o el saldo). `method` y
   // `note` quedan como detalle del pago.
   // `basePaid`: lo pagado que veía quien registró el pago sin conexión; si cambió, el servidor lo advierte (a menos que venga `force`).
-  | { code: string; action: "confirm" | "balance"; note?: string; full?: boolean; amount?: number; method?: PayMethod; basePaid?: number; force?: boolean }
+  // `group` (en confirm, balance y extend_hold): la reserva es de varias cabañas; el panel la envía con conexión.
+  | {
+      code: string;
+      action: "confirm" | "balance";
+      note?: string;
+      full?: boolean;
+      amount?: number;
+      method?: PayMethod;
+      basePaid?: number;
+      force?: boolean;
+      group?: boolean;
+    }
   | { code: string; action: "reschedule"; checkIn: string; checkOut: string }
   // Plazo nuevo para pagar el abono: amplía (o reactiva, si venció) la retención de una reserva sin abono.
-  | { code: string; action: "extend_hold"; holdMinutes: number }
+  | { code: string; action: "extend_hold"; group?: boolean } // reactiva una vencida, sin plazo
   | { code: string; action: "note"; text: string }
   // Corregir o completar los datos del huésped (p. ej. el documento de una reserva importada).
   | { code: string; action: "guest"; guest: Guest };

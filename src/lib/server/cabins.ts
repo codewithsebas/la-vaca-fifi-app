@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { fallbackCabins, shortCabinName, type Cabin } from "@/lib/config";
+import { rateFrom } from "@/lib/booking";
 import type { CabinType } from "@/lib/types";
 import { createServiceClient, hasServiceConfig } from "@/lib/supabase/server";
 import { loadCabinTypes } from "@/lib/server/db";
@@ -9,8 +10,10 @@ const toPublicCabin = (t: CabinType): Cabin => ({
   id: t.id,
   name: shortCabinName(t.nombre),
   full: t.nombre,
-  couple: t.precioPareja,
+  couple: rateFrom(t).price,
+  fromGuests: rateFrom(t).guests,
   extra: t.personaAdicional,
+  tiers: t.preciosPersonas && Object.keys(t.preciosPersonas).length ? t.preciosPersonas : undefined,
   max: t.maxPersonas,
   badge: t.badge,
   description: t.descripcion,

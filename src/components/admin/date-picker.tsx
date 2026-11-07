@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "@/components/ui/icons";
 import { MONTHS, WD_MIN, addDays, fmtDate, monthStart, nightsBetween, parseISO, plural, todayISO } from "@/lib/format";
-import { Popover } from "@/components/ui/floating";
+import { Popover, useTip } from "@/components/ui/floating";
 import { adminInput } from "@/components/admin/shared";
 
 // Marcas por día: "busy" = ocupado, "blocked" = bloqueado, "partial" = queda poca disponibilidad.
@@ -16,6 +16,12 @@ const addMonths = (m: string, n: number) => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1)).toISOString().slice(0, 10);
 };
 const MARK_LABEL: Record<DayMark, string> = { busy: "ocupado", blocked: "bloqueado", partial: "poca disponibilidad" };
+// Lo que dice el tooltip de cada día marcado.
+const MARK_TIP: Record<DayMark, string> = {
+  busy: "Ocupado: no hay cabaña libre esa noche",
+  blocked: "Bloqueado: esa noche está cerrada",
+  partial: "Poca disponibilidad: queda 1 cabaña",
+};
 
 type GridProps = {
   month: string;
@@ -26,12 +32,15 @@ type GridProps = {
   today: string;
   isDisabled: (iso: string) => boolean;
   marks?: Record<string, DayMark>;
+  // Días que no se pueden elegir ahora (con el motivo, que sale en el tooltip). Siguen enfocables con el teclado.
+  blockedReason?: (iso: string) => string | null;
   onPick: (iso: string) => void;
   onHover: (iso: string | null) => void;
   onKey: (e: KeyboardEvent<HTMLButtonElement>, iso: string) => void;
 };
 
-function MonthGrid({ month, from, to, preview, focus, today, isDisabled, marks = {}, onPick, onHover, onKey }: GridProps) {
+function MonthGrid({ month, from, to, preview, focus, today, isDisabled, marks = {}, blockedReason, onPick, onHover, onKey }: GridProps) {
+  const tip = useTip();
   const d = parseISO(month);
   const y = d.getUTCFullYear();
   const m = d.getUTCMonth();
@@ -61,6 +70,8 @@ function MonthGrid({ month, from, to, preview, focus, today, isDisabled, marks =
           const inRange = !!(from && end && iso > from && iso < end);
           const mark = marks[iso];
           const col = (lead + i) % 7;
+          const reason = dis ? null : (blockedReason?.(iso) ?? null);
+          const note = reason ?? (mark ? MARK_TIP[mark] : null);
           return (
             <button
               key={iso}
@@ -68,26 +79,26 @@ function MonthGrid({ month, from, to, preview, focus, today, isDisabled, marks =
               tabIndex={iso === focus ? 0 : -1}
               data-iso={iso}
               disabled={dis}
+              aria-disabled={reason ? true : undefined}
               aria-pressed={isStart || isEnd}
-              aria-label={`${fmtDate(iso, true)}${isStart ? ", inicio" : ""}${isEnd ? ", fin" : ""}${mark ? `, ${MARK_LABEL[mark]}` : ""}${iso === today ? ", hoy" : ""}`}
-              onClick={() => onPick(iso)}
-              onMouseEnter={() => onHover(iso)}
+              aria-label={`${fmtDate(iso, true)}${isStart ? ", inicio" : ""}${isEnd ? ", fin" : ""}${reason ? `, ${reason}` : mark ? `, ${MARK_LABEL[mark]}` : ""}${iso === today ? ", hoy" : ""}`}
+              {...(note && !isStart && !isEnd ? tip(() => note, { delay: 80 }) : {})}
+              onClick={() => !reason && onPick(iso)}
+              onMouseEnter={() => onHover(reason ? null : iso)}
               onKeyDown={(e) => onKey(e, iso)}
-              className={`relative grid h-9 place-items-center text-[13px] tabular-nums transition-colors duration-100 disabled:cursor-not-allowed disabled:text-ink-subtle/70 disabled:line-through ${
+              className={`relative grid h-9 place-items-center text-[13px] tabular-nums transition-colors duration-100 disabled:cursor-not-allowed disabled:text-ink-subtle/70 disabled:line-through aria-disabled:cursor-not-allowed ${
                 isStart || isEnd
                   ? "z-1 rounded-full bg-ink font-bold text-paper"
                   : inRange
                     ? `bg-ink/8 font-semibold text-ink ${col === 0 ? "rounded-l-full" : ""} ${col === 6 ? "rounded-r-full" : ""}`
-                    : `rounded-full text-ink enabled:hover:bg-ink/6 ${iso === today ? "font-bold" : ""}`
-              } ${mark === "blocked" && !isStart && !isEnd ? "bg-[repeating-linear-gradient(135deg,rgb(138_143_134/0.22)_0_3px,transparent_3px_6px)]" : ""}`}
+                    : `rounded-full ${mark ? MARK_CELL[mark] : reason ? "text-ink-subtle/70" : "text-ink enabled:hover:bg-ink/6"} ${iso === today ? "font-bold" : ""}`
+              }`}
             >
               {i + 1}
               {iso === today && !isStart && !isEnd && <span aria-hidden="true" className="absolute bottom-1 h-0.5 w-3 rounded-full bg-ink/50" />}
-              {(mark === "busy" || mark === "partial") && (
-                <span
-                  aria-hidden="true"
-                  className={`absolute top-1 right-1 size-1.5 rounded-full ${mark === "busy" ? "bg-status-cancelled" : "bg-yellow-deep"} ${isStart || isEnd ? "ring-1 ring-paper" : ""}`}
-                />
+              {/* Dentro del rango elegido el día ya no lleva su color: un punto recuerda cómo estaba. */}
+              {mark && mark !== "blocked" && (isStart || isEnd || inRange) && (
+                <span aria-hidden="true" className={`absolute top-1 right-1 size-1.5 rounded-full ring-1 ring-paper ${MARK_DOT[mark]}`} />
               )}
             </button>
           );
@@ -166,21 +177,30 @@ function useFocusDay(open: boolean, focus: string, panel: RefObject<HTMLDivEleme
   }, [open, focus, panel]);
 }
 
+// Color de cada día marcado: el día entero se tiñe (rojo ocupado, ámbar poca disponibilidad, rayado gris bloqueado),
+// y la leyenda usa las mismas muestras para que se reconozcan de un vistazo.
+const HATCH = "bg-[repeating-linear-gradient(135deg,rgb(110_114_106/0.38)_0_2px,transparent_2px_5px)]";
+const MARK_CELL: Record<DayMark, string> = {
+  busy: "bg-error-soft font-semibold text-error",
+  partial: "bg-warning-soft font-semibold text-warning",
+  blocked: `${HATCH} text-ink-muted`,
+};
+const MARK_DOT: Record<DayMark, string> = { busy: "bg-error", partial: "bg-warning", blocked: "bg-ink-muted" };
+
 function Legend() {
+  const items: [DayMark, string][] = [
+    ["busy", "Ocupado"],
+    ["partial", "Poca disponibilidad"],
+    ["blocked", "Bloqueado"],
+  ];
   return (
-    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-ink-muted">
-      <li className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-status-cancelled" />
-        Ocupado
-      </li>
-      <li className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-yellow-deep" />
-        Poca disponibilidad
-      </li>
-      <li className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-3 rounded-[3px] bg-[repeating-linear-gradient(135deg,rgb(138_143_134/0.4)_0_2px,transparent_2px_4px)]" />
-        Bloqueado
-      </li>
+    <ul className="flex flex-wrap gap-x-3.5 gap-y-1 text-[11.5px] text-ink-muted">
+      {items.map(([m, label]) => (
+        <li key={m} className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className={`size-3.5 rounded-full ${m === "blocked" ? `${HATCH} ring-1 ring-ink/15` : MARK_CELL[m]}`} />
+          {label}
+        </li>
+      ))}
     </ul>
   );
 }
@@ -314,6 +334,25 @@ export function DateRangePicker({ from, to, onChange, mode = "days", clearable =
     // Sin fechas y con tope (un periodo pasado): el último mes visible es el del tope, no uno ya deshabilitado.
     if (!from && p.max && w) k.setMonth(addMonths(monthStart(p.max), -1));
   };
+  // Por noches, los días ocupados o bloqueados no se pueden elegir como noche de la estadía. La salida sí puede caer en
+  // uno (esa noche no se usa), pero solo en el primero: la estadía no puede pasar por encima de una noche no disponible.
+  const marks = p.marks ?? {};
+  const closed = (iso: string) => mode === "nights" && (marks[iso] === "busy" || marks[iso] === "blocked");
+  const choosingEnd = !!draft.from && !draft.to;
+  const limit = (() => {
+    if (!choosingEnd || mode !== "nights") return null;
+    for (let d = addDays(draft.from!, 1), i = 0; i < 400; d = addDays(d, 1), i++) if (closed(d)) return d;
+    return null;
+  })();
+  const blockedReason = (iso: string): string | null => {
+    if (mode !== "nights") return null;
+    if (choosingEnd && iso > draft.from!) {
+      if (limit && iso > limit) return "No se puede: la estadía pasaría por noches ocupadas o bloqueadas";
+      return null; // salida: puede caer en el primer día no disponible
+    }
+    const m = marks[iso];
+    return m === "busy" || m === "blocked" ? MARK_TIP[m] : null;
+  };
   const pick = (iso: string) => {
     const d = draft;
     if (!d.from || d.to || iso < d.from || (mode === "nights" && iso === d.from)) {
@@ -371,6 +410,7 @@ export function DateRangePicker({ from, to, onChange, mode = "days", clearable =
                 today={k.today}
                 isDisabled={k.isDisabled}
                 marks={p.marks}
+                blockedReason={blockedReason}
                 onPick={pick}
                 onHover={k.setHover}
                 onKey={(e, iso) => k.onKey(e, iso, months)}

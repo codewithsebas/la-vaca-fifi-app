@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
-import { cleanDayRates, invalidDayRates } from "@/lib/booking";
+import { cleanDayRates, cleanPersonRates, invalidDayRates, invalidPersonRates } from "@/lib/booking";
 import { isISO, nightsBetween } from "@/lib/format";
 import { type Db, isExclusionViolation, loadSeasons } from "@/lib/server/db";
 import { baseVersionOf, fail, json, readJson, requireAdmin, staleOrMissing, syncRoute } from "@/lib/server/http";
@@ -18,6 +18,8 @@ async function clean(sb: Db, b: SeasonInput | null) {
   else if (nightsBetween(b.from, b.to) > 366) errors.dates = "Una temporada puede durar máximo un año.";
   if (!money(b.precioPareja)) errors.precioPareja = "Escribe una tarifa válida.";
   if (!money(b.personaAdicional)) errors.personaAdicional = "Escribe una tarifa válida.";
+  const badTiers = invalidPersonRates(b.preciosPersonas);
+  if (badTiers) errors.preciosPersonas = badTiers;
   const dayRates = b.dayRates ?? [];
   const badDays = !errors.dates && invalidDayRates(dayRates, b.from, b.to);
   if (badDays) errors.dayRates = badDays;
@@ -37,6 +39,7 @@ async function clean(sb: Db, b: SeasonInput | null) {
       to_date: b.to,
       precio_pareja: b.precioPareja,
       persona_adicional: b.personaAdicional,
+      precios_personas: cleanPersonRates(b.preciosPersonas),
       activa: !!b.activa,
       day_rates: cleanDayRates(dayRates),
     },

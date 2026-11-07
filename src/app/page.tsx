@@ -1,3 +1,4 @@
+import { personRatesText } from "@/lib/booking";
 import type { Metadata } from "next";
 import Image from "next/image";
 import type { ReactNode } from "react";
@@ -144,7 +145,7 @@ function CabinCard({ c }: { c: Cabin }) {
         <span className="pointer-events-none absolute right-4 -bottom-[22px] z-2 -rotate-3 text-[1.05rem]">
           <Tag>
             {cop(c.couple)}
-            <span className="text-[.8rem] font-bold">/ noche para 2</span>
+            <span className="text-[.8rem] font-bold">{`/ noche para ${c.fromGuests ?? 2}`}</span>
           </Tag>
         </span>
       </div>
@@ -164,7 +165,11 @@ function CabinCard({ c }: { c: Cabin }) {
         <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t-[2.5px] border-dashed border-on-light/20 pt-4">
           <p className="text-[.94rem] font-bold">
             Hasta {c.max} personas
-            {c.max > 2 && <span className="block text-[.84rem] font-semibold text-on-light-muted">{`${cop(c.extra)} por persona adicional`}</span>}
+            {c.tiers ? (
+              <span className="block text-[.84rem] font-semibold text-on-light-muted">{personRatesText(c.tiers)}</span>
+            ) : (
+              c.max > 2 && <span className="block text-[.84rem] font-semibold text-on-light-muted">{`${cop(c.extra)} por persona adicional`}</span>
+            )}
           </p>
           <CabinReserveButton cabin={c.id} />
         </div>
@@ -181,6 +186,7 @@ export default async function HomePage() {
   const [cabins, { c: site, photos, texts, services: allServices }] = await Promise.all([getSiteCabins(), getSite()]);
   const services = allServices.filter((s) => s.visible);
   const fromPrice = cabins.length ? Math.min(...cabins.map((c) => c.couple)) : 0;
+  const fromGuests = cabins.find((c) => c.couple === fromPrice)?.fromGuests ?? 2;
   return (
     <div id="top" className="@container relative overflow-x-clip">
       <SiteTheme />
@@ -232,7 +238,7 @@ export default async function HomePage() {
                       Conoce el restaurante
                     </a>
                   </div>
-                  {fromPrice > 0 && <p className="text-[.95rem] font-extrabold">{`Desde ${cop(fromPrice)} la noche para 2, con desayuno.`}</p>}
+                  {fromPrice > 0 && <p className="text-[.95rem] font-extrabold">{`Desde ${cop(fromPrice)} la noche para ${fromGuests}, con desayuno.`}</p>}
                 </div>
 
                 {/* Lado derecho libre para que se vea el letrero de la foto; solo la insignia de la calificación. En el

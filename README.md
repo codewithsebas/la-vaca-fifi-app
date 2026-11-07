@@ -85,7 +85,7 @@ Convenciones: archivos en kebab-case, imports con el alias `@/` (nunca rutas rel
 | Ruta                                                            | Módulo                                                                                                    |
 | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `/admin`                                                        | Dashboard: llegadas, salidas, pagos por completar (abonos con su plazo y saldos) y ocupación de la semana |
-| `/admin/calendario`                                             | Ocupación por cabaña (`?vista=dia\|3dias\|semana\|mes&fecha=&cabana=`)                                    |
+| `/admin/calendario`                                             | Ocupación por cabaña (`?vista=dia\|finde\|semana\|2semanas\|mes&fecha=&cabana=`)                          |
 | `/admin/reservas`, `/admin/reservas/[codigo]`                   | Lista con filtros y ficha de cada reserva                                                                 |
 | `/admin/pagos`                                                  | Pagos recibidos, lo pendiente por cobrar y comprobantes de transferencia                                  |
 | `/admin/clientes`, `/admin/clientes/[cc-123…]`                  | Clientes y su ficha con valoración interna                                                                |

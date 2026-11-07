@@ -3,6 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useState } from "react";
 import type { SyncEngine } from "@/lib/offline/engine";
+import type { PanelColors } from "@/lib/panel-colors";
 import type { AdminData, CabinType } from "@/lib/types";
 import type { LiveStatus } from "@/components/admin/notifications";
 import type { Ask } from "@/components/admin/shared";
@@ -25,6 +26,7 @@ export type AdminCtx = {
   now: number;
   cabin: (id: string) => CabinType | undefined;
   cabinLabel: (id: string, unit?: number) => string;
+  previewColors: (c: PanelColors | null) => void; // colores sin guardar: el panel los muestra mientras se eligen
 };
 
 const Ctx = createContext<AdminCtx | null>(null);

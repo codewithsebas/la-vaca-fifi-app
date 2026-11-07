@@ -3,6 +3,7 @@ import {
   loadBathrooms,
   loadCabinTypes,
   loadClients,
+  loadPanelChannelStays,
   loadSeasons,
   runDeadlines,
   toBlock,
@@ -15,7 +16,7 @@ import {
 import { json, requireStaff, route } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
-import { loadSiteContent, siteUrl } from "@/lib/server/site";
+import { loadSiteContent, originOf, siteUrl } from "@/lib/server/site";
 
 // GET /api/admin/data → todo lo que necesita el panel y quién lo usa. Consultas con la sesión del equipo (RLS).
 export const GET = route(async (req: NextRequest) => {
@@ -36,6 +37,7 @@ export const GET = route(async (req: NextRequest) => {
     clients,
     { data: notifications },
     baths,
+    channelStays,
   ] = await Promise.all([
     sb.from("reservations").select("*, reservation_notes(text, created_at)").order("check_in", { ascending: false }).throwOnError(),
     sb.from("blocks").select("*").order("from_date").throwOnError(),
@@ -48,9 +50,10 @@ export const GET = route(async (req: NextRequest) => {
     loadClients(sb),
     sb.from("admin_notifications").select("*").order("created_at", { ascending: false }).limit(150).throwOnError(),
     loadBathrooms(sb),
+    loadPanelChannelStays(sb),
   ]);
   // Correos que fallaron y ya les toca reintentar: se envían después de responder.
-  if (emails.some((e) => e.status === "failed" || e.status === "pending")) after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+  if (emails.some((e) => e.status === "failed" || e.status === "pending")) after(() => processOutbox(siteUrl(originOf(req))));
   // Avisos que aún no salieron como notificación push (p. ej. los del cron, si la base de datos no pudo avisar a la app).
   after(dispatchPush);
   return json({
@@ -69,5 +72,6 @@ export const GET = route(async (req: NextRequest) => {
     me,
     bathrooms: baths.bathrooms,
     bathroomBlocks: baths.blocks,
+    channelStays,
   });
 });

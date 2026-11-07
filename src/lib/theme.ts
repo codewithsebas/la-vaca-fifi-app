@@ -1,4 +1,4 @@
-// Colores del sitio, editables desde el panel (Contenido del sitio → Colores). Lo usan servidor y navegador.
+// Colores del sitio, editables desde el panel (Configuración → Colores). Lo usan servidor y navegador.
 // Cada clave reemplaza una variable de la paleta de app/globals.css. El panel tiene sus propios colores (app/globals.css).
 // Las claves vienen del sistema de colores del panel; en la identidad de Fifí el fondo es claro (leche) y «onDark» es la
 // tinta: el texto sobre el fondo y el contorno de las calcomanías. «night» es el café de las secciones oscuras.
@@ -86,6 +86,26 @@ export const THEME_PRESETS: { id: string; label: string; description: string; th
       accent: "#157ab8",
       highlight: "#ffd23f",
       cta: "#d2283f",
+      ctaText: "#ffffff",
+    },
+  },
+  {
+    // De las fotos de las cabañas: paredes crema, cielo y pilares azul cobalto, marcos amarillos y columnas rojas.
+    id: "cabanas",
+    label: "La vaca fifí",
+    description: "Paredes crema, azul cobalto, amarillo y rojo de las fachadas.",
+    theme: {
+      bg: "#fdf8e1",
+      surface: "#f5ecc4",
+      deep: "#d5e8fb",
+      night: "#12316e",
+      card: "#fffef6",
+      cardMuted: "#efe6c2",
+      onDark: "#14224a",
+      onLight: "#14224a",
+      accent: "#1457c4",
+      highlight: "#f7c90e",
+      cta: "#cf1f2e",
       ctaText: "#ffffff",
     },
   },
@@ -179,7 +199,7 @@ function luminance(hex: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-function contrast(a: string, b: string) {
+export function contrast(a: string, b: string) {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }

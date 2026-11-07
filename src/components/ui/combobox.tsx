@@ -30,6 +30,7 @@ type Props = {
   className?: string;
   icon?: ReactNode;
   tone?: Tone;
+  selectedFirst?: boolean; // al abrir, la opción elegida queda de primera en la lista (las anteriores, subiendo)
 };
 
 const STYLE = {
@@ -88,6 +89,7 @@ export function Combobox({
   className = "",
   icon,
   tone = "panel",
+  selectedFirst = false,
 }: Props) {
   const st = STYLE[tone];
   const uid = useId();
@@ -132,6 +134,14 @@ export function Combobox({
   useEffect(() => {
     list.current?.querySelector(`[data-i="${active}"]`)?.scrollIntoView({ block: "nearest" });
   }, [active, open]);
+  useEffect(() => {
+    const ul = list.current;
+    if (!open || !selectedFirst || !ul) return;
+    const el = ul.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (el) ul.scrollTop = el.offsetTop - ul.offsetTop - parseFloat(getComputedStyle(ul).paddingTop);
+    // Solo al abrir: después, la lista se mueve con el teclado y la búsqueda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const onKey = (e: KeyboardEvent) => {
     const last = shown.length - 1;

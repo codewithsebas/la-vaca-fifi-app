@@ -2,9 +2,15 @@
 // cómo se envía y cómo se fusiona). El motor (engine.ts) no sabe de módulos y los módulos no saben de la cola. Funciones puras.
 import {
   ACTIVE_STATUSES,
+  BLOCKING_STATUSES,
   EMAIL_RE,
   cleanDayRates,
+  cleanPersonRates,
+  cleanUnitLabels,
   computeQuote,
+  busyBlocks,
+  invalidPersonRates,
+  invalidUnitLabels,
   findUnit,
   invalidDayRates,
   newReservationCode,
@@ -19,7 +25,7 @@ import {
 import { addDays, dateOf, isISO, nightsBetween, todayISO } from "@/lib/format";
 import { uuid } from "@/lib/offline/config";
 import { sorted, unitsOf } from "@/lib/offline/data";
-import { HOLD_OPTIONS, manualDueAt, manualPaymentNote } from "@/lib/payments";
+import { manualPaymentNote, unpaidUntil } from "@/lib/payments";
 import { can, type Permission } from "@/lib/permissions";
 import type { SiteContent, SiteService } from "@/lib/site";
 import type {
@@ -46,6 +52,7 @@ import type {
   SeasonInput,
   SiteInput,
 } from "@/lib/types";
+import type { PanelColors } from "@/lib/panel-colors";
 
 export type OpState = "pending" | "confirmed" | "conflict";
 
@@ -132,7 +139,7 @@ const occupancy = (d: AdminData): Occupancy => ({
     checkOut: r.checkOut,
     status: r.status,
   })),
-  blocks: d.blocks.map((b) => ({ cabinTypeId: b.cabinTypeId, unit: b.unit, from: b.from, to: b.to })),
+  blocks: busyBlocks(d).map((b) => ({ cabinTypeId: b.cabinTypeId, unit: b.unit, from: b.from, to: b.to })),
 });
 
 const activeSeasons = (d: AdminData) => d.seasons.filter((s) => s.activa);
@@ -182,6 +189,8 @@ function applyPayment(d: AdminData, code: string, kind: PaymentKind, amount: num
   return {
     ...updateReservation(d, code, (x) => ({
       ...x,
+      // Sin abono no apartaba: al confirmarse toma su cabaña si sigue libre, o la primera libre (como en el servidor).
+      unit: o.pending ? freeUnitFor(d, x) || x.unit : x.unit,
       status: o.pending ? "confirmed" : x.status,
       paid: x.paid + o.amt,
       depositPaidAt: x.depositPaidAt ?? at,
@@ -189,6 +198,12 @@ function applyPayment(d: AdminData, code: string, kind: PaymentKind, amount: num
     })),
     payments: sorted("payments", [record, ...d.payments.filter((p) => p.id !== op.opId)]),
   };
+}
+
+// Cabaña libre para una reserva sin abono que se confirma: la suya si sigue libre; si no, la primera de su tipo (0: ninguna).
+function freeUnitFor(d: AdminData, r: Reservation) {
+  const type = d.cabinTypes.find((t) => t.id === r.cabinTypeId);
+  return type ? findUnit(occupancy(d), type.units, type.id, r.checkIn, r.checkOut, r.code, [r.unit]) : 0;
 }
 
 const reservationOf = (d: AdminData, code: string) => d.reservations.find((r) => r.code === code) ?? null;
@@ -212,7 +227,7 @@ const reservationOps = {
   "reservation.create": {
     label: (p) => `Reserva nueva ${p.code} · ${p.guest.fullName}`,
     entities: (p) => [`reservations:${p.code}`, `cabinTypes:${p.cabinTypeId}`],
-    prepare: (input, d, { now, today }) => {
+    prepare: (input, d, { today }) => {
       const types = d.cabinTypes.filter((c) => c.activa);
       const units = unitsOf(types);
       const b: ManualReservationInput = {
@@ -222,9 +237,6 @@ const reservationOps = {
         guest: { ...input.guest, phone: normalizePhone(input.guest.phone) },
       };
       const fields = validateManualReservation(b, types, units, today);
-      const due = manualDueAt(b.checkIn, b.holdMinutes, now);
-      if (!fields.checkIn && !fields.holdMinutes && due.tooShort)
-        fields.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: registra el pago manualmente.";
       if (Object.keys(fields).length) return fieldErr(fields);
       const type = types.find((t) => t.id === b.cabinTypeId)!;
       const occ = occupancy(d);
@@ -269,7 +281,7 @@ const reservationOps = {
         specialRequests: (p.specialRequests ?? "").trim(),
         consents: { policies: false, dataProcessing: false, marketing: false },
         quote: p.localQuote,
-        depositDueAt: manualDueAt(p.checkIn, p.holdMinutes, Date.parse(op.occurredAt)).dueAt,
+        depositDueAt: unpaidUntil(p.checkIn),
         createdAt: op.occurredAt,
         notes: [],
         depositPaidAt: null,
@@ -327,14 +339,14 @@ const reservationOps = {
       if (p.action === "checkout" && !r.balancePaidAt && r.paid < r.quote.total) return err(422, "BALANCE_PENDING");
       if (p.action === "note" && !String(p.text ?? "").trim()) return err(400, "INVALID_BODY");
       if (p.action === "extend_hold") {
-        if (!HOLD_OPTIONS.some((o) => o.value === p.holdMinutes)) return err(400, "INVALID_BODY");
-        if (manualDueAt(r.checkIn, p.holdMinutes, now).tooShort) return err(422, "HOLD_TOO_SHORT");
+        if (Date.parse(unpaidUntil(r.checkIn)) <= now) return err(422, "HOLD_TOO_SHORT");
       }
       if (p.action === "confirm" || p.action === "balance") {
         const amount = p.full || p.amount === undefined ? null : Number(p.amount);
         if (amount !== null && (!Number.isInteger(amount) || amount <= 0)) return err(400, "INVALID_AMOUNT");
         const o = paymentOutcome(r, p.full ? "full" : p.action === "balance" ? "balance" : "deposit", amount);
         if (isErr(o)) return o;
+        if (o.pending && !freeUnitFor(d, r)) return err(409, "NO_AVAILABILITY");
         // Lo pagado que se veía: si en el servidor es otro, entró otro pago mientras tanto (¿el mismo dinero?).
         return { ...p, basePaid: r.paid };
       }
@@ -360,7 +372,7 @@ const reservationOps = {
         return updateReservation(d, p.code, (x) => ({
           ...x,
           status: "pending_deposit",
-          depositDueAt: manualDueAt(x.checkIn, p.holdMinutes, Date.parse(op.occurredAt)).dueAt,
+          depositDueAt: unpaidUntil(x.checkIn),
         }));
       if (p.action === "reschedule") {
         const type = d.cabinTypes.find((t) => t.id === r.cabinTypeId);
@@ -449,7 +461,7 @@ type BlockUpdate = BlockInput & { id: string; unit: number };
 
 function blockClash(d: AdminData, cabinTypeId: string, units: number[], from: string, to: string, ignoreId?: string) {
   const conflicts = d.reservations
-    .filter((r) => r.cabinTypeId === cabinTypeId && units.includes(r.unit) && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= to && r.checkOut > from)
+    .filter((r) => r.cabinTypeId === cabinTypeId && units.includes(r.unit) && BLOCKING_STATUSES.includes(r.status) && r.checkIn <= to && r.checkOut > from)
     .map((r) => r.code);
   if (conflicts.length) return err(409, "RESERVATION_CONFLICT", { conflicts });
   if (d.blocks.some((b) => b.id !== ignoreId && b.cabinTypeId === cabinTypeId && units.includes(b.unit) && b.from <= to && b.to >= from))
@@ -756,6 +768,7 @@ const seasonFrom = (p: SeasonInput) => ({
   to: p.to,
   precioPareja: p.precioPareja,
   personaAdicional: p.personaAdicional,
+  preciosPersonas: cleanPersonRates(p.preciosPersonas),
   activa: !!p.activa,
   dayRates: cleanDayRates(p.dayRates ?? []),
 });
@@ -764,6 +777,8 @@ function seasonErrors(p: SeasonInput, d: AdminData) {
   const fields: Record<string, string> = {};
   const nombre = String(p.nombre ?? "").trim();
   if (!nombre || nombre.length > 80) fields.nombre = "Escribe un nombre (máximo 80 caracteres).";
+  const badTiers = invalidPersonRates(p.preciosPersonas);
+  if (badTiers) fields.preciosPersonas = badTiers;
   if (!isISO(p.from) || !isISO(p.to) || p.to < p.from) fields.dates = "Elige un rango de fechas válido.";
   else {
     const bad = invalidDayRates(p.dayRates ?? [], p.from, p.to);
@@ -782,6 +797,8 @@ const cabinErrors = (b: CabinInput) => {
   if (nombre.length < 3 || nombre.length > 60) fields.nombre = "El nombre debe tener entre 3 y 60 caracteres.";
   if (!Number.isInteger(b.maxPersonas) || b.maxPersonas < 1 || b.maxPersonas > 12) fields.maxPersonas = "La capacidad debe estar entre 1 y 12 personas.";
   if (!Number.isInteger(b.units) || b.units < 0 || b.units > 20) fields.units = "El número de cabañas debe estar entre 0 y 20.";
+  const badLabels = Number.isInteger(b.units) ? invalidUnitLabels(b.unitLabels, b.units) : null;
+  if (badLabels) fields.unitLabels = badLabels;
   return Object.keys(fields).length ? fieldErr(fields) : null;
 };
 
@@ -792,6 +809,7 @@ const cabinFields = (b: CabinInput) => ({
   caracteristicas: b.caracteristicas ?? [],
   maxPersonas: b.maxPersonas,
   units: b.units,
+  ...(b.unitLabels !== undefined && { unitLabels: cleanUnitLabels(b.unitLabels, b.units) }),
   precioPareja: b.precioPareja,
   personaAdicional: b.personaAdicional,
   activa: !!b.activa,
@@ -870,6 +888,7 @@ const cabinOps = {
             to: s.to,
             precioPareja: s.precioPareja,
             personaAdicional: s.personaAdicional,
+            preciosPersonas: s.preciosPersonas ?? {},
             activa: s.activa,
           }
         : null;
@@ -1047,6 +1066,16 @@ const contentOps = {
     result: (d) => d.site,
     version: (d) => d.site.version,
   } satisfies OpDef<SiteInput>,
+  "panelColors.save": {
+    perm: "content",
+    label: () => "Colores del panel",
+    entities: () => ["site:site"],
+    request: (body) => ({ method: "PUT", path: "/admin/panel-colors", body }),
+    apply: (d, p) => withSite(d, { panelColors: p }),
+    result: (d) => d.site,
+    version: (d) => d.site.version,
+    view: (d) => d.site.panelColors,
+  } satisfies OpDef<PanelColors>,
   "terms.save": {
     perm: "rates",
     label: () => "Condiciones de pago",

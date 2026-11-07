@@ -1,15 +1,27 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { CalendarIcon, CheckIcon, CloseIcon, HomeIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
-import { MAX_DAY_RATES, computeQuote, dayRateLabel, invalidDayRates, nightlyRate } from "@/lib/booking";
+import { useMemo, useRef, useState } from "react";
+import { CalendarIcon, CheckIcon, CloseIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
+import {
+  MAX_DAY_RATES,
+  cleanPersonRates,
+  computeQuote,
+  dayRateLabel,
+  invalidDayRates,
+  invalidPersonRates,
+  nightlyRate,
+  personSteps,
+  rateFrom,
+  tierPrice,
+} from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { WD_FULL, WD_MIN, addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
-import type { CabinType, RateSeason, SeasonDayRate, SeasonInput } from "@/lib/types";
+import type { PersonRates, RateSeason, SeasonDayRate, SeasonInput } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam, useSetParams } from "@/components/admin/context";
 import { MODULES } from "@/components/admin/routes";
+import { RatesTable } from "@/components/admin/rates-table";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { DatePicker, DateRangePicker } from "@/components/admin/date-picker";
 import { adminInput } from "@/components/admin/shared";
@@ -67,6 +79,7 @@ export function RatesView() {
           to: "",
           precioPareja: first?.precioPareja ?? 0,
           personaAdicional: first?.personaAdicional ?? 0,
+          preciosPersonas: first?.preciosPersonas ?? {},
           activa: true,
           dayRates: [],
         }
@@ -80,19 +93,10 @@ export function RatesView() {
     <>
       <PageHeader
         title={MODULES.tarifas.label}
-        description="El precio base aplica todo el año. Las temporadas reemplazan el precio base en sus fechas (por ejemplo, fin de año o puentes festivos)."
+        description="Una sola tabla con el precio de todas las cabañas, como el % de abono. Las temporadas lo reemplazan en sus fechas (por ejemplo, fin de año o puentes festivos)."
       />
 
-      <section aria-labelledby="rt-base" className="flex flex-col gap-3">
-        <h2 id="rt-base" className="text-[18px] font-semibold tracking-[-0.015em] text-ink">
-          Tarifa base por cabaña
-        </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.cabinTypes.map((c) => (
-            <BaseRateCard key={`${c.id}-${c.precioPareja}-${c.personaAdicional}`} c={c} />
-          ))}
-        </div>
-      </section>
+      <RatesTable />
 
       <Card aria-labelledby="rt-seasons" className="flex flex-col gap-4 p-4 sm:p-5">
         <CardHeader
@@ -148,66 +152,72 @@ export function RatesView() {
   );
 }
 
-/* ───────────── Tarifa base ───────────── */
+/* ───────────── Precio por cantidad de personas ───────────── */
 
-function BaseRateCard({ c }: { c: CabinType }) {
-  const { ask } = useAdmin();
-  const [v, setV] = useState({ precioPareja: c.precioPareja, personaAdicional: c.personaAdicional });
-  const dirty = v.precioPareja !== c.precioPareja || v.personaAdicional !== c.personaAdicional;
-  const invalid = v.precioPareja <= 0;
-
-  const save = () =>
-    ask({
-      title: "Guardar tarifa base",
-      text: `${c.nombre}. Aplica a las cotizaciones desde ahora; las reservas existentes conservan su valor.`,
-      details: [
-        ...(v.precioPareja !== c.precioPareja ? [{ k: "Noche para 2", v: `${cop(c.precioPareja)} → ${cop(v.precioPareja)}` }] : []),
-        ...(v.personaAdicional !== c.personaAdicional ? [{ k: "Persona adicional", v: `${cop(c.personaAdicional)} → ${cop(v.personaAdicional)}` }] : []),
-      ],
-      okLabel: "Guardar tarifa",
-      done: `Tarifa de ${c.nombre} guardada`,
-      run: () => api.admin.saveRates({ [c.id]: { ...v, maxPersonas: c.maxPersonas } }),
-    });
+// Precio por noche según cuántas personas se alojan, cuando no sube parejo. Muestra una fila por cada cantidad posible en la
+// cabaña, desde la que se elija hasta su capacidad. Lo usan la tarifa base, las temporadas y los precios por día.
+function PersonRatesEditor({
+  value,
+  max,
+  couple,
+  extra,
+  error,
+  onChange,
+}: {
+  value: PersonRates;
+  max: number;
+  couple: number;
+  extra: number;
+  error?: string;
+  onChange: (r: PersonRates) => void;
+}) {
+  const steps = personSteps(value);
+  const on = steps.length > 0;
+  const from = steps[0] ?? Math.min(2, max);
+  const guess = (n: number) => couple + Math.max(0, n - 2) * extra;
+  // Conserva lo escrito; las filas nuevas arrancan con lo que costaría hoy.
+  const rebuild = (start: number) => {
+    const next: PersonRates = {};
+    for (let n = start; n <= max; n++) next[n] = value[n] ?? guess(n);
+    onChange(next);
+  };
 
   return (
-    <Card aria-labelledby={`rb-${c.id}`} className={`flex flex-col gap-4 p-4 sm:p-5 ${dirty ? "ring-2 ring-pink-deep/60" : ""}`}>
-      <CardHeader
-        id={`rb-${c.id}`}
-        icon={<HomeIcon size={18} />}
-        title={c.nombre}
-        subtitle={`Máximo ${plural(c.maxPersonas, "persona", "personas")} · ${plural(c.units, "unidad", "unidades")}`}
-        actions={!c.activa ? <Badge>Inactivo</Badge> : undefined}
+    <div className="flex flex-col gap-3">
+      <Switch
+        checked={on}
+        onChange={(v) => (v ? rebuild(from) : onChange({}))}
+        label="Cobrar según la cantidad de personas"
+        description={`Un precio por noche para cada cantidad, hasta ${plural(max, "persona", "personas")}.`}
       />
-      <Field label="Noche para 2" error={invalid ? "La tarifa debe ser mayor que cero." : undefined}>
-        {(p) => (
-          <MoneyInput
-            id={p.id}
-            describedBy={p["aria-describedby"]}
-            invalid={invalid}
-            value={v.precioPareja}
-            onChange={(n) => setV({ ...v, precioPareja: n })}
-          />
-        )}
-      </Field>
-      <Field label="Persona adicional por noche" hint="Desde la 3.ª persona.">
-        {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={v.personaAdicional} onChange={(n) => setV({ ...v, personaAdicional: n })} />}
-      </Field>
-      <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
-        <p aria-live="polite" className="text-[12.5px] text-ink-muted">
-          {dirty ? "Cambios sin guardar" : "Guardada"}
-        </p>
-        <div className="flex gap-2">
-          {dirty && (
-            <Button size="sm" variant="ghost" onClick={() => setV({ precioPareja: c.precioPareja, personaAdicional: c.personaAdicional })}>
-              Descartar
-            </Button>
-          )}
-          <Button size="sm" variant="primary" disabled={!dirty || invalid} onClick={save}>
-            Guardar
-          </Button>
+      {on && (
+        <div className="flex flex-col gap-3 rounded-[18px] bg-canvas/60 p-3.5">
+          <Field label="Desde" hint="Con menos personas se cobra esta primera fila.">
+            {(p) => <Stepper id={p.id} describedBy={p["aria-describedby"]} value={from} onChange={rebuild} min={1} max={max} unit="personas" />}
+          </Field>
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: max - from + 1 }, (_, i) => from + i).map((n) => (
+              <Field key={n} label={`Noche para ${plural(n, "persona", "personas")}`}>
+                {(p) => (
+                  <MoneyInput
+                    id={p.id}
+                    describedBy={p["aria-describedby"]}
+                    invalid={!(value[n] > 0)}
+                    value={value[n] ?? 0}
+                    onChange={(price) => {
+                      const next: PersonRates = {};
+                      for (let k = from; k <= max; k++) next[k] = k === n ? price : (value[k] ?? guess(k));
+                      onChange(next);
+                    }}
+                  />
+                )}
+              </Field>
+            ))}
+          </div>
+          {error && <FieldError>{error}</FieldError>}
         </div>
-      </div>
-    </Card>
+      )}
+    </div>
   );
 }
 
@@ -257,15 +267,18 @@ function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
           <p className="mt-1 flex flex-wrap gap-1.5">
             {s.dayRates.map((r) => (
               <Badge key={dayRateLabel(r)} tone="info">
-                {dayRateLabel(r)} · {cop(r.precioPareja)}
+                {dayRateLabel(r)} · {cop(rateFrom(r).price)}
               </Badge>
             ))}
           </p>
         )}
       </div>
       <div className="text-right">
-        <p className="text-[15px] font-bold text-ink tabular-nums">{cop(s.precioPareja)}</p>
-        <p className="text-[12px] text-ink-muted">{c ? diff(s.precioPareja, c.precioPareja) : ""}</p>
+        <p className="text-[15px] font-bold text-ink tabular-nums">{cop(rateFrom(s).price)}</p>
+        <p className="text-[12px] text-ink-muted">
+          {`para ${rateFrom(s).guests}`}
+          {c ? ` · ${diff(rateFrom(s).price, rateFrom(c).price)}` : ""}
+        </p>
       </div>
       <div className="flex gap-1">
         <Button size="sm" icon={<PencilIcon size={13} />} onClick={onEdit}>
@@ -302,6 +315,22 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
     setError("");
   };
   const ref = data.cabinTypes.find((c) => c.id === (initial.id ? s.cabinTypeId : cabins[0]));
+  const chosen = data.cabinTypes.filter((c) => cabins.includes(c.id));
+  // La capacidad manda en las filas de precio: con varias cabañas, la mayor; cada una guarda solo las que le caben.
+  const capacity = Math.max(...chosen.map((c) => c.maxPersonas), 1);
+  const capacityNote = chosen.length > 1 && new Set(chosen.map((c) => c.maxPersonas)).size > 1;
+  const hasTiers = personSteps(s.preciosPersonas).length > 0;
+  // Mientras no se toquen los precios, una temporada nueva arranca con los de la cabaña elegida.
+  const pricesTouched = useRef(!!initial.id);
+  const setPrice = (p: Partial<SeasonInput>) => {
+    pricesTouched.current = true;
+    set(p);
+  };
+  const pickCabins = (next: string[]) => {
+    setCabins(next);
+    const c = data.cabinTypes.find((x) => x.id === next[0]);
+    if (c && !pricesTouched.current) set({ precioPareja: c.precioPareja, personaAdicional: c.personaAdicional, preciosPersonas: c.preciosPersonas ?? {} });
+  };
 
   // Cruces con otras temporadas activas de las mismas cabañas.
   const clash =
@@ -312,7 +341,8 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
     nombre: !s.nombre.trim() ? "Escribe un nombre, por ejemplo «Temporada alta de diciembre»." : "",
     cabins: !cabins.length ? "Elige al menos una cabaña." : "",
     dates: !s.from || !s.to ? "Elige la primera y la última noche." : "",
-    price: s.precioPareja <= 0 ? "La tarifa debe ser mayor que cero." : "",
+    price: !hasTiers && s.precioPareja <= 0 ? "La tarifa debe ser mayor que cero." : "",
+    tiers: invalidPersonRates(s.preciosPersonas) ?? "",
     dayRates: s.from && s.to ? (invalidDayRates(rules.map(ruleOf), s.from, s.to) ?? "") : "",
   };
   const invalid = Object.values(errs).some(Boolean) || clash.length > 0;
@@ -324,7 +354,14 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
     try {
       let last: RateSeason[] | null = null;
       for (const id of cabins) {
-        const body = { ...s, nombre: s.nombre.trim(), cabinTypeId: id, dayRates: rules.map(ruleOf) };
+        const max = data.cabinTypes.find((c) => c.id === id)?.maxPersonas;
+        const body = {
+          ...s,
+          nombre: s.nombre.trim(),
+          cabinTypeId: id,
+          preciosPersonas: cleanPersonRates(s.preciosPersonas, max),
+          dayRates: rules.map(ruleOf).map((r) => ({ ...r, preciosPersonas: cleanPersonRates(r.preciosPersonas, max) })),
+        };
         const r = s.id ? await api.admin.updateSeason(body) : await api.admin.createSeason(body);
         if (r.status === 401 || r.status === 403) return onAuthError();
         if (r.status !== 200 || !Array.isArray(r.data)) {
@@ -378,7 +415,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
                 value={s.cabinTypeId}
                 onChange={(v) => {
                   set({ cabinTypeId: v });
-                  setCabins([v]);
+                  pickCabins([v]);
                 }}
                 options={data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))}
               />
@@ -398,7 +435,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
                     <input
                       type="checkbox"
                       checked={on}
-                      onChange={() => setCabins(on ? cabins.filter((x) => x !== c.id) : [...cabins, c.id])}
+                      onChange={() => pickCabins(on ? cabins.filter((x) => x !== c.id) : [...cabins, c.id])}
                       className="size-4 accent-[var(--color-ink)]"
                     />
                     {c.nombre}
@@ -427,28 +464,46 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
             />
           )}
         </Field>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field
-            label="Noche para 2"
-            error={tried ? errs.price : undefined}
-            hint={ref ? `Base ${cop(ref.precioPareja)} · ${diff(s.precioPareja, ref.precioPareja)}` : undefined}
-          >
-            {(p) => (
-              <MoneyInput
-                id={p.id}
-                describedBy={p["aria-describedby"]}
-                invalid={!!p["aria-invalid"]}
-                value={s.precioPareja}
-                onChange={(n) => set({ precioPareja: n })}
-              />
-            )}
-          </Field>
-          <Field label="Persona adicional" hint={ref ? `Base ${cop(ref.personaAdicional)}` : undefined}>
-            {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={s.personaAdicional} onChange={(n) => set({ personaAdicional: n })} />}
-          </Field>
-        </div>
+        {!hasTiers && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field
+              label="Noche para 2"
+              error={tried ? errs.price : undefined}
+              hint={ref ? `Base ${cop(ref.precioPareja)} · ${diff(s.precioPareja, ref.precioPareja)}` : undefined}
+            >
+              {(p) => (
+                <MoneyInput
+                  id={p.id}
+                  describedBy={p["aria-describedby"]}
+                  invalid={!!p["aria-invalid"]}
+                  value={s.precioPareja}
+                  onChange={(n) => setPrice({ precioPareja: n })}
+                />
+              )}
+            </Field>
+            <Field label="Persona adicional" hint={ref ? `Base ${cop(ref.personaAdicional)}` : undefined}>
+              {(p) => (
+                <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={s.personaAdicional} onChange={(n) => setPrice({ personaAdicional: n })} />
+              )}
+            </Field>
+          </div>
+        )}
+        <PersonRatesEditor
+          value={s.preciosPersonas ?? {}}
+          max={capacity}
+          couple={s.precioPareja}
+          extra={s.personaAdicional}
+          error={errs.tiers || undefined}
+          onChange={(preciosPersonas) => setPrice({ preciosPersonas })}
+        />
+        {capacityNote && (
+          <p className="-mt-1 text-[12.5px] text-ink-muted">
+            Cada cabaña guarda solo las filas de su capacidad: {chosen.map((c) => `${c.nombre} hasta ${c.maxPersonas}`).join(", ")}.
+          </p>
+        )}
         <DayRatesEditor
           season={s}
+          capacity={capacity}
           rules={rules}
           onChange={(r) => {
             setRules(r);
@@ -468,7 +523,7 @@ function SeasonEditor({ initial, onClose }: { initial: SeasonInput; onClose: () 
             una de las dos.
           </Callout>
         )}
-        {s.from && s.to && !clash.length && ref && s.precioPareja > 0 && (
+        {s.from && s.to && !clash.length && ref && !hasTiers && !personSteps(ref.preciosPersonas).length && s.precioPareja > 0 && (
           <Callout>
             Ejemplo: 2 noches para 2 personas en {ref.nombre} durante esta temporada = <strong>{cop(s.precioPareja * 2)}</strong> (con la tarifa base serían{" "}
             {cop(ref.precioPareja * 2)}).
@@ -495,10 +550,32 @@ const WEEK = [1, 2, 3, 4, 5, 6, 0]; // la semana empieza el lunes
 
 // Dentro de la temporada, unas noches de la semana o unas fechas puntuales se cobran distinto. Una fecha puntual gana
 // sobre un día de la semana; las demás noches se cobran con el precio de la temporada.
-function DayRatesEditor({ season, rules, onChange, error }: { season: SeasonInput; rules: DraftRule[]; onChange: (r: DraftRule[]) => void; error?: string }) {
+function DayRatesEditor({
+  season,
+  capacity,
+  rules,
+  onChange,
+  error,
+}: {
+  season: Pick<SeasonInput, "precioPareja" | "personaAdicional" | "preciosPersonas" | "from" | "to">;
+  capacity: number;
+  rules: DraftRule[];
+  onChange: (r: DraftRule[]) => void;
+  error?: string;
+}) {
   const update = (i: number, p: Partial<DraftRule>) => onChange(rules.map((r, j) => (j === i ? { ...r, ...p } : r)));
   const add = (kind: DraftRule["kind"]) =>
-    onChange([...rules, { kind, weekdays: [], dates: [], precioPareja: season.precioPareja, personaAdicional: season.personaAdicional }]);
+    onChange([
+      ...rules,
+      {
+        kind,
+        weekdays: [],
+        dates: [],
+        precioPareja: season.precioPareja,
+        personaAdicional: season.personaAdicional,
+        preciosPersonas: season.preciosPersonas ?? {},
+      },
+    ]);
   const takenDays = (i: number) => new Set(rules.flatMap((r, j) => (j !== i && r.kind === "weekdays" ? r.weekdays : [])));
   const takenDates = (i: number) => new Set(rules.flatMap((r, j) => (j !== i && r.kind === "dates" ? r.dates : [])));
   const full = rules.length >= MAX_DAY_RATES;
@@ -572,16 +649,32 @@ function DayRatesEditor({ season, rules, onChange, error }: { season: SeasonInpu
                 )}
               </div>
             )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Noche para 2" hint={`Temporada ${cop(season.precioPareja)}`}>
-                {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={r.precioPareja} onChange={(n) => update(i, { precioPareja: n })} />}
-              </Field>
-              <Field label="Persona adicional" hint={`Temporada ${cop(season.personaAdicional)}`}>
-                {(p) => (
-                  <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={r.personaAdicional} onChange={(n) => update(i, { personaAdicional: n })} />
+            {!personSteps(r.preciosPersonas).length && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Noche para 2" hint={`Temporada ${cop(season.precioPareja)}`}>
+                  {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={r.precioPareja} onChange={(n) => update(i, { precioPareja: n })} />}
+                </Field>
+                {capacity > 2 && (
+                  <Field label="Persona adicional" hint={`Temporada ${cop(season.personaAdicional)}`}>
+                    {(p) => (
+                      <MoneyInput
+                        id={p.id}
+                        describedBy={p["aria-describedby"]}
+                        value={r.personaAdicional}
+                        onChange={(n) => update(i, { personaAdicional: n })}
+                      />
+                    )}
+                  </Field>
                 )}
-              </Field>
-            </div>
+              </div>
+            )}
+            <PersonRatesEditor
+              value={r.preciosPersonas ?? {}}
+              max={capacity}
+              couple={r.precioPareja}
+              extra={r.personaAdicional}
+              onChange={(preciosPersonas) => update(i, { preciosPersonas })}
+            />
           </div>
         );
       })}
@@ -606,19 +699,43 @@ function Simulator() {
   const active = data.cabinTypes.filter((c) => c.activa);
   const [cabinId, setCabinId] = useState(active[0]?.id ?? "");
   const [range, setRange] = useState<{ from: string | null; to: string | null }>({ from: addDays(today, 7), to: addDays(today, 9) });
-  const [guests, setGuests] = useState(2);
+  const [wanted, setGuests] = useState(2);
   const c = data.cabinTypes.find((x) => x.id === cabinId);
+  // Al pasar a una cabaña más pequeña no se cotiza por encima de su capacidad.
+  const guests = Math.min(wanted, c?.maxPersonas ?? wanted);
   const pct = data.site.settings.depositPct;
+  const minPeople = personSteps(c?.preciosPersonas)[0];
 
+  // Cada renglón es lo que vale una noche para estos huéspedes y de dónde sale; la suma de los renglones es el total.
   const result = useMemo(() => {
     if (!c || !range.from || !range.to || range.to <= range.from) return null;
     const q = computeQuote(c, range.from, range.to, guests, data.seasons, pct);
-    const groups = new Map<string, { label: string; nights: number; couple: number; extra: number }>();
+    const weekend = (c.dayRates ?? []).find((r) => r.weekdays.length);
+    const weekdaysLabel = weekend ? dayRateLabel({ ...weekend, weekdays: WEEK.filter((d) => !weekend.weekdays.includes(d)), dates: [] }) : "";
+    const extra = Math.max(0, guests - 2);
+    const groups = new Map<string, { label: string; nights: number; price: number; detail: string }>();
     for (let d = range.from; d < range.to; d = addDays(d, 1)) {
       const r = nightlyRate(c, data.seasons, d);
       const key = `${r.season?.id ?? "base"}|${r.dayRate ? dayRateLabel(r.dayRate) : ""}`;
-      const label = r.season ? (r.dayRate ? `${r.season.nombre} · ${dayRateLabel(r.dayRate)}` : r.season.nombre) : "Tarifa base";
-      const g = groups.get(key) ?? { label, nights: 0, couple: r.couple, extra: r.extra };
+      const label = r.season
+        ? r.dayRate
+          ? `${r.season.nombre} · ${dayRateLabel(r.dayRate)}`
+          : r.season.nombre
+        : r.dayRate
+          ? `Tarifa base · ${dayRateLabel(r.dayRate)}`
+          : weekdaysLabel
+            ? `Tarifa base · ${weekdaysLabel}`
+            : "Tarifa base";
+      const step = r.tiers ? ([...personSteps(r.tiers)].reverse().find((n) => n <= guests) ?? personSteps(r.tiers)[0]) : 0;
+      const price = r.tiers ? tierPrice(r.tiers, guests) : r.couple + extra * r.extra;
+      const detail = r.tiers
+        ? step === guests
+          ? `para ${plural(guests, "persona", "personas")}`
+          : `tarifa de ${plural(step, "persona", "personas")}`
+        : extra && r.extra
+          ? `pareja ${cop(r.couple)} + ${plural(extra, "adicional", "adicionales")} × ${cop(r.extra)}`
+          : "para 2 personas";
+      const g = groups.get(key) ?? { label, nights: 0, price, detail };
       g.nights++;
       groups.set(key, g);
     }
@@ -642,24 +759,24 @@ function Simulator() {
           {(p) => <DateRangePicker id={p.id} mode="nights" from={range.from} to={range.to} onChange={(from, to) => setRange({ from, to })} clearable={false} />}
         </Field>
         <Field label="Huéspedes">{(p) => <Stepper id={p.id} value={guests} onChange={setGuests} min={1} max={c?.maxPersonas ?? 12} />}</Field>
+        {minPeople && guests < minPeople && (
+          <p className="-mt-1 text-[12.5px] text-ink-muted sm:col-span-3">{`${c?.nombre} cobra desde ${plural(minPeople, "persona", "personas")}: con ${guests} se cobra la tarifa de ${minPeople}.`}</p>
+        )}
       </div>
       {result ? (
         <div className="grid grid-cols-1 gap-4 rounded-[18px] bg-canvas/70 p-4 sm:grid-cols-[1fr_auto]">
           <ul className="flex flex-col gap-1.5 text-[13.5px]">
             {result.groups.map((g) => (
-              <li key={g.label} className="flex flex-wrap justify-between gap-x-4">
+              <li key={g.label} data-sim-line className="flex flex-wrap justify-between gap-x-4">
                 <span className="text-ink">
-                  {plural(g.nights, "noche", "noches")} × {cop(g.couple)} <span className="text-ink-muted">· {g.label}</span>
+                  {plural(g.nights, "noche", "noches")} × {cop(g.price)}{" "}
+                  <span className="text-ink-muted">
+                    · {g.label} · {g.detail}
+                  </span>
                 </span>
-                <span className="font-semibold text-ink tabular-nums">{cop(g.nights * g.couple)}</span>
+                <span className="font-semibold text-ink tabular-nums">{cop(g.nights * g.price)}</span>
               </li>
             ))}
-            {result.q.extraGuests > 0 && (
-              <li className="flex flex-wrap justify-between gap-x-4">
-                <span className="text-ink">{plural(result.q.extraGuests, "persona adicional", "personas adicionales")}</span>
-                <span className="font-semibold text-ink tabular-nums">{cop(result.q.extraAmount)}</span>
-              </li>
-            )}
           </ul>
           <div className="flex flex-col items-start gap-0.5 sm:items-end sm:border-l sm:border-line sm:pl-5">
             <span className="text-[12.5px] text-ink-muted">Total</span>

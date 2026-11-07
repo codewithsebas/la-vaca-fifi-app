@@ -63,6 +63,8 @@ function activate(engine: SyncEngine, store: Store) {
   setRuntime({
     mutate: (type, input) => engine.mutate(type, input),
     cache: { get: (key) => store.getMeta(key), set: (key, value) => store.setMeta(key, value) },
+    online: () => engine.status.network === "online" && !engine.status.authLost,
+    sync: () => engine.sync(),
   });
   engine.attach();
   // Solo en las pruebas de punta a punta (e2e/modules.spec.ts).

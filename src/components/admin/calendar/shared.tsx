@@ -1,33 +1,50 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
-import { WD, WD_FULL, WD_MIN, addDays, cop, countdown, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { MONTHS, WD, WD_FULL, WD_MIN, addDays, cop, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
+import { cabinName, channelBlocks, isChannelBlock } from "@/lib/booking";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { Block, CabinType, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { paths } from "@/components/admin/routes";
 
 // finde: viernes a domingo (las noches que más se venden). 2semanas: de lunes a domingo de la semana siguiente.
-export type CalView = "dia" | "3dias" | "finde" | "semana" | "2semanas" | "mes";
+export type CalView = "dia" | "finde" | "semana" | "2semanas" | "mes";
 
 export const CALENDAR_VIEWS: { value: CalView; label: string }[] = [
-  { value: "dia", label: "Día" },
-  { value: "3dias", label: "3 días" },
   { value: "finde", label: "Fin de semana" },
   { value: "semana", label: "Semana" },
   { value: "2semanas", label: "2 semanas" },
   { value: "mes", label: "Mes" },
 ];
 
-// Vista inicial según el ancho disponible del calendario (no el de la ventana): pocos días en el celular, semana en tableta, mes en escritorio.
-export const autoView = (w: number): CalView => (w < 560 ? "3dias" : w < 900 ? "semana" : "mes");
-// Por debajo de este ancho el mes se muestra como cuadrícula mensual: 60 medias jornadas no caben legibles.
-export const MONTH_TIMELINE_MIN = 900;
+// Vista inicial según el ancho disponible del calendario (no el de la ventana): semana en celular y tableta, mes en escritorio.
+export const autoView = (w: number): CalView => (w < 900 ? "semana" : "mes");
+// Por debajo de este ancho (el celular) el mes se muestra como cuadrícula mensual: una quincena no cabe legible.
+export const MONTH_TIMELINE_MIN = 640;
 
 export const lastOfMonth = (m: string) => {
   const d = parseISO(m);
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
 };
+// Meses del desplegable: un año atrás y dos adelante (más el de la fecha abierta, si queda fuera).
+export function monthOptions(today: string, anchor: string) {
+  const t = parseISO(today);
+  const iso = (i: number) => new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + i, 1)).toISOString().slice(0, 10);
+  const current = iso(0);
+  const list = Array.from({ length: 37 }, (_, i) => iso(i - 12));
+  const open = `${anchor.slice(0, 7)}-01`;
+  if (!list.includes(open)) list.push(open);
+  return list.sort().map((m) => {
+    const d = parseISO(m);
+    const name = MONTHS[d.getUTCMonth()];
+    return {
+      value: m,
+      label: `${name[0].toUpperCase()}${name.slice(1)} ${d.getUTCFullYear()}`,
+      description: m === current ? "Mes actual" : undefined,
+    };
+  });
+}
 export const mondayOf = (d: string) => addDays(d, -((parseISO(d).getUTCDay() + 6) % 7));
 // Viernes del fin de semana de una fecha: el de esa semana si ya es viernes, sábado o domingo; si no, el que viene.
 export const fridayOf = (d: string) => {
@@ -36,12 +53,18 @@ export const fridayOf = (d: string) => {
 };
 export const BLOCK_BG =
   "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-status-block) 32%, var(--color-panel)) 0 5px, color-mix(in srgb, var(--color-status-block) 14%, var(--color-panel)) 5px 10px)";
-export const blockStyle = (): CSSProperties => ({ background: BLOCK_BG });
-export const blockHref = (b: Block) => paths.bloqueos({ editar: b.id });
+// Noches ocupadas en Booking.com: azul de Booking. No se editan aquí (se gestionan en el extranet de Booking).
+export const BOOKING_STYLE: CSSProperties = {
+  background: "color-mix(in srgb, var(--color-status-booking) 22%, var(--color-panel))",
+  boxShadow: "inset 3px 0 0 var(--color-status-booking)",
+};
+export const blockStyle = (b?: Block): CSSProperties => (b && isChannelBlock(b) ? BOOKING_STYLE : { background: BLOCK_BG });
+export const blockHref = (b: Block) => (isChannelBlock(b) ? paths.booking : paths.bloqueos({ editar: b.id }));
 
-// Bloqueos que dibuja el calendario.
+// Bloqueos del panel y noches de Booking.com juntos: el calendario los dibuja igual (Booking con su color y sin editar).
 export function useCalBlocks() {
-  return useAdmin().data.blocks;
+  const { data } = useAdmin();
+  return useMemo(() => [...data.blocks, ...channelBlocks(data.channelStays ?? [])], [data.blocks, data.channelStays]);
 }
 
 // Color de la barra de cada estado (app/globals.css: el pastel pleno en claro y su tono profundo en oscuro, para que la
@@ -56,7 +79,7 @@ const BAR: Partial<Record<Reservation["status"], string>> = {
 export const barColor = (status: Reservation["status"]) => BAR[status] ?? "var(--bar-completed)";
 
 // Estilo de cada estado: píldora del color del estado. Pendiente de abono = rayado y contorno (aún no asegurada: si no se
-// paga a tiempo, se libera).
+// paga a tiempo, se libera). La línea de tiempo y la leyenda cambian ese contorno por su borde negro.
 export function barStyle(r: Pick<Reservation, "status">): CSSProperties {
   const c = barColor(r.status);
   if (r.status === "pending_deposit")
@@ -96,13 +119,14 @@ export function shortLeft(iso: string, now: number) {
 export const kfmt = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("es-CO", { maximumFractionDigits: 2 })}M` : `${Math.round(n / 1000)}k`);
 
 // Nombre del día según el ancho de su columna: «Lunes», «Lun» o «L» (container queries: decide el espacio real, no la pantalla).
-export function DayName({ wd, className = "" }: { wd: number; className?: string }) {
+// `inline`: comparte la línea con el número, así que necesita más ancho para pasar de la inicial a «Lun».
+export function DayName({ wd, className = "", inline = false }: { wd: number; className?: string; inline?: boolean }) {
   return (
     <span className={className}>
-      <span aria-hidden="true" className="@min-[38px]:hidden">
+      <span aria-hidden="true" className={inline ? "@min-[64px]:hidden" : "@min-[38px]:hidden"}>
         {WD_MIN[wd]}
       </span>
-      <span aria-hidden="true" className="hidden @min-[38px]:inline @min-[92px]:hidden">
+      <span aria-hidden="true" className={`hidden @min-[92px]:hidden ${inline ? "@min-[64px]:inline" : "@min-[38px]:inline"}`}>
         {WD[wd]}
       </span>
       <span className="sr-only @min-[92px]:not-sr-only">{WD_FULL[wd]}</span>
@@ -140,13 +164,15 @@ export function units(cabins: CabinType[], filter: string): Unit[] {
         key: `${c.id}:${i + 1}`,
         cabin: c,
         unit: i + 1,
-        label: `${c.nombre.replace(/^Cabaña\s+/i, "")} ${i + 1}`,
-        short: `${c.nombre.replace(/^Cabaña\s+/i, "").split(" ")[0]} ${i + 1}`,
+        label: cabinName(c, i + 1),
+        short: cabinName(c, i + 1),
       })),
     );
 }
 
 export const occupies = (r: Reservation, u: Unit) => r.cabinTypeId === u.cabin.id && r.unit === u.unit && !["cancelled", "expired"].includes(r.status);
+// Si aparta las noches: una reserva sin abono se dibuja en su cabaña tentativa, pero esas noches siguen libres.
+export const holds = (r: Reservation, u: Unit) => occupies(r, u) && r.status !== "pending_deposit";
 export const blocks = (b: Block, u: Unit) => b.cabinTypeId === u.cabin.id && b.unit === u.unit;
 
 /* ───────────── Contenido de los tooltips ───────────── */
@@ -168,7 +194,7 @@ export function ReservationTip({ r, cabin }: { r: Reservation; cabin: string }) 
         <span>Total {cop(r.quote.total)}</span>
         {p.total > 0 && <span className="text-yellow">Pendiente {cop(p.total)}</span>}
       </span>
-      {r.status === "pending_deposit" && <span className="text-yellow">{`Sin pagar · la retención vence en ${countdown(r.depositDueAt)}`}</span>}
+      {r.status === "pending_deposit" && <span className="text-yellow">Sin confirmar · no aparta las fechas hasta el abono</span>}
       {r.source === "panel" && <span className="text-paper/70">Creada por el equipo</span>}
       <span className="mt-0.5 flex items-center justify-between gap-2 border-t border-paper/15 pt-1.5">
         <span className="rounded-full px-2 py-px text-[11px] font-bold text-ink" style={{ background: statusOf(r.status).bg }}>
@@ -183,11 +209,22 @@ export function ReservationTip({ r, cabin }: { r: Reservation; cabin: string }) 
 export function BlockTip({ b, cabin }: { b: Block; cabin: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <strong className="text-[13px]">{`Bloqueado · ${b.reason}`}</strong>
-      <span className="text-paper/85">{cabin}</span>
-      <span>{`${fmtDate(b.from)} → ${fmtDate(b.to)} · ${plural(nightsBetween(b.from, b.to) + 1, "día", "días")}`}</span>
-      {b.notes && <span className="text-paper/85">{b.notes}</span>}
-      <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Clic para editar el bloqueo</span>
+      {isChannelBlock(b) ? (
+        <>
+          <strong className="text-[13px]">Booking.com · reserva o cierre</strong>
+          <span className="text-paper/85">{cabin}</span>
+          <span>{`${fmtDate(b.from)} → ${fmtDate(addDays(b.to, 1))} · ${plural(nightsBetween(b.from, b.to) + 1, "noche", "noches")}`}</span>
+          <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Se gestiona en el extranet de Booking.com</span>
+        </>
+      ) : (
+        <>
+          <strong className="text-[13px]">{`Bloqueado · ${b.reason}`}</strong>
+          <span className="text-paper/85">{cabin}</span>
+          <span>{`${fmtDate(b.from)} → ${fmtDate(b.to)} · ${plural(nightsBetween(b.from, b.to) + 1, "día", "días")}`}</span>
+          {b.notes && <span className="text-paper/85">{b.notes}</span>}
+          <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Clic para editar el bloqueo</span>
+        </>
+      )}
     </div>
   );
 }
@@ -196,13 +233,14 @@ export function BlockTip({ b, cabin }: { b: Block; cabin: string }) {
 
 /* ───────────── Leyenda (pie de la tabla) ───────────── */
 
-const LEGEND: { label: string; style: CSSProperties }[] = [
+const LEGEND: { label: string; style: CSSProperties; bare?: boolean }[] = [
   { label: "Confirmada", style: barStyle({ status: "confirmed" }) },
   { label: "Sin pagar (retenida)", style: barStyle({ status: "pending_deposit" }) },
   { label: "Reprogramada", style: barStyle({ status: "rescheduled" }) },
   { label: "En estadía", style: barStyle({ status: "checked_in" }) },
   { label: "Finalizada", style: barStyle({ status: "completed" }) },
-  { label: "Bloqueo", style: { background: BLOCK_BG } },
+  { label: "Bloqueo", style: { background: BLOCK_BG }, bare: true },
+  { label: "Booking.com", style: { background: "var(--color-status-booking)" }, bare: true },
 ];
 
 export function CalendarLegend() {
@@ -213,7 +251,7 @@ export function CalendarLegend() {
     >
       {LEGEND.map((l) => (
         <li key={l.label} className="inline-flex flex-none items-center gap-1.5 whitespace-nowrap">
-          <span aria-hidden="true" className="h-3 w-5 rounded-full" style={l.style} />
+          <span aria-hidden="true" className={`h-3 w-5 rounded-full ${l.bare ? "" : "border border-ink"}`} style={{ ...l.style, boxShadow: undefined }} />
           {l.label}
         </li>
       ))}

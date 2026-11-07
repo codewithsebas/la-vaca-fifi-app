@@ -72,13 +72,48 @@ async function siteOf(ctx: Ctx) {
 
 type Rendered = { email: RenderedEmail; to: string; attachments?: Attachment[] };
 
+type ReservationRow = Tables<"reservations">;
+
+// Suma de un grupo: personas, valores y pagos. Una reserva sola queda igual.
+function sumGroup(rows: ReservationRow[]) {
+  const quotes = rows.map((m) => m.quote as Quote);
+  const add = (f: (q: Quote) => number) => quotes.reduce((s, q) => s + f(q), 0);
+  return {
+    adults: rows.reduce((s, m) => s + m.adults, 0),
+    children: rows.reduce((s, m) => s + m.children, 0),
+    paid_amount: rows.reduce((s, m) => s + m.paid_amount, 0),
+    quote: { ...quotes[0], total: add((q) => q.total), deposit: add((q) => q.deposit), balance: add((q) => q.balance) } as Quote,
+  };
+}
+
+// «Cabaña Doble», «2 × Cabaña Doble y Cabaña Dos Camas».
+function cabinList(names: string[]) {
+  const counts = new Map<string, number>();
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
+  const parts = [...counts].map(([n, k]) => (k > 1 ? `${k} × ${n}` : n));
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}` : (parts[0] ?? "");
+}
+
 // Correos de la reserva: se leen la reserva y su cabaña al enviar (siempre con los datos vigentes).
 async function renderReservation(ctx: Ctx, row: Row, c: SiteConfig, logoUrl: string): Promise<Rendered> {
   if (!row.reservation_code) throw new Error("La reserva del correo ya no existe.");
-  const { data: r } = await ctx.sb.from("reservations").select("*").eq("code", row.reservation_code).single().throwOnError();
-  const { data: cabin } = await ctx.sb.from("cabin_types").select("nombre").eq("id", r.cabin_type_id).maybeSingle().throwOnError();
+  const { data: lead } = await ctx.sb.from("reservations").select("*").eq("code", row.reservation_code).single().throwOnError();
+  // Reserva con varias cabañas: el correo de la principal habla por todo el grupo (cabañas, personas, valores y pagos).
+  const ended = row.kind === "reservation_cancelled" || row.kind === "reservation_expired";
+  const members = lead.group_code
+    ? (await ctx.sb.from("reservations").select("*").eq("group_code", lead.group_code).order("code").throwOnError()).data.filter(
+        (m) => ended || m.status !== "cancelled",
+      )
+    : [lead];
+  const group = members.length ? members : [lead];
+  const { data: cabins } = await ctx.sb
+    .from("cabin_types")
+    .select("id,nombre")
+    .in("id", [...new Set(group.map((m) => m.cabin_type_id))])
+    .throwOnError();
+  const r = { ...lead, ...sumGroup(group) };
   const q = r.quote as Quote;
-  const cabana = cabin?.nombre ?? r.cabin_type_id;
+  const cabana = cabinList(group.map((m) => cabins.find((c) => c.id === m.cabin_type_id)?.nombre ?? m.cabin_type_id));
   const stay = {
     nombre: r.guest_full_name,
     codigo: r.code,
@@ -99,21 +134,25 @@ async function renderReservation(ctx: Ctx, row: Row, c: SiteConfig, logoUrl: str
 
   switch (row.kind) {
     case "reservation_confirmed": {
-      const { data: deposit } = await ctx.sb
+      const { data: deposits } = await ctx.sb
         .from("payments")
-        .select("amount")
-        .eq("reservation_code", r.code)
+        .select("reservation_code,amount")
+        .in(
+          "reservation_code",
+          group.map((m) => m.code),
+        )
         .in("kind", ["deposit", "full"])
         .eq("status", "approved")
         .order("approved_at")
-        .limit(1)
         .throwOnError();
+      // El primer pago de cada cabaña (en un grupo, el abono se reparte entre ellas).
+      const firstPaid = group.reduce((sum, m) => sum + (deposits.find((d) => d.reservation_code === m.code)?.amount ?? 0), 0);
       const email = reservationConfirmedEmail(c, {
         ...stay,
         mascota,
         total: q.total,
         // Lo pagado al confirmar (abono o total), aunque el correo se reenvíe después de pagar el saldo.
-        pagado: deposit[0]?.amount ?? q.deposit,
+        pagado: firstPaid || q.deposit,
         miReservaUrl,
         comoLlegarUrl: dirHref(),
         whatsappUrl,
@@ -146,8 +185,10 @@ async function renderReservation(ctx: Ctx, row: Row, c: SiteConfig, logoUrl: str
           whatsappUrl,
         }),
       );
-    case "reservation_rescheduled": {
+    case "reservation_rescheduled":
+    case "reservation_moved": {
       // Las fechas de este cambio quedan en la fila: si se reprograma otra vez, cada correo cuenta el suyo.
+      // reservation_moved: no tenía abono y otra reserva pagó primero sus fechas; se corrió a las próximas libres.
       const d = row.payload as { checkInAnterior: string; checkOutAnterior: string; checkIn: string; checkOut: string };
       const email = reservationRescheduledEmail(c, {
         ...stay,
@@ -162,6 +203,7 @@ async function renderReservation(ctx: Ctx, row: Row, c: SiteConfig, logoUrl: str
         plazo: r.deposit_due_at,
         miReservaUrl,
         whatsappUrl,
+        movida: row.kind === "reservation_moved",
       });
       const calendar = ics({ code: r.code, checkIn: d.checkIn, checkOut: d.checkOut, cabinTypeId: r.cabin_type_id }, c, cabana);
       return { ...guest(email), attachments: [{ filename: `reserva-${r.code}.ics`, content: Buffer.from(calendar).toString("base64") }] };

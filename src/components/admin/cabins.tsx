@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanUnitLabels, invalidUnitLabels, personRatesText, personSteps, rateFrom, unitLabel } from "@/lib/booking";
 import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, type DragEvent } from "react";
@@ -26,12 +27,11 @@ import { isMockApi } from "@/lib/config";
 import { cop, plural } from "@/lib/format";
 import { imageSize, resizeImage } from "@/lib/client/image-resize";
 import { CABIN_PHOTO } from "@/lib/site";
-import type { CabinInput, CabinType } from "@/lib/types";
+import type { CabinInput, PersonRates, CabinType } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { CabinBathrooms, cabinBathroomAlerts } from "@/components/admin/bathrooms";
 import { MODULES, paths } from "@/components/admin/routes";
 import { useRouteParam } from "@/components/admin/route-param";
-import { useTip } from "@/components/ui/floating";
 import { adminInput } from "@/components/admin/shared";
 import { themeStyle } from "@/components/admin/theme";
 import {
@@ -42,6 +42,7 @@ import {
   CardHeader,
   EmptyState,
   Field,
+  FieldError,
   IconButton,
   MoneyInput,
   PageHeader,
@@ -70,7 +71,6 @@ const SUGGESTED = [
 
 export function CabinList() {
   const { data, ask, setData, toast, onAuthError, today } = useAdmin();
-  const tip = useTip();
   const cabins = data.cabinTypes;
   const count = (id: string) => data.reservations.filter((r) => r.cabinTypeId === id).length;
 
@@ -132,101 +132,99 @@ export function CabinList() {
         }
       />
       {cabins.length ? (
-        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {cabins.map((c, i) => {
-            const n = count(c.id);
-            const bathAlerts = cabinBathroomAlerts(data, c.id, today);
-            return (
-              <li key={c.id} className={`flex flex-col overflow-hidden rounded-[22px] bg-panel transition-opacity ${c.activa ? "" : "opacity-80"}`}>
-                <div className="relative aspect-[16/10] bg-canvas">
-                  {c.fotos[0] ? (
-                    <Image src={c.fotos[0]} alt={c.nombre} fill sizes="(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw" className="object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 grid place-items-center text-ink-muted">
-                      <span className="flex flex-col items-center gap-1 text-[13px]">
-                        <ImageIcon size={24} className="opacity-60" />
-                        Sin fotos
-                      </span>
-                    </div>
-                  )}
-                  <span className="absolute top-2.5 left-2.5 flex gap-1.5">
-                    <Badge tone={c.activa ? "success" : "neutral"} className="shadow-panel">
-                      {c.activa ? "Activa" : "Inactiva"}
-                    </Badge>
-                    {/* La etiqueta de la cabaña, como en el sitio. No usa Badge: su fondo neutro le gana al resaltado y no se lee sobre la foto. */}
-                    {c.badge && (
-                      <span className="inline-flex items-center rounded-full bg-yellow px-2.5 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-ink shadow-panel">
-                        {c.badge}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex flex-1 flex-col gap-3 p-4">
-                  <div>
-                    <h2 className="text-[16px] font-bold text-ink">{c.nombre}</h2>
-                    {c.descripcion && <p className="mt-0.5 line-clamp-2 text-[13px] text-ink-muted">{c.descripcion}</p>}
-                  </div>
-                  <dl className="grid grid-cols-3 gap-2 text-[12.5px]">
-                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
-                      <dt className="text-ink-muted">Capacidad</dt>
-                      <dd className="font-semibold text-ink">{plural(c.maxPersonas, "persona", "personas")}</dd>
-                    </div>
-                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
-                      <dt className="text-ink-muted">Unidades</dt>
-                      <dd className="font-semibold text-ink">{c.units}</dd>
-                    </div>
-                    <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
-                      <dt className="text-ink-muted">Pareja/noche</dt>
-                      <dd className="font-semibold text-ink tabular-nums">{cop(c.precioPareja)}</dd>
-                    </div>
-                  </dl>
-                  <p className="text-[12.5px] text-ink-muted">
-                    {plural(c.fotos.length, "foto", "fotos")} · {plural(c.caracteristicas.length, "característica", "características")} ·{" "}
-                    {plural(n, "reserva", "reservas")}
-                  </p>
-                  {bathAlerts.length > 0 && (
-                    <p className="flex items-center gap-2 rounded-[14px] bg-yellow-soft px-3 py-2 text-[12.5px] font-semibold text-warning">
-                      <BathIcon size={14} />
-                      {bathAlerts.length === 1 ? `${bathAlerts[0].name}: fuera de servicio hoy` : `${bathAlerts.length} baños fuera de servicio hoy`}
-                    </p>
-                  )}
-                  <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
-                    <Link href={paths.cabana(c.id)} className={buttonClass("primary", "sm")}>
-                      <PencilIcon size={13} />
-                      Editar
-                    </Link>
-                    <Button size="sm" onClick={() => toggle(c)}>
-                      {c.activa ? "Desactivar" : "Activar"}
-                    </Button>
-                    <span className="ml-auto flex gap-0.5">
-                      <IconButton label="Subir en el orden" size="sm" disabled={i === 0} onClick={() => move(i, -1)}>
-                        <ArrowUpIcon size={15} />
-                      </IconButton>
-                      <IconButton label="Bajar en el orden" size="sm" disabled={i === cabins.length - 1} onClick={() => move(i, 1)}>
-                        <ArrowDownIcon size={15} />
-                      </IconButton>
-                      {n ? (
-                        <span
-                          {...tip(() => "Tiene reservas: no se puede eliminar. Desactívala para ocultarla del sitio.")}
-                          tabIndex={0}
-                          className="inline-grid"
-                        >
-                          <IconButton label="No se puede eliminar: tiene reservas" size="sm" variant="danger-ghost" disabled>
-                            <TrashIcon size={15} />
-                          </IconButton>
+        <div className="@container">
+          {/* Columnas según el espacio de las tarjetas (no el de la ventana): 4 desde ~1000 px de contenido. */}
+          <ul className="grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
+            {cabins.map((c, i) => {
+              const n = count(c.id);
+              const bathAlerts = cabinBathroomAlerts(data, c.id, today);
+              return (
+                <li key={c.id} className={`flex flex-col overflow-hidden rounded-[20px] bg-panel transition-opacity ${c.activa ? "" : "opacity-80"}`}>
+                  <div className="relative aspect-[16/9] bg-canvas">
+                    {c.fotos[0] ? (
+                      <Image src={c.fotos[0]} alt={c.nombre} fill sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 grid place-items-center text-ink-muted">
+                        <span className="flex flex-col items-center gap-1 text-[13px]">
+                          <ImageIcon size={20} className="opacity-60" />
+                          Sin fotos
                         </span>
-                      ) : (
-                        <IconButton label={`Eliminar ${c.nombre}`} size="sm" variant="danger-ghost" onClick={() => remove(c)}>
-                          <TrashIcon size={15} />
-                        </IconButton>
+                      </div>
+                    )}
+                    <span className="absolute top-2.5 left-2.5 flex gap-1.5">
+                      <Badge tone={c.activa ? "success" : "neutral"} className="shadow-panel">
+                        {c.activa ? "Activa" : "Inactiva"}
+                      </Badge>
+                      {/* La etiqueta de la cabaña, como en el sitio. No usa Badge: su fondo neutro le gana al resaltado y no se lee sobre la foto. */}
+                      {c.badge && (
+                        <span className="inline-flex items-center rounded-full bg-yellow px-2.5 py-0.5 text-[12px] leading-[1.5] font-bold whitespace-nowrap text-ink shadow-panel">
+                          {c.badge}
+                        </span>
                       )}
                     </span>
                   </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+                    <div>
+                      <h2 className="text-[15px] leading-tight font-bold text-ink">{c.nombre}</h2>
+                      {c.descripcion && <p className="mt-1 line-clamp-2 text-[12.5px] text-ink-muted">{c.descripcion}</p>}
+                    </div>
+                    <dl className="grid grid-cols-3 gap-1.5 text-[12px]">
+                      <div className="min-w-0 rounded-[12px] bg-canvas/70 px-2.5 py-1.5">
+                        <dt className="text-ink-muted">Capacidad</dt>
+                        <dd className="font-semibold text-ink">{plural(c.maxPersonas, "persona", "personas")}</dd>
+                      </div>
+                      <div className="min-w-0 rounded-[12px] bg-canvas/70 px-2.5 py-1.5">
+                        <dt className="text-ink-muted">Cabañas</dt>
+                        <dd className="font-semibold text-ink">{Array.from({ length: c.units }, (_, i) => unitLabel(c, i + 1)).join(", ") || "Ninguna"}</dd>
+                      </div>
+                      <div className="min-w-0 rounded-[12px] bg-canvas/70 px-2.5 py-1.5">
+                        <dt className="text-ink-muted">{`Noche para ${rateFrom(c).guests}`}</dt>
+                        <dd className="font-semibold text-ink tabular-nums">{cop(rateFrom(c).price)}</dd>
+                      </div>
+                    </dl>
+                    <p className="text-[12px] text-ink-muted">
+                      {plural(c.fotos.length, "foto", "fotos")} · {plural(c.caracteristicas.length, "característica", "características")} ·{" "}
+                      {plural(n, "reserva", "reservas")}
+                    </p>
+                    {bathAlerts.length > 0 && (
+                      <p className="flex items-center gap-2 rounded-[14px] bg-yellow-soft px-3 py-2 text-[12.5px] font-semibold text-warning">
+                        <BathIcon size={14} />
+                        {bathAlerts.length === 1 ? `${bathAlerts[0].name}: fuera de servicio hoy` : `${bathAlerts.length} baños fuera de servicio hoy`}
+                      </p>
+                    )}
+                    <div className="mt-auto flex flex-col gap-2 border-t border-line pt-2.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <Link href={paths.cabana(c.id)} className={buttonClass("primary", "sm", "w-full")}>
+                          <PencilIcon size={13} />
+                          Editar
+                        </Link>
+                        <Button size="sm" className="w-full" onClick={() => toggle(c)}>
+                          {c.activa ? "Desactivar" : "Activar"}
+                        </Button>
+                      </div>
+                      {/* Orden al centro; eliminar a la derecha, solo si se puede (sin reservas). */}
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center">
+                        <span className="col-start-2 flex gap-0.5">
+                          <IconButton label="Subir en el orden" size="sm" disabled={i === 0} onClick={() => move(i, -1)}>
+                            <ArrowUpIcon size={15} />
+                          </IconButton>
+                          <IconButton label="Bajar en el orden" size="sm" disabled={i === cabins.length - 1} onClick={() => move(i, 1)}>
+                            <ArrowDownIcon size={15} />
+                          </IconButton>
+                        </span>
+                        {!n && (
+                          <IconButton label={`Eliminar ${c.nombre}`} size="sm" variant="danger-ghost" className="justify-self-end" onClick={() => remove(c)}>
+                            <TrashIcon size={15} />
+                          </IconButton>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ) : (
         <Card className="p-4">
           <EmptyState
@@ -275,6 +273,7 @@ export function CabinEditor({ id }: { id?: string }) {
         badge: current.badge,
         maxPersonas: current.maxPersonas,
         units: current.units,
+        unitLabels: cleanUnitLabels(current.unitLabels, current.units),
         precioPareja: current.precioPareja,
         personaAdicional: current.personaAdicional,
         activa: current.activa,
@@ -285,6 +284,13 @@ export function CabinEditor({ id }: { id?: string }) {
   const [busy, setBusy] = useState(false);
   const [feature, setFeature] = useState("");
   const dirty = JSON.stringify(v) !== JSON.stringify(base);
+  // Un número puesto a mano no debería estar también en otra cabaña: es la misma puerta. Se avisa, no se bloquea.
+  const repeatedElsewhere = cleanUnitLabels(v.unitLabels, v.units)
+    .filter(Boolean)
+    .flatMap((label) => {
+      const other = data.cabinTypes.find((c) => c.id !== current?.id && cleanUnitLabels(c.unitLabels, c.units).includes(label));
+      return other ? [{ label, cabin: other.nombre }] : [];
+    });
   const set = (p: Partial<CabinInput>) => setV((x) => ({ ...x, ...p }));
 
   if (id && !current)
@@ -317,6 +323,8 @@ export function CabinEditor({ id }: { id?: string }) {
     const e: Record<string, string> = {};
     if (v.nombre.trim().length < 3) e.nombre = "El nombre debe tener al menos 3 caracteres.";
     if (v.precioPareja <= 0) e.precioPareja = "Escribe la tarifa por noche para 2 personas.";
+    const badLabels = invalidUnitLabels(v.unitLabels, v.units);
+    if (badLabels) e.unitLabels = badLabels;
     setErrors(e);
     if (Object.keys(e).length) {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('main [aria-invalid="true"]')?.focus());
@@ -324,7 +332,13 @@ export function CabinEditor({ id }: { id?: string }) {
     }
     setBusy(true);
     try {
-      const body = { ...v, nombre: v.nombre.trim(), descripcion: v.descripcion.trim(), badge: v.badge.trim() };
+      const body = {
+        ...v,
+        unitLabels: cleanUnitLabels(v.unitLabels, v.units),
+        nombre: v.nombre.trim(),
+        descripcion: v.descripcion.trim(),
+        badge: v.badge.trim(),
+      };
       const r = current ? await api.admin.updateCabin({ ...body, id: current.id }) : await api.admin.createCabin(body);
       if (r.status === 401 || r.status === 403) return onAuthError();
       if (r.status === 422) return setErrors((r.data as { fields?: Record<string, string> }).fields ?? {});
@@ -423,25 +437,72 @@ export function CabinEditor({ id }: { id?: string }) {
                   />
                 )}
               </Field>
-              <Field label="Unidades" hint="Cuántas cabañas iguales de este tipo hay." error={errors.units}>
+              <Field label="Cabañas de este tipo" hint="Cuántas cabañas físicas son de este tipo." error={errors.units}>
                 {(p) => (
                   <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.units} onChange={(n) => set({ units: n })} min={0} max={20} unit="cabañas" />
                 )}
               </Field>
-              <Field label="Noche para 2" error={errors.precioPareja}>
-                {(p) => (
-                  <MoneyInput
-                    id={p.id}
-                    describedBy={p["aria-describedby"]}
-                    invalid={!!p["aria-invalid"]}
-                    value={v.precioPareja}
-                    onChange={(n) => set({ precioPareja: n })}
-                  />
-                )}
-              </Field>
-              <Field label="Persona adicional por noche" hint="Desde la 3.ª persona." error={errors.personaAdicional}>
-                {(p) => <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={v.personaAdicional} onChange={(n) => set({ personaAdicional: n })} />}
-              </Field>
+              {v.units > 0 && (
+                <fieldset className="flex min-w-0 flex-col gap-2 sm:col-span-2">
+                  <legend className="text-[13px] font-semibold text-ink">Número de cada cabaña</legend>
+                  <p className="text-[12.5px] text-ink-muted">
+                    El mismo de la finca y de Booking: con el 3 se llama «Cabaña 3» en el calendario, las reservas, los bloqueos y Booking. En blanco, se usa el
+                    orden (1, 2, 3…).
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {cleanUnitLabels(v.unitLabels, v.units).map((label, i) => (
+                      <label key={i} className="flex min-w-0 flex-col gap-1 text-[12px] font-semibold text-ink-muted">
+                        {`Cabaña ${label.trim() || i + 1}`}
+                        <input
+                          aria-label={`Número de la cabaña ${i + 1} de este tipo`}
+                          type="text"
+                          autoComplete="off"
+                          maxLength={6}
+                          value={label}
+                          placeholder={String(i + 1)}
+                          aria-invalid={!!errors.unitLabels || undefined}
+                          onChange={(e) => {
+                            const next = cleanUnitLabels(v.unitLabels, v.units);
+                            next[i] = e.target.value;
+                            set({ unitLabels: next });
+                          }}
+                          className={`${adminInput} text-center`}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  {errors.unitLabels && <FieldError>{errors.unitLabels}</FieldError>}
+                  {repeatedElsewhere.length > 0 && (
+                    <Callout tone="warning">
+                      {`${repeatedElsewhere.map((x) => `El ${x.label} también está en ${x.cabin}`).join(". ")}. Revisa si es la misma cabaña física.`}
+                    </Callout>
+                  )}
+                </fieldset>
+              )}
+              {personSteps(current?.preciosPersonas).length > 0 ? (
+                <Callout className="sm:col-span-2">
+                  Esta cabaña cobra según la cantidad de personas ({personRatesText(current!.preciosPersonas!)}). Se cambia en <strong>Tarifas</strong>.
+                </Callout>
+              ) : (
+                <>
+                  <Field label="Noche para 2" error={errors.precioPareja}>
+                    {(p) => (
+                      <MoneyInput
+                        id={p.id}
+                        describedBy={p["aria-describedby"]}
+                        invalid={!!p["aria-invalid"]}
+                        value={v.precioPareja}
+                        onChange={(n) => set({ precioPareja: n })}
+                      />
+                    )}
+                  </Field>
+                  <Field label="Persona adicional por noche" hint="Desde la 3.ª persona." error={errors.personaAdicional}>
+                    {(p) => (
+                      <MoneyInput id={p.id} describedBy={p["aria-describedby"]} value={v.personaAdicional} onChange={(n) => set({ personaAdicional: n })} />
+                    )}
+                  </Field>
+                </>
+              )}
             </div>
           </Card>
 
@@ -519,7 +580,7 @@ export function CabinEditor({ id }: { id?: string }) {
         <div className="flex flex-col gap-4 xl:sticky xl:top-20">
           {current ? <PhotoManager c={current} /> : <Callout>Guarda la cabaña para agregar fotos.</Callout>}
           {current && <CabinBathrooms cabinTypeId={current.id} />}
-          <Preview v={v} photo={current?.fotos[0]} />
+          <Preview tiers={current?.preciosPersonas} v={v} photo={current?.fotos[0]} />
         </div>
       </div>
     </>
@@ -696,7 +757,7 @@ function PhotoManager({ c }: { c: CabinType }) {
 /* ───────────── Vista previa ───────────── */
 
 // Réplica de la tarjeta de la portada (mismos estilos del sitio) para ver el resultado antes de guardar.
-function Preview({ v, photo }: { v: CabinInput; photo?: string }) {
+function Preview({ v, photo, tiers }: { v: CabinInput; photo?: string; tiers?: PersonRates }) {
   const { data } = useAdmin();
   return (
     <section aria-labelledby="cb-prev" className="flex flex-col gap-2">
@@ -730,10 +791,21 @@ function Preview({ v, photo }: { v: CabinInput; photo?: string }) {
             </ul>
           )}
           <dl className="grid grid-cols-[auto_auto] justify-start gap-x-4 gap-y-0.5 text-[.8rem]">
-            <dt>Noche para 2</dt>
-            <dd className="font-extrabold">{cop(v.precioPareja)}</dd>
-            <dt>Persona adicional</dt>
-            <dd className="font-bold">{cop(v.personaAdicional)}</dd>
+            {personSteps(tiers).length ? (
+              personSteps(tiers).map((n) => (
+                <div key={n} className="contents">
+                  <dt>{`Noche para ${n}`}</dt>
+                  <dd className="font-extrabold">{cop(tiers![n])}</dd>
+                </div>
+              ))
+            ) : (
+              <>
+                <dt>Noche para 2</dt>
+                <dd className="font-extrabold">{cop(v.precioPareja)}</dd>
+                <dt>Persona adicional</dt>
+                <dd className="font-bold">{cop(v.personaAdicional)}</dd>
+              </>
+            )}
             <dt>Capacidad</dt>
             <dd className="font-bold">Máximo {v.maxPersonas} personas</dd>
           </dl>

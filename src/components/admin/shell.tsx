@@ -1,6 +1,6 @@
 "use client";
 
-// Estructura común del panel (app/admin/layout.tsx): sesión, datos, tiempo real, navegación, migas de pan, avisos y confirmaciones.
+// Estructura común del panel (app/admin/layout.tsx): sesión, datos, tiempo real, navegación, avisos y confirmaciones.
 // Cada módulo es una página propia (app/admin/<modulo>/page.tsx) que se monta dentro de este marco.
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -13,27 +13,32 @@ import { offlineEnabled } from "@/lib/offline/config";
 import type { SyncEngine } from "@/lib/offline/engine";
 import { precacheShell } from "@/lib/offline/precache";
 import { closeSession, endSession, openSession } from "@/lib/offline/session";
+import { cabinName } from "@/lib/booking";
 import { config } from "@/lib/config";
 import { todayISO } from "@/lib/format";
+import { mergePanelColors, panelColorsCss, type PanelColors } from "@/lib/panel-colors";
 import { themeCss, type SiteTheme } from "@/lib/theme";
 import type { AdminData, PanelRole } from "@/lib/types";
 import { AdminProvider, type AdminCtx } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
+import { PanelFooter } from "@/components/admin/footer";
 import { TipProvider, useLabelTip, useTip } from "@/components/ui/floating";
-import { Login, PanelLoader } from "@/components/admin/login";
+import { Login } from "@/components/admin/login";
+import { PanelSkeleton } from "@/components/admin/skeletons";
 import { NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
-import { ThemeMenu, useApplyTheme } from "@/components/admin/appearance";
+import { ThemeMenu, syncBrowserBar, useApplyTheme } from "@/components/admin/appearance";
+import { BookingSyncButton } from "@/components/admin/booking-calendars";
 import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, canOpen, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "@/components/admin/routes";
 import { AccessDenied, AccountMenu } from "@/components/admin/account";
 import { GlobalSearch } from "@/components/admin/global-search";
 import { SyncChip } from "@/components/admin/sync";
 import { type Ask, type ConfirmCfg, adminInput } from "@/components/admin/shared";
 import {
-  Breadcrumbs,
   Button,
   Callout,
   CountBadge,
+  enter,
   ErrorState,
   Field,
   FieldError,
@@ -49,10 +54,16 @@ import {
 
 /* ───────────── Colores ───────────── */
 
-// El panel tiene sus propios colores (app/globals.css). La paleta publicada del sitio se declara igual, para las vistas
-// previas del sitio que muestra (fotos, colores, textos). La hoja se va con el panel al volver al sitio.
+// El panel tiene sus propios colores (app/globals.css), personalizables en Configuración → Colores. La paleta publicada
+// del sitio se declara igual, para las vistas previas del sitio que muestra (fotos, colores, textos). Las hojas se van
+// con el panel al volver al sitio.
 function PanelTheme({ theme }: { theme: SiteTheme }) {
   return <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />;
+}
+function PanelColorsStyle({ colors }: { colors: PanelColors }) {
+  useEffect(syncBrowserBar, [colors]);
+  // Se valida aquí porque esta hoja envuelve todo el panel: unos datos sin colores no deben tumbarlo.
+  return <style dangerouslySetInnerHTML={{ __html: panelColorsCss(mergePanelColors(colors)) }} />;
 }
 
 /* ───────────── Acceso ───────────── */
@@ -68,17 +79,17 @@ type Gate =
 export function AdminShell({ children }: { children: ReactNode }) {
   // Antes de entrar (carga, ingreso), los colores publicados que trae el sitio; dentro, los de los datos del panel,
   // que cambian apenas se publica otra paleta.
-  const { theme } = useSite();
+  const { theme, panelColors } = useSite();
   useApplyTheme();
   return (
     <>
       <PanelTheme theme={theme} />
-      <Gated>{children}</Gated>
+      <Gated panelColors={panelColors}>{children}</Gated>
     </>
   );
 }
 
-function Gated({ children }: { children: ReactNode }) {
+function Gated({ panelColors, children }: { panelColors: PanelColors; children: ReactNode }) {
   const [gate, setGate] = useState<Gate>({ status: "checking" });
   const check = useCallback(() => {
     const online = () =>
@@ -123,11 +134,26 @@ function Gated({ children }: { children: ReactNode }) {
     return () => closeSession();
   }, [check]);
 
-  if (gate.status === "checking") return <PanelLoader />;
-  if (gate.status === "login") return <Login onSuccess={recheck} />;
+  // Antes de entrar, los colores publicados; dentro, los de los datos del panel (Panel). Mientras llegan los datos, el
+  // panel ya se ve con su forma (esqueletos); al entrar, cada pieza llega con animación.
+  const pre = <PanelColorsStyle colors={panelColors} />;
+  if (gate.status === "checking")
+    return (
+      <>
+        {pre}
+        <PanelSkeleton />
+      </>
+    );
+  if (gate.status === "login")
+    return (
+      <>
+        {pre}
+        <Login onSuccess={recheck} />
+      </>
+    );
   if (gate.status === "error" || gate.status === "expired")
     return (
-      <div className="admin-surface grid min-h-dvh place-items-center bg-canvas px-4">
+      <div className="admin-surface grid min-h-dvh grid-rows-[1fr_auto] place-items-center bg-canvas px-4 pb-4">
         <div className="w-full max-w-[460px]">
           <ErrorState
             title={gate.status === "expired" ? "Conéctate para seguir" : "No pudimos abrir el panel"}
@@ -141,6 +167,8 @@ function Gated({ children }: { children: ReactNode }) {
             onRetry={recheck}
           />
         </div>
+        {pre}
+        <PanelFooter className="w-full" />
       </div>
     );
   return (
@@ -293,22 +321,6 @@ function NavTip({ label, badge }: { label: string; badge?: { n: number; label: s
   );
 }
 
-// Al hacer clic (o tocar) un módulo, su icono repite el gesto (globals.css, [data-tap]). Si el mouse ya está encima, el
-// gesto del :hover ya terminó: se vuelve a empezar.
-const tapTimers = new WeakMap<HTMLElement, number>();
-function replayGesture(el: HTMLElement) {
-  el.setAttribute("data-tap", "");
-  for (const a of el.getAnimations({ subtree: true })) {
-    a.cancel();
-    a.play();
-  }
-  window.clearTimeout(tapTimers.get(el));
-  tapTimers.set(
-    el,
-    window.setTimeout(() => el.removeAttribute("data-tap"), 1000),
-  );
-}
-
 // Menú de módulos por grupos: el mismo en la barra lateral (escritorio) y en el cajón (móvil y tableta).
 function NavList({
   current,
@@ -328,8 +340,10 @@ function NavList({
     g,
     ids: MODULE_IDS.filter((id) => MODULES[id].group === g && MODULES[id].nav !== false && canOpen(role, id)),
   })).filter((x) => x.ids.length);
+  // Turno de cada módulo en la entrada del panel: uno tras otro, de arriba abajo.
+  let order = 0;
   return (
-    <nav aria-label="Módulos del panel" className={`flex flex-col ${mini ? "gap-2.5" : "gap-4"}`}>
+    <nav aria-label="Módulos del panel" className={`flex flex-col ${mini ? "gap-2.5" : "gap-2"}`}>
       {groups.map(({ g, ids }, gi) => (
         <div key={g} className="flex flex-col gap-0.5">
           {mini ? (
@@ -341,18 +355,18 @@ function NavList({
             const { label, icon: Icon, href } = MODULES[id];
             const active = current === id;
             const b = badges[id];
-            return (
+            // Junto a Booking (solo administradores, que son quienes leen Booking), un botón para leerlo ya.
+            const reloadBooking = id === "booking" && role === "admin" && !mini;
+            const link = (
               <Link
                 key={id}
                 href={href}
-                onClick={(e) => {
-                  replayGesture(e.currentTarget);
-                  onNavigate?.();
-                }}
+                onClick={() => onNavigate?.()}
                 aria-current={active ? "page" : undefined}
                 data-nav={id}
+                {...enter(1 + order++ * 0.5, "side")}
                 {...(mini ? tip(() => <NavTip label={label} badge={b} />, SIDE_TIP) : {})}
-                className={`${navItem(mini)} ${active ? `text-pink ${mini ? "bg-white/10" : ""}` : id === "booking" ? bookingHover : "text-white/72 hover:bg-white/7 hover:text-white"}`}
+                className={`${navItem(mini)} ${reloadBooking ? "pr-10" : ""} ${active ? `text-pink ${mini ? "bg-white/10" : ""}` : id === "booking" ? bookingHover : "text-white/72 hover:bg-white/7 hover:text-white"}`}
               >
                 {active && !mini && <span aria-hidden="true" className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full bg-pink" />}
                 <Icon size={19} className={id === "booking" ? bookingIcon : active ? "text-pink" : navIcon} />
@@ -368,6 +382,14 @@ function NavList({
                   )
                 ) : null}
               </Link>
+            );
+            return reloadBooking ? (
+              <div key={id} className="relative">
+                {link}
+                <BookingSyncButton className="absolute top-1/2 right-1.5 -translate-y-1/2" />
+              </div>
+            ) : (
+              link
             );
           })}
         </div>
@@ -393,7 +415,7 @@ function Sidebar({
 }) {
   const tip = useTip();
   return (
-    <aside className="sticky top-0 z-40 hidden h-dvh w-(--admin-sidebar) flex-none p-3 transition-[width] duration-200 lg:block">
+    <aside {...enter(0, "side")} className="sticky top-0 z-40 hidden h-dvh w-(--admin-sidebar) flex-none p-3 transition-[width] duration-200 lg:block">
       <div
         data-tip-edge
         className="admin-dark relative flex h-full flex-col rounded-[28px] bg-sidebar text-white [[data-admin-theme=dark]_&]:ring-1 [[data-admin-theme=dark]_&]:ring-white/8"
@@ -404,9 +426,10 @@ function Sidebar({
           {...(mini ? tip(() => <NavTip label="Ir al dashboard" />, SIDE_TIP) : {})}
           className={`flex min-w-0 items-center gap-3 rounded-[20px] pt-6 pb-5 ${mini ? "justify-center px-2" : "px-5"}`}
         >
-          {mini ? <Logo size={40} eager /> : <Brand size={40} wordSize="1.1rem" eyebrowSize=".47rem" eager />}
+          {mini ? <Logo size={32} eager /> : <Brand size={40} wordSize="1.1rem" eyebrowSize=".47rem" eyebrow="cabañas · restaurante" eager />}
         </Link>
-        {/* Centrado con el logo: 24 px de margen + 20 px (medio logo) − 14 px (medio botón) = 30 px. Dorado pastel fijo en
+        {/* Centrado con el logo: 24 px de margen + medio logo − 14 px (medio botón): 30 px abierto (logo de 40), 26 px
+            contraído (logo de 32, centrado con los íconos; el botón sale un poco más para no taparlo). Dorado pastel fijo en
             los dos modos: la barra lateral es negra siempre y el dorado oscuro del modo oscuro no se vería. */}
         <button
           type="button"
@@ -415,7 +438,7 @@ function Sidebar({
           data-gesture={mini ? "next" : "prev"}
           {...tip(() => <NavTip label={mini ? "Expandir el menú" : "Contraer el menú"} />, SIDE_TIP)}
           aria-expanded={!mini}
-          className="absolute top-7.5 -right-3.5 grid size-7 place-items-center rounded-full bg-[#f5d462] text-[#171614] ring-[3px] ring-canvas transition-colors hover:bg-[#e9bf38]"
+          className={`absolute grid size-7 ${mini ? "top-[26px] -right-[18px]" : "top-7.5 -right-3.5"} place-items-center rounded-full bg-[#f5d462] text-[#171614] ring-[3px] ring-canvas transition-colors hover:bg-[#e9bf38]`}
         >
           {mini ? <ChevronRightIcon size={15} /> : <ChevronLeftIcon size={15} />}
         </button>
@@ -424,22 +447,6 @@ function Sidebar({
         </div>
       </div>
     </aside>
-  );
-}
-
-// Pie del panel: derechos de autor a nombre del titular legal y quién lo desarrolló. Va al final de cada página (abajo
-// del todo si la página es corta). Mientras la razón social no esté en la configuración, solo el nombre comercial.
-function PanelFooter({ className = "" }: { className?: string }) {
-  const holder = config.razonSocial.startsWith("{") ? config.name : `${config.razonSocial} — ${config.name}`;
-  return (
-    <footer
-      className={`mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line pt-4 text-[12.5px] text-ink-subtle ${className}`}
-    >
-      <p>{`© ${todayISO().slice(0, 4)} ${holder}. Todos los derechos reservados.`}</p>
-      <p>
-        Desarrollado por <span className="font-semibold text-ink-muted">Joab Giraldo</span>
-      </p>
-    </footer>
   );
 }
 
@@ -453,7 +460,7 @@ function SettingsLink() {
   );
 }
 
-// Migas de pan a partir de la ruta: Dashboard / Módulo / Detalle.
+// Ruta de la página (Dashboard / Módulo / Detalle): da el nombre de la página actual.
 function crumbsFor(pathname: string, data: AdminData): Crumb[] {
   const mod = moduleOf(pathname);
   const root: Crumb = { label: MODULES.dashboard.label, href: paths.dashboard };
@@ -473,7 +480,9 @@ function crumbsFor(pathname: string, data: AdminData): Crumb[] {
             : `Editar ${data.cabinTypes.find((c) => c.id === seg)?.nombre ?? "cabaña"}`
           : mod === "contenido"
             ? (CONTENT_SECTIONS.find((s) => s.id === seg)?.label ?? "Sección")
-            : "Detalle";
+            : mod === "configuracion"
+              ? "Colores"
+              : "Detalle";
   return [root, section, { label: detail }];
 }
 
@@ -512,9 +521,16 @@ function Panel({
   const [now, setNow] = useState(() => Date.now());
   const [menu, setMenu] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [colorPreview, setColorPreview] = useState<PanelColors | null>(null);
   const mini = usePref(PREF.sidebar, "full") === "mini";
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const firstPath = useRef(true);
+  // Entrada del panel (globals.css): las piezas con data-enter se animan solo mientras dura; navegar después no las repite.
+  const [entering, setEntering] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setEntering(false), 1800);
+    return () => clearTimeout(t);
+  }, []);
   const today = todayISO();
   const mod = moduleOf(pathname);
 
@@ -703,9 +719,11 @@ function Panel({
     now,
     cabin: (id) => cabinMap.get(id),
     cabinLabel: (id, unit) => {
-      const name = cabinMap.get(id)?.nombre ?? id;
-      return unit ? `${name} ${unit}` : name;
+      const c = cabinMap.get(id);
+      const name = c?.nombre ?? id;
+      return unit ? cabinName(c, unit) : name;
     },
+    previewColors: setColorPreview,
   };
 
   const badges: Badges = {
@@ -714,24 +732,29 @@ function Panel({
     pagos: { n: data.proofs.filter((p) => p.status === "pending").length, label: "comprobantes por revisar" },
     notificaciones: { n: unread, label: "sin leer" },
   };
-  // El calendario usa todo el alto de la pantalla (si hay alto suficiente; si no, la página se desplaza).
-  const fullHeight = mod === "calendario";
+  // El calendario usa todo el ancho de la pantalla; su alto crece con las filas y se desplaza con la página.
+  const fullWidth = mod === "calendario";
   // La sección de contenido conserva su formulario al cambiar de pestaña: no se vuelve a montar.
   const pageKey = mod === "contenido" ? "contenido" : pathname;
 
   return (
     <AdminProvider value={ctx}>
       <PanelTheme theme={data.site.theme} />
+      <PanelColorsStyle colors={colorPreview ?? data.site.panelColors} />
       <TipProvider>
         <Suspense fallback={null}>
           <LegacyRedirect />
         </Suspense>
-        <div className="admin-root min-h-dvh bg-canvas text-[15px] text-ink lg:flex" style={{ "--admin-sidebar": mini ? "104px" : "280px" } as CSSProperties}>
+        <div
+          className="admin-root min-h-dvh bg-canvas text-[15px] text-ink lg:flex"
+          data-entering={entering ? "" : undefined}
+          style={{ "--admin-sidebar": mini ? "88px" : "252px" } as CSSProperties}
+        >
           <Sidebar current={mod} badges={badges} role={data.me.role} mini={mini} onToggle={() => writePref(PREF.sidebar, mini ? "full" : "mini")} />
 
-          <div className={`flex min-w-0 flex-1 flex-col ${fullHeight ? "tall:h-dvh" : ""}`}>
+          <div className="flex min-w-0 flex-1 flex-col">
             {/* Móvil y tableta: menú en cajón, marca, búsqueda y notificaciones */}
-            <header className="admin-surface admin-header sticky top-0 z-30 flex flex-none flex-col lg:hidden">
+            <header {...enter(0, "down")} className="admin-surface admin-header sticky top-0 z-30 flex flex-none flex-col lg:hidden">
               <div className="flex h-16 items-center justify-between gap-2 px-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <IconButton label="Abrir el menú" variant="primary" aria-expanded={menu} onClick={() => setMenu(true)}>
@@ -767,21 +790,33 @@ function Panel({
 
             {/* Escritorio: búsqueda, apariencia, notificaciones, configuración y cuenta */}
             <header className="admin-surface admin-header sticky top-0 z-20 hidden flex-none items-center gap-4 px-8 pt-4 pb-3 lg:flex">
-              <GlobalSearch className="w-full max-w-[620px]" />
+              <div {...enter(0, "down")} className="w-full max-w-[620px]">
+                <GlobalSearch className="w-full" />
+              </div>
+              {/* Los botones bajan uno tras otro, después del buscador. */}
               <div className="ml-auto flex items-center gap-2">
-                <SyncChip />
-                <ThemeMenu />
-                <NotificationCenter />
-                <SettingsLink />
-                <AccountMenu onLogout={logout} />
+                <span {...enter(1, "down")}>
+                  <SyncChip />
+                </span>
+                <span {...enter(1.6, "down")} className="flex">
+                  <ThemeMenu />
+                </span>
+                <span {...enter(2.2, "down")} className="flex">
+                  <NotificationCenter />
+                </span>
+                <span {...enter(2.8, "down")} className="flex">
+                  <SettingsLink />
+                </span>
+                <span {...enter(3.4, "down")} className="flex">
+                  <AccountMenu onLogout={logout} />
+                </span>
               </div>
             </header>
 
             {/* Con una barra de guardado (fija al pie), el final de la página deja libre su alto para no quedar tapado. */}
             <main
-              className={`admin-surface mx-auto flex w-full ${fullHeight ? "max-w-none" : "max-w-[1440px]"} min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-10 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)] ${fullHeight ? "tall:min-h-0 tall:pb-5" : ""}`}
+              className={`admin-surface mx-auto flex w-full ${fullWidth ? "max-w-none" : "max-w-[1440px]"} min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)]`}
             >
-              {crumbs.length > 1 && <Breadcrumbs items={crumbs} className="-mb-2" />}
               {loadError && (
                 <Callout tone="warning" role="alert">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -792,10 +827,10 @@ function Panel({
                   </div>
                 </Callout>
               )}
-              <div key={pageKey} className={`flex flex-col gap-6 motion-safe:animate-fade-in ${fullHeight ? "tall:min-h-0 tall:flex-1" : ""}`}>
+              <div key={pageKey} {...(mod === "dashboard" ? {} : enter(2))} className="flex flex-col gap-6 motion-safe:animate-fade-in">
                 <Suspense fallback={<PageSkeleton />}>{mod && !canOpen(data.me.role, mod) ? <AccessDenied module={mod} /> : children}</Suspense>
               </div>
-              <PanelFooter className={fullHeight ? "tall:hidden" : ""} />
+              <PanelFooter />
             </main>
           </div>
 

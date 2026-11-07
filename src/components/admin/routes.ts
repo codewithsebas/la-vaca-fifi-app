@@ -1,4 +1,4 @@
-// Mapa del panel: cada módulo es una página con su ruta. Lo usan el menú, las migas de pan, los títulos y los enlaces.
+// Mapa del panel: cada módulo es una página con su ruta. Lo usan el menú, los títulos y los enlaces.
 // Sin "use client": las páginas del servidor también lo leen (validación de segmentos dinámicos).
 import type { ComponentType } from "react";
 import {
@@ -58,8 +58,10 @@ type Module = {
   off?: true;
 };
 
-// El menú va del día a día a la administración: lo de hoy, las reservas y su gestión, el alojamiento, el negocio y el
-// equipo. El orden de este objeto es el del menú.
+// El menú va del día a día a la administración: lo de hoy (resumen y calendario); las reservas con lo que se cobra,
+// quién las hace y las que llegan de Booking; el alojamiento (cabañas, sus precios y sus cierres); el negocio (cifras y
+// condiciones de pago) y, al final, el equipo. Las notificaciones se abren desde la campana del encabezado. El orden de
+// este objeto es el del menú.
 export const MODULES: Record<ModuleId, Module> = {
   dashboard: {
     label: "Dashboard",
@@ -68,16 +70,16 @@ export const MODULES: Record<ModuleId, Module> = {
     group: "Principal",
     description: "Lo que pasa hoy, lo que falta por cobrar y las próximas llegadas.",
   },
-  calendario: { label: "Calendario", href: "/admin/calendario", icon: CalendarIcon, group: "Principal", description: "Ocupación por cabaña y por día." },
-  notificaciones: { label: "Notificaciones", href: "/admin/notificaciones", icon: BellIcon, group: "Principal", description: "Historial de avisos del panel." },
-  reservas: { label: "Reservas", href: "/admin/reservas", icon: ListIcon, group: "Reservas", description: "Busca, filtra y gestiona cualquier reserva." },
-  booking: {
-    label: "Booking",
-    href: "/admin/booking",
-    icon: BookingIcon,
-    group: "Reservas",
-    description: "Reservas de Booking.com que llegan por correo de Ayenda, para asignarles una cabaña.",
+  calendario: { label: "Calendario", href: "/admin/calendario", icon: CalendarIcon, group: "Reservas", description: "Ocupación por cabaña y por día." },
+  notificaciones: {
+    label: "Notificaciones",
+    href: "/admin/notificaciones",
+    icon: BellIcon,
+    group: "Principal",
+    description: "Historial de avisos del panel.",
+    nav: false,
   },
+  reservas: { label: "Reservas", href: "/admin/reservas", icon: ListIcon, group: "Reservas", description: "Busca, filtra y gestiona cualquier reserva." },
   pagos: {
     label: "Pagos",
     href: "/admin/pagos",
@@ -92,6 +94,13 @@ export const MODULES: Record<ModuleId, Module> = {
     group: "Reservas",
     description: "Historial, valor y valoración interna de cada huésped.",
   },
+  booking: {
+    label: "Booking",
+    href: "/admin/booking",
+    icon: BookingIcon,
+    group: "Principal",
+    description: "Reservas de Booking.com que llegan por correo de Ayenda, para asignarles una cabaña.",
+  },
   importar: {
     label: "Importar reservas",
     href: "/admin/importar",
@@ -99,6 +108,7 @@ export const MODULES: Record<ModuleId, Module> = {
     group: "Reservas",
     description: "Carga reservas desde un archivo de Excel exportado de otro sistema.",
     perm: "import",
+    off: true,
   },
   cabanas: {
     label: "Cabañas",
@@ -108,13 +118,6 @@ export const MODULES: Record<ModuleId, Module> = {
     description: "Cabañas que se ofrecen en el sitio: información, capacidad, fotos y baños.",
     perm: "cabins",
   },
-  bloqueos: {
-    label: "Bloqueos y baños",
-    href: "/admin/bloqueos",
-    icon: BanIcon,
-    group: "Alojamiento",
-    description: "Fechas cerradas de las cabañas, baños y su estado.",
-  },
   tarifas: {
     label: "Tarifas",
     href: "/admin/tarifas",
@@ -122,6 +125,13 @@ export const MODULES: Record<ModuleId, Module> = {
     group: "Alojamiento",
     description: "Precio base por cabaña y temporadas con precio especial.",
     perm: "rates",
+  },
+  bloqueos: {
+    label: "Bloqueos y baños",
+    href: "/admin/bloqueos",
+    icon: BanIcon,
+    group: "Alojamiento",
+    description: "Fechas cerradas de las cabañas, baños y su estado.",
   },
   finanzas: {
     label: "Finanzas",
@@ -152,7 +162,7 @@ export const MODULES: Record<ModuleId, Module> = {
     label: "Empleados",
     href: "/admin/empleados",
     icon: IdCardIcon,
-    group: "Principal",
+    group: "Administración",
     description: "Cuentas del equipo, su rol y su acceso al panel.",
     perm: "employees",
   },
@@ -161,7 +171,7 @@ export const MODULES: Record<ModuleId, Module> = {
     href: "/admin/configuracion",
     icon: SlidersIcon,
     group: "Administración",
-    description: "Apariencia, sonido, tiempo real y preferencias de este navegador.",
+    description: "Apariencia, colores, sonido, tiempo real y preferencias de este navegador.",
     nav: false,
   },
   sincronizacion: {
@@ -274,6 +284,7 @@ const withQuery = (path: string, q?: Query) => {
 
 export const paths = {
   dashboard: "/admin",
+  colores: "/admin/configuracion/colores",
   calendario: (q?: Query) => withQuery("/admin/calendario", q),
   reservas: (q?: Query) => withQuery("/admin/reservas", q),
   reserva: (code: string) => `/admin/reservas/${encodeURIComponent(code)}`,

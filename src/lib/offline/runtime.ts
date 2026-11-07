@@ -5,7 +5,7 @@ import type { ApiResult } from "@/lib/types";
 type Mutate = <T>(type: string, input: unknown) => Promise<ApiResult<T>>;
 type Cache = { get: <T>(key: string) => Promise<T | undefined>; set: (key: string, value: unknown) => Promise<unknown> };
 
-let active: { mutate: Mutate; cache: Cache } | null = null;
+let active: { mutate: Mutate; cache: Cache; online: () => boolean; sync: () => Promise<void> } | null = null;
 
 export const setRuntime = (r: typeof active) => {
   active = r;
@@ -14,6 +14,16 @@ export const setRuntime = (r: typeof active) => {
 // Escritura del panel: por la cola si el motor está activo; si no (bandera apagada, modo simulado, sitio público), directa.
 export const mutate = <T>(type: string, input: unknown, direct: () => Promise<ApiResult<T>>): Promise<ApiResult<T>> =>
   active ? active.mutate<T>(type, input) : direct();
+
+// Escritura que todavía no funciona sin conexión (reservas con varias cabañas): directa al servidor y, después, se traen
+// los cambios para que el panel los vea. Sin conexión se rechaza con NEEDS_CONNECTION.
+export async function onlineOnly<T>(direct: () => Promise<ApiResult<T>>): Promise<ApiResult<T>> {
+  if (!active) return direct();
+  if (!active.online()) return { status: 503, data: { error: "NEEDS_CONNECTION" } as T };
+  const res = await direct();
+  await active.sync();
+  return res;
+}
 
 // Lectura que no está en AdminData: la última respuesta queda guardada para consultarla sin conexión.
 export async function cachedGet<T>(key: string, read: () => Promise<ApiResult<T>>): Promise<ApiResult<T>> {

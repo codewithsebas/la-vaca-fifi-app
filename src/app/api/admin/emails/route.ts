@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { toEmail } from "@/lib/server/db";
 import { fail, json, readJson, requireStaff, route, syncRoute } from "@/lib/server/http";
 import { mailConfigured, processOutbox } from "@/lib/server/mailer";
-import { siteUrl } from "@/lib/server/site";
+import { originOf, siteUrl } from "@/lib/server/site";
 import { createServiceClient } from "@/lib/supabase/server";
 
 const KEY = /^(CC|CE|Pasaporte|PPT):[A-Z0-9]{5,15}$/;
@@ -29,7 +29,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
   if (error) return error;
   const b = await readJson<Body>(req);
   if (!b) return fail(400, "INVALID_BODY");
-  const base = siteUrl(req.nextUrl.origin);
+  const base = siteUrl(originOf(req));
   const service = createServiceClient();
 
   if (b.action === "retry") {

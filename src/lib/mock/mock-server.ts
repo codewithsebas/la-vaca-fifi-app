@@ -4,6 +4,9 @@ import {
   availability,
   clashingReservations,
   computeQuote,
+  cleanUnitLabels,
+  invalidPersonRates,
+  invalidUnitLabels,
   depositDueAt,
   findUnit,
   importDocNumber,
@@ -12,7 +15,9 @@ import {
   newReservationCode,
   normalizePhone,
   slugify,
+  splitTotal,
   unavailableDates,
+  validateExtraCabins,
   unitFree,
   validateGuest,
   validateManualReservation,
@@ -22,9 +27,11 @@ import {
 import { config } from "@/lib/config";
 import { can, type Permission } from "@/lib/permissions";
 import { MOCK_DB_KEY } from "@/lib/mock/keys";
+import { groupMoney, groupOf } from "@/lib/groups";
 import { addDays, sleep, todayISO } from "@/lib/format";
-import { HOLD_OPTIONS, manualDueAt, manualPaymentNote } from "@/lib/payments";
+import { manualPaymentNote, unpaidUntil } from "@/lib/payments";
 import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "@/lib/site";
+import { mergePanelColors, type PanelColors } from "@/lib/panel-colors";
 import { mergeTheme } from "@/lib/theme";
 import type {
   AdminNotification,
@@ -277,7 +284,13 @@ function mockPayment(r: Reservation, kind: PaymentKind, status: PaymentStatus, a
 
 // Mismas reglas que register_manual_payment en la base de datos: cualquier pago confirma una reserva pendiente; el primero
 // es el abono (o el pago total, si cubre todo) y los demás, saldo; el saldo queda pagado cuando lo cobrado llega al total.
-function registerPayment(db: Db, r: Reservation, amount: number, detail: string): "ALREADY_PAID" | "NOT_APPLICABLE" | "INVALID_AMOUNT" | null {
+function registerPayment(
+  db: Db,
+  r: Reservation,
+  amount: number,
+  detail: string,
+  quiet = false, // otra cabaña del grupo: avisa y escribe la principal
+): "ALREADY_PAID" | "NOT_APPLICABLE" | "INVALID_AMOUNT" | null {
   const owed = r.quote.total - r.paid;
   if (owed <= 0 || r.balancePaidAt) return "ALREADY_PAID";
   const pending = r.status === "pending_deposit" || r.status === "expired";
@@ -292,6 +305,7 @@ function registerPayment(db: Db, r: Reservation, amount: number, detail: string)
     paid: r.paid + amount,
     ...(covered && { balancePaidAt: now }),
   });
+  if (quiet) return null;
   if (!pending) {
     if (covered) notify(db, "balance_paid", `Saldo pagado · ${r.code}`, r.guest.fullName, r.code, true);
   } else {
@@ -319,6 +333,55 @@ function registerPayment(db: Db, r: Reservation, amount: number, detail: string)
       });
   }
   return null;
+}
+
+// Pago de una reserva con varias cabañas: mismo reparto que register_manual_payment (abono de cada una, lo que debe cada
+// una o en proporción). La principal se registra al final: su aviso habla por el grupo.
+function registerGroupPayment(db: Db, rows: Reservation[], amount: number | null, kind: "deposit" | "full" | "balance", detail: string) {
+  const owed = rows.map((x) => Math.max(0, x.quote.total - x.paid));
+  const dep = rows.map((x, i) => Math.min(x.quote.deposit, owed[i]));
+  const totalOwed = owed.reduce((s, x) => s + x, 0);
+  if (totalOwed <= 0) return "ALREADY_PAID";
+  const amt = amount ?? (kind === "deposit" ? dep.reduce((s, x) => s + x, 0) : totalOwed);
+  if (!Number.isInteger(amt) || amt <= 0 || amt > totalOwed) return "INVALID_AMOUNT";
+  let share: number[];
+  if (amt >= totalOwed) share = owed;
+  else if (amount === null && kind === "deposit") share = dep;
+  else {
+    share = owed.map((o) => Math.floor((o * amt) / totalOwed));
+    let left = amt - share.reduce((s, x) => s + x, 0);
+    for (const gap of [1, 0])
+      for (let i = 0; i < share.length && left > 0; i++)
+        if (share[i] < owed[i] - gap) {
+          share[i]++;
+          left--;
+        }
+  }
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (share[i] <= 0) {
+      // Sin parte del pago (ya estaba pagada) pero el grupo se confirma junto.
+      if (rows[i].status === "pending_deposit" || rows[i].status === "expired") rows[i].status = "confirmed";
+      continue;
+    }
+    const refused = registerPayment(db, rows[i], share[i], `${detail} (pago del grupo ${rows[0].code})`, i > 0);
+    if (refused) return refused;
+  }
+  if (amt >= totalOwed) rows.forEach((x) => (x.balancePaidAt ??= new Date().toISOString()));
+  return null;
+}
+
+// Cabañas de una reserva nueva con varias: cada una toma su unidad y la siguiente del mismo tipo ya no la ve.
+function allocateUnits(db: Db, cabins: { cabinTypeId: string; unit?: number | null }[], ci: string, co: string): number[] | null {
+  const o = occ(db);
+  const units: number[] = [];
+  for (const c of cabins) {
+    const n = unitsOf(db)[c.cabinTypeId] ?? 0;
+    const u = c.unit ? (unitFree(o, n, c.cabinTypeId, c.unit, ci, co) ? c.unit : 0) : findUnit(o, n, c.cabinTypeId, ci, co);
+    if (!u) return null;
+    units.push(u);
+    o.blocks = [...o.blocks, { id: "", cabinTypeId: c.cabinTypeId, unit: u, from: ci, to: addDays(co, -1), reason: "", notes: "" }];
+  }
+  return units;
 }
 
 const ME_KEY = "vf-admin-me";
@@ -397,6 +460,7 @@ const siteOf = (d: Db): SiteContent => ({
   settings: { ...defaultContent.settings, ...d.site?.settings },
   services: d.site?.services ?? defaultContent.services,
   theme: mergeTheme(d.site?.theme),
+  panelColors: mergePanelColors(d.site?.panelColors),
 });
 
 function save(d: Db) {
@@ -414,7 +478,22 @@ function load(): Db {
   return d;
 }
 
-const pub = (db: Db, r: Reservation): PublicReservation => ({
+// Lo que ve el huésped; en un grupo, la principal con los valores y las cabañas de todo el grupo.
+const pub = (db: Db, r0: Reservation): PublicReservation => {
+  const rows = groupOf(db.reservations, r0);
+  const r = groupMoney(rows);
+  const codes = new Set(rows.map((x) => x.code));
+  return {
+    ...pubOne(db, r),
+    payments: db.payments
+      .filter((p) => codes.has(p.reservationCode))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .slice(0, 8),
+    ...(rows.length > 1 && { cabins: rows.map((x) => ({ cabinTypeId: x.cabinTypeId, adults: x.adults, children: x.children, total: x.quote.total })) }),
+  };
+};
+
+const pubOne = (db: Db, r: Reservation): PublicReservation => ({
   code: r.code,
   status: r.status,
   checkIn: r.checkIn,
@@ -442,6 +521,16 @@ function expire(db: Db) {
   db.reservations.forEach((r) => {
     if (r.status === "pending_deposit" && Date.parse(r.depositDueAt) < now) {
       r.status = "expired";
+      changed = true;
+    }
+    // Como run_auto_checkouts: estadía pagada, 30 minutos después de la hora de salida (hora de Colombia, UTC−5).
+    const pastCheckout =
+      r.status === "checked_in" && now >= Date.parse(`${r.checkOut}T${(siteOf(db).settings.checkOutTime || "12:00").slice(0, 5)}:00-05:00`) + 30 * 60e3;
+    if (pastCheckout && (r.balancePaidAt || r.paid >= r.quote.total)) {
+      r.status = "completed";
+      changed = true;
+    } else if (pastCheckout && !db.notifications.some((n) => n.kind === "checkout_pending" && n.reservationCode === r.code)) {
+      notify(db, "checkout_pending", `Check-out pendiente · ${r.guest.fullName}`, `${r.code} · saldo por cobrar`, r.code);
       changed = true;
     }
   });
@@ -497,17 +586,19 @@ export async function mockRequest(method: string, path: string, opts: MockReques
           db.reservations.find((r) => r.code === db.idem[key])!,
         ),
       };
-    const f = validateReservation(body, activeTypes(db), todayISO());
+    const f = { ...validateReservation(body, activeTypes(db), todayISO()), ...validateExtraCabins(body.more, activeTypes(db)) };
     if (Object.keys(f).length) return invalid(f);
-    const unit = findUnit(occ(db), unitsOf(db)[body.cabinTypeId] ?? 0, body.cabinTypeId, body.checkIn, body.checkOut);
-    if (!unit) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
+    const cabins = [{ cabinTypeId: body.cabinTypeId, adults: body.adults, children: body.children }, ...(body.more ?? [])];
+    const units = allocateUnits(db, cabins, body.checkIn, body.checkOut);
+    if (!units) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
+    const unit = units[0];
     const r: Reservation = {
       ...body,
       code: newReservationCode(),
       unit,
       status: "pending_deposit",
       quote: quoteFor(db, body.cabinTypeId, body.checkIn, body.checkOut, body.adults + body.children),
-      depositDueAt: depositDueAt(),
+      depositDueAt: depositDueAt(body.checkIn),
       createdAt: new Date().toISOString(),
       notes: [],
       depositPaidAt: null,
@@ -519,7 +610,24 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     r.clientKey = keyOf(r);
     delete r.captchaToken;
     delete r.website;
+    delete r.more;
     db.reservations.push(r);
+    if (cabins.length > 1) {
+      r.groupCode = r.code;
+      cabins.slice(1).forEach((c, i) => {
+        const people = Number(c.adults) + Number(c.children ?? 0);
+        db.reservations.push({
+          ...r,
+          code: newReservationCode(),
+          cabinTypeId: c.cabinTypeId,
+          unit: units[i + 1],
+          adults: Number(c.adults),
+          children: Number(c.children ?? 0),
+          quote: quoteFor(db, c.cabinTypeId, body.checkIn, body.checkOut, people),
+          notes: [],
+        });
+      });
+    }
     if (key) db.idem[key] = r.code;
     save(db);
     return { status: 201, data: pub(db, r) };
@@ -580,6 +688,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       me,
       bathrooms: bathroomsOf(db).bathrooms,
       bathroomBlocks: bathroomsOf(db).blocks,
+      channelStays: [],
     });
   // En modo simulado el contenido se guarda solo en este navegador y no cambia las páginas públicas.
   if (method === "PUT" && path === "/admin/payment-terms") {
@@ -598,6 +707,14 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     return ok(db.site);
   }
 
+  if (method === "PUT" && path === "/admin/panel-colors") {
+    const no = deny("content");
+    if (no) return no;
+    db.site = { ...siteOf(db), panelColors: mergePanelColors(opts.body as PanelColors) };
+    save(db);
+    return ok(db.site);
+  }
+
   if (method === "PUT" && path === "/admin/site") {
     const b = opts.body as SiteInput;
     const prev = siteOf(db);
@@ -608,6 +725,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       texts: { ...mergeTexts(b.content ?? defaultTexts), payment: prev.texts.payment },
       services: siteOf(db).services,
       theme: mergeTheme(b.theme),
+      panelColors: prev.panelColors,
     };
     save(db);
     return ok(db.site);
@@ -644,19 +762,16 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       total: raw.total ?? null,
       guest: { ...raw.guest, phone: normalizePhone(raw.guest?.phone ?? "") },
     };
-    const f = validateManualReservation(b, activeTypes(db), unitsOf(db), todayISO());
-    const due = manualDueAt(b.checkIn, b.holdMinutes);
-    if (!f.checkIn && !f.holdMinutes && due.tooShort) f.holdMinutes = "Ya no queda tiempo para pagar antes de la llegada: registra el pago manualmente.";
+    const f = { ...validateManualReservation(b, activeTypes(db), unitsOf(db), todayISO()), ...validateExtraCabins(b.more, activeTypes(db), unitsOf(db)) };
     if (Object.keys(f).length) return invalid(f);
-    const units = unitsOf(db)[b.cabinTypeId] ?? 0;
-    const o = occ(db);
-    const unit = b.unit
-      ? unitFree(o, units, b.cabinTypeId, b.unit, b.checkIn, b.checkOut)
-        ? b.unit
-        : 0
-      : findUnit(o, units, b.cabinTypeId, b.checkIn, b.checkOut);
-    if (!unit) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
-    const quote = quoteFor(db, b.cabinTypeId, b.checkIn, b.checkOut, b.adults + b.children);
+    const cabins = [{ cabinTypeId: b.cabinTypeId, unit: b.unit, adults: b.adults, children: b.children }, ...(b.more ?? [])];
+    const units = allocateUnits(db, cabins, b.checkIn, b.checkOut);
+    if (!units) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
+    const unit = units[0];
+    const rates = cabins.map((c) => quoteFor(db, c.cabinTypeId, b.checkIn, b.checkOut, Number(c.adults) + Number(c.children ?? 0)));
+    // Precio especial del grupo: se reparte en proporción a la tarifa de cada cabaña.
+    const quotes = b.total ? splitTotal(rates, b.total).map((t, i) => withTotal(rates[i], t)) : rates;
+    const quote = rates[0];
     const r: Reservation = {
       cabinTypeId: b.cabinTypeId,
       checkIn: b.checkIn,
@@ -678,8 +793,8 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       code: newReservationCode(),
       unit,
       status: "pending_deposit",
-      quote: b.total ? withTotal(quote, b.total) : quote,
-      depositDueAt: due.dueAt,
+      quote: quotes[0] ?? quote,
+      depositDueAt: unpaidUntil(b.checkIn),
       createdAt: new Date().toISOString(),
       notes: [],
       depositPaidAt: null,
@@ -691,6 +806,25 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     };
     r.clientKey = keyOf(r);
     db.reservations.push(r);
+    if (cabins.length > 1) {
+      r.groupCode = r.code;
+      const group = [
+        r,
+        ...cabins.slice(1).map((c, i) => ({
+          ...r,
+          code: newReservationCode(),
+          cabinTypeId: c.cabinTypeId,
+          unit: units[i + 1],
+          adults: Number(c.adults),
+          children: Number(c.children ?? 0),
+          quote: quotes[i + 1],
+          notes: [],
+        })),
+      ];
+      db.reservations.push(...group.slice(1));
+      save(db);
+      return { status: 201, data: { reservation: r, group } };
+    }
     save(db);
     return { status: 201, data: { reservation: r } };
   }
@@ -700,15 +834,41 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     if (!r) return { status: 404, data: {} };
     const map: Record<string, Reservation["status"]> = { cancel: "cancelled", checkin: "checked_in", checkout: "completed" };
     const now = new Date().toISOString();
+    const group = groupOf(db.reservations, r);
+    if (body.action === "cancel" && r.groupCode) {
+      if ((opts.body as { group?: boolean }).group) {
+        group.forEach((x) => (x.status = "cancelled"));
+        notify(db, "reservation_cancelled", `Reserva cancelada · ${r.groupCode}`, `${r.guest.fullName} · ${group.length} cabañas`, r.groupCode, true);
+      } else {
+        if (r.code === r.groupCode) return { status: 422, data: { error: "GROUP_LEAD" } };
+        Object.assign(r, { status: "cancelled", groupCode: null });
+        notify(db, "reservation_cancelled", `Reserva cancelada · ${r.code}`, r.guest.fullName, r.code, true);
+      }
+      save(db);
+      return ok(r);
+    }
+    if (body.action === "extend_hold" && group.length > 1) {
+      const due = unpaidUntil(r.checkIn);
+      if (Date.parse(due) <= Date.now()) return { status: 422, data: { error: "HOLD_TOO_SHORT" } };
+      group.forEach((x) => Object.assign(x, { status: "pending_deposit", depositDueAt: due }));
+      save(db);
+      return ok(r);
+    }
+    if ((body.action === "confirm" || body.action === "balance") && group.length > 1) {
+      const b = opts.body as { full?: boolean; amount?: number; method?: PayMethod; note?: string };
+      const kind = b.full ? "full" : body.action === "balance" ? "balance" : "deposit";
+      const amount = b.full || b.amount === undefined ? null : Number(b.amount);
+      const refused = registerGroupPayment(db, group, amount, kind, manualPaymentNote(b.method, b.note) || "Registrado por el equipo");
+      if (refused) return { status: refused === "ALREADY_PAID" ? 409 : 422, data: { error: refused } };
+      save(db);
+      return ok(r);
+    }
     if (body.action === "extend_hold") {
       if (r.status !== "pending_deposit" && r.status !== "expired") return { status: 422, data: { error: "INVALID_TRANSITION" } };
-      const minutes = Number((opts.body as { holdMinutes?: number }).holdMinutes);
-      if (!HOLD_OPTIONS.some((o) => o.value === minutes)) return { status: 400, data: { error: "INVALID_BODY" } };
-      const due = manualDueAt(r.checkIn, minutes);
-      if (due.tooShort) return { status: 422, data: { error: "HOLD_TOO_SHORT" } };
-      if (r.status === "expired" && !unitFree(occ(db), unitsOf(db)[r.cabinTypeId] ?? 0, r.cabinTypeId, r.unit, r.checkIn, r.checkOut, r.code))
-        return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
-      Object.assign(r, { status: "pending_deposit", depositDueAt: due.dueAt });
+      // Sin plazo: vuelve a quedar sin abono (no aparta fechas) hasta su día de llegada.
+      const due = unpaidUntil(r.checkIn);
+      if (Date.parse(due) <= Date.now()) return { status: 422, data: { error: "HOLD_TOO_SHORT" } };
+      Object.assign(r, { status: "pending_deposit", depositDueAt: due });
       save(db);
       return ok(r);
     }
@@ -746,6 +906,8 @@ export async function mockRequest(method: string, path: string, opts: MockReques
         city: (g.city ?? "").trim(),
       };
       r.clientKey = keyOf(r);
+      // En un grupo el huésped es el mismo para todas las cabañas.
+      group.forEach((x) => Object.assign(x, { guest: r.guest, clientKey: r.clientKey }));
     } else if (body.action === "note") r.notes.push({ at: now, text: body.text });
     else {
       r.status = map[body.action] || r.status;
@@ -799,6 +961,8 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     } else {
       const b = opts.body as CabinInput & { id?: string };
       if (!b.nombre || b.nombre.trim().length < 3) return invalid({ nombre: "El nombre debe tener entre 3 y 60 caracteres." });
+      const badLabels = invalidUnitLabels(b.unitLabels, b.units);
+      if (badLabels) return invalid({ unitLabels: badLabels });
       const fields = {
         nombre: b.nombre.trim(),
         descripcion: b.descripcion,
@@ -806,6 +970,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
         badge: b.badge,
         maxPersonas: b.maxPersonas,
         units: b.units,
+        unitLabels: cleanUnitLabels(b.unitLabels, b.units),
         precioPareja: b.precioPareja,
         personaAdicional: b.personaAdicional,
         activa: b.activa,
@@ -833,6 +998,8 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       if (clash) return invalid({ dates: `Se cruza con la temporada activa "${clash.nombre}" de la misma cabaña.` });
       const bad = invalidDayRates(b.dayRates ?? [], b.from, b.to);
       if (bad) return invalid({ dayRates: bad });
+      const badTiers = invalidPersonRates(b.preciosPersonas);
+      if (badTiers) return invalid({ preciosPersonas: badTiers });
       if (method === "PUT")
         Object.assign(
           db.seasons.find((s) => s.id === b.id)!,

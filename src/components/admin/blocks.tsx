@@ -16,7 +16,7 @@ import {
   WarningIcon,
   WrenchIcon,
 } from "@/components/ui/icons";
-import { BLOCK_REASONS, clashingReservations } from "@/lib/booking";
+import { BLOCK_REASONS, busyBlocks, clashingReservations, unitLabel } from "@/lib/booking";
 import { unitMarks } from "@/lib/admin-metrics";
 import { api } from "@/lib/client/api";
 import { addDays, fmtDate, isISO, nightsBetween, plural } from "@/lib/format";
@@ -319,10 +319,10 @@ function BlockEditor({ initial, onClose, onDelete }: { initial: Draft; onClose: 
   const clashes = d.from && d.to ? unitList.flatMap((u) => clashingReservations(data.reservations, d.type, u, d.from!, d.to!)) : [];
   const overlaps =
     d.from && d.to
-      ? data.blocks.filter((b) => b.id !== d.id && b.cabinTypeId === d.type && unitList.includes(b.unit) && b.from <= d.to! && d.from! <= b.to)
+      ? busyBlocks(data).filter((b) => b.id !== d.id && b.cabinTypeId === d.type && unitList.includes(b.unit) && b.from <= d.to! && d.from! <= b.to)
       : [];
   const marks = useMemo(
-    () => unitMarks(data.reservations, data.blocks, d.type, d.unit === "all" ? "all" : Number(d.unit), today, addDays(today, 400), d.id),
+    () => unitMarks(data.reservations, busyBlocks(data), d.type, d.unit === "all" ? "all" : Number(d.unit), today, addDays(today, 400), d.id),
     [data, d.type, d.unit, today, d.id],
   );
 
@@ -405,7 +405,7 @@ function BlockEditor({ initial, onClose, onDelete }: { initial: Draft; onClose: 
                 value={d.unit}
                 onChange={(v) => set({ unit: v })}
                 options={[
-                  ...Array.from({ length: units }, (_, i) => ({ value: String(i + 1), label: `Unidad ${i + 1}` })),
+                  ...Array.from({ length: units }, (_, i) => ({ value: String(i + 1), label: `Cabaña ${unitLabel(cabin, i + 1)}` })),
                   ...(!d.id && units > 1 ? [{ value: "all", label: "Todas las unidades", description: "Cierra este tipo de cabaña completo" }] : []),
                 ]}
               />

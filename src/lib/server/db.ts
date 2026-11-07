@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ACTIVE_STATUSES, type Occupancy, type Units } from "@/lib/booking";
+import { BLOCKING_STATUSES, channelBlocks, type Occupancy, type Units } from "@/lib/booking";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import { config } from "@/lib/config";
 import { addDays, todayISO } from "@/lib/format";
@@ -11,6 +11,7 @@ import type {
   BathroomStatus,
   Block,
   CabinType,
+  ChannelStay,
   ClientEntry,
   ClientProfile,
   DocType,
@@ -28,6 +29,7 @@ import type {
   PublicReservation,
   Quote,
   RateSeason,
+  PersonRates,
   SeasonDayRate,
   Reservation,
   ReservationSource,
@@ -48,8 +50,11 @@ export function toCabinType(row: Tables<"cabin_types">): CabinType {
     nombre: row.nombre,
     precioPareja: row.precio_pareja,
     personaAdicional: row.persona_adicional,
+    preciosPersonas: row.precios_personas as PersonRates,
     maxPersonas: row.max_personas,
     units: row.units,
+    unitLabels: row.unit_labels,
+    dayRates: (row.day_rates ?? []) as SeasonDayRate[],
     badge: row.badge,
     descripcion: row.descripcion,
     caracteristicas: row.caracteristicas,
@@ -78,6 +83,7 @@ export const toSeason = (s: Tables<"rate_seasons">): RateSeason => ({
   to: s.to_date,
   precioPareja: s.precio_pareja,
   personaAdicional: s.persona_adicional,
+  preciosPersonas: s.precios_personas as PersonRates,
   activa: s.activa,
   dayRates: Array.isArray(s.day_rates) ? (s.day_rates as SeasonDayRate[]) : [],
 });
@@ -105,12 +111,13 @@ export async function loadPricing(sb: Db) {
   return { types, units, seasons, depositPct };
 }
 
-// Reservas activas y bloqueos que tocan alguna noche entre firstNight y lastNight (inclusive).
+// Reservas activas, bloqueos y noches ocupadas en Booking que tocan alguna noche entre firstNight y lastNight (inclusive).
+// Las de Booking entran como bloqueos (channelBlocks): cuentan igual en toda la lógica de disponibilidad.
 export async function loadOccupancy(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<Occupancy> {
   let rq = sb
     .from("reservations")
     .select("code, cabin_type_id, unit, check_in, check_out, status")
-    .in("status", ACTIVE_STATUSES)
+    .in("status", BLOCKING_STATUSES)
     .lte("check_in", lastNight)
     .gt("check_out", firstNight);
   let bq = sb.from("blocks").select("cabin_type_id, unit, from_date, to_date").lte("from_date", lastNight).gte("to_date", firstNight);
@@ -118,11 +125,61 @@ export async function loadOccupancy(sb: Db, firstNight: string, lastNight: strin
     rq = rq.eq("cabin_type_id", cabinTypeId);
     bq = bq.eq("cabin_type_id", cabinTypeId);
   }
-  const [{ data: rs }, { data: bs }] = await Promise.all([rq.throwOnError(), bq.throwOnError()]);
+  const [{ data: rs }, { data: bs }, stays] = await Promise.all([
+    rq.throwOnError(),
+    bq.throwOnError(),
+    loadChannelStays(sb, firstNight, lastNight, cabinTypeId),
+  ]);
   return {
     reservations: rs.map((r) => ({ code: r.code, cabinTypeId: r.cabin_type_id, unit: r.unit, checkIn: r.check_in, checkOut: r.check_out, status: r.status })),
-    blocks: bs.map((b) => ({ cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date })),
+    blocks: [
+      ...bs.map((b) => ({ cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date })),
+      ...channelBlocks(stays).map((b) => ({ cabinTypeId: b.cabinTypeId, unit: b.unit, from: b.from, to: b.to })),
+    ],
   };
+}
+
+/* ───────────── Booking.com (calendarios iCal) ───────────── */
+
+// Fila de channel_stays → ChannelStay (también la usan /admin/channels y la sincronización del panel).
+export function channelStayOf(s: Tables<"channel_stays">): ChannelStay {
+  return {
+    id: s.id,
+    calendarId: s.calendar_id,
+    cabinTypeId: s.cabin_type_id,
+    unit: s.unit,
+    checkIn: s.check_in,
+    checkOut: s.check_out,
+    summary: s.summary,
+    echo: s.echo,
+    firstSeenAt: s.first_seen_at,
+    removedAt: s.removed_at,
+  };
+}
+
+// Sin la migración de Booking las tablas no existen: se trata como «sin calendarios». Cualquier otro error sí se propaga.
+export const isMissingTable = (e: unknown) => ["PGRST205", "42P01"].includes((e as { code?: string } | null)?.code ?? "");
+
+// Noches de Booking vigentes (sin removed_at) que tocan alguna noche entre firstNight y lastNight.
+async function loadChannelStays(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<ChannelStay[]> {
+  let q = sb.from("channel_stays").select("*").is("removed_at", null).eq("echo", false).lte("check_in", lastNight).gt("check_out", firstNight);
+  if (cabinTypeId) q = q.eq("cabin_type_id", cabinTypeId);
+  const { data, error } = await q;
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+  return data.map(channelStayOf);
+}
+
+// Para el panel: las noches de Booking desde hace un año (también las canceladas y los ecos, para el historial).
+export async function loadPanelChannelStays(sb: Db): Promise<ChannelStay[]> {
+  const { data, error } = await sb.from("channel_stays").select("*").gte("check_out", addDays(todayISO(), -400)).order("check_in");
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+  return data.map(channelStayOf);
 }
 
 // Plazo del abono: libera las retenciones que vencieron sin abono.
@@ -163,9 +220,44 @@ export const toEmail = (e: Tables<"email_outbox">): EmailRecord => ({
 });
 
 // Pagos de una reserva para el huésped (los 8 más recientes).
-async function loadPublicPayments(sb: Db, code: string) {
-  const { data } = await sb.from("payments").select("*").eq("reservation_code", code).order("created_at", { ascending: false }).limit(8).throwOnError();
+async function loadPublicPayments(sb: Db, codes: string[]) {
+  const { data } = await sb
+    .from("payments")
+    .select("*")
+    .in("reservation_code", codes)
+    .order("created_at", { ascending: false })
+    .limit(8 * codes.length)
+    .throwOnError();
   return data.map(toPublicPayment);
+}
+
+// Cabañas de un grupo, la principal primero. Las canceladas se omiten salvo que lo esté todo el grupo.
+export async function loadGroupRows(sb: Db, groupCode: string): Promise<ReservationRow[]> {
+  const { data } = await sb.from("reservations").select("*").eq("group_code", groupCode).order("code").throwOnError();
+  const live = data.filter((m) => m.status !== "cancelled");
+  const rows = live.length ? live : data;
+  return [...rows.filter((m) => m.code === groupCode), ...rows.filter((m) => m.code !== groupCode)];
+}
+
+// Lo que ve el huésped de una reserva con varias cabañas: la principal con las personas, valores y pagos del grupo.
+export function toPublicGroup(rows: ReservationRow[], payments?: PublicPayment[]): PublicReservation {
+  const [lead] = rows;
+  if (rows.length < 2) return toPublic(lead, payments);
+  const quotes = rows.map((m) => m.quote as Quote);
+  const add = (f: (q: Quote) => number) => quotes.reduce((sum, q) => sum + f(q), 0);
+  return {
+    ...toPublic(lead, payments),
+    quote: {
+      ...quotes[0],
+      base: add((q) => q.base),
+      extraAmount: add((q) => q.extraAmount),
+      total: add((q) => q.total),
+      deposit: add((q) => q.deposit),
+      balance: add((q) => q.balance),
+    },
+    paid: rows.reduce((sum, m) => sum + m.paid_amount, 0),
+    cabins: rows.map((m) => ({ cabinTypeId: m.cabin_type_id, adults: m.adults, children: m.children, total: (m.quote as Quote).total })),
+  };
 }
 
 export function toPublic(r: ReservationRow, payments?: PublicPayment[]): PublicReservation {
@@ -186,9 +278,17 @@ export function toPublic(r: ReservationRow, payments?: PublicPayment[]): PublicR
 }
 
 // Vista del huésped completa: pagos, canal en tiempo real y hora del servidor.
-export async function publicView(sb: Db, r: ReservationRow): Promise<PublicReservation> {
+export async function publicView(sb: Db, row: ReservationRow): Promise<PublicReservation> {
+  const rows = row.group_code ? await loadGroupRows(sb, row.group_code) : [row];
+  const r = rows[0] ?? row;
   return {
-    ...toPublic(r, await loadPublicPayments(sb, r.code)),
+    ...toPublicGroup(
+      rows.length ? rows : [row],
+      await loadPublicPayments(
+        sb,
+        rows.map((m) => m.code),
+      ),
+    ),
     guestFirstName: r.guest_full_name.split(" ")[0],
     liveKey: r.live_key,
     serverNow: new Date().toISOString(),
@@ -200,6 +300,7 @@ export function toReservation(r: ReservationRow & { reservation_notes?: { text: 
     ...toPublic(r),
     version: r.version,
     unit: r.unit,
+    groupCode: r.group_code,
     adults: r.adults,
     children: r.children,
     pet: r.pet as Reservation["pet"],

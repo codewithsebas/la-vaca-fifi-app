@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type HTMLAttributes,
   type KeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -109,12 +110,12 @@ const VARIANT: Record<Variant, string> = {
   "danger-ghost": "bg-transparent text-error hover:not-disabled:bg-error-soft",
   accent: "bg-pink text-ink hover:not-disabled:bg-pink-deep",
 };
-const SIZE: Record<Size, string> = {
-  sm: "h-8 gap-1.5 px-3.5 text-[13px] pointer-coarse:h-10",
-  md: "h-10 gap-2 px-5 text-[14px] pointer-coarse:h-11",
-  lg: "h-12 gap-2.5 px-6 text-[15px]",
-};
-const ICON_SIZE: Record<Size, string> = { sm: "size-8 pointer-coarse:size-10", md: "size-10 pointer-coarse:size-11", lg: "size-12" };
+// Todos los botones del panel miden lo mismo (36 px, letra de 13 px), igual que los desplegables (.field-compact).
+// Los tamaños se conservan como nombres para no tocar cada uso, pero ya no cambian la medida.
+const BUTTON = "h-9 gap-1.5 px-4 text-[13px]";
+const SIZE: Record<Size, string> = { sm: BUTTON, md: BUTTON, lg: BUTTON };
+// Solo icono: del mismo alto que los botones; `sm` queda para los que van dentro de un grupo (flechas del calendario).
+const ICON_SIZE: Record<Size, string> = { sm: "size-8", md: "size-9", lg: "size-9" };
 const PRESS = "transition-[background-color,color,box-shadow,transform] duration-150 motion-safe:active:not-disabled:scale-[.97]";
 
 // Clases de botón para usar también en enlaces (<a>): píldora, sin borde salvo la variante secundaria.
@@ -264,7 +265,7 @@ export function FieldError({ id, children }: { id?: string; children: ReactNode 
 // Tarjeta del panel: arena sobre el fondo crema, sin borde ni sombra.
 export function Card({ className = "", children, ...rest }: HTMLAttributes<HTMLElement>) {
   return (
-    <section className={`rounded-[22px] bg-panel ${className}`} {...rest}>
+    <section className={`rounded-[22px] bg-panel [--surface:var(--color-panel)] ${className}`} {...rest}>
       {children}
     </section>
   );
@@ -578,7 +579,7 @@ export function Modal({
         downOutside.current = false;
       }}
       onAnimationEnd={(e) => leaving && e.target === e.currentTarget && !e.pseudoElement && presence?.done()}
-      className={`admin-surface bg-paper text-ink shadow-overlay backdrop:bg-[rgb(23_22_20/0.42)] backdrop:backdrop-blur-[2px] data-closing:pointer-events-none motion-safe:backdrop:animate-fade-in motion-safe:data-closing:backdrop:animate-fade-out ${MOTION[motion]} ${className}`}
+      className={`admin-surface bg-paper text-ink shadow-overlay [--surface:var(--color-paper)] backdrop:bg-[rgb(23_22_20/0.42)] backdrop:backdrop-blur-[2px] data-closing:pointer-events-none motion-safe:backdrop:animate-fade-in motion-safe:data-closing:backdrop:animate-fade-out ${MOTION[motion]} ${className}`}
     >
       {children}
     </dialog>
@@ -603,7 +604,7 @@ export function Toasts({ toast, onDismiss }: { toast: ToastMsg | null; onDismiss
         >
           <span
             aria-hidden="true"
-            className={`grid size-7 flex-none place-items-center rounded-full text-ink ${toast.kind === "error" ? "bg-status-cancelled" : "bg-pink"}`}
+            className={`grid size-7 flex-none place-items-center rounded-full ${toast.kind === "error" ? "bg-status-cancelled text-ink" : "bg-status-confirmed text-ink"}`}
           >
             {toast.kind === "error" ? <AlertIcon size={15} /> : <CheckIcon size={14} />}
           </span>
@@ -677,7 +678,7 @@ export function PageHeader({ title, description, actions, children }: { title: s
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
-        <h1 id="ad-title" tabIndex={-1} className="text-[clamp(1.6rem,2.5vw,2.1rem)] leading-[1.12] font-bold tracking-[-0.03em] text-ink focus:outline-none">
+        <h1 id="ad-title" tabIndex={-1} className="text-[25px] leading-[1.12] font-bold tracking-[-0.03em] text-ink focus:outline-none">
           {title}
         </h1>
         {description && <p className="mt-1.5 max-w-[72ch] text-[14.5px] leading-relaxed text-ink-muted">{description}</p>}
@@ -851,12 +852,15 @@ export function Switch({
       >
         <span
           aria-hidden="true"
-          className={`absolute top-0.5 left-0.5 size-5 rounded-full shadow-panel transition-[transform,background-color] duration-150 ${checked ? "translate-x-5 bg-pink" : "bg-paper"}`}
+          className={`absolute top-0.5 left-0.5 size-5 rounded-full shadow-panel transition-[transform,background-color] duration-150 ${checked ? "translate-x-5" : ""} bg-[var(--surface,var(--color-canvas))]`}
         />
       </button>
     </div>
   );
 }
+
+// Pieza que entra con animación al abrir el panel (globals.css, «Entrada del panel»): su tipo y su turno en la secuencia.
+export const enter = (i: number, kind: "rise" | "pop" | "side" | "down" = "rise") => ({ "data-enter": kind, style: { "--i": i } as CSSProperties }) as const;
 
 export const Skeleton = ({ className = "" }: { className?: string }) => (
   <span aria-hidden="true" className={`block animate-pulse-soft rounded-[14px] bg-ink/7 ${className}`} />
@@ -988,10 +992,18 @@ export function Stars({ value, onChange, size = 16 }: { value: number | null; on
 
 /* ───────────── Campos numéricos ───────────── */
 
-type NumProps = { id?: string; value: number; onChange: (v: number) => void; invalid?: boolean; describedBy?: string; className?: string };
+type NumProps = {
+  id?: string;
+  "aria-label"?: string;
+  value: number;
+  onChange: (v: number) => void;
+  invalid?: boolean;
+  describedBy?: string;
+  className?: string;
+};
 
 // Pesos colombianos con separador de miles mientras se escribe ("290.000").
-export function MoneyInput({ id, value, onChange, invalid, describedBy, className = "" }: NumProps) {
+export function MoneyInput({ id, "aria-label": ariaLabel, value, onChange, invalid, describedBy, className = "" }: NumProps) {
   return (
     <div className={`relative ${className}`}>
       <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[15px] text-ink-muted">
@@ -1002,6 +1014,7 @@ export function MoneyInput({ id, value, onChange, invalid, describedBy, classNam
         type="text"
         inputMode="numeric"
         autoComplete="off"
+        aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
         value={value ? value.toLocaleString("es-CO") : ""}

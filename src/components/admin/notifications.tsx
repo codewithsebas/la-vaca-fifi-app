@@ -195,6 +195,7 @@ const KIND: Record<NotificationKind, { icon: typeof BellIcon; tone: string; grou
   reservation_confirmed: { icon: LoginIcon, tone: "bg-success-soft text-success", group: "reservas" },
   reservation_cancelled: { icon: CloseIcon, tone: "bg-error-soft text-error", group: "cambios" },
   balance_paid: { icon: WalletIcon, tone: "bg-success-soft text-success", group: "pagos" },
+  checkout_pending: { icon: WalletIcon, tone: "bg-warning-soft text-warning", group: "pagos" },
   email_failed: { icon: MailIcon, tone: "bg-error-soft text-error", group: "cambios" },
   reservation_expired: { icon: ClockIcon, tone: "bg-warning-soft text-warning", group: "cambios" },
   proof_uploaded: { icon: FileTextIcon, tone: "bg-info-soft text-info", group: "pagos" },
@@ -204,6 +205,9 @@ const KIND: Record<NotificationKind, { icon: typeof BellIcon; tone: string; grou
   booking_modified: { icon: PencilIcon, tone: "bg-info-soft text-info", group: "cambios" },
   booking_cancelled: { icon: CloseIcon, tone: "bg-error-soft text-error", group: "cambios" },
   booking_failed: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "cambios" },
+  channel_conflict: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "cambios" },
+  channel_sync_failed: { icon: AlertIcon, tone: "bg-warning-soft text-warning", group: "cambios" },
+  reservation_moved: { icon: ClockIcon, tone: "bg-warning-soft text-warning", group: "cambios" },
 };
 // Los avisos de Booking sin reserva (aún por asignar) llevan a la bandeja de Booking.
 const toBooking = (n: AdminNotification) => !n.reservationCode && n.kind.startsWith("booking_");

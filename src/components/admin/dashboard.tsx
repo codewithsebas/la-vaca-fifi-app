@@ -24,10 +24,12 @@ import {
 import { StatusPill } from "@/components/ui/status-pill";
 import { Combobox } from "@/components/ui/combobox";
 import { balanceDue, pendingOf } from "@/lib/admin-metrics";
-import { ACTIVE_STATUSES } from "@/lib/booking";
+import { BLOCKING_STATUSES, busyBlocks } from "@/lib/booking";
 import { MONTHS, addDays, cop, countdown, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, waTo } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
+import { displayName } from "@/components/admin/account";
+import { Count, useTweened } from "@/components/admin/motion";
 import { useLabelTip, useTip } from "@/components/ui/floating";
 import { NewReservationDialog } from "@/components/admin/new-reservation";
 import { paths } from "@/components/admin/routes";
@@ -40,6 +42,7 @@ import {
   Deco,
   EmptyState,
   IconButton,
+  enter,
   ModalPresence,
   PageHeader,
   Segmented,
@@ -58,8 +61,8 @@ function occupancy(d: Data, date: string) {
     if (!c.activa && !d.reservations.some((r) => r.cabinTypeId === c.id)) continue;
     total += c.units;
     const set = new Set<number>();
-    d.reservations.forEach((r) => r.cabinTypeId === c.id && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut && set.add(r.unit));
-    d.blocks.forEach((b) => b.cabinTypeId === c.id && b.from <= date && date <= b.to && set.add(b.unit));
+    d.reservations.forEach((r) => r.cabinTypeId === c.id && BLOCKING_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut && set.add(r.unit));
+    busyBlocks(d).forEach((b) => b.cabinTypeId === c.id && b.from <= date && date <= b.to && set.add(b.unit));
     busy += set.size;
   }
   return { busy, total, pc: total ? Math.round((busy / total) * 100) : 0 };
@@ -68,6 +71,14 @@ function occupancy(d: Data, date: string) {
 const greeting = (now: number) => {
   const h = Number(new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", hour: "numeric", hourCycle: "h23" }).format(now));
   return h >= 5 && h < 12 ? "Buenos días" : h >= 12 && h < 19 ? "Buenas tardes" : "Buenas noches";
+};
+
+// Cómo saludar a quien entra: su primer nombre («Joab Giraldo» → «Joab»). Si la cuenta lleva el nombre de un negocio
+// («La Vaca Fifí»), el nombre completo.
+const ARTICLES = new Set(["el", "la", "los", "las", "un", "una"]);
+const callName = (name: string) => {
+  const first = name.trim().split(/\s+/)[0] ?? "";
+  return ARTICLES.has(first.toLowerCase()) ? name.trim() : first;
 };
 
 // "16:05" en la hora de Colombia.
@@ -91,7 +102,7 @@ export function Dashboard() {
   const upcoming = R.filter((r) => r.checkIn > today && r.checkIn <= addDays(today, 7) && ARRIVING.includes(r.status)).sort((a, b) =>
     a.checkIn < b.checkIn ? -1 : 1,
   );
-  // Pagos por completar: abonos de fechas retenidas (el plazo más cercano primero) y saldos de huéspedes en estadía.
+  // Pagos por completar: abonos de reservas sin confirmar (la llegada más cercana primero) y saldos de huéspedes en estadía.
   const deadlineOf = (r: Reservation) => (r.status === "pending_deposit" ? r.depositDueAt : "");
   const pend = R.filter((r) => r.status === "pending_deposit" || balanceDue(r)).sort((a, b) => (deadlineOf(a) < deadlineOf(b) ? -1 : 1));
 
@@ -111,29 +122,37 @@ export function Dashboard() {
     <>
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 xl:grid-cols-[minmax(0,1fr)_336px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-7">
-          <PageHeader
-            title={greeting(now)}
-            description={`${fmtFullDate(today)}. ${todo.length ? `Hoy tienes ${listOf(todo)}.` : "Hoy no hay llegadas, salidas ni pagos pendientes."}`}
-            actions={
-              <div className="flex gap-2 xl:hidden">
-                <Link href={paths.calendario()} className={buttonClass()}>
-                  <CalendarIcon size={16} />
-                  Calendario
-                </Link>
-                <Button variant="primary" icon={<PlusIcon size={14} />} onClick={() => setCreating(true)}>
-                  Nueva reserva
-                </Button>
-              </div>
-            }
-          />
+          <div {...enter(0)}>
+            <PageHeader
+              title={`${greeting(now)}, ${callName(displayName(data.me))}`}
+              description={`${fmtFullDate(today)}. ${todo.length ? `Hoy tienes ${listOf(todo)}.` : "Hoy no hay llegadas, salidas ni pagos pendientes."}`}
+              actions={
+                <div className="flex gap-2 xl:hidden">
+                  <Link href={paths.calendario()} className={buttonClass()}>
+                    <CalendarIcon size={16} />
+                    Calendario
+                  </Link>
+                  <Button variant="primary" icon={<PlusIcon size={14} />} onClick={() => setCreating(true)}>
+                    Nueva reserva
+                  </Button>
+                </div>
+              }
+            />
+          </div>
           <Highlights arr={arr} dep={dep} pend={pend} />
-          <TodayBoard arr={arr} dep={dep} />
-          <PendingList pend={pend} />
+          <div {...enter(5)}>
+            <TodayBoard arr={arr} dep={dep} />
+          </div>
+          <div {...enter(6)}>
+            <PendingList pend={pend} />
+          </div>
         </div>
 
         <aside aria-label="Mes, agenda de hoy y próximas llegadas" className="flex min-w-0 flex-col gap-6">
-          <MiniCalendar />
-          <div className="flex items-center gap-2">
+          <div {...enter(1.5)}>
+            <MiniCalendar />
+          </div>
+          <div {...enter(2.5, "pop")} className="flex items-center gap-2">
             <Button variant="primary" size="lg" className="flex-1" icon={<PlusIcon size={15} />} onClick={() => setCreating(true)}>
               Nueva reserva
             </Button>
@@ -144,36 +163,40 @@ export function Dashboard() {
               <CalendarIcon size={18} />
             </Link>
           </div>
-          <Agenda arr={arr} dep={dep} pend={pend} />
-          <ListSection
-            id="d-up"
-            title="Próximas llegadas"
-            count={upcoming.length}
-            empty="No hay llegadas en los próximos 7 días."
-            icon={<CalendarIcon size={18} />}
-            footer={
-              upcoming.length > UPCOMING_MAX && (
-                <Link href={paths.calendario()} className="self-start text-[13px] font-semibold text-ink underline-offset-2 hover:underline">
-                  {`Y ${upcoming.length - UPCOMING_MAX} más: ver el calendario`}
-                </Link>
-              )
-            }
-          >
-            {upcoming.slice(0, UPCOMING_MAX).map((r) => {
-              const x = rowOf(r, cabinLabel);
-              return (
-                <Row
-                  key={r.code}
-                  href={paths.reserva(r.code)}
-                  icon={<CalendarIcon size={17} />}
-                  accent="blue"
-                  title={r.guest.fullName}
-                  meta={`${x.cabin} · ${x.nights}`}
-                  right={<Chip>{r.checkIn === addDays(today, 1) ? "Mañana" : fmtDate(r.checkIn)}</Chip>}
-                />
-              );
-            })}
-          </ListSection>
+          <div {...enter(3.5)}>
+            <Agenda arr={arr} dep={dep} pend={pend} />
+          </div>
+          <div {...enter(4.5)}>
+            <ListSection
+              id="d-up"
+              title="Próximas llegadas"
+              count={upcoming.length}
+              empty="No hay llegadas en los próximos 7 días."
+              icon={<CalendarIcon size={18} />}
+              footer={
+                upcoming.length > UPCOMING_MAX && (
+                  <Link href={paths.calendario()} className="self-start text-[13px] font-semibold text-ink underline-offset-2 hover:underline">
+                    {`Y ${upcoming.length - UPCOMING_MAX} más: ver el calendario`}
+                  </Link>
+                )
+              }
+            >
+              {upcoming.slice(0, UPCOMING_MAX).map((r) => {
+                const x = rowOf(r, cabinLabel);
+                return (
+                  <Row
+                    key={r.code}
+                    href={paths.reserva(r.code)}
+                    icon={<CalendarIcon size={17} />}
+                    accent="blue"
+                    title={r.guest.fullName}
+                    meta={`${x.cabin} · ${x.nights}`}
+                    right={<Chip>{r.checkIn === addDays(today, 1) ? "Mañana" : fmtDate(r.checkIn)}</Chip>}
+                  />
+                );
+              })}
+            </ListSection>
+          </div>
         </aside>
       </div>
 
@@ -206,10 +229,12 @@ function Highlight({
   shape,
   title,
   action,
+  order,
   className = "",
   children,
 }: {
   id: string;
+  order: number;
   accent: Accent;
   shape: DecoShape;
   title: string;
@@ -220,6 +245,7 @@ function Highlight({
   return (
     <section
       aria-labelledby={id}
+      {...enter(order, "pop")}
       className={`relative isolate flex min-h-[200px] min-w-0 flex-col gap-4 overflow-hidden rounded-[24px] p-5 ${ACCENT[accent].bg} ${className}`}
     >
       <Deco accent={accent} shape={shape} className="-top-7 -right-7 size-[140px] rotate-[16deg]" />
@@ -234,6 +260,11 @@ function Highlight({
   );
 }
 
+// Cuándo empiezan a moverse las cifras y gráficas de cada tarjeta: cuando la tarjeta ya entró (globals.css, «Entrada del
+// panel»: 120 ms + turno × 70 ms) y un poco más.
+const DATA_DELAY = { today: 440, occ: 500, pay: 550, week: 610 };
+const pct = (n: number) => `${n} %`;
+
 function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]; pend: Reservation[] }) {
   const { data, today } = useAdmin();
   const tip = useTip();
@@ -246,6 +277,11 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
     return { day, n: data.reservations.filter((r) => r.checkIn === day && ARRIVING.concat(["checked_in"]).includes(r.status)).length };
   });
   const maxN = Math.max(1, ...next.map((d) => d.n));
+  // Las barras crecen desde la base una tras otra; si cambian los datos, suben o bajan a su nueva altura.
+  const heights = useTweened(
+    next.map((d) => (d.n ? 36 + (54 * d.n) / maxN : 36)),
+    { delay: DATA_DELAY.today, duration: 800, stagger: 40 },
+  );
 
   // Ocupación de dos semanas atrás a dos semanas adelante (línea), con hoy marcado.
   const span = Array.from({ length: 29 }, (_, i) => ({ day: addDays(today, i - 14), ...occupancy(data, addDays(today, i - 14)) }));
@@ -273,11 +309,11 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <Highlight id="d-hl-today" accent="yellow" shape="sun" title="Hoy:">
+        <Highlight id="d-hl-today" order={1} accent="yellow" shape="sun" title="Hoy:">
           <div className="grid grid-cols-3 gap-3 pr-10">
-            <Stat value={arr.length} label="Llegan" strong />
-            <Stat value={dep.length} label="Salen" />
-            <Stat value={inHouse} label="En estadía" />
+            <Stat value={<Count value={arr.length} delay={DATA_DELAY.today} />} label="Llegan" strong />
+            <Stat value={<Count value={dep.length} delay={DATA_DELAY.today} />} label="Salen" />
+            <Stat value={<Count value={inHouse} delay={DATA_DELAY.today} />} label="En estadía" />
           </div>
           <div className="mt-auto">
             <ol aria-label="Llegadas de los próximos 14 días" className="flex h-[88px] items-end gap-[5px]">
@@ -295,7 +331,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
                   <span
                     aria-hidden="true"
                     className={`block w-full max-w-[11px] rounded-full ${d.n ? "bg-ink" : "border-[1.5px] border-dashed border-ink/45"}`}
-                    style={{ height: d.n ? `${36 + (54 * d.n) / maxN}%` : "36%" }}
+                    style={{ height: `${heights[i]}%` }}
                   />
                 </li>
               ))}
@@ -307,11 +343,11 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
           </div>
         </Highlight>
 
-        <Highlight id="d-hl-occ" accent="pink" shape="cabin" title="Ocupación:">
+        <Highlight id="d-hl-occ" order={1.8} accent="pink" shape="cabin" title="Ocupación:">
           <div className="grid grid-cols-3 gap-3 pr-10 sm:max-w-[360px]">
-            <Stat value={`${tonight.pc} %`} label={`Esta noche (${tonight.busy} de ${tonight.total})`} strong />
-            <Stat value={`${avg7} %`} label="Promedio 7 días" />
-            <Stat value={`${max30} %`} label="Máximo 15 días" />
+            <Stat value={<Count value={tonight.pc} format={pct} delay={DATA_DELAY.occ} />} label={`Esta noche (${tonight.busy} de ${tonight.total})`} strong />
+            <Stat value={<Count value={avg7} format={pct} delay={DATA_DELAY.occ} />} label="Promedio 7 días" />
+            <Stat value={<Count value={max30} format={pct} delay={DATA_DELAY.occ} />} label="Máximo 15 días" />
           </div>
           <OccupancyLine span={span} />
         </Highlight>
@@ -320,6 +356,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Highlight
           id="d-hl-pay"
+          order={2.6}
           accent="green"
           shape="coin"
           title="Por cobrar:"
@@ -333,16 +370,19 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
           }
           className="min-h-[164px]"
         >
-          <p className="text-[clamp(1.6rem,2.6vw,2.1rem)] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">{cop(toCollect)}</p>
+          <p className="text-[clamp(1.6rem,2.6vw,2.1rem)] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">
+            <Count value={toCollect} format={cop} delay={DATA_DELAY.pay} />
+          </p>
           <div className="mt-auto grid grid-cols-3 gap-3 sm:max-w-[420px]">
-            <Stat value={deposits.length} label="Abonos" />
-            <Stat value={balances.length} label="Saldos" />
-            <Stat value={proofs} label="Comprobantes" />
+            <Stat value={<Count value={deposits.length} delay={DATA_DELAY.pay} />} label="Abonos" />
+            <Stat value={<Count value={balances.length} delay={DATA_DELAY.pay} />} label="Saldos" />
+            <Stat value={<Count value={proofs} delay={DATA_DELAY.pay} />} label="Comprobantes" />
           </div>
         </Highlight>
 
         <Highlight
           id="d-hl-week"
+          order={3.4}
           accent="blue"
           shape="calendar"
           title="Próximos 7 días:"
@@ -357,12 +397,12 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
           className="min-h-[164px]"
         >
           <p className="text-[clamp(1.6rem,2.6vw,2.1rem)] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">
-            {plural(weekArr, "llegada", "llegadas")}
+            <Count value={weekArr} format={(n) => plural(n, "llegada", "llegadas")} delay={DATA_DELAY.week} />
           </p>
           <div className="mt-auto grid grid-cols-3 gap-3 pr-8">
-            <Stat value={weekDep} label="Salidas" />
-            <Stat value={freeNights} label="Noches libres" />
-            <Stat value={bathAlerts} label="Baños con aviso" />
+            <Stat value={<Count value={weekDep} delay={DATA_DELAY.week} />} label="Salidas" />
+            <Stat value={<Count value={freeNights} delay={DATA_DELAY.week} />} label="Noches libres" />
+            <Stat value={<Count value={bathAlerts} delay={DATA_DELAY.week} />} label="Baños con aviso" />
           </div>
         </Highlight>
       </div>
@@ -391,7 +431,12 @@ function OccupancyLine({ span }: { span: { day: string; pc: number; busy: number
   const W = 280;
   const step = W / (span.length - 1);
   const y = (pc: number) => 88 - pc * 0.76;
-  const pts = span.map((d, i) => [i * step, y(d.pc)] as [number, number]);
+  // La línea sale de la base y sube o baja hasta la ocupación de cada día; si cambia, se mueve suave a la nueva forma.
+  const pcs = useTweened(
+    span.map((d) => d.pc),
+    { delay: DATA_DELAY.occ, duration: 1200, stagger: 12 },
+  );
+  const pts = pcs.map((pc, i) => [i * step, y(pc)] as [number, number]);
   const ticks = [0, 7, mid, mid + 7, span.length - 1];
   return (
     <figure className="mt-auto" aria-label={`Ocupación diaria: hoy ${span[mid].pc} %`}>
@@ -404,12 +449,12 @@ function OccupancyLine({ span }: { span: { day: string; pc: number; busy: number
         <span
           aria-hidden="true"
           className="absolute bottom-0 w-0 border-l-[1.5px] border-dashed border-ink/55"
-          style={{ left: "50%", top: `${y(span[mid].pc)}%` }}
+          style={{ left: "50%", top: `${y(pcs[mid])}%` }}
         />
         <span
           aria-hidden="true"
           className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink ring-[3px] ring-pink"
-          style={{ left: "50%", top: `${y(span[mid].pc)}%` }}
+          style={{ left: "50%", top: `${y(pcs[mid])}%` }}
         />
         {/* Zonas invisibles por día para el detalle al pasar el mouse. */}
         <ol aria-hidden="true" className="absolute inset-0 flex">
@@ -848,7 +893,7 @@ function Agenda({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]; pe
         time: hhmm(r.depositDueAt),
         r,
         title: r.guest.fullName,
-        meta: `Vence la retención · abono ${cop(r.quote.deposit)}`,
+        meta: `Llega sin abono · vence hoy · abono ${cop(r.quote.deposit)}`,
         accent: "yellow" as const,
         icon: <ClockIcon size={16} />,
         kind: "plazo" as const,
