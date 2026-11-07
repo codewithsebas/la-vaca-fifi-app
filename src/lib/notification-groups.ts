@@ -19,8 +19,18 @@ export const NOTIFICATION_GROUPS: { id: NotificationGroup; label: string; descri
   {
     id: "cambios",
     label: "Cancelaciones, vencimientos y fallos",
-    description: "Reservas canceladas, retenciones que vencen sin abono, cambios de Booking y correos que no se pudieron enviar o leer.",
-    kinds: ["reservation_cancelled", "reservation_expired", "email_failed", "booking_modified", "booking_cancelled", "booking_failed"],
+    description:
+      "Reservas canceladas, retenciones que vencen sin abono, cambios de Booking, posibles sobreventas, calendarios de Booking que no se pudieron leer y correos que no se pudieron enviar o leer.",
+    kinds: [
+      "reservation_cancelled",
+      "reservation_expired",
+      "email_failed",
+      "booking_modified",
+      "booking_cancelled",
+      "booking_failed",
+      "channel_conflict",
+      "channel_sync_failed",
+    ],
   },
 ];
 

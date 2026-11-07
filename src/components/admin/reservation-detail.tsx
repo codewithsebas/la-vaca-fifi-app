@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/status-pill";
 import { balanceDue, buildClients, pendingOf, typeMarks, type ClientSummary } from "@/lib/admin-metrics";
-import { ACTIVE_STATUSES, validateGuest } from "@/lib/booking";
+import { ACTIVE_STATUSES, busyBlocks, validateGuest } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { config } from "@/lib/config";
 import { can } from "@/lib/permissions";
@@ -217,7 +217,7 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
         reschedule: true,
         ci: r.checkIn,
         co: r.checkOut,
-        marks: typeMarks(data.reservations, data.blocks, r.cabinTypeId, units, today, addDays(today, 365), r.code),
+        marks: typeMarks(data.reservations, busyBlocks(data), r.cabinTypeId, units, today, addDays(today, 365), r.code),
         text: "Elige las nuevas fechas. Se valida la disponibilidad de la misma cabaña y se recalcula el total con las tarifas vigentes (lo ya pagado se conserva).",
       }),
     );

@@ -278,7 +278,9 @@ export type NotificationKind =
   | "booking_pending"
   | "booking_modified"
   | "booking_cancelled"
-  | "booking_failed";
+  | "booking_failed"
+  | "channel_conflict"
+  | "channel_sync_failed";
 
 export type AdminNotification = {
   id: number;
@@ -306,6 +308,7 @@ export type AdminData = {
   me: PanelUser; // quién usa el panel
   bathrooms: Bathroom[];
   bathroomBlocks: BathroomBlock[];
+  channelStays: ChannelStay[]; // noches ocupadas en Booking.com (lib/server/channels)
 };
 
 /* ───────────── Equipo ───────────── */
@@ -337,6 +340,40 @@ export type Bathroom = {
 export type BathroomInput = { id?: string; name?: string; status?: BathroomStatus; cabinTypeId?: CabinTypeId | null; unit?: number | null; notes?: string };
 export type BathroomBlock = { version?: number; id: string; bathroomId: string; from: string; to: string; reason: string; notes: string };
 export type BathroomBlockInput = Omit<BathroomBlock, "id" | "version"> & { id?: string };
+
+/* ───────────── Booking.com (calendarios iCal) ───────────── */
+
+// Noches ocupadas en Booking de una cabaña (checkOut exclusivo, como las reservas). echo: Booking las cerró porque ya
+// estaban ocupadas en el panel (no ocupan). removedAt: dejaron de venir en el calendario (se cancelaron).
+export type ChannelStay = {
+  id: string;
+  calendarId: string;
+  cabinTypeId: CabinTypeId;
+  unit: number;
+  checkIn: string;
+  checkOut: string;
+  summary: string;
+  echo: boolean;
+  firstSeenAt: string;
+  removedAt: string | null;
+};
+
+// Un calendario por cabaña: importUrl es el enlace de exportación de Booking; exportUrl, el que Booking importa del panel.
+export type ChannelCalendar = {
+  id: string;
+  label: string;
+  cabinTypeId: CabinTypeId;
+  unit: number;
+  importUrl: string | null;
+  exportUrl: string;
+  lastSyncedAt: string | null;
+  lastFetchedAt: string | null;
+  lastStatus: "ok" | "error" | null;
+  lastError: string;
+  lastEventCount: number;
+};
+
+export type ChannelSyncResult = { calendarId: string; ok: boolean; error?: string; events: number; added: number; removed: number; conflicts: string[] };
 
 /* ───────────── Importación ───────────── */
 

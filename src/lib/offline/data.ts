@@ -4,7 +4,7 @@ import { mergePanelColors } from "@/lib/panel-colors";
 import type { SiteContent } from "@/lib/site";
 
 export type ListCollection =
-  "reservations" | "blocks" | "cabinTypes" | "seasons" | "proofs" | "payments" | "emails" | "notifications" | "bathrooms" | "bathroomBlocks";
+  "reservations" | "blocks" | "cabinTypes" | "seasons" | "proofs" | "payments" | "emails" | "notifications" | "bathrooms" | "bathroomBlocks" | "channelStays";
 export type Collection = ListCollection | "clients" | "site";
 export type Row = { collection: Collection; key: string; row: unknown };
 
@@ -24,6 +24,7 @@ export const LISTS: { [K in ListCollection]: Spec<AdminData[K][number]> } = {
   notifications: { key: (r) => String(r.id), order: newest, limit: 150 },
   bathrooms: { key: (r) => r.id, order: (a, b) => text(a.name, b.name) },
   bathroomBlocks: { key: (r) => r.id, order: (a, b) => text(a.from, b.from) },
+  channelStays: { key: (r) => r.id, order: (a, b) => text(a.checkIn, b.checkIn) },
 };
 const LIST_NAMES = Object.keys(LISTS) as ListCollection[];
 
@@ -40,7 +41,8 @@ export function rowsOf(d: AdminData): Row[] {
   const rows: Row[] = [];
   for (const name of LIST_NAMES) {
     const key = LISTS[name].key as (r: unknown) => string;
-    for (const row of d[name]) rows.push({ collection: name, key: key(row), row });
+    // Una colección que el servidor aún no manda (p. ej. channelStays antes de su migración) queda vacía.
+    for (const row of d[name] ?? []) rows.push({ collection: name, key: key(row), row });
   }
   for (const [key, row] of Object.entries(d.clients)) rows.push({ collection: "clients", key, row });
   rows.push({ collection: "site", key: "site", row: d.site });
@@ -70,6 +72,7 @@ export function dataOf(rows: Row[], me: PanelUser): AdminData | null {
     me,
     bathrooms: list("bathrooms"),
     bathroomBlocks: list("bathroomBlocks"),
+    channelStays: list("channelStays"),
   };
 }
 
@@ -87,7 +90,7 @@ export function applyDelta(d: AdminData, delta: Delta): AdminData {
     const dels = new Set(delta.deletes[name] ?? []);
     if (!ups.length && !dels.size) continue;
     const key = LISTS[name].key as (r: unknown) => string;
-    const by = new Map((d[name] as unknown[]).map((r) => [key(r), r]));
+    const by = new Map(((d[name] ?? []) as unknown[]).map((r) => [key(r), r]));
     for (const k of dels) by.delete(k);
     for (const u of ups) by.set(u.key, u.row);
     (next as Record<ListCollection, unknown>)[name] = sorted(name, [...by.values()] as never);

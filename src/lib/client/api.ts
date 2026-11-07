@@ -24,6 +24,9 @@ import type {
   BookingInboxItem,
   CabinInput,
   CabinType,
+  ChannelCalendar,
+  ChannelStay,
+  ChannelSyncResult,
   ClientProfile,
   ClientProfileInput,
   EmailRecord,
@@ -60,6 +63,9 @@ export type ValidationError = { error: "VALIDATION_ERROR"; fields: FieldErrors }
 export type ApiError = { error: string; fields?: FieldErrors };
 // Un dispositivo registrado para notificaciones push: qué grupos recibe y cómo se reconoce ("Chrome en Android").
 export type PushDevice = { groups: NotificationGroup[]; device: string; lastSuccessAt: string | null };
+
+// Calendarios de Booking.com y sus noches (con el resultado de la lectura, si se leyó en esa solicitud).
+export type Channels = { calendars: ChannelCalendar[]; stays: ChannelStay[]; results?: ChannelSyncResult[] };
 
 export const api = {
   cabinTypes: () => request<CabinType[]>("GET", "/cabin-types"),
@@ -173,6 +179,12 @@ export const api = {
         }),
       dismiss: (ref: string) =>
         request<BookingInboxItem[] | ApiError>("POST", "/admin/booking", { body: { action: "dismiss", ref } satisfies BookingInboxAction }),
+    },
+    // Calendarios de Booking.com, uno por cabaña (solo con conexión: los enlaces se prueban contra Booking).
+    channels: {
+      list: () => request<Channels>("GET", "/admin/channels"),
+      setUrl: (id: string, importUrl: string | null) => request<Channels | ApiError>("PATCH", "/admin/channels", { body: { id, importUrl } }),
+      sync: (id?: string) => request<Channels | ApiError>("POST", "/admin/channels", { body: { id } }),
     },
     // La contraseña nunca entra en la cola: cambiarla exige conexión.
     profile: (b: ProfileInput) => {

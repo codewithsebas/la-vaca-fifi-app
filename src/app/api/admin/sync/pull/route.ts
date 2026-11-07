@@ -7,6 +7,7 @@ import {
   toBathroomBlock,
   toBlock,
   toCabinType,
+  channelStayOf,
   toEmail,
   toNotification,
   toPayment,
@@ -46,6 +47,8 @@ const LOAD: Record<string, (sb: Db, keys: string[]) => Promise<{ key: string; ro
   bathrooms: async (sb, keys) => (await sb.from("bathrooms").select("*").in("id", keys).throwOnError()).data.map((r) => ({ key: r.id, row: toBathroom(r) })),
   bathroomBlocks: async (sb, keys) =>
     (await sb.from("bathroom_blocks").select("*").in("id", keys).throwOnError()).data.map((r) => ({ key: r.id, row: toBathroomBlock(r) })),
+  channelStays: async (sb, keys) =>
+    (await sb.from("channel_stays").select("*").in("id", keys).throwOnError()).data.map((r) => ({ key: r.id, row: channelStayOf(r) })),
 };
 
 // GET /api/admin/sync/pull?cursor= → lo que cambió desde el cursor: filas actuales (upserts), filas que ya no existen (deletes)

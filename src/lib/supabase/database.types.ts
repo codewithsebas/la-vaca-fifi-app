@@ -365,6 +365,122 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_calendars: {
+        Row: {
+          cabin_type_id: string
+          created_at: string
+          export_token: string
+          id: string
+          import_url: string | null
+          label: string
+          last_error: string
+          last_event_count: number
+          last_fetched_at: string | null
+          last_status: string | null
+          last_synced_at: string | null
+          sync_started_at: string | null
+          unit: number
+          updated_at: string
+        }
+        Insert: {
+          cabin_type_id: string
+          created_at?: string
+          export_token?: string
+          id?: string
+          import_url?: string | null
+          label?: string
+          last_error?: string
+          last_event_count?: number
+          last_fetched_at?: string | null
+          last_status?: string | null
+          last_synced_at?: string | null
+          sync_started_at?: string | null
+          unit: number
+          updated_at?: string
+        }
+        Update: {
+          cabin_type_id?: string
+          created_at?: string
+          export_token?: string
+          id?: string
+          import_url?: string | null
+          label?: string
+          last_error?: string
+          last_event_count?: number
+          last_fetched_at?: string | null
+          last_status?: string | null
+          last_synced_at?: string | null
+          sync_started_at?: string | null
+          unit?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_calendars_cabin_type_id_fkey"
+            columns: ["cabin_type_id"]
+            isOneToOne: false
+            referencedRelation: "cabin_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channel_stays: {
+        Row: {
+          cabin_type_id: string
+          calendar_id: string
+          check_in: string
+          check_out: string
+          echo: boolean
+          external_uid: string
+          first_seen_at: string
+          id: string
+          removed_at: string | null
+          summary: string
+          unit: number
+        }
+        Insert: {
+          cabin_type_id: string
+          calendar_id: string
+          check_in: string
+          check_out: string
+          echo?: boolean
+          external_uid: string
+          first_seen_at?: string
+          id?: string
+          removed_at?: string | null
+          summary?: string
+          unit: number
+        }
+        Update: {
+          cabin_type_id?: string
+          calendar_id?: string
+          check_in?: string
+          check_out?: string
+          echo?: boolean
+          external_uid?: string
+          first_seen_at?: string
+          id?: string
+          removed_at?: string | null
+          summary?: string
+          unit?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_stays_cabin_type_id_fkey"
+            columns: ["cabin_type_id"]
+            isOneToOne: false
+            referencedRelation: "cabin_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_stays_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "channel_calendars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_entries: {
         Row: {
           client_key: string
@@ -1116,7 +1232,9 @@ export type Database = {
         Returns: Json
       }
       request_booking_mail_sync: { Args: never; Returns: undefined }
+      request_channel_sync: { Args: never; Returns: undefined }
       request_email_dispatch: { Args: never; Returns: undefined }
+      run_auto_checkouts: { Args: never; Returns: number }
       run_payment_deadlines: { Args: never; Returns: undefined }
       sync_cursor: { Args: never; Returns: string }
       sync_pull: { Args: { p_cursor: string; p_limit?: number }; Returns: Json }

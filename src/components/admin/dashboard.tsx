@@ -24,7 +24,7 @@ import {
 import { StatusPill } from "@/components/ui/status-pill";
 import { Combobox } from "@/components/ui/combobox";
 import { balanceDue, pendingOf } from "@/lib/admin-metrics";
-import { ACTIVE_STATUSES } from "@/lib/booking";
+import { ACTIVE_STATUSES, busyBlocks } from "@/lib/booking";
 import { MONTHS, addDays, cop, countdown, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, waTo } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
@@ -59,7 +59,7 @@ function occupancy(d: Data, date: string) {
     total += c.units;
     const set = new Set<number>();
     d.reservations.forEach((r) => r.cabinTypeId === c.id && ACTIVE_STATUSES.includes(r.status) && r.checkIn <= date && date < r.checkOut && set.add(r.unit));
-    d.blocks.forEach((b) => b.cabinTypeId === c.id && b.from <= date && date <= b.to && set.add(b.unit));
+    busyBlocks(d).forEach((b) => b.cabinTypeId === c.id && b.from <= date && date <= b.to && set.add(b.unit));
     busy += set.size;
   }
   return { busy, total, pc: total ? Math.round((busy / total) * 100) : 0 };

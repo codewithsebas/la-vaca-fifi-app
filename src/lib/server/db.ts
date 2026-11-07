@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ACTIVE_STATUSES, type Occupancy, type Units } from "@/lib/booking";
+import { ACTIVE_STATUSES, channelBlocks, type Occupancy, type Units } from "@/lib/booking";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import { config } from "@/lib/config";
 import { addDays, todayISO } from "@/lib/format";
@@ -11,6 +11,7 @@ import type {
   BathroomStatus,
   Block,
   CabinType,
+  ChannelStay,
   ClientEntry,
   ClientProfile,
   DocType,
@@ -110,7 +111,8 @@ export async function loadPricing(sb: Db) {
   return { types, units, seasons, depositPct };
 }
 
-// Reservas activas y bloqueos que tocan alguna noche entre firstNight y lastNight (inclusive).
+// Reservas activas, bloqueos y noches ocupadas en Booking que tocan alguna noche entre firstNight y lastNight (inclusive).
+// Las de Booking entran como bloqueos (channelBlocks): cuentan igual en toda la lógica de disponibilidad.
 export async function loadOccupancy(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<Occupancy> {
   let rq = sb
     .from("reservations")
@@ -123,11 +125,61 @@ export async function loadOccupancy(sb: Db, firstNight: string, lastNight: strin
     rq = rq.eq("cabin_type_id", cabinTypeId);
     bq = bq.eq("cabin_type_id", cabinTypeId);
   }
-  const [{ data: rs }, { data: bs }] = await Promise.all([rq.throwOnError(), bq.throwOnError()]);
+  const [{ data: rs }, { data: bs }, stays] = await Promise.all([
+    rq.throwOnError(),
+    bq.throwOnError(),
+    loadChannelStays(sb, firstNight, lastNight, cabinTypeId),
+  ]);
   return {
     reservations: rs.map((r) => ({ code: r.code, cabinTypeId: r.cabin_type_id, unit: r.unit, checkIn: r.check_in, checkOut: r.check_out, status: r.status })),
-    blocks: bs.map((b) => ({ cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date })),
+    blocks: [
+      ...bs.map((b) => ({ cabinTypeId: b.cabin_type_id, unit: b.unit, from: b.from_date, to: b.to_date })),
+      ...channelBlocks(stays).map((b) => ({ cabinTypeId: b.cabinTypeId, unit: b.unit, from: b.from, to: b.to })),
+    ],
   };
+}
+
+/* ───────────── Booking.com (calendarios iCal) ───────────── */
+
+// Fila de channel_stays → ChannelStay (también la usan /admin/channels y la sincronización del panel).
+export function channelStayOf(s: Tables<"channel_stays">): ChannelStay {
+  return {
+    id: s.id,
+    calendarId: s.calendar_id,
+    cabinTypeId: s.cabin_type_id,
+    unit: s.unit,
+    checkIn: s.check_in,
+    checkOut: s.check_out,
+    summary: s.summary,
+    echo: s.echo,
+    firstSeenAt: s.first_seen_at,
+    removedAt: s.removed_at,
+  };
+}
+
+// Sin la migración de Booking las tablas no existen: se trata como «sin calendarios». Cualquier otro error sí se propaga.
+export const isMissingTable = (e: unknown) => ["PGRST205", "42P01"].includes((e as { code?: string } | null)?.code ?? "");
+
+// Noches de Booking vigentes (sin removed_at) que tocan alguna noche entre firstNight y lastNight.
+async function loadChannelStays(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<ChannelStay[]> {
+  let q = sb.from("channel_stays").select("*").is("removed_at", null).eq("echo", false).lte("check_in", lastNight).gt("check_out", firstNight);
+  if (cabinTypeId) q = q.eq("cabin_type_id", cabinTypeId);
+  const { data, error } = await q;
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+  return data.map(channelStayOf);
+}
+
+// Para el panel: las noches de Booking desde hace un año (también las canceladas y los ecos, para el historial).
+export async function loadPanelChannelStays(sb: Db): Promise<ChannelStay[]> {
+  const { data, error } = await sb.from("channel_stays").select("*").gte("check_out", addDays(todayISO(), -400)).order("check_in");
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+  return data.map(channelStayOf);
 }
 
 // Plazo del abono: libera las retenciones que vencieron sin abono.

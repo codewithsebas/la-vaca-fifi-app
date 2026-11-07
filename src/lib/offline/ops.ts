@@ -7,6 +7,7 @@ import {
   cleanPersonRates,
   cleanUnitLabels,
   computeQuote,
+  busyBlocks,
   invalidPersonRates,
   invalidUnitLabels,
   findUnit,
@@ -137,7 +138,7 @@ const occupancy = (d: AdminData): Occupancy => ({
     checkOut: r.checkOut,
     status: r.status,
   })),
-  blocks: d.blocks.map((b) => ({ cabinTypeId: b.cabinTypeId, unit: b.unit, from: b.from, to: b.to })),
+  blocks: busyBlocks(d).map((b) => ({ cabinTypeId: b.cabinTypeId, unit: b.unit, from: b.from, to: b.to })),
 });
 
 const activeSeasons = (d: AdminData) => d.seasons.filter((s) => s.activa);

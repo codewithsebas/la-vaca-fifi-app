@@ -7,13 +7,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckIcon, CloseIcon, ExternalLinkIcon, MailIcon, PhoneIcon } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
-import { findUnit, unitFree, unitLabel, type Occupancy } from "@/lib/booking";
+import { busyBlocks, findUnit, unitFree, unitLabel, type Occupancy } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { cop, fmtDate, nightsBetween, plural, timeAgo } from "@/lib/format";
 import type { CabinTypeId } from "@/lib/config";
 import type { BookingInboxItem } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { useSyncStatus } from "@/components/admin/sync";
+import { BookingCalendars } from "@/components/admin/booking-calendars";
 import { MODULES, paths } from "@/components/admin/routes";
 import { Badge, Button, Callout, Card, CardHeader, EmptyState, ErrorState, Field, PageHeader, Skeleton, type Tone } from "@/components/admin/ui";
 
@@ -63,10 +64,9 @@ export function BookingView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        title={MODULES.booking.label}
-        description="Reservas de Booking.com que llegan por correo de Ayenda. El correo no dice la cabaña: elige una y la reserva queda creada y las fechas bloqueadas en el sitio."
-      />
+      <PageHeader title={MODULES.booking.label} description="Conexión con Booking.com: el calendario de cada cabaña y las reservas que llegan por correo." />
+
+      {data.me.role === "admin" && <BookingCalendars offline={offline} />}
 
       {offline && <Callout tone="warning">Sin conexión: para asignar o descartar reservas de Booking necesitas internet.</Callout>}
 
@@ -148,7 +148,7 @@ function PendingCard({
 }) {
   const { data, ask, toast, go, now } = useAdmin();
   const cabins = data.cabinTypes.filter((c) => c.units > 0);
-  const occ: Occupancy = useMemo(() => ({ reservations: data.reservations, blocks: data.blocks }), [data.reservations, data.blocks]);
+  const occ: Occupancy = useMemo(() => ({ reservations: data.reservations, blocks: busyBlocks(data) }), [data]);
   const freeOf = (id: string, units: number) =>
     Array.from({ length: units }, (_, k) => k + 1).filter((u) => unitFree(occ, units, id, u, item.checkIn, item.checkOut));
 

@@ -3,6 +3,7 @@ import {
   loadBathrooms,
   loadCabinTypes,
   loadClients,
+  loadPanelChannelStays,
   loadSeasons,
   runDeadlines,
   toBlock,
@@ -36,6 +37,7 @@ export const GET = route(async (req: NextRequest) => {
     clients,
     { data: notifications },
     baths,
+    channelStays,
   ] = await Promise.all([
     sb.from("reservations").select("*, reservation_notes(text, created_at)").order("check_in", { ascending: false }).throwOnError(),
     sb.from("blocks").select("*").order("from_date").throwOnError(),
@@ -48,6 +50,7 @@ export const GET = route(async (req: NextRequest) => {
     loadClients(sb),
     sb.from("admin_notifications").select("*").order("created_at", { ascending: false }).limit(150).throwOnError(),
     loadBathrooms(sb),
+    loadPanelChannelStays(sb),
   ]);
   // Correos que fallaron y ya les toca reintentar: se envían después de responder.
   if (emails.some((e) => e.status === "failed" || e.status === "pending")) after(() => processOutbox(siteUrl(req.nextUrl.origin)));
@@ -69,5 +72,6 @@ export const GET = route(async (req: NextRequest) => {
     me,
     bathrooms: baths.bathrooms,
     bathroomBlocks: baths.blocks,
+    channelStays,
   });
 });

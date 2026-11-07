@@ -205,6 +205,8 @@ const KIND: Record<NotificationKind, { icon: typeof BellIcon; tone: string; grou
   booking_modified: { icon: PencilIcon, tone: "bg-info-soft text-info", group: "cambios" },
   booking_cancelled: { icon: CloseIcon, tone: "bg-error-soft text-error", group: "cambios" },
   booking_failed: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "cambios" },
+  channel_conflict: { icon: AlertIcon, tone: "bg-error-soft text-error", group: "cambios" },
+  channel_sync_failed: { icon: AlertIcon, tone: "bg-warning-soft text-warning", group: "cambios" },
 };
 // Los avisos de Booking sin reserva (aún por asignar) llevan a la bandeja de Booking.
 const toBooking = (n: AdminNotification) => !n.reservationCode && n.kind.startsWith("booking_");
