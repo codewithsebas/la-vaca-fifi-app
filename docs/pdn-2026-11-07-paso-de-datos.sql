@@ -92,7 +92,7 @@ begin
       select to_jsonb(c) || jsonb_build_object(
         'code', 'VF-' || upper(substr(md5(gen_random_uuid()::text), 1, 5)),
         'status', 'confirmed', 'source', 'import', 'channel', 'Booking',
-        'external_ref', null, 'idempotency_key', null, 'live_key', null,
+        'external_ref', null, 'idempotency_key', null, 'live_key', gen_random_uuid(),
         'paid_amount', 0, 'deposit_paid_at', null, 'balance_paid_at', null, 'checked_in_at', null,
         'special_requests', left(trim(coalesce(c.special_requests, '') || ' Segunda cabaña de la reserva de Booking ' || v.principal || '.'), 1000),
         'quote', c.quote || jsonb_build_object('total', 0, 'deposit', 0, 'balance', 0, 'base', 0),
