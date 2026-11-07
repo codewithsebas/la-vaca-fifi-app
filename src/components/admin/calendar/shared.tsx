@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { MONTHS, WD, WD_FULL, WD_MIN, addDays, cop, countdown, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
-import { channelBlocks, isChannelBlock, unitLabel } from "@/lib/booking";
+import { cabinName, channelBlocks, isChannelBlock } from "@/lib/booking";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { Block, CabinType, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
@@ -164,8 +164,8 @@ export function units(cabins: CabinType[], filter: string): Unit[] {
         key: `${c.id}:${i + 1}`,
         cabin: c,
         unit: i + 1,
-        label: `${c.nombre.replace(/^Cabaña\s+/i, "")} ${unitLabel(c, i + 1)}`,
-        short: `${c.nombre.replace(/^Cabaña\s+/i, "").split(" ")[0]} ${unitLabel(c, i + 1)}`,
+        label: cabinName(c, i + 1),
+        short: cabinName(c, i + 1),
       })),
     );
 }

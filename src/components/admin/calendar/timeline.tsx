@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { BanIcon, BathIcon, ChevronDownIcon, PlusIcon, RefreshIcon } from "@/components/ui/icons";
-import { computeQuote, isChannelBlock, nightlyRate } from "@/lib/booking";
+import { computeQuote, isChannelBlock, nightlyRate, unitLabel } from "@/lib/booking";
 import { addDays, cop, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
 import type { CabinType } from "@/lib/types";
 import { useAdmin, useParam } from "@/components/admin/context";
@@ -214,13 +214,16 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
           {lines.map((line, li) => {
             const gridRow = 2 + li;
             if (line.kind === "idle") {
-              const nums = line.units.map((u) => u.unit);
+              const nums = line.units.map((u) => unitLabel(u.cabin, u.unit));
+              const seq = nums.map(Number);
               const which =
                 nums.length === 1
-                  ? `${nums[0]}`
-                  : nums.length > 2 && nums.every((x, k) => !k || x === nums[k - 1] + 1)
-                    ? `${nums[0]} a ${nums[nums.length - 1]}`
-                    : nums.join(", ");
+                  ? `Cabaña ${nums[0]}`
+                  : `Cabañas ${
+                      nums.length > 2 && seq.every((x, k) => Number.isInteger(x) && (!k || x === seq[k - 1] + 1))
+                        ? `${nums[0]} a ${nums[nums.length - 1]}`
+                        : nums.join(", ")
+                    }`;
               return (
                 <div key={`idle-${line.cabin.id}`} role="row" className="contents">
                   <button
@@ -232,7 +235,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                   >
                     <ChevronDownIcon size={14} className={`flex-none transition-transform duration-200 ${line.open ? "rotate-180" : ""}`} />
                     <span className="truncate">
-                      {line.open ? "Ocultar" : "Mostrar"} {plural(line.units.length, "unidad", "unidades")} sin reservas ({which})
+                      {line.open ? "Ocultar" : "Mostrar"} {plural(line.units.length, "cabaña", "cabañas")} sin reservas ({which})
                     </span>
                   </button>
                   <div aria-hidden="true" className="border-b border-line" style={{ gridRow, gridColumn: `1 / span ${1 + n * 2}` }} />

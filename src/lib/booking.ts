@@ -94,6 +94,9 @@ type Priced = Pick<CabinType, "id" | "precioPareja" | "personaAdicional" | "prec
 // Número con el que se muestra una unidad: el propio, si tiene; si no, su posición. Internamente siempre es la posición.
 export const unitLabel = (c: { unitLabels?: string[] } | null | undefined, unit: number) => c?.unitLabels?.[unit - 1]?.trim() || String(unit);
 
+// Nombre de una cabaña física, como en Booking: «Cabaña 3». El tipo (Doble, Familiar…) se muestra aparte cuando hace falta.
+export const cabinName = (c: { unitLabels?: string[] } | null | undefined, unit: number) => `Cabaña ${unitLabel(c, unit)}`;
+
 // Números de unidad limpios: uno por unidad, sin espacios y sin nada de más (al reducir unidades se descartan los que sobran).
 export const cleanUnitLabels = (labels: unknown, units: number): string[] =>
   Array.from({ length: units }, (_, i) => String((Array.isArray(labels) ? labels[i] : "") ?? "").trim());

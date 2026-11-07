@@ -440,6 +440,7 @@ function fromToday(today: string, day: string) {
 // Llegada y salida como una línea de tiempo (con las horas del sitio), y los detalles de la estadía.
 function StayCard({ r, cabin }: { r: Reservation; cabin: string }) {
   const { data, today } = useAdmin();
+  const type = data.cabinTypes.find((c) => c.id === r.cabinTypeId)?.nombre;
   const s = data.site.settings;
   const nights = nightsBetween(r.checkIn, r.checkOut);
   const arrived = !!r.checkedInAt;
@@ -452,7 +453,7 @@ function StayCard({ r, cabin }: { r: Reservation; cabin: string }) {
         icon={<CalendarIcon size={18} />}
         accent="yellow"
         title="Estadía"
-        subtitle={`${cabin} · ${plural(nights, "noche", "noches")}`}
+        subtitle={`${cabin}${type ? ` (${type})` : ""} · ${plural(nights, "noche", "noches")}`}
         actions={live && !arrived ? <Chip>{fromToday(today, r.checkIn)}</Chip> : undefined}
       />
       <ol className="flex flex-col">

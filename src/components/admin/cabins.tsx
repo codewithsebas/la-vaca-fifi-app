@@ -174,8 +174,8 @@ export function CabinList() {
                       <dd className="font-semibold text-ink">{plural(c.maxPersonas, "persona", "personas")}</dd>
                     </div>
                     <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
-                      <dt className="text-ink-muted">Unidades</dt>
-                      <dd className="font-semibold text-ink">{Array.from({ length: c.units }, (_, i) => unitLabel(c, i + 1)).join(", ") || "0"}</dd>
+                      <dt className="text-ink-muted">Cabañas</dt>
+                      <dd className="font-semibold text-ink">{Array.from({ length: c.units }, (_, i) => unitLabel(c, i + 1)).join(", ") || "Ninguna"}</dd>
                     </div>
                     <div className="rounded-[14px] bg-canvas/70 px-3 py-2">
                       <dt className="text-ink-muted">{`Noche para ${rateFrom(c).guests}`}</dt>
@@ -441,22 +441,24 @@ export function CabinEditor({ id }: { id?: string }) {
                   />
                 )}
               </Field>
-              <Field label="Unidades" hint="Cuántas cabañas iguales de este tipo hay." error={errors.units}>
+              <Field label="Cabañas de este tipo" hint="Cuántas cabañas físicas son de este tipo." error={errors.units}>
                 {(p) => (
                   <Stepper id={p.id} describedBy={p["aria-describedby"]} value={v.units} onChange={(n) => set({ units: n })} min={0} max={20} unit="cabañas" />
                 )}
               </Field>
               {v.units > 0 && (
                 <fieldset className="flex min-w-0 flex-col gap-2 sm:col-span-2">
-                  <legend className="text-[13px] font-semibold text-ink">Números de las unidades (opcional)</legend>
+                  <legend className="text-[13px] font-semibold text-ink">Número de cada cabaña</legend>
                   <p className="text-[12.5px] text-ink-muted">
-                    El número que tiene cada una en la finca. Se muestra en el calendario, las reservas y los bloqueos; en blanco, se usa el orden (1, 2, 3…).
+                    El mismo de la finca y de Booking: con el 3 se llama «Cabaña 3» en el calendario, las reservas, los bloqueos y Booking. En blanco, se usa el
+                    orden (1, 2, 3…).
                   </p>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                     {cleanUnitLabels(v.unitLabels, v.units).map((label, i) => (
                       <label key={i} className="flex min-w-0 flex-col gap-1 text-[12px] font-semibold text-ink-muted">
-                        {`Cabaña ${i + 1}`}
+                        {`Cabaña ${label.trim() || i + 1}`}
                         <input
+                          aria-label={`Número de la cabaña ${i + 1} de este tipo`}
                           type="text"
                           autoComplete="off"
                           maxLength={6}

@@ -263,10 +263,7 @@ export function ImportView() {
   }, [sheet]);
 
   const unitOptions = useMemo(
-    () =>
-      data.cabinTypes.flatMap((c) =>
-        Array.from({ length: c.units }, (_, i) => ({ value: `${c.id}:${i + 1}`, label: cabinLabel(c.id, c.units > 1 ? i + 1 : undefined) })),
-      ),
+    () => data.cabinTypes.flatMap((c) => Array.from({ length: c.units }, (_, i) => ({ value: `${c.id}:${i + 1}`, label: cabinLabel(c.id, i + 1) }))),
     [data.cabinTypes, cabinLabel],
   );
 

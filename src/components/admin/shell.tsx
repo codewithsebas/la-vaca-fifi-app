@@ -13,7 +13,7 @@ import { offlineEnabled } from "@/lib/offline/config";
 import type { SyncEngine } from "@/lib/offline/engine";
 import { precacheShell } from "@/lib/offline/precache";
 import { closeSession, endSession, openSession } from "@/lib/offline/session";
-import { unitLabel } from "@/lib/booking";
+import { cabinName } from "@/lib/booking";
 import { config } from "@/lib/config";
 import { todayISO } from "@/lib/format";
 import { mergePanelColors, panelColorsCss, type PanelColors } from "@/lib/panel-colors";
@@ -729,7 +729,7 @@ function Panel({
     cabinLabel: (id, unit) => {
       const c = cabinMap.get(id);
       const name = c?.nombre ?? id;
-      return unit ? `${name} ${unitLabel(c, unit)}` : name;
+      return unit ? cabinName(c, unit) : name;
     },
     previewColors: setColorPreview,
   };
