@@ -68,3 +68,12 @@ export async function getSite() {
 
 // URL base del sitio para los enlaces que salen de él (correos).
 export const siteUrl = (requestOrigin: string) => (env.siteUrl || requestOrigin).replace(/\/$/, "");
+
+// Origen público de una solicitud. Detrás del proxy de Hostinger, req.nextUrl.origin es la dirección interna del servidor
+// (https://0.0.0.0:3000): se usa el host que recibió el proxy (X-Forwarded-Host / Host).
+export function originOf(req: { headers: Headers; nextUrl: URL }) {
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").split(",")[0].trim();
+  if (!host || /^(0\.0\.0\.0|\[::\])(:|$)/.test(host)) return req.nextUrl.origin;
+  const proto = (req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "")).split(",")[0].trim() || "https";
+  return `${proto}://${host}`;
+}

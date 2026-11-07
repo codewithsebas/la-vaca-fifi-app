@@ -5,7 +5,7 @@ import { isExclusionViolation, loadCabinTypes, loadDepositPct, loadOccupancy, lo
 import { baseVersionOf, businessError, fail, json, occurredAtOf, opIdOf, operationDay, readJson, requireStaff, syncRoute } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
-import { siteUrl } from "@/lib/server/site";
+import { originOf, siteUrl } from "@/lib/server/site";
 import { HOLD_OPTIONS, PAY_METHODS, manualDueAt, manualPaymentNote } from "@/lib/payments";
 import { can } from "@/lib/permissions";
 import type { AdminAction, Quote } from "@/lib/types";
@@ -112,7 +112,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
         })
         .throwOnError();
       // Confirmar el abono o completar el saldo encola su correo: se envía después de responder.
-      after(() => processOutbox(siteUrl(req.nextUrl.origin)).then(() => dispatchPush()));
+      after(() => processOutbox(siteUrl(originOf(req))).then(() => dispatchPush()));
     } else if (b.action === "reschedule") {
       const { checkIn: ci, checkOut: co } = b;
       if (!isISO(ci) || !isISO(co) || co <= ci || ci < operationDay(req) || nightsBetween(ci, co) > 30) return fail(400, "INVALID_DATES");
@@ -143,7 +143,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
         .eq("code", current.code)
         .throwOnError();
       // Cambiar las fechas encola el correo al huésped (lo hace la base de datos): se envía después de responder.
-      after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+      after(() => processOutbox(siteUrl(originOf(req))));
     } else if (b.action === "cancel" && groupCode) {
       if (b.group) {
         // La principal al final: su aviso y su correo hablan por el grupo.
@@ -154,11 +154,11 @@ export const POST = syncRoute(async (req: NextRequest) => {
         if (current.code === groupCode) return fail(422, "GROUP_LEAD");
         await sb.from("reservations").update({ status: "cancelled", group_code: null }).eq("code", current.code).throwOnError();
       }
-      after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+      after(() => processOutbox(siteUrl(originOf(req))));
     } else {
       await sb.from("reservations").update({ status: rule.to! }).eq("code", current.code).throwOnError();
       // Cancelar encola el correo al huésped (lo hace la base de datos): se envía después de responder.
-      if (b.action === "cancel") after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+      if (b.action === "cancel") after(() => processOutbox(siteUrl(originOf(req))));
     }
   } catch (e) {
     // Confirmar una retención vencida o reprogramar puede chocar con otra reserva activa.

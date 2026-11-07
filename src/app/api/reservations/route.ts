@@ -5,7 +5,7 @@ import { loadGroupRows, loadPricing, runDeadlines, toPublic, toPublicGroup } fro
 import { fail, json, readJson, route } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { holdGroup, holdReservation } from "@/lib/server/reservations";
-import { siteUrl } from "@/lib/server/site";
+import { originOf, siteUrl } from "@/lib/server/site";
 import { verifyTurnstile } from "@/lib/server/turnstile";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { ReservationInput } from "@/lib/types";
@@ -85,7 +85,7 @@ export const POST = route(async (req: NextRequest) => {
       { units: units as Record<string, number> },
     );
     if ("rows" in group) {
-      after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+      after(() => processOutbox(siteUrl(originOf(req))));
       return json(toPublicGroup(group.rows), 201);
     }
     if (group.error === "IDEMPOTENCY_CONFLICT" && idemKey) {
@@ -98,7 +98,7 @@ export const POST = route(async (req: NextRequest) => {
   const held = await holdReservation(sb, row, { units: units[type.id] ?? 0 });
   if ("row" in held) {
     // La base de datos encoló la «Reserva recibida» para el huésped y el aviso al negocio: salen después de responder.
-    after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+    after(() => processOutbox(siteUrl(originOf(req))));
     return json(toPublic(held.row), 201);
   }
   if (held.error === "IDEMPOTENCY_CONFLICT" && idemKey) {

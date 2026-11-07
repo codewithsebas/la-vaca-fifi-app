@@ -16,7 +16,7 @@ import {
 import { json, requireStaff, route } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
-import { loadSiteContent, siteUrl } from "@/lib/server/site";
+import { loadSiteContent, originOf, siteUrl } from "@/lib/server/site";
 
 // GET /api/admin/data → todo lo que necesita el panel y quién lo usa. Consultas con la sesión del equipo (RLS).
 export const GET = route(async (req: NextRequest) => {
@@ -53,7 +53,7 @@ export const GET = route(async (req: NextRequest) => {
     loadPanelChannelStays(sb),
   ]);
   // Correos que fallaron y ya les toca reintentar: se envían después de responder.
-  if (emails.some((e) => e.status === "failed" || e.status === "pending")) after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+  if (emails.some((e) => e.status === "failed" || e.status === "pending")) after(() => processOutbox(siteUrl(originOf(req))));
   // Avisos que aún no salieron como notificación push (p. ej. los del cron, si la base de datos no pudo avisar a la app).
   after(dispatchPush);
   return json({

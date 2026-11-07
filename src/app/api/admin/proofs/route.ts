@@ -3,7 +3,7 @@ import { toProof } from "@/lib/server/db";
 import { baseVersionOf, businessError, fail, json, occurredAtOf, opIdOf, readJson, requireStaff, route, syncRoute } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { dispatchPush } from "@/lib/server/push";
-import { siteUrl } from "@/lib/server/site";
+import { originOf, siteUrl } from "@/lib/server/site";
 import { PROOF_BUCKET } from "@/lib/server/proofs";
 import type { ProofReview } from "@/lib/types";
 
@@ -55,7 +55,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
         if (known) return fail(known.status, known.error === "NO_AVAILABILITY" ? "DATES_UNAVAILABLE" : known.error);
         throw payErr;
       }
-      after(() => processOutbox(siteUrl(req.nextUrl.origin)).then(() => dispatchPush()));
+      after(() => processOutbox(siteUrl(originOf(req))).then(() => dispatchPush()));
     }
   }
 

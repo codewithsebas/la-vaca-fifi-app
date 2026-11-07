@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { calendarOf, syncCalendars, validImportUrl } from "@/lib/server/channels";
 import { channelStayOf, isMissingTable } from "@/lib/server/db";
 import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
-import { siteUrl } from "@/lib/server/site";
+import { originOf, siteUrl } from "@/lib/server/site";
 import { createServiceClient } from "@/lib/supabase/server";
 import { addDays, todayISO } from "@/lib/format";
 
@@ -30,7 +30,7 @@ async function load(base: string) {
 export const GET = route(async (req: NextRequest) => {
   const { error } = await requireAdmin();
   if (error) return error;
-  return json(await load(siteUrl(req.nextUrl.origin)));
+  return json(await load(siteUrl(originOf(req))));
 });
 
 export const PATCH = route(async (req: NextRequest) => {
@@ -51,7 +51,7 @@ export const PATCH = route(async (req: NextRequest) => {
   // Sin enlace, sus fechas de Booking dejan de ocupar (se conservan como canceladas para el historial).
   if (!url) await sb.from("channel_stays").update({ removed_at: new Date().toISOString() }).eq("calendar_id", body.id).is("removed_at", null).throwOnError();
   const results = url ? await syncCalendars({ minAgeMs: 0, notifyErrors: false, calendarId: body.id }) : [];
-  return json({ ...(await load(siteUrl(req.nextUrl.origin))), results });
+  return json({ ...(await load(siteUrl(originOf(req)))), results });
 });
 
 export const POST = route(async (req: NextRequest) => {
@@ -59,5 +59,5 @@ export const POST = route(async (req: NextRequest) => {
   if (error) return error;
   const body = await readJson<{ id?: string }>(req);
   const results = await syncCalendars({ minAgeMs: 15_000, notifyErrors: false, calendarId: typeof body?.id === "string" ? body.id : undefined });
-  return json({ ...(await load(siteUrl(req.nextUrl.origin))), results });
+  return json({ ...(await load(siteUrl(originOf(req)))), results });
 });

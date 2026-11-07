@@ -5,7 +5,7 @@ import { loadPricing, runDeadlines, toReservation } from "@/lib/server/db";
 import { fail, json, operationDay, readJson, requireStaff, syncRoute } from "@/lib/server/http";
 import { processOutbox } from "@/lib/server/mailer";
 import { holdGroup, holdReservation } from "@/lib/server/reservations";
-import { siteUrl } from "@/lib/server/site";
+import { originOf, siteUrl } from "@/lib/server/site";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { ManualReservationInput, ManualReservationResult } from "@/lib/types";
 
@@ -89,7 +89,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
       { units: units as Record<string, number>, code: input.code },
     );
     if (!("rows" in group)) return fail(409, group.error === "ID_TAKEN" ? "ID_TAKEN" : "DATES_UNAVAILABLE");
-    after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+    after(() => processOutbox(siteUrl(originOf(req))));
     const result: ManualReservationResult = { reservation: toReservation(group.rows[0]), group: group.rows.map((r) => toReservation(r)) };
     return json(result, 201);
   }
@@ -98,7 +98,7 @@ export const POST = syncRoute(async (req: NextRequest) => {
   if (!("row" in held)) return fail(409, held.error === "ID_TAKEN" ? "ID_TAKEN" : "DATES_UNAVAILABLE");
 
   // La base de datos encoló la «Reserva recibida» para el huésped y el aviso al negocio: salen después de responder.
-  after(() => processOutbox(siteUrl(req.nextUrl.origin)));
+  after(() => processOutbox(siteUrl(originOf(req))));
   const result: ManualReservationResult = { reservation: toReservation(held.row) };
   return json(result, 201);
 });
