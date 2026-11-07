@@ -23,7 +23,8 @@ import { AdminProvider, type AdminCtx } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
 import { PanelFooter } from "@/components/admin/footer";
 import { TipProvider, useLabelTip, useTip } from "@/components/ui/floating";
-import { Login, PanelLoader } from "@/components/admin/login";
+import { Login } from "@/components/admin/login";
+import { PanelSkeleton } from "@/components/admin/skeletons";
 import { NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
 import { ThemeMenu, syncBrowserBar, useApplyTheme } from "@/components/admin/appearance";
@@ -37,6 +38,7 @@ import {
   Button,
   Callout,
   CountBadge,
+  enter,
   ErrorState,
   Field,
   FieldError,
@@ -132,13 +134,14 @@ function Gated({ panelColors, children }: { panelColors: PanelColors; children: 
     return () => closeSession();
   }, [check]);
 
-  // Antes de entrar, los colores publicados; dentro, los de los datos del panel (Panel).
+  // Antes de entrar, los colores publicados; dentro, los de los datos del panel (Panel). Mientras llegan los datos, el
+  // panel ya se ve con su forma (esqueletos); al entrar, cada pieza llega con animación.
   const pre = <PanelColorsStyle colors={panelColors} />;
   if (gate.status === "checking")
     return (
       <>
         {pre}
-        <PanelLoader />
+        <PanelSkeleton />
       </>
     );
   if (gate.status === "login")
@@ -353,6 +356,8 @@ function NavList({
     g,
     ids: MODULE_IDS.filter((id) => MODULES[id].group === g && MODULES[id].nav !== false && canOpen(role, id)),
   })).filter((x) => x.ids.length);
+  // Turno de cada módulo en la entrada del panel: uno tras otro, de arriba abajo.
+  let order = 0;
   return (
     <nav aria-label="Módulos del panel" className={`flex flex-col ${mini ? "gap-2.5" : "gap-4"}`}>
       {groups.map(({ g, ids }, gi) => (
@@ -376,6 +381,7 @@ function NavList({
                 }}
                 aria-current={active ? "page" : undefined}
                 data-nav={id}
+                {...enter(1 + order++ * 0.5, "side")}
                 {...(mini ? tip(() => <NavTip label={label} badge={b} />, SIDE_TIP) : {})}
                 className={`${navItem(mini)} ${active ? `text-pink ${mini ? "bg-white/10" : ""}` : id === "booking" ? bookingHover : "text-white/72 hover:bg-white/7 hover:text-white"}`}
               >
@@ -418,7 +424,7 @@ function Sidebar({
 }) {
   const tip = useTip();
   return (
-    <aside className="sticky top-0 z-40 hidden h-dvh w-(--admin-sidebar) flex-none p-3 transition-[width] duration-200 lg:block">
+    <aside {...enter(0, "side")} className="sticky top-0 z-40 hidden h-dvh w-(--admin-sidebar) flex-none p-3 transition-[width] duration-200 lg:block">
       <div
         data-tip-edge
         className="admin-dark relative flex h-full flex-col rounded-[28px] bg-sidebar text-white [[data-admin-theme=dark]_&]:ring-1 [[data-admin-theme=dark]_&]:ring-white/8"
@@ -527,6 +533,12 @@ function Panel({
   const mini = usePref(PREF.sidebar, "full") === "mini";
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const firstPath = useRef(true);
+  // Entrada del panel (globals.css): las piezas con data-enter se animan solo mientras dura; navegar después no las repite.
+  const [entering, setEntering] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setEntering(false), 1800);
+    return () => clearTimeout(t);
+  }, []);
   const today = todayISO();
   const mod = moduleOf(pathname);
 
@@ -741,12 +753,16 @@ function Panel({
         <Suspense fallback={null}>
           <LegacyRedirect />
         </Suspense>
-        <div className="admin-root min-h-dvh bg-canvas text-[15px] text-ink lg:flex" style={{ "--admin-sidebar": mini ? "104px" : "280px" } as CSSProperties}>
+        <div
+          className="admin-root min-h-dvh bg-canvas text-[15px] text-ink lg:flex"
+          data-entering={entering ? "" : undefined}
+          style={{ "--admin-sidebar": mini ? "104px" : "280px" } as CSSProperties}
+        >
           <Sidebar current={mod} badges={badges} role={data.me.role} mini={mini} onToggle={() => writePref(PREF.sidebar, mini ? "full" : "mini")} />
 
           <div className="flex min-w-0 flex-1 flex-col">
             {/* Móvil y tableta: menú en cajón, marca, búsqueda y notificaciones */}
-            <header className="admin-surface admin-header sticky top-0 z-30 flex flex-none flex-col lg:hidden">
+            <header {...enter(0, "down")} className="admin-surface admin-header sticky top-0 z-30 flex flex-none flex-col lg:hidden">
               <div className="flex h-16 items-center justify-between gap-2 px-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <IconButton label="Abrir el menú" variant="primary" aria-expanded={menu} onClick={() => setMenu(true)}>
@@ -782,13 +798,26 @@ function Panel({
 
             {/* Escritorio: búsqueda, apariencia, notificaciones, configuración y cuenta */}
             <header className="admin-surface admin-header sticky top-0 z-20 hidden flex-none items-center gap-4 px-8 pt-4 pb-3 lg:flex">
-              <GlobalSearch className="w-full max-w-[620px]" />
+              <div {...enter(0, "down")} className="w-full max-w-[620px]">
+                <GlobalSearch className="w-full" />
+              </div>
+              {/* Los botones bajan uno tras otro, después del buscador. */}
               <div className="ml-auto flex items-center gap-2">
-                <SyncChip />
-                <ThemeMenu />
-                <NotificationCenter />
-                <SettingsLink />
-                <AccountMenu onLogout={logout} />
+                <span {...enter(1, "down")}>
+                  <SyncChip />
+                </span>
+                <span {...enter(1.6, "down")} className="flex">
+                  <ThemeMenu />
+                </span>
+                <span {...enter(2.2, "down")} className="flex">
+                  <NotificationCenter />
+                </span>
+                <span {...enter(2.8, "down")} className="flex">
+                  <SettingsLink />
+                </span>
+                <span {...enter(3.4, "down")} className="flex">
+                  <AccountMenu onLogout={logout} />
+                </span>
               </div>
             </header>
 
@@ -807,7 +836,7 @@ function Panel({
                   </div>
                 </Callout>
               )}
-              <div key={pageKey} className="flex flex-col gap-6 motion-safe:animate-fade-in">
+              <div key={pageKey} {...(mod === "dashboard" ? {} : enter(2))} className="flex flex-col gap-6 motion-safe:animate-fade-in">
                 <Suspense fallback={<PageSkeleton />}>{mod && !canOpen(data.me.role, mod) ? <AccessDenied module={mod} /> : children}</Suspense>
               </div>
               <PanelFooter />

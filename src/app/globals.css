@@ -904,6 +904,51 @@
   background: radial-gradient(70vw 80vh at 100% 0%, var(--glow), transparent 72%);
 }
 
+/* Entrada del panel: al abrirlo (shell.tsx pone data-entering en .admin-root durante el primer segundo y medio), la barra
+   lateral y sus módulos llegan desde la izquierda, el encabezado baja y las tarjetas suben una tras otra. Cada pieza
+   marca su tipo en data-enter y su turno en --i. Después de la entrada (o con movimiento reducido) no se anima nada. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-entering] [data-enter] {
+    animation: ec-enter-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--enter-base, 120ms) + var(--i, 0) * 70ms);
+  }
+  [data-entering] [data-enter="pop"] {
+    animation-name: ec-enter-pop;
+  }
+  [data-entering] [data-enter="side"] {
+    --enter-base: 0ms;
+    animation-name: ec-enter-side;
+  }
+  [data-entering] [data-enter="down"] {
+    --enter-base: 60ms;
+    animation-name: ec-enter-down;
+  }
+}
+@keyframes ec-enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+@keyframes ec-enter-pop {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+@keyframes ec-enter-side {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+@keyframes ec-enter-down {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
 /* Encabezado del panel: sin color propio, desenfoca lo que pasa por debajo. El desenfoque va en una capa que se desvanece
    hacia abajo y hacia el menú lateral, para que no marque un corte recto sobre el contenido. */
 .admin-header::before {

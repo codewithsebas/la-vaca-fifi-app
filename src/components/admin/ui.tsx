@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type HTMLAttributes,
   type KeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -857,6 +858,9 @@ export function Switch({
     </div>
   );
 }
+
+// Pieza que entra con animación al abrir el panel (globals.css, «Entrada del panel»): su tipo y su turno en la secuencia.
+export const enter = (i: number, kind: "rise" | "pop" | "side" | "down" = "rise") => ({ "data-enter": kind, style: { "--i": i } as CSSProperties }) as const;
 
 export const Skeleton = ({ className = "" }: { className?: string }) => (
   <span aria-hidden="true" className={`block animate-pulse-soft rounded-[14px] bg-ink/7 ${className}`} />
