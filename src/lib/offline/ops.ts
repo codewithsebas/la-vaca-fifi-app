@@ -1069,7 +1069,8 @@ const contentOps = {
         settings: { ...p.settings, depositPct: d.site.settings.depositPct },
         policies: p.policies,
         texts: { ...p.content, payment: d.site.texts.payment },
-        theme: p.theme,
+        // El panel ya no edita colores: sin `theme` en el cuerpo se conservan los guardados (como hace PUT /admin/site).
+        ...(p.theme && { theme: p.theme }),
       }),
     result: (d) => d.site,
     version: (d) => d.site.version,

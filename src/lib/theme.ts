@@ -173,9 +173,11 @@ export const presetOf = (t: SiteTheme) => THEME_PRESETS.find((p) => sameTheme(p.
 
 // Variables CSS de la paleta, con las que se derivan de ella (textos atenuados, sombra de las ventanas). Se declaran
 // juntas para que funcionen igual en :root (sitio) que en un contenedor (vista previa del panel).
+// Pasa por mergeTheme porque un navegador puede traer guardado un sitio sin colores: sin ellos no se debe caer el panel.
 export function themeVars(t: SiteTheme): Record<string, string> {
+  const colors = mergeTheme(t);
   return {
-    ...Object.fromEntries(THEME_KEYS.map((k) => [VARS[k], t[k]])),
+    ...Object.fromEntries(THEME_KEYS.map((k) => [VARS[k], colors[k]])),
     "--color-on-dark-muted": "color-mix(in srgb, var(--color-on-dark) 85%, var(--color-bg))",
     "--color-on-light-muted": "color-mix(in srgb, var(--color-on-light) 75%, var(--color-card-muted))",
     "--color-footer": "color-mix(in srgb, var(--color-bg) 72%, #000)",

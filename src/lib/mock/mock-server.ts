@@ -714,7 +714,7 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       photos: {},
       texts: { ...mergeTexts(b.content ?? defaultTexts), payment: prev.texts.payment },
       services: siteOf(db).services,
-      theme: mergeTheme(b.theme),
+      theme: b.theme ? mergeTheme(b.theme) : prev.theme,
     };
     save(db);
     return ok(db.site);
