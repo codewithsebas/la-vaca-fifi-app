@@ -13,7 +13,6 @@ import {
   FileTextIcon,
   HomeIcon,
   ImageIcon,
-  PaletteIcon,
   PhoneIcon,
   PinIcon,
   PlusIcon,
@@ -25,15 +24,25 @@ import {
 import { api } from "@/lib/client/api";
 import { config, isMockApi } from "@/lib/config";
 import { resizeImage, type Crop } from "@/lib/client/image-resize";
-import { PHOTO_SLOTS, TEXT_LIMITS, fifiPhrases, fmtTime, type PhotoSlotDef, type SitePolicy, type SiteSettings, type SiteTexts } from "@/lib/site";
-import { themeIssues, type SiteTheme } from "@/lib/theme";
+import {
+  DEFAULT_PHOTOS,
+  LIST_LIMITS,
+  MOSAIC_FALLBACK,
+  PHOTO_SLOTS,
+  TEXT_LIMITS,
+  fmtTime,
+  lines,
+  listIssue,
+  type PhotoSlotDef,
+  type SitePolicy,
+  type SiteSettings,
+  type SiteTexts,
+} from "@/lib/site";
 import { Combobox } from "@/components/ui/combobox";
-import { Fifi } from "@/components/brand/fifi";
 import { useAdmin } from "@/components/admin/context";
 import { CONTENT_GROUPS, CONTENT_SECTIONS, MODULES, isContentSection, paths, type ContentSectionId } from "@/components/admin/routes";
 import { PhotoCropper } from "@/components/admin/photo-cropper";
 import { ServicesManager } from "@/components/admin/services";
-import { ThemeEditor, themeStyle } from "@/components/admin/theme";
 import { adminInput } from "@/components/admin/shared";
 import {
   Button,
@@ -54,13 +63,13 @@ import {
 
 const ICONS: Record<ContentSectionId, ReactNode> = {
   portada: <HomeIcon size={15} />,
+  restaurante: <FileTextIcon size={15} />,
   experiencias: <ImageIcon size={15} />,
   servicios: <CheckIcon size={15} />,
   horarios: <ClockIcon size={15} />,
   politicas: <FileTextIcon size={15} />,
   contacto: <PhoneIcon size={15} />,
   redes: <ShieldIcon size={15} />,
-  colores: <PaletteIcon size={15} />,
 };
 // Zonas que solo tienen fotos (se publican al subirlas): no muestran la barra de guardado.
 // Servicios también se publica al instante (cada cambio va directo al servidor).
@@ -77,18 +86,24 @@ function timeOptions(current: string) {
   return out.sort().map((v) => ({ value: v, label: fmtTime(v), keywords: v }));
 }
 
-type Form = { s: SiteSettings; policies: SitePolicy[]; t: SiteTexts; theme: SiteTheme };
+type Form = { s: SiteSettings; policies: SitePolicy[]; t: SiteTexts };
 
 // Errores por campo, con la sección en la que se corrigen.
 function validate({ s, policies, t }: Form) {
   const e: Record<string, { msg: string; tab: ContentSectionId }> = {};
   if (!t.hero.title.trim()) e.heroTitle = { msg: "Escribe el título de la portada.", tab: "portada" };
-  const lines = t.hero.rotating
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length > TEXT_LIMITS.rotatingLines || lines.some((l) => l.length > TEXT_LIMITS.highlight))
-    e.heroRotating = { msg: `Hasta ${TEXT_LIMITS.rotatingLines} frases, de máximo ${TEXT_LIMITS.highlight} caracteres cada una.`, tab: "portada" };
+  const words = listIssue(t.hero.words, "words");
+  if (words) e.heroWords = { msg: words, tab: "portada" };
+  if (!t.rating.score.trim()) e.ratingScore = { msg: "Escribe la calificación (ej. 9,2).", tab: "portada" };
+  if (!/^\d{1,6}$/.test(t.rating.reviews.trim())) e.ratingReviews = { msg: "Escribe solo el número de reseñas (ej. 242).", tab: "portada" };
+  if (!t.rating.source.trim()) e.ratingSource = { msg: "Escribe dónde se calificó (ej. Booking.com).", tab: "portada" };
+  const labels = listIssue(t.mosaic.labels, "labels");
+  if (labels) e.mosaicLabels = { msg: labels, tab: "portada" };
+  const stay = lines(t.stay.highlights).length ? listIssue(t.stay.highlights, "highlights") : "Escribe al menos una línea.";
+  if (stay) e.stay = { msg: stay, tab: "portada" };
+  if (!t.restaurant.title.trim()) e.restaurantTitle = { msg: "Escribe el título de la sección.", tab: "restaurante" };
+  const items = listIssue(t.restaurant.items, "items");
+  if (items) e.restaurantItems = { msg: items, tab: "restaurante" };
   if (!TIME.test(s.checkInStart) || !TIME.test(s.checkInEnd) || s.checkInEnd <= s.checkInStart)
     e.checkIn = { msg: "La hora final del check-in debe ser posterior a la inicial.", tab: "horarios" };
   if (!TIME.test(s.checkOutTime)) e.checkOut = { msg: "Elige la hora de check-out.", tab: "horarios" };
@@ -112,7 +127,6 @@ type FormCtx = {
   setS: (p: Partial<SiteSettings>) => void;
   setT: <K extends keyof SiteTexts>(k: K, p: Partial<SiteTexts[K]>) => void;
   setPolicies: (fn: (p: SitePolicy[]) => SitePolicy[]) => void;
-  setTheme: (t: SiteTheme) => void;
 };
 const Ctx = createContext<FormCtx | null>(null);
 
@@ -123,7 +137,7 @@ export function ContentLayout({ children }: { children: ReactNode }) {
   const seg = usePathname().split("/")[3] ?? "";
   const section = isContentSection(seg) ? seg : null;
   const meta = CONTENT_SECTIONS.find((x) => x.id === section);
-  const saved: Form = { s: data.site.settings, policies: data.site.policies, t: data.site.texts, theme: data.site.theme };
+  const saved: Form = { s: data.site.settings, policies: data.site.policies, t: data.site.texts };
   const [f, setF] = useState<Form>(saved);
   const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
   const dirty = JSON.stringify(f) !== JSON.stringify(saved);
@@ -136,7 +150,6 @@ export function ContentLayout({ children }: { children: ReactNode }) {
     setS: (p) => setF((x) => ({ ...x, s: { ...x.s, ...p } })),
     setT: (k, p) => setF((x) => ({ ...x, t: { ...x.t, [k]: { ...x.t[k], ...p } } })),
     setPolicies: (fn) => setF((x) => ({ ...x, policies: fn(x.policies) })),
-    setTheme: (theme) => setF((x) => ({ ...x, theme })),
   };
 
   const save = () => {
@@ -152,10 +165,8 @@ export function ContentLayout({ children }: { children: ReactNode }) {
       settings: { ...f.s, phones: f.s.phones.map((p) => p.trim()).filter(Boolean), whatsapp: f.s.whatsapp.replace(/\D/g, "") },
       policies: f.policies.map((p) => ({ ...p, q: p.q.trim(), a: p.a.trim() })),
       content: f.t,
-      theme: f.theme,
     };
-    const issues = themeIssues(f.theme).length;
-    const text = `Los textos, horarios, contactos, políticas y colores se actualizan en todo el sitio.${issues ? ` Ojo: ${issues === 1 ? "una combinación de colores tiene poco contraste y puede costar leerla" : `${issues} combinaciones de colores tienen poco contraste y puede costar leerlas`}.` : ""}`;
+    const text = "Los textos, horarios, contactos y políticas se actualizan en todo el sitio.";
     ask({ title: "Publicar cambios del sitio", text, okLabel: "Publicar", done: "Cambios publicados en el sitio", run: () => api.admin.saveSite(body) });
   };
 
@@ -218,91 +229,167 @@ export function ContentLayout({ children }: { children: ReactNode }) {
 
 // app/admin/contenido/[seccion]/page.tsx: los campos de una zona del sitio.
 export function ContentSection({ id }: { id: ContentSectionId }) {
-  const { f, saved, errors, err, setS, setT, setPolicies, setTheme } = useContext(Ctx)!;
+  const { f, errors, err, setS, setT, setPolicies } = useContext(Ctx)!;
   return (
     <>
       {id === "portada" && (
         <>
-          <Card aria-labelledby="ct-hero" className="grid grid-cols-1 gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+          <Card aria-labelledby="ct-hero" className="grid grid-cols-1 gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
             <div className="flex flex-col gap-4">
-              <CardHeader id="ct-hero" icon={<HomeIcon size={18} />} title="Textos de la portada" />
+              <CardHeader id="ct-hero" icon={<HomeIcon size={18} />} title="Título y descripción" subtitle="Lo primero que se lee en la página de inicio." />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Título (primera línea)" error={err("heroTitle")} hint={`${f.t.hero.title.length}/${TEXT_LIMITS.title}`}>
-                  {(p) => (
-                    <input
-                      {...p}
-                      type="text"
-                      maxLength={TEXT_LIMITS.title}
-                      value={f.t.hero.title}
-                      onChange={(e) => setT("hero", { title: e.target.value })}
-                      className={adminInput}
-                    />
-                  )}
-                </Field>
-                <Field label="Título resaltado (va subrayado con la lengua de Fifí)" hint={`${f.t.hero.highlight.length}/${TEXT_LIMITS.highlight}`}>
-                  {(p) => (
-                    <input
-                      {...p}
-                      type="text"
-                      maxLength={TEXT_LIMITS.highlight}
-                      value={f.t.hero.highlight}
-                      onChange={(e) => setT("hero", { highlight: e.target.value })}
-                      className={adminInput}
-                    />
-                  )}
-                </Field>
+                <TextField
+                  label="Título"
+                  value={f.t.hero.title}
+                  max={TEXT_LIMITS.title}
+                  error={err("heroTitle")}
+                  onChange={(v) => setT("hero", { title: v })}
+                />
+                <TextField
+                  label="Frase resaltada (en azul)"
+                  value={f.t.hero.highlight}
+                  max={TEXT_LIMITS.highlight}
+                  onChange={(v) => setT("hero", { highlight: v })}
+                />
               </div>
-              <Field
-                label="Lo que dice Fifí (opcional)"
-                error={err("heroRotating")}
-                hint={`Una frase por línea, hasta ${TEXT_LIMITS.rotatingLines}, de máximo ${TEXT_LIMITS.highlight} caracteres. Aparecen una tras otra en el globo de Fifí. Déjalo vacío para que no hable.`}
-              >
-                {(p) => (
-                  <textarea
-                    {...p}
-                    rows={3}
-                    maxLength={TEXT_LIMITS.rotating}
-                    value={f.t.hero.rotating}
-                    onChange={(e) => setT("hero", { rotating: e.target.value })}
-                    className={`${adminInput} resize-y leading-relaxed`}
-                    placeholder={"¡Muuuy bienvenidos!\nEl café va por mi cuenta"}
-                  />
-                )}
-              </Field>
-              <Field label="Etiqueta sobre el título" hint="Corta. Ej. «A 5 minutos de Murillo, Tolima».">
-                {(p) => (
-                  <input
-                    {...p}
-                    type="text"
-                    maxLength={TEXT_LIMITS.badge}
-                    value={f.t.hero.badge}
-                    onChange={(e) => setT("hero", { badge: e.target.value })}
-                    className={adminInput}
-                  />
-                )}
-              </Field>
-              <Field label="Descripción" hint={`${f.t.hero.description.length}/${TEXT_LIMITS.description}`}>
-                {(p) => (
-                  <textarea
-                    {...p}
-                    rows={3}
-                    maxLength={TEXT_LIMITS.description}
-                    value={f.t.hero.description}
-                    onChange={(e) => setT("hero", { description: e.target.value })}
-                    className={`${adminInput} resize-y leading-relaxed`}
-                  />
-                )}
-              </Field>
+              <ListField
+                label="Frases que van rotando (opcional)"
+                value={f.t.hero.words}
+                k="words"
+                error={err("heroWords")}
+                hint="Reemplazan a la frase resaltada una tras otra, cada pocos segundos. Una por línea. Déjalo vacío para que no cambie."
+                placeholder={"despierta con vista\ndescansa en familia"}
+                onChange={(v) => setT("hero", { words: v })}
+              />
+              <TextField
+                label="Ubicación junto a la calificación"
+                value={f.t.hero.badge}
+                max={TEXT_LIMITS.badge}
+                hint="Corta. Ej. «A 5 minutos de Murillo, Tolima». Lleva a la sección del mapa."
+                onChange={(v) => setT("hero", { badge: v })}
+              />
+              <TextArea
+                label="Descripción"
+                value={f.t.hero.description}
+                max={TEXT_LIMITS.description}
+                hint="Bajo la presentación, junto a la tarjeta de reserva."
+                onChange={(v) => setT("hero", { description: v })}
+              />
             </div>
-            <HeroPreview t={f.t} theme={f.theme} />
+            <HeroPreview t={f.t} />
           </Card>
-          <PhotoGroups groups={["Foto principal"]} />
+
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            <Card aria-labelledby="ct-rating" className="flex flex-col gap-4 p-4 sm:p-5">
+              <CardHeader
+                id="ct-rating"
+                icon={<CheckIcon size={18} />}
+                title="Calificación de los huéspedes"
+                subtitle="Se ve junto al título, en la foto grande, en la tarjeta de anfitriones y en la barra del celular."
+              />
+              <div className="grid grid-cols-3 gap-3">
+                <TextField
+                  label="Nota"
+                  value={f.t.rating.score}
+                  max={TEXT_LIMITS.ratingScore}
+                  error={err("ratingScore")}
+                  placeholder="9,2"
+                  onChange={(v) => setT("rating", { score: v })}
+                />
+                <TextField
+                  label="Reseñas"
+                  value={f.t.rating.reviews}
+                  max={TEXT_LIMITS.ratingReviews}
+                  error={err("ratingReviews")}
+                  placeholder="242"
+                  inputMode="numeric"
+                  onChange={(v) => setT("rating", { reviews: v.replace(/\D/g, "") })}
+                />
+                <TextField
+                  label="Dónde"
+                  value={f.t.rating.source}
+                  max={TEXT_LIMITS.ratingSource}
+                  error={err("ratingSource")}
+                  placeholder="Booking.com"
+                  onChange={(v) => setT("rating", { source: v })}
+                />
+              </div>
+            </Card>
+            <Card aria-labelledby="ct-stay" className="flex flex-col gap-4 p-4 sm:p-5">
+              <CardHeader
+                id="ct-stay"
+                icon={<CheckIcon size={18} />}
+                title="Lo que incluye la estadía"
+                subtitle="Las cosas destacadas bajo la presentación, cada una con su ícono de color."
+              />
+              <ListField
+                label="Una por línea"
+                value={f.t.stay.highlights}
+                k="highlights"
+                error={err("stay")}
+                hint="El ícono se elige solo según las palabras (desayuno, mascotas, parqueadero, wifi, parque, fogata, vista…)."
+                onChange={(v) => setT("stay", { highlights: v })}
+              />
+            </Card>
+          </div>
+
+          <Card aria-labelledby="ct-mosaic" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader
+              id="ct-mosaic"
+              icon={<ImageIcon size={18} />}
+              title="Etiquetas del mosaico"
+              subtitle="El nombre que aparece sobre cada foto pequeña del mosaico de la portada, en el mismo orden de las fotos de abajo."
+            />
+            <ListField
+              label="Una por línea (fotos pequeñas 1 a 4)"
+              value={f.t.mosaic.labels}
+              k="labels"
+              error={err("mosaicLabels")}
+              onChange={(v) => setT("mosaic", { labels: v })}
+            />
+          </Card>
+          <PhotoGroups groups={["Mosaico de la portada"]} />
         </>
       )}
 
-      {id === "experiencias" && <PhotoGroups groups={["Restaurante", "La finca"]} />}
+      {id === "restaurante" && (
+        <>
+          <Card aria-labelledby="ct-rest" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader id="ct-rest" icon={<FileTextIcon size={18} />} title="Restaurante y café" subtitle="Sección del restaurante en la página de inicio." />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+              <TextField
+                label="Título"
+                value={f.t.restaurant.title}
+                max={TEXT_LIMITS.restaurantTitle}
+                error={err("restaurantTitle")}
+                onChange={(v) => setT("restaurant", { title: v })}
+              />
+              <TextField
+                label="Final resaltado (en rojo)"
+                value={f.t.restaurant.highlight}
+                max={TEXT_LIMITS.restaurantHighlight}
+                onChange={(v) => setT("restaurant", { highlight: v })}
+              />
+            </div>
+            <TextArea
+              label="Texto"
+              value={f.t.restaurant.description}
+              max={TEXT_LIMITS.restaurantDescription}
+              onChange={(v) => setT("restaurant", { description: v })}
+            />
+            <ListField
+              label="Lista con viñetas (una por línea)"
+              value={f.t.restaurant.items}
+              k="items"
+              error={err("restaurantItems")}
+              onChange={(v) => setT("restaurant", { items: v })}
+            />
+          </Card>
+          <PhotoGroups groups={["Restaurante"]} />
+        </>
+      )}
 
-      {id === "colores" && <ThemeEditor theme={f.theme} saved={saved.theme} onChange={setTheme} />}
+      {id === "experiencias" && <PhotoGroups groups={["La finca"]} />}
 
       {id === "servicios" && <ServicesManager />}
 
@@ -580,41 +667,125 @@ const swap = <T,>(a: T[], i: number, j: number) => {
   return n;
 };
 
-// Vista previa de la portada con los estilos y los colores (aún sin publicar) del sitio.
-function HeroPreview({ t, theme }: { t: SiteTexts; theme: SiteTheme }) {
+// Campo de una línea con su contador de caracteres.
+function TextField({
+  label,
+  value,
+  max,
+  onChange,
+  error,
+  hint,
+  placeholder,
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  max: number;
+  onChange: (v: string) => void;
+  error?: string;
+  hint?: string;
+  placeholder?: string;
+  inputMode?: "numeric";
+}) {
+  return (
+    <Field label={label} error={error} hint={hint ? `${hint} · ${value.length}/${max}` : `${value.length}/${max}`}>
+      {(p) => (
+        <input
+          {...p}
+          type="text"
+          inputMode={inputMode}
+          maxLength={max}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={adminInput}
+        />
+      )}
+    </Field>
+  );
+}
+
+function TextArea({ label, value, max, onChange, hint }: { label: string; value: string; max: number; onChange: (v: string) => void; hint?: string }) {
+  return (
+    <Field label={label} hint={hint ? `${hint} · ${value.length}/${max}` : `${value.length}/${max}`}>
+      {(p) => (
+        <textarea
+          {...p}
+          rows={3}
+          maxLength={max}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${adminInput} resize-y leading-relaxed`}
+        />
+      )}
+    </Field>
+  );
+}
+
+// Lista: un elemento por línea, con su límite de líneas y de caracteres.
+function ListField({
+  label,
+  value,
+  k,
+  onChange,
+  error,
+  hint,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  k: keyof typeof LIST_LIMITS;
+  onChange: (v: string) => void;
+  error?: string;
+  hint?: string;
+  placeholder?: string;
+}) {
+  const { lines: n, chars } = LIST_LIMITS[k];
+  const count = lines(value).length;
+  return (
+    <Field label={label} error={error} hint={`${hint ? `${hint} ` : ""}${count}/${n} líneas, máximo ${chars} caracteres cada una.`}>
+      {(p) => (
+        <textarea
+          {...p}
+          rows={Math.min(n, 5)}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${adminInput} resize-y leading-relaxed`}
+        />
+      )}
+    </Field>
+  );
+}
+
+// Vista previa del título de la portada (con lo aún no publicado): el título con la frase en azul, la calificación y
+// la ubicación, y la descripción.
+function HeroPreview({ t }: { t: SiteTexts }) {
+  const words = [t.hero.highlight, ...lines(t.hero.words)].filter(Boolean);
   return (
     <section aria-labelledby="ct-prev" className="flex flex-col gap-2">
       <h3 id="ct-prev" className="flex items-center gap-1.5 text-[13px] font-semibold text-ink-muted">
         <CheckIcon size={14} />
         Vista previa
       </h3>
-      {/* La portada en pequeño: el cartel azul, el título en letras de cartel, la descripción y Fifí con su globo. */}
-      <div
-        aria-hidden="true"
-        style={themeStyle(theme)}
-        className="relative flex flex-col gap-3 overflow-hidden rounded-[22px] border-[3px] border-on-dark bg-[color-mix(in_srgb,var(--color-accent)_62%,white)] p-5 text-on-dark"
-      >
-        {t.hero.badge && (
-          <span className="self-start rounded-full border-2 border-on-dark bg-highlight px-2.5 py-0.5 text-[.66rem] font-extrabold text-on-light">
-            {t.hero.badge}
-          </span>
-        )}
-        <p className="display text-[2.1rem] leading-[1]">
-          <span className="poster-text text-card">{t.hero.title || "Título"}</span>{" "}
-          {t.hero.highlight && <span className="poster-text text-highlight">{t.hero.highlight}</span>}
+      <div aria-hidden="true" className="flex flex-col gap-3 rounded-[18px] border border-line bg-paper p-5 text-ink">
+        <span aria-hidden="true" className="railing block h-1.5 w-12 rounded-full" />
+        <p className="text-[1.5rem] leading-tight font-bold tracking-[-0.02em]">
+          {t.hero.title || "Título"} {words[0] && <span className="text-[#1f6fc4]">{words[0]}</span>}
         </p>
-        <p className="max-w-[34ch] text-[.8rem] font-bold">{t.hero.description}</p>
-        <div className="flex items-end justify-between gap-3">
-          <span className="btn btn-cta min-h-10 px-4 text-[.8rem]">Reservar cabaña</span>
-          <span className="flex w-[42%] flex-col items-end gap-2">
-            {fifiPhrases(t.hero)[0] && (
-              <span className="rounded-xl border-2 border-on-dark bg-card px-2 py-1 font-display text-[.72rem] leading-tight text-on-light">
-                {fifiPhrases(t.hero)[0]}
-              </span>
-            )}
-            <Fifi className="w-full" />
-          </span>
-        </div>
+        {words.length > 1 && <p className="text-[12px] text-ink-muted">{`Luego: ${words.slice(1).join(" · ")}`}</p>}
+        <p className="flex flex-wrap items-center gap-x-1.5 text-[12.5px]">
+          <strong>★ {t.rating.score || "—"}</strong>
+          <span className="text-ink-muted">·</span>
+          <span>{`${t.rating.reviews || "0"} reseñas en ${t.rating.source || "—"}`}</span>
+          {t.hero.badge && (
+            <>
+              <span className="text-ink-muted">·</span>
+              <span className="underline">{t.hero.badge}</span>
+            </>
+          )}
+        </p>
+        {t.hero.description && <p className="text-[12.5px] leading-relaxed text-ink-muted">{t.hero.description}</p>}
       </div>
     </section>
   );
@@ -694,8 +865,14 @@ function PhotoCard({
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 p-4 text-center text-ink-muted">
             <ImageIcon size={26} className="opacity-60" />
-            <span className="text-[13px] font-semibold">Sin foto</span>
-            <span className="text-[12px]">En el sitio se ve un marcador</span>
+            <span className="text-[13px] font-semibold">Sin foto propia</span>
+            <span className="text-[12px]">
+              {MOSAIC_FALLBACK[s.id]
+                ? `En el sitio se ve ${MOSAIC_FALLBACK[s.id].label}`
+                : DEFAULT_PHOTOS[s.id]
+                  ? "En el sitio se ve la foto del diseño"
+                  : "En el sitio se ve un marcador"}
+            </span>
           </div>
         )}
         {src && (
@@ -832,7 +1009,7 @@ function PhotoGroups({ groups }: { groups: string[] }) {
                   onRemove={() =>
                     ask({
                       title: "Quitar foto",
-                      text: `${s.label}: en el sitio volverá a verse el marcador hasta que subas otra.`,
+                      text: `${s.label}: en el sitio volverá a verse ${MOSAIC_FALLBACK[s.id] ? MOSAIC_FALLBACK[s.id].label : DEFAULT_PHOTOS[s.id] ? "la foto del diseño" : "el marcador"} hasta que subas otra.`,
                       okLabel: "Quitar",
                       danger: true,
                       done: "Foto quitada",

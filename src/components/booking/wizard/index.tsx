@@ -56,7 +56,7 @@ declare global {
   }
 }
 
-const stepTitle = "display text-[2.2rem] leading-none";
+const stepTitle = "display text-[clamp(1.4rem,3vw,1.8rem)] leading-tight";
 const backBtn = "btn btn-outline-dark min-h-[52px] px-[22px] font-bold";
 const nextBtn = "btn btn-card min-h-14 px-[30px] disabled:opacity-50";
 
@@ -529,7 +529,7 @@ export function ReservationWizard() {
 
   return (
     <main className="gutter-1240 pt-4 pb-16">
-      <h1 className="display mb-5 text-[clamp(2.6rem,6vw,4.6rem)] leading-[.92]">
+      <h1 className="display mb-5 text-[clamp(1.9rem,4vw,2.8rem)] leading-[1.1]">
         <span>Reserva tu cabaña</span> <span className="text-accent">en 4 pasos</span>
       </h1>
 
@@ -839,7 +839,7 @@ export function ReservationWizard() {
                             )}
                           </div>
                           <div className="flex flex-col gap-1.5 px-1.5 pb-1.5">
-                            <h3 className="display text-[2rem] leading-none">{name}</h3>
+                            <h3 className="display text-[1.3rem] leading-snug">{name}</h3>
                             <p className="text-[.88rem]">
                               {ty && personSteps(ty.preciosPersonas).length
                                 ? `${personRatesText(ty.preciosPersonas!)} · Máximo ${ty.maxPersonas} personas`
@@ -851,7 +851,7 @@ export function ReservationWizard() {
                                   {op.unitsLeft === 1 ? "Queda 1 cabaña de este tipo" : `Quedan ${op.unitsLeft} cabañas de este tipo`}
                                 </p>
                                 <p className="mt-1.5 flex flex-wrap items-baseline gap-2">
-                                  <strong className="display text-[2rem] leading-none">{cop(op.quote.total)}</strong>
+                                  <strong className="display text-[1.5rem] leading-none">{cop(op.quote.total)}</strong>
                                   <span className="text-[.85rem] font-semibold">{`por ${nTxt(avail.nights)} · ${guestsTxt}`}</span>
                                 </p>
                                 <button
@@ -859,7 +859,7 @@ export function ReservationWizard() {
                                   role="radio"
                                   aria-checked={sel}
                                   onClick={() => setType(op.cabinTypeId)}
-                                  className={`btn mt-1.5 min-h-[52px] self-start border-2 border-cta px-[26px] ${sel ? "bg-cta text-cta-text" : "bg-transparent text-on-light"}`}
+                                  className={`btn mt-1.5 min-h-12 self-start px-6 ${sel ? "btn-cta" : "btn-card"}`}
                                 >
                                   {sel ? "Seleccionado ✓" : "Elegir esta cabaña"}
                                 </button>
@@ -1320,7 +1320,7 @@ export function ReservationWizard() {
           aria-label="Resumen de tu reserva"
           className="sticky top-4 hidden flex-[0_0_340px] flex-col gap-3.5 rounded-lg bg-surface p-[22px] min-[900px]:flex"
         >
-          <h2 className="display text-[1.8rem] leading-none">Tu reserva</h2>
+          <h2 className="display text-[1.35rem] leading-none">Tu reserva</h2>
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 gap-y-2 text-[.92rem]">
             {sumRows.map((r) => (
               <div key={r.k} className="contents">
@@ -1331,7 +1331,7 @@ export function ReservationWizard() {
           </dl>
           <div className="flex flex-col gap-1 border-t-2 border-dotted border-on-dark/30 pt-3.5">
             <span className="eyebrow">Total</span>
-            <strong className="display text-[2.6rem] leading-none">{sumTotal}</strong>
+            <strong className="display text-[1.9rem] leading-none">{sumTotal}</strong>
             <span className="text-[.86rem]">{depositLine}</span>
           </div>
           <p className="text-[.8rem] text-on-dark-muted">{`Tus fechas se aseguran cuando recibimos el abono del ${c.depositPct} % o el total. La reserva se confirma con ese pago.`}</p>
@@ -1357,7 +1357,7 @@ export function ReservationWizard() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col leading-[1.1]">
             <span className="text-[.72rem] font-extrabold tracking-[.06em] uppercase">Total</span>
-            <strong className="display text-[1.9rem]">{sumTotal}</strong>
+            <strong className="display text-[1.5rem]">{sumTotal}</strong>
           </div>
           <button
             type="button"
@@ -1380,7 +1380,7 @@ export function ReservationWizard() {
             aria-describedby="m409-desc"
             className="flex w-full max-w-[440px] flex-col gap-3.5 rounded-lg bg-card p-7 text-on-light shadow-card"
           >
-            <h2 id="m409-title" className="display text-[2rem] leading-none">
+            <h2 id="m409-title" className="display text-[1.5rem] leading-tight">
               Estas fechas se acaban de ocupar
             </h2>
             <p id="m409-desc">Otra persona reservó mientras completabas tus datos. Tus datos se conservan: elige nuevas fechas y continúa.</p>

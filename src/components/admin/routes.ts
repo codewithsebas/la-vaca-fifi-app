@@ -154,9 +154,8 @@ export const MODULES: Record<ModuleId, Module> = {
     href: "/admin/contenido/portada",
     icon: FileTextIcon,
     group: "Negocio",
-    description: "Textos, imágenes, colores y datos que ven los huéspedes en el sitio.",
+    description: "Textos, fotos y datos que ven los huéspedes en el sitio web.",
     perm: "content",
-    off: true,
   },
   empleados: {
     label: "Empleados",
@@ -171,7 +170,7 @@ export const MODULES: Record<ModuleId, Module> = {
     href: "/admin/configuracion",
     icon: SlidersIcon,
     group: "Administración",
-    description: "Apariencia, colores, sonido, tiempo real y preferencias de este navegador.",
+    description: "Apariencia, sonido, tiempo real y preferencias de este navegador.",
     nav: false,
   },
   sincronizacion: {
@@ -207,22 +206,29 @@ export function moduleOf(pathname: string): ModuleId | null {
 
 /* ───────────── Contenido del sitio: una ruta por zona ───────────── */
 
-export type ContentSectionId = "portada" | "experiencias" | "servicios" | "horarios" | "politicas" | "contacto" | "redes" | "colores";
+export type ContentSectionId = "portada" | "restaurante" | "experiencias" | "servicios" | "horarios" | "politicas" | "contacto" | "redes";
 
 // Las zonas van agrupadas por lo que son, y así se muestran en las pestañas: lo que se ve en la página de inicio, lo que
 // el huésped necesita saber para reservar y quedarse, los datos del negocio y la apariencia.
-export const CONTENT_GROUPS = ["Página de inicio", "Reservas y estadía", "Datos del negocio", "Apariencia"] as const;
+export const CONTENT_GROUPS = ["Página de inicio", "Reservas y estadía", "Datos del negocio"] as const;
 
 export const CONTENT_SECTIONS: { id: ContentSectionId; label: string; group: (typeof CONTENT_GROUPS)[number]; where: string; href: string }[] = [
   {
     id: "portada",
     label: "Portada",
     group: "Página de inicio",
-    where: "Lo primero que ven los visitantes: título, descripción y fotos principales.",
+    where: "Lo primero que ven los visitantes: título, frases que rotan, calificación, mosaico de fotos y lo que incluye la estadía.",
     href: "/#top",
   },
-  { id: "experiencias", label: "La finca", group: "Página de inicio", where: "Sección «La finca», con una foto por experiencia.", href: "/#experiencias" },
-  { id: "servicios", label: "Servicios", group: "Página de inicio", where: "Sección «Servicios incluidos» de la página de inicio.", href: "/#servicios" },
+  { id: "restaurante", label: "Restaurante", group: "Página de inicio", where: "Sección «Restaurante y café»: textos, lista y fotos.", href: "/#restaurante" },
+  {
+    id: "experiencias",
+    label: "La finca",
+    group: "Página de inicio",
+    where: "Sección «Aquí se descansa en familia», con una foto por experiencia.",
+    href: "/#finca",
+  },
+  { id: "servicios", label: "Servicios", group: "Página de inicio", where: "Sección «Lo que ofrecemos» de la página de inicio.", href: "/#servicios" },
   {
     id: "horarios",
     label: "Horarios",
@@ -245,13 +251,6 @@ export const CONTENT_SECTIONS: { id: ContentSectionId; label: string; group: (ty
     href: "/#contacto",
   },
   { id: "redes", label: "Redes y datos legales", group: "Datos del negocio", where: "Pie de página: redes sociales y número de RNT.", href: "/#contacto" },
-  {
-    id: "colores",
-    label: "Colores",
-    group: "Apariencia",
-    where: "Todo el sitio público: portada, secciones, cabañas, formulario de reserva, consulta de reservas y pie de página.",
-    href: "/",
-  },
 ];
 
 export const isContentSection = (s: string): s is ContentSectionId => CONTENT_SECTIONS.some((x) => x.id === s);
@@ -283,7 +282,6 @@ const withQuery = (path: string, q?: Query) => {
 
 export const paths = {
   dashboard: "/admin",
-  colores: "/admin/configuracion/colores",
   calendario: (q?: Query) => withQuery("/admin/calendario", q),
   reservas: (q?: Query) => withQuery("/admin/reservas", q),
   reserva: (code: string) => `/admin/reservas/${encodeURIComponent(code)}`,

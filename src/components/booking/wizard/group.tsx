@@ -116,7 +116,7 @@ export function GroupBuilder({
     <section aria-labelledby="group-title" className="flex flex-col gap-4 rounded-lg bg-card p-4 text-on-light sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 id="group-title" className="display text-[1.8rem] leading-none">
+          <h3 id="group-title" className="display text-[1.35rem] leading-tight">
             Varias cabañas
           </h3>
           <p className="mt-1 text-[.9rem]">

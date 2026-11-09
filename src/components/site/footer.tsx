@@ -2,17 +2,16 @@ import Link from "next/link";
 import { dirHref, tel, wa } from "@/lib/format";
 import { getSite } from "@/lib/server/site";
 import { BrandName, Logo } from "@/components/brand/logo";
-import { CowHide, SpotEdge } from "@/components/brand/decor";
-import { Fifi } from "@/components/brand/fifi";
-import { ArrowUpIcon, CalendarIcon, PhoneIcon, PinIcon, WhatsAppIcon } from "@/components/ui/icons";
+import { CabinRow } from "@/components/brand/cabin-row";
+import { ArrowRightIcon, ArrowUpIcon, WhatsAppIcon } from "@/components/ui/icons";
 
-// Pie de página: la tinta de las manchas de Fifí. Arriba, el borde ondulado del amarillo del arete; Fifí asoma por el
-// filo; luego la marca con sus redes, la dirección y los horarios, los teléfonos y los enlaces de reservas; abajo, el
-// año, el RNT y «Volver arriba». En todas las páginas públicas.
+// Pie de página claro. Arriba, la marca con su descripción y, a la derecha, el atajo para reservar por WhatsApp; luego
+// cuatro columnas (reservas, visítanos, escríbenos y redes); el año, el RNT y «Volver arriba»; y al pie, la fila de
+// cabañas de colores dibujada como las de la finca (components/brand/cabin-row.tsx). En todas las páginas públicas.
 
-const heading = "mb-2 flex items-center gap-2 font-display text-[1.25rem] text-highlight";
-const row = "flex min-h-11 items-center";
-const link = "underline decoration-2 underline-offset-4 decoration-transparent transition-colors hover:text-highlight hover:decoration-highlight";
+const heading = "mb-2 text-[1rem] font-black text-on-light";
+const row = "flex min-h-8 items-center sm:min-h-9 [@media(max-height:760px)]:min-h-7";
+const link = "text-on-light-muted transition-colors hover:text-cta";
 
 const SOCIAL_ICONS = {
   Instagram: (
@@ -54,7 +53,8 @@ const SOCIAL_ICONS = {
   ),
 } as const;
 
-export async function SiteFooter() {
+// tall: ocupa toda la pantalla (portada): el contenido arriba y las cabañas, más grandes, al pie (el espacio que sobra queda entre los dos).
+export async function SiteFooter({ tall = false }: { tall?: boolean } = {}) {
   const { c, texts } = await getSite();
   const social = (
     [
@@ -65,28 +65,80 @@ export async function SiteFooter() {
   ).filter(([, url]) => url);
 
   return (
-    <footer className="relative isolate overflow-hidden bg-on-dark text-bg">
-      <SpotEdge className="relative z-1 h-[clamp(26px,3.4vw,48px)] text-highlight" />
-      <CowHide id="footer-hide" className="-z-1 text-bg opacity-[.035]" />
-
-      <div className="relative gutter-1360">
-        {/* Fifí asoma por el borde, a la derecha. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-[-12px] right-[max(16px,calc((100%-1360px)/2))] w-[clamp(92px,12vw,150px)] rotate-[-8deg] max-sm:hidden"
-        >
-          <Fifi />
+    <footer className={`overflow-hidden bg-card text-on-light ${tall ? "flex min-h-svh flex-col max-lg:min-h-[calc(100svh-76px)]" : ""}`}>
+      <div aria-hidden="true" className="railing h-1.5 flex-none" />
+      <div className={`gutter-1280 ${tall ? "flex flex-1 flex-col" : ""}`}>
+        <div className="grid gap-x-12 gap-y-5 border-b border-on-dark/10 pt-[clamp(18px,min(5vw,6svh),64px)] pb-[clamp(14px,min(3.5vw,4svh),40px)] sm:gap-y-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="flex flex-col items-start gap-3 sm:gap-4">
+            <span className="flex items-center gap-3">
+              <Logo size={60} className="max-sm:size-12" />
+              <BrandName wordSize="1.6rem" />
+            </span>
+            <p className="max-w-[56ch] text-[.9rem] leading-relaxed text-on-light-muted sm:text-[.95rem]">{c.tagline}</p>
+          </div>
+          {/* En el celular de la portada no hace falta: ahí están la barra de «Reservar» y el botón de WhatsApp. */}
+          <div className={`flex flex-col gap-3 ${tall ? "max-sm:hidden" : ""}`}>
+            <h2 className={heading}>Reserva directo</h2>
+            <a
+              href={wa(c.whatsapp, "Hola, quiero información para reservar.")}
+              target="_blank"
+              rel="noopener"
+              className="group flex min-h-12 items-stretch overflow-hidden rounded-xl border border-on-dark/15 bg-card no-underline"
+            >
+              <span className="flex flex-1 items-center gap-2 px-4 text-[.92rem] text-on-light-muted">
+                <WhatsAppIcon size={17} />
+                Escríbenos por WhatsApp
+              </span>
+              <span className="flex items-center gap-1.5 bg-cta px-5 text-[.92rem] font-extrabold text-cta-text transition-colors group-hover:bg-[color-mix(in_srgb,var(--color-cta)_88%,#000)]">
+                Escribir
+                <ArrowRightIcon size={16} />
+              </span>
+            </a>
+            <p className="text-[.86rem] leading-relaxed text-on-light-muted max-sm:hidden [@media(max-height:760px)]:hidden">
+              Te ayudamos con fechas, cabañas, mascotas, el restaurante o una celebración. También puedes{" "}
+              <Link href="/reservar" className="font-bold text-cta hover:underline">
+                reservar en línea
+              </Link>
+              .
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-6 gap-y-9 pt-[clamp(28px,4vw,48px)] pb-[clamp(32px,5vw,56px)] lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:gap-x-10">
-          <div className="col-span-2 flex flex-col items-start gap-4 lg:col-span-1">
-            <span className="flex items-center gap-3">
-              <Logo size={64} />
-              <BrandName wordSize="1.7rem" />
-            </span>
-            <p className="max-w-[34ch] text-bg/80">{c.tagline}</p>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-5 py-[clamp(14px,min(3.5vw,4svh),40px)] sm:gap-y-8 lg:grid-cols-4 [@media(max-height:760px)]:gap-y-4">
+          <nav aria-label="Enlaces de reservas" className="flex flex-col text-[.86rem] sm:text-[.92rem]">
+            <h2 className={heading}>Reservas</h2>
+            {[
+              ["/reservar", "Reservar"],
+              ["/mi-reserva", "Consultar mi reserva"],
+              ["/politicas", "Políticas de reserva"],
+              ["/privacidad", "Política de privacidad"],
+            ].map(([href, label]) => (
+              <Link key={href} href={href} className={`${row} ${link}`}>
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="flex flex-col text-[.86rem] sm:text-[.92rem]">
+            <h2 className={heading}>Visítanos</h2>
+            <span className="py-1 text-on-light-muted sm:py-1.5">{c.address}</span>
+            <a href={dirHref()} target="_blank" rel="noopener" className={`${row} font-bold text-cta hover:underline`}>
+              Cómo llegar →
+            </a>
+          </div>
+          <div className="flex flex-col text-[.86rem] sm:text-[.92rem]">
+            <h2 className={heading}>Horarios</h2>
+            <span className={`${row} text-on-light-muted`}>Check-in: {c.checkIn}</span>
+            <span className={`${row} text-on-light-muted`}>Check-out: {c.checkOut}</span>
+          </div>
+          <div className="flex flex-col text-[.86rem] sm:text-[.92rem]">
+            <h2 className={heading}>Escríbenos</h2>
+            {c.phones.map((p) => (
+              <a key={p} href={tel(p)} className={`${row} tabular-nums ${link}`}>
+                {p}
+              </a>
+            ))}
             {social.length > 0 && (
-              <ul aria-label="Redes sociales" className="flex flex-wrap gap-2.5">
+              <ul aria-label="Redes sociales" className="mt-2 flex flex-wrap gap-2.5">
                 {social.map(([name, url]) => (
                   <li key={name}>
                     <a
@@ -95,7 +147,7 @@ export async function SiteFooter() {
                       rel="noopener"
                       aria-label={name}
                       title={name}
-                      className="grid size-11 place-items-center rounded-full border-[2.5px] border-bg/40 transition-[background-color,border-color,color,transform] duration-200 hover:-translate-y-0.5 hover:border-highlight hover:bg-highlight hover:text-on-dark"
+                      className="grid size-11 place-items-center rounded-full bg-card text-cta shadow-[0_4px_14px_-6px_rgb(36_26_20/0.3)] transition-transform hover:-translate-y-0.5"
                     >
                       {SOCIAL_ICONS[name]}
                     </a>
@@ -104,64 +156,22 @@ export async function SiteFooter() {
               </ul>
             )}
           </div>
-          <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
-            <h2 className={heading}>
-              <PinIcon size={18} />
-              Visítanos
-            </h2>
-            <span>{c.address}</span>
-            <span className="text-bg/75">Check-in: {c.checkIn}</span>
-            <span className="text-bg/75">Check-out: {c.checkOut}</span>
-            <a href={dirHref()} target="_blank" rel="noopener" className={`${row} font-extrabold`}>
-              <span className={link}>Cómo llegar →</span>
-            </a>
-          </div>
-          <div className="col-span-2 flex flex-col gap-0.5 sm:col-span-1">
-            <h2 className={heading}>
-              <PhoneIcon size={18} />
-              Escríbenos
-            </h2>
-            {c.phones.map((p) => (
-              <a key={p} href={tel(p)} className={`${row} font-bold tabular-nums`}>
-                <span className={link}>{p}</span>
-              </a>
-            ))}
-            <a href={wa(c.whatsapp)} target="_blank" rel="noopener" className={`${row} gap-2 font-extrabold`}>
-              <WhatsAppIcon size={17} />
-              <span className={link}>WhatsApp</span>
-            </a>
-          </div>
-          <nav aria-label="Enlaces de reservas" className="col-span-2 flex flex-col gap-0.5 sm:col-span-1">
-            <h2 className={heading}>
-              <CalendarIcon size={18} />
-              Reservas
-            </h2>
-            {[
-              ["/reservar", "Reservar"],
-              ["/mi-reserva", "Consultar mi reserva"],
-              ["/politicas", "Políticas de reserva"],
-              ["/privacidad", "Política de privacidad"],
-            ].map(([href, label]) => (
-              <Link key={href} href={href} className={`${row} font-bold`}>
-                <span className={link}>{label}</span>
-              </Link>
-            ))}
-          </nav>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-x-10 gap-y-3 border-t-2 border-dashed border-bg/20 py-5 text-[.86rem] text-bg/75">
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-1 border-t border-on-dark/10 py-3 text-center text-[.8rem] text-on-light-muted sm:py-4 sm:text-[.84rem] [@media(max-height:760px)]:py-2">
           <p>
             © {new Date().getFullYear()} {c.name}
             {c.rnt && ` · RNT ${c.rnt}`} · Vereda Pajonales, Murillo, Tolima
           </p>
-          <a href="#" className="group flex min-h-11 items-center gap-2 font-extrabold text-bg transition-colors hover:text-highlight">
+          <a href="#" className="group flex min-h-10 items-center gap-2 font-bold transition-colors hover:text-cta">
             Volver arriba
-            <span className="grid size-9 place-items-center rounded-full border-[2.5px] border-current transition-transform duration-200 group-hover:-translate-y-1">
-              <ArrowUpIcon size={15} />
+            <span className="grid size-7 place-items-center rounded-full border border-current transition-transform duration-200 group-hover:-translate-y-0.5">
+              <ArrowUpIcon size={13} />
             </span>
           </a>
         </div>
       </div>
+      <CabinRow className={tall ? "h-[clamp(80px,min(17vw,24svh),260px)] flex-none" : "h-[clamp(96px,13vw,190px)]"} />
     </footer>
   );
 }

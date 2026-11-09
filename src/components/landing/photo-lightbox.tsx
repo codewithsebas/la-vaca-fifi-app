@@ -4,15 +4,14 @@
 // las fotos del sitio, empezando por la tocada. Flechas, teclado (← →, Esc), deslizar en el celular y una tira de
 // miniaturas. Al cambiar, la foto nueva entra por el lado hacia el que se avanza y la anterior sale por el otro; al
 // cerrar, todo se desvanece. Un solo oyente de clics para toda la página: las fotos solo llevan data-gallery con su URL.
+// Estilo de la portada: fondo casi negro; arriba el título, el contador y la X para cerrar.
 import Image from "next/image";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { config } from "@/lib/config";
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "@/components/ui/icons";
-import { Bean } from "@/components/brand/decor";
 
 const TITLE = `Galería de ${config.name}`;
 const CLOSE_MS = 320;
-const pad = (n: number) => String(n).padStart(2, "0");
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // i: foto visible · from: la que está saliendo (mientras dura su animación) · dir: 1 hacia adelante, -1 hacia atrás.
@@ -119,36 +118,33 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
         if (e.key === "ArrowRight") go(1);
         if (e.key === "ArrowLeft") go(-1);
       }}
-      className="group/lb m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden bg-transparent p-0 text-on-dark transition-opacity duration-300 ease-out backdrop:bg-night/90 backdrop:backdrop-blur-md backdrop:transition-opacity backdrop:duration-300 open:flex data-closing:opacity-0 data-closing:backdrop:opacity-0 motion-safe:backdrop:animate-[ec-fade-in_.3s_ease-out] motion-safe:open:animate-[ec-fade-in_.3s_ease-out]"
+      className="group/lb m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden bg-transparent p-0 text-white transition-opacity duration-300 ease-out backdrop:bg-[rgb(16_13_11)] backdrop:transition-opacity backdrop:duration-300 open:flex data-closing:opacity-0 data-closing:backdrop:opacity-0 motion-safe:backdrop:animate-[ec-fade-in_.3s_ease-out] motion-safe:open:animate-[ec-fade-in_.3s_ease-out]"
     >
       {view && (
-        <div className="flex size-full flex-col gap-[clamp(10px,2svh,20px)] bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-surface)_55%,transparent),transparent_70%)] py-[clamp(12px,2.5svh,24px)]">
-          <header className="flex items-center justify-between gap-4 gutter-1360">
-            <h2 id="lb-title" className="display flex min-w-0 items-center gap-2.5 text-[clamp(1.6rem,3.6svh,2.4rem)] leading-none">
-              <Bean size={18} light />
-              <span className="truncate">{TITLE}</span>
+        <div className="relative flex size-full flex-col gap-[clamp(10px,2svh,20px)] py-[clamp(12px,2.5svh,24px)]">
+          <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 gutter-1280">
+            <h2 id="lb-title" className="truncate text-[.95rem] font-semibold text-white/80 max-sm:sr-only">
+              {TITLE}
             </h2>
-            <div className="flex flex-none items-center gap-3">
-              <p id="lb-count" className="display text-[1.5rem] leading-none tabular-nums">
-                <span className="sr-only">Foto </span>
-                <span className="text-accent">{pad(view.i + 1)}</span>
-                <span className="text-on-dark/45"> / {pad(n)}</span>
-              </p>
-              <button
-                type="button"
-                autoFocus
-                aria-label="Cerrar la galería"
-                onClick={close}
-                className="btn-icon btn-card size-11 border-0 transition-transform duration-300 motion-safe:hover:rotate-90"
-              >
-                <CloseIcon />
-              </button>
-            </div>
+            <p id="lb-count" className="text-[.95rem] font-semibold tabular-nums max-sm:col-start-1 max-sm:justify-self-start">
+              <span className="sr-only">Foto </span>
+              {view.i + 1}
+              <span className="text-white/50"> / {n}</span>
+            </p>
+            <button
+              type="button"
+              autoFocus
+              aria-label="Cerrar la galería"
+              onClick={close}
+              className="grid size-11 place-items-center justify-self-end rounded-full bg-white/10 ring-1 ring-white/20 transition-[background-color,transform] duration-300 hover:bg-white/20 motion-safe:hover:rotate-90 max-sm:col-start-3"
+            >
+              <CloseIcon size={18} />
+            </button>
           </header>
 
           {/* Foto entera (sin recortar). Al cerrar, se encoge un poco mientras todo se desvanece. */}
           <div
-            className="relative min-h-0 flex-1 gutter-1360"
+            className="relative min-h-0 flex-1 gutter-1280 sm:px-[max(80px,calc((100%-1280px)/2+72px))]"
             onPointerDown={onPointerDown}
             onPointerUp={onPointerUp}
             onPointerCancel={() => (swipe.current = null)}
@@ -182,17 +178,17 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
                   type="button"
                   aria-label="Foto anterior"
                   onClick={() => go(-1)}
-                  className="btn-icon btn-card absolute top-1/2 left-[max(16px,calc((100%-1360px)/2))] z-1 size-10 -translate-y-1/2 border-0 shadow-card transition-transform duration-200 motion-safe:hover:-translate-x-0.5 sm:size-11"
+                  className="btn-icon absolute top-1/2 left-[max(16px,calc((100%-1280px)/2))] z-1 size-11 -translate-y-1/2 bg-white/12 text-white ring-1 ring-white/25 backdrop-blur-md transition-[background-color,transform] duration-200 hover:bg-white/25 motion-safe:hover:-translate-x-0.5 sm:size-12"
                 >
-                  <ChevronLeftIcon size={18} />
+                  <ChevronLeftIcon size={20} />
                 </button>
                 <button
                   type="button"
                   aria-label="Foto siguiente"
                   onClick={() => go(1)}
-                  className="btn-icon btn-card absolute top-1/2 right-[max(16px,calc((100%-1360px)/2))] z-1 size-10 -translate-y-1/2 border-0 shadow-card transition-transform duration-200 motion-safe:hover:translate-x-0.5 sm:size-11"
+                  className="btn-icon absolute top-1/2 right-[max(16px,calc((100%-1280px)/2))] z-1 size-11 -translate-y-1/2 bg-white/12 text-white ring-1 ring-white/25 backdrop-blur-md transition-[background-color,transform] duration-200 hover:bg-white/25 motion-safe:hover:translate-x-0.5 sm:size-12"
                 >
-                  <ChevronRightIcon size={18} />
+                  <ChevronRightIcon size={20} />
                 </button>
               </>
             )}
@@ -200,7 +196,7 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
 
           {/* Todas las fotos, centradas (si no caben, se desplazan desde el inicio); la activa resaltada. */}
           {n > 1 && (
-            <div ref={strip} className="no-scrollbar flex-none overflow-x-auto gutter-1360 py-1">
+            <div ref={strip} className="no-scrollbar flex-none overflow-x-auto gutter-1280 py-1.5">
               <ul aria-label="Todas las fotos" className="mx-auto flex w-max gap-2">
                 {photos.map((src, i) => (
                   <li key={src} className="flex-none">
@@ -210,10 +206,10 @@ export function PhotoLightbox({ photos }: { photos: string[] }) {
                       aria-label={`Ver foto ${i + 1} de ${n}`}
                       aria-current={i === view.i ? "true" : undefined}
                       onClick={() => show(i, i > view.i ? 1 : -1)}
-                      className={`relative block h-[clamp(48px,8svh,72px)] w-[clamp(64px,11svh,96px)] overflow-hidden rounded-sm transition-[opacity,box-shadow,transform] duration-300 ${
+                      className={`relative block h-[clamp(48px,8svh,68px)] w-[clamp(64px,11svh,92px)] overflow-hidden rounded-[8px] transition-[opacity,box-shadow,transform] duration-300 ${
                         i === view.i
-                          ? "opacity-100 shadow-[0_0_0_2px_var(--color-highlight)]"
-                          : "opacity-50 hover:opacity-85 motion-safe:hover:-translate-y-0.5"
+                          ? "opacity-100 shadow-[0_0_0_2px_rgb(16_13_11),0_0_0_4px_#fff]"
+                          : "opacity-40 hover:opacity-80 motion-safe:hover:-translate-y-0.5"
                       }`}
                     >
                       <Image src={src} alt="" fill sizes="96px" className="object-cover" />

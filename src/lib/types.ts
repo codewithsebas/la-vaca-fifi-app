@@ -427,7 +427,7 @@ export type BookingInboxItem = {
 export type BookingInboxAction = { action: "assign"; ref: string; cabinTypeId: CabinTypeId; unit: number } | { action: "dismiss"; ref: string };
 
 // Cuerpo de PUT /admin/site.
-export type SiteInput = { settings: SiteSettings; policies: SitePolicy[]; content: SiteTexts; theme: SiteTheme };
+export type SiteInput = { settings: SiteSettings; policies: SitePolicy[]; content: SiteTexts; theme?: SiteTheme }; // sin theme: se conservan los colores guardados
 
 // Condiciones de pago (solo administradores): el abono para confirmar (% del total) y los datos para pagar que ve el huésped.
 export type PaymentTerms = { depositPct: number; instructions: string };

@@ -25,9 +25,3 @@ export const DEFAULT_SERVICES: { title: string; icon: ServiceIcon; description?:
   { title: "Pet friendly, sin costo", icon: "mascota" },
   { title: "Celebraciones y eventos", icon: "corazon", note: "Se cotiza aparte" },
 ];
-
-// Lo que distingue a La Vaca Fifí, en las etiquetas (aretes) bajo la portada.
-export const HIGHLIGHTS = ["Desayuno americano incluido", "Mascotas sin costo", "Parqueadero gratis", "Wifi", "Parque infantil"];
-
-// Calificación de los huéspedes en Booking.com (octubre de 2026), para la insignia de la portada.
-export const RATING = { score: "9,2", source: "Booking.com", reviews: 242 };

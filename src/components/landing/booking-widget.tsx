@@ -9,9 +9,10 @@ import { type Cabin, type CabinTypeId } from "@/lib/config";
 import { addDays, cop, fmtDate, monthStart, nightsBetween, plural, todayISO } from "@/lib/format";
 import type { Availability } from "@/lib/types";
 import { RangeCalendar } from "@/components/booking/range-calendar";
+import { onOpenBooking, publishBookingSummary } from "@/components/landing/booking-bus";
 import { SwitchTrack } from "@/components/ui/choice";
 import { useSite } from "@/components/site/site-provider";
-import { ArrowRightIcon, CalendarIcon, HomeIcon, MinusIcon, PlusIcon, UsersIcon } from "@/components/ui/icons";
+import { MinusIcon, PlusIcon } from "@/components/ui/icons";
 
 type Popover = "dates" | "type" | "guests" | null;
 
@@ -80,29 +81,20 @@ export function CabinReserveButton({ cabin }: { cabin: CabinTypeId }) {
         const el = document.getElementById("reserva");
         if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 16, behavior: "smooth" });
       }}
-      className="btn btn-highlight min-h-[52px] px-7"
+      className="btn btn-card min-h-10 px-4 text-[.9rem]"
     >
       Reservar
     </button>
   );
 }
 
-function fieldStyle(focused: boolean, filled: boolean) {
-  return {
-    border: focused ? "border-on-light" : filled ? "border-on-light/40" : "border-on-light/15",
-    bg: filled || focused ? "bg-card" : "bg-card-muted",
-    ring: focused ? "shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-highlight)_50%,transparent)]" : "",
-    value: filled ? "font-extrabold text-on-light" : "font-medium text-on-light-muted",
-    icon: filled ? "border-2 border-on-light bg-highlight text-on-light" : "bg-transparent text-on-light",
-  };
-}
-
+// Una celda del cuadro de la tarjeta de reserva: la etiqueta en mayúsculas pequeñas y el valor debajo. Abierta, la
+// celda queda enmarcada en tinta.
 function PillField({
   label,
   value,
   focused,
   filled,
-  icon,
   popup,
   onClick,
 }: {
@@ -110,53 +102,42 @@ function PillField({
   value: string;
   focused: boolean;
   filled: boolean;
-  icon: ReactNode;
   popup: "dialog" | "listbox";
   onClick: () => void;
 }) {
-  const f = fieldStyle(focused, filled);
   return (
     <button
       type="button"
       aria-haspopup={popup}
       aria-expanded={focused}
       onClick={onClick}
-      className={`flex min-h-16 min-w-0 flex-1 items-center justify-between gap-3 rounded-full border-2 py-2 pr-2.5 pl-[22px] text-left text-on-light transition-[box-shadow,background-color] duration-200 ${f.border} ${f.bg} ${f.ring}`}
+      className={`flex min-h-[52px] w-full min-w-0 flex-col justify-center rounded-[inherit] px-3.5 py-1.5 text-left text-on-light ${focused ? "relative z-1 bg-card ring-2 ring-on-dark" : "hover:bg-bg/70"}`}
     >
-      <span className="flex min-w-0 flex-col">
-        <span className="text-[.74rem] font-bold tracking-[.06em] uppercase">{label}</span>
-        <span className={`truncate ${f.value}`}>{value}</span>
-      </span>
-      <span aria-hidden="true" className={`grid size-10 flex-none place-items-center rounded-full ${f.icon}`}>
-        {icon}
-      </span>
+      <span className="text-[.66rem] font-black tracking-[.04em] uppercase">{label}</span>
+      <span className={`truncate text-[.92rem] ${filled ? "text-on-light" : "text-on-light-muted"}`}>{value}</span>
     </button>
   );
 }
 
 function Switch({ label, on, note, onToggle }: { label: string; on: boolean; note: string; onToggle: () => void }) {
-  const f = fieldStyle(false, on);
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
       onClick={onToggle}
-      className={`flex min-h-16 items-center justify-between gap-3 rounded-full border-2 py-2 pr-3.5 pl-[22px] text-left text-on-light ${f.border} ${f.bg}`}
+      className="flex min-h-11 items-center justify-between gap-3 py-1 text-left text-on-light"
     >
       <span className="flex min-w-0 flex-col">
-        <span className="truncate text-[.74rem] font-bold tracking-[.06em] uppercase">{label}</span>
-        <span className={f.value}>
-          {on ? "Sí" : "No"} <span className="text-[.82rem] font-medium">· {note}</span>
-        </span>
+        <span className="text-[.92rem] font-bold">{label}</span>
+        <span className="text-[.8rem] text-on-light-muted">{note}</span>
       </span>
       <SwitchTrack on={on} />
     </button>
   );
 }
 
-const popover =
-  "absolute top-[calc(100%+10px)] left-0 z-40 rounded-[22px] border-[2.5px] border-on-dark bg-card text-on-light shadow-[4px_4px_0_var(--color-on-dark)]";
+const popover = "absolute top-[calc(100%+8px)] left-0 z-40 rounded-2xl border border-(--line) bg-card text-on-light shadow-[0_6px_24px_rgb(0_0_0/0.18)]";
 
 export function BookingWidget() {
   const { s, cabins, cabinOf, set, selectCabin } = useBooking();
@@ -230,6 +211,41 @@ export function BookingWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.open]);
 
+  // El buscador del encabezado abre una parte de la tarjeta: primero la trae a la vista (si no se ve entera) y luego
+  // abre la llegada en el calendario, el tipo de cabaña o los huéspedes.
+  useEffect(
+    () =>
+      onOpenBooking((part) => {
+        const el = document.getElementById("reserva");
+        if (!el) return;
+        const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-offset")) || 80;
+        const r = el.getBoundingClientRect();
+        const hidden = r.top < bar || r.bottom > window.innerHeight;
+        if (hidden) {
+          const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+          window.scrollTo({ top: Math.max(0, window.scrollY + r.top - bar - 16), behavior: reduce ? "instant" : "smooth" });
+        }
+        const open = () => {
+          if (part === "dates") set({ open: "dates", pick: "in", view: s.checkIn ? monthStart(s.checkIn) : (s.view ?? monthStart(todayISO())), error: "" });
+          else if (part) set({ open: part });
+        };
+        if (hidden) setTimeout(open, 450);
+        else open();
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [s.checkIn, s.view],
+  );
+
+  // Lo elegido, para el buscador del encabezado.
+  useEffect(() => {
+    if (!cab) return;
+    publishBookingSummary({
+      dates: s.checkIn && s.checkOut ? `${fmtDate(s.checkIn)} – ${fmtDate(s.checkOut)}` : s.checkIn ? `Desde ${fmtDate(s.checkIn)}` : undefined,
+      cabin: cab.name,
+      guests: `${s.guests} huésped${s.guests > 1 ? "es" : ""}`,
+    });
+  }, [s.checkIn, s.checkOut, s.guests, cab]);
+
   if (!cab) return null; // sin cabañas activas no hay nada que cotizar
 
   const today = todayISO();
@@ -287,39 +303,47 @@ export function BookingWidget() {
   const datesFocused = s.open === "dates";
 
   return (
-    // Una calcomanía grande, separada del cartel de la portada (no se monta sobre las flores). scroll-mt: al llegar
-    // con «Reservar» (#reserva), el módulo queda con aire bajo la barra fija en vez de pegado a ella.
-    <section
-      id="reserva"
-      aria-labelledby="reserva-title"
-      className="relative z-5 mt-[clamp(20px,3vw,40px)] scroll-mt-[calc(var(--header-offset,76px)+16px)] gutter-1360"
-    >
-      <div ref={ref} className="sticker flex flex-col gap-5 rounded-[30px] bg-card p-[calc(16px_+_1cqi)] text-on-light">
-        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-1">
-          <h2 id="reserva-title" className="display text-[clamp(1.9rem,3vw,2.4rem)] leading-none">
-            Reserva tu cabaña
-          </h2>
-          <p className="max-w-[48ch] text-[.9rem] font-semibold">
-            Elige fechas, cabaña y huéspedes: ves el total al instante y apartas tus fechas con un abono del {c.depositPct} %.
-          </p>
-        </div>
+    // Tarjeta de reserva lateral: el precio arriba, el cuadro de fechas, cabaña y huéspedes, los extras, el botón y el
+    // desglose del total. En escritorio queda fija junto al contenido (app/page.tsx). scroll-mt: al llegar con
+    // «Reservar» (#reserva) queda con aire bajo la barra fija.
+    <section id="reserva" aria-labelledby="reserva-title" className="scroll-mt-[calc(var(--header-offset,80px)+24px)]">
+      <div
+        ref={ref}
+        className="relative flex flex-col gap-3.5 rounded-2xl border border-(--line) bg-card p-5 pt-6 text-on-light shadow-[0_6px_16px_rgb(0_0_0/0.12)]"
+      >
+        <span aria-hidden="true" className="railing absolute inset-x-0 top-0 h-1.5 rounded-t-2xl" />
+        <h2 id="reserva-title" className="sr-only">
+          Reserva tu cabaña
+        </h2>
+        <p className="flex flex-wrap items-baseline gap-x-1.5">
+          {qq ? (
+            <>
+              <strong className="text-[1.4rem] font-extrabold tabular-nums">{cop(qq.total)}</strong>
+              <span className="text-on-light-muted">{`por ${nightsTxt}`}</span>
+            </>
+          ) : (
+            <>
+              <strong className="text-[1.4rem] font-extrabold tabular-nums">{cop(cab.couple)}</strong>
+              <span className="text-on-light-muted">{`noche para ${cab.fromGuests ?? 2}`}</span>
+            </>
+          )}
+        </p>
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,330px),1fr))] gap-3">
-          <div data-popover-root="dates" className="relative flex">
+        <div className="grid grid-cols-2 rounded-xl border border-on-dark/35">
+          <div data-popover-root="dates" className="relative flex rounded-tl-xl border-r border-on-dark/35">
             <PillField
               label="Llegada"
               value={s.checkIn ? fmtDate(s.checkIn) : "Elegir fecha"}
               focused={datesFocused && s.pick === "in"}
               filled={!!s.checkIn}
               popup="dialog"
-              icon={<CalendarIcon />}
               onClick={() => (datesFocused && s.pick === "in" ? set({ open: null }) : openDates("in"))}
             />
             {datesFocused && s.view && (
               <div
                 role="dialog"
                 aria-label="Elegir fechas"
-                className={`${popover} flex w-[372px] max-w-[calc(100cqi-32px)] flex-col gap-2.5 p-4 max-sm:right-0 max-sm:w-auto`}
+                className={`${popover} flex w-[316px] max-w-[calc(100cqi-32px)] flex-col gap-2 p-3.5 max-sm:right-0 max-sm:w-auto`}
               >
                 <RangeCalendar
                   view={s.view}
@@ -332,8 +356,9 @@ export function BookingWidget() {
                   hint={s.pick === "in" ? "Elige el día de llegada" : "Ahora elige el día de salida"}
                   onPick={pickDate}
                   onMonth={(view) => set({ view })}
+                  compact
                 />
-                <p className="flex items-center gap-1.5 text-[.78rem] font-semibold">
+                <p className="flex items-center gap-1.5 text-[.74rem] font-medium">
                   <span aria-hidden="true" className="font-extrabold line-through opacity-50">
                     12
                   </span>
@@ -344,8 +369,8 @@ export function BookingWidget() {
                     {s.error}
                   </p>
                 )}
-                <div className="dotted-top flex flex-wrap items-center justify-between gap-2 pt-2.5">
-                  <span className="text-[.82rem] font-semibold">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-(--line) pt-2.5">
+                  <span className="text-[.76rem] font-medium">
                     {nights && s.checkIn && s.checkOut
                       ? `${nightsTxt} · ${fmtDate(s.checkIn)} → ${fmtDate(s.checkOut)}`
                       : s.checkIn
@@ -356,11 +381,11 @@ export function BookingWidget() {
                     <button
                       type="button"
                       onClick={() => set({ checkIn: null, checkOut: null, pick: "in" })}
-                      className="min-h-11 rounded-full px-4 font-bold underline"
+                      className="min-h-9 rounded-full px-3 text-[.86rem] font-semibold underline"
                     >
                       Limpiar
                     </button>
-                    <button type="button" onClick={() => set({ open: null })} className="btn btn-cta min-h-11 px-5 font-bold">
+                    <button type="button" onClick={() => set({ open: null })} className="btn btn-cta min-h-9 px-4 text-[.86rem] font-bold">
                       Listo
                     </button>
                   </div>
@@ -369,30 +394,28 @@ export function BookingWidget() {
             )}
           </div>
 
-          <div data-popover-root="dates" className="relative flex">
+          <div data-popover-root="dates" className="relative flex rounded-tr-xl">
             <PillField
               label="Salida"
               value={s.checkOut ? fmtDate(s.checkOut) : "Elegir fecha"}
               focused={datesFocused && s.pick === "out"}
               filled={!!s.checkOut}
               popup="dialog"
-              icon={<CalendarIcon variant="check" />}
               onClick={() => (datesFocused && s.pick === "out" ? set({ open: null }) : openDates(s.checkIn ? "out" : "in"))}
             />
           </div>
 
-          <div data-popover-root="type" className="relative flex">
+          <div data-popover-root="type" className="relative col-span-2 flex border-t border-on-dark/35">
             <PillField
               label="Tipo de cabaña"
               value={cab.name}
               focused={s.open === "type"}
               filled
               popup="listbox"
-              icon={<HomeIcon />}
               onClick={() => set({ open: s.open === "type" ? null : "type" })}
             />
             {s.open === "type" && (
-              <div role="listbox" aria-label="Tipo de cabaña" className={`${popover} right-0 flex min-w-[min(320px,calc(100cqi-32px))] flex-col gap-1.5 p-2.5`}>
+              <div role="listbox" aria-label="Tipo de cabaña" className={`${popover} right-0 flex flex-col gap-1.5 p-2.5`}>
                 {cabins.map((c) => {
                   const sel = s.type === c.id;
                   return (
@@ -402,7 +425,7 @@ export function BookingWidget() {
                       role="option"
                       aria-selected={sel}
                       onClick={() => selectCabin(c.id)}
-                      className={`flex min-h-[60px] items-center justify-between gap-3 rounded-sm border-2 px-4 py-2.5 text-left text-on-light hover:bg-card-muted ${sel ? "border-on-light bg-card-muted" : "border-transparent"}`}
+                      className={`flex min-h-[60px] items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-left text-on-light hover:bg-bg ${sel ? "border-cta/50 bg-cta/5" : "border-transparent"}`}
                     >
                       <span className="flex flex-col">
                         <strong className="text-[.95rem]">{c.full}</strong>
@@ -418,14 +441,13 @@ export function BookingWidget() {
             )}
           </div>
 
-          <div data-popover-root="guests" className="relative flex">
+          <div data-popover-root="guests" className="relative col-span-2 flex rounded-b-xl border-t border-on-dark/35">
             <PillField
               label="Huéspedes"
               value={guestsTxt}
               focused={s.open === "guests"}
               filled
               popup="dialog"
-              icon={<UsersIcon />}
               onClick={() => set({ open: s.open === "guests" ? null : "guests" })}
             />
             {s.open === "guests" && (
@@ -441,7 +463,7 @@ export function BookingWidget() {
                       aria-label="Quitar un huésped"
                       disabled={s.guests <= 1}
                       onClick={() => set({ guests: Math.max(1, s.guests - 1), notice: "" })}
-                      className="btn-icon size-11 border-2 border-on-light disabled:opacity-35"
+                      className="btn-icon size-11 border border-(--line-strong) hover:border-on-light disabled:opacity-35"
                     >
                       <MinusIcon />
                     </button>
@@ -453,13 +475,13 @@ export function BookingWidget() {
                       aria-label="Añadir un huésped"
                       disabled={s.guests >= cab.max}
                       onClick={() => set({ guests: Math.min(cab.max, s.guests + 1), notice: "" })}
-                      className="btn-icon size-11 border-2 border-on-light disabled:opacity-35"
+                      className="btn-icon size-11 border border-(--line-strong) hover:border-on-light disabled:opacity-35"
                     >
                       <PlusIcon />
                     </button>
                   </div>
                 </div>
-                <p className="rounded-sm bg-card-muted px-3 py-2.5 text-[.8rem]">
+                <p className="rounded-xl bg-bg px-3 py-2.5 text-[.8rem]">
                   {cab.tiers
                     ? `Precio por noche: ${personRatesText(cab.tiers)}.`
                     : `La tarifa incluye 2 personas. Desde la 3.ª persona se suman ${cop(cab.extra)} por persona, por noche.`}
@@ -470,47 +492,69 @@ export function BookingWidget() {
               </div>
             )}
           </div>
-
-          <Switch label="Mascota" note="sin costo" on={s.pet} onToggle={() => set({ pet: !s.pet, open: null })} />
-          <Switch label="Decoración para ocasión especial" note="valor adicional" on={s.deco} onToggle={() => set({ deco: !s.deco, open: null })} />
         </div>
 
         {s.notice && (
-          <p
-            role="status"
-            className="rounded-[18px] border-2 border-on-light bg-[color-mix(in_srgb,var(--color-highlight)_45%,var(--color-card))] px-[18px] py-3 text-[.9rem] font-bold"
-          >
+          <p role="status" className="rounded-xl bg-highlight/25 px-4 py-3 text-[.88rem] font-semibold">
             {s.notice}
           </p>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] border-[2.5px] border-dashed border-on-light/30 bg-bg px-5 py-4">
-          <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-0.5">
-            <span className="text-[.74rem] font-bold tracking-[.06em] uppercase">Total estimado</span>
-            <strong className="display text-[2.6rem] leading-none">{totalLabel}</strong>
-            <span className="text-[.86rem] font-semibold">{summary}</span>
-            {s.deco && <span className="text-[.84rem]">Decoración especial: valor adicional, se cotiza por WhatsApp.</span>}
-            <span className="mt-1.5 text-[.8rem]">Precio estimado. La reserva se confirma con un abono del {c.depositPct} % (no reembolsable).</span>
-          </div>
-          {/* «Continuar» lleva directo a «Tus datos» si la cabaña tiene cupo; «Ver disponibilidad» compara todas las cabañas en esas fechas. */}
-          <div className="flex w-full flex-[0_1_auto] flex-col items-stretch gap-2 sm:w-auto sm:min-w-[280px]">
-            <Link href={`/reservar?${rq}&paso=datos`} onClick={needDates} className="btn btn-cta min-h-16 px-7 text-center">
-              Continuar con la reserva
-              <ArrowRightIcon />
-            </Link>
-            <Link
-              href={`/reservar?${rq}${s.checkIn && s.checkOut ? "&paso=cabana" : ""}`}
-              className="btn btn-outline-light min-h-12 px-6 text-center text-[.95rem] hover:bg-card"
-            >
-              Ver disponibilidad
-            </Link>
-          </div>
+        <div className="flex flex-col divide-y divide-(--line)">
+          <Switch label="Mascota" note="Sin costo" on={s.pet} onToggle={() => set({ pet: !s.pet, open: null })} />
+          <Switch
+            label="Decoración especial"
+            note="Para una ocasión especial · valor adicional"
+            on={s.deco}
+            onToggle={() => set({ deco: !s.deco, open: null })}
+          />
         </div>
+
+        {/* «Continuar» lleva directo a «Tus datos» si la cabaña tiene cupo; «Ver disponibilidad» compara todas las cabañas en esas fechas. */}
+        <Link href={`/reservar?${rq}&paso=datos`} onClick={needDates} className="btn btn-cta min-h-12 w-full px-6 text-[1rem]">
+          {nights ? "Continuar con la reserva" : "Elegir fechas"}
+        </Link>
         {s.error && s.open !== "dates" && (
-          <p role="alert" className="px-2 font-bold">
+          <p role="alert" className="text-[.88rem] font-bold text-error">
             {s.error}
           </p>
         )}
+        <p className="text-center text-[.82rem] text-on-light-muted">La reserva se confirma con un abono del {c.depositPct} % (no reembolsable).</p>
+
+        {/* Desglose del total */}
+        {nights > 0 && (
+          <div className="flex flex-col gap-2.5 text-[.94rem]">
+            {qq ? (
+              <>
+                <p className="flex justify-between gap-4">
+                  <span className="underline decoration-on-light/30 underline-offset-2">{`${cab.full} · ${nightsTxt}`}</span>
+                  <span className="tabular-nums">{cop(qq.base)}</span>
+                </p>
+                {qq.extraGuests > 0 && (
+                  <p className="flex justify-between gap-4">
+                    <span className="underline decoration-on-light/30 underline-offset-2">
+                      {plural(qq.extraGuests, "persona adicional", "personas adicionales")}
+                    </span>
+                    <span className="tabular-nums">{cop(qq.extraAmount)}</span>
+                  </p>
+                )}
+                {s.deco && <p className="text-[.84rem] text-on-light-muted">Decoración especial: valor adicional, se cotiza por WhatsApp.</p>}
+                <p className="flex justify-between gap-4 border-t border-(--line) pt-3 font-extrabold">
+                  <span>Total estimado</span>
+                  <span className="tabular-nums">{totalLabel}</span>
+                </p>
+              </>
+            ) : (
+              <p className="text-on-light-muted">{summary}</p>
+            )}
+          </div>
+        )}
+        <Link
+          href={`/reservar?${rq}${s.checkIn && s.checkOut ? "&paso=cabana" : ""}`}
+          className="self-center text-[.9rem] font-bold text-on-light underline underline-offset-2 hover:text-cta"
+        >
+          Ver disponibilidad de todas las cabañas
+        </Link>
       </div>
     </section>
   );
