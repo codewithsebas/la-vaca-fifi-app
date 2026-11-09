@@ -19,6 +19,7 @@ tabla). Abre una lista con las cabañas físicas libres esas mismas noches: las 
 otros tipos, con su capacidad. Se elige una y se guarda. Las fechas no cambian y el valor tampoco.
 
 **Reglas**
+
 - Es para reservas activas: sin confirmar, confirmadas, reprogramadas y en estadía. No es para canceladas, vencidas ni
   finalizadas.
 - Solo se ofrecen cabañas libres en todas las noches: sin reservas que aparten fechas, sin bloqueos y sin noches de
@@ -31,6 +32,7 @@ otros tipos, con su capacidad. Se elige una y se guarda. Las fechas no cambian y
 - Si la reserva viene de Booking (pieza 2), el panel avisa: «Muévela también en el extranet de Booking a la Cabaña N».
 
 **Archivos**
+
 - `src/app/api/admin/action/route.ts`: acción nueva `move` con `{ cabinTypeId, unit }`. Valida el estado y la
   capacidad, comprueba que esté libre con `loadOccupancy` y `findUnit`, y actualiza `cabin_type_id` y `unit` sin tocar
   fechas ni `quote`.
@@ -49,6 +51,7 @@ otros tipos, con su capacidad. Se elige una y se guarda. Las fechas no cambian y
 ## Pieza 2: Completar los datos de una reserva de Booking
 
 **Qué ve el equipo**
+
 - Al hacer clic en una noche de Booking en el calendario se abre su detalle: cabaña, fechas y texto del iCal. Ahí está
   el botón «Completar datos de la reserva».
 - El formulario es el de «Nueva reserva» con la cabaña y las fechas ya puestas y bloqueadas, y el canal «Booking.com».
@@ -60,6 +63,7 @@ otros tipos, con su capacidad. Se elige una y se guarda. Las fechas no cambian y
 - Las noches de Booking sin completar se pueden filtrar («Booking sin datos») para que nada se quede sin nombre.
 
 **Reglas**
+
 - Entra con `source = 'import'` y `channel = 'Booking.com'`. Así no se mandan correos ni push de «reserva nueva», igual
   que con las importadas. No inventamos pagos: Booking cobra o garantiza por su lado. Si el huésped ya pagó en Booking,
   se registra el pago después, como cualquier pago.
@@ -74,6 +78,7 @@ otros tipos, con su capacidad. Se elige una y se guarda. Las fechas no cambian y
   finalizada.
 
 **Archivos**
+
 - Migración `20261108010000_cambio_de_cabana_y_booking.sql`:
   - Columna `channel_stays.reservation_code` (referencia a `reservations.code`, `on delete set null`, única cuando no
     es nula).
