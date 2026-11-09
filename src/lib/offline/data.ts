@@ -1,6 +1,5 @@
 // La copia base del panel: AdminData (lo último confirmado por el servidor) como filas por colección. Funciones puras.
 import type { AdminData, PanelUser } from "@/lib/types";
-import { mergePanelColors } from "@/lib/panel-colors";
 import type { SiteContent } from "@/lib/site";
 
 export type ListCollection =
@@ -62,8 +61,7 @@ export function dataOf(rows: Row[], me: PanelUser): AdminData | null {
     cabinTypes,
     seasons: list("seasons"),
     unidades: unitsOf(cabinTypes),
-    // La copia pudo guardarse antes de existir los colores del panel, y el servidor no la reenvía hasta que el sitio cambie.
-    site: { ...site, panelColors: mergePanelColors(site.panelColors) },
+    site,
     proofs: list("proofs"),
     payments: list("payments"),
     emails: list("emails"),

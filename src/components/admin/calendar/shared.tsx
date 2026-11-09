@@ -2,7 +2,8 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { MONTHS, WD, WD_FULL, WD_MIN, addDays, cop, fmtDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
-import { cabinName, channelBlocks, isChannelBlock } from "@/lib/booking";
+import { CHANNEL_NAME, cabinName, channelBlocks, isChannelBlock, isFromBooking } from "@/lib/booking";
+import { BookingIcon } from "@/components/ui/icons";
 import { pendingOf } from "@/lib/admin-metrics";
 import type { Block, CabinType, Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
@@ -53,10 +54,10 @@ export const fridayOf = (d: string) => {
 };
 export const BLOCK_BG =
   "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-status-block) 32%, var(--color-panel)) 0 5px, color-mix(in srgb, var(--color-status-block) 14%, var(--color-panel)) 5px 10px)";
-// Noches ocupadas en Booking.com: azul de Booking. No se editan aquí (se gestionan en el extranet de Booking).
+// Noches ocupadas en Booking.com: el azul del menú lateral, con texto blanco.
 export const BOOKING_STYLE: CSSProperties = {
-  background: "color-mix(in srgb, var(--color-status-booking) 22%, var(--color-panel))",
-  boxShadow: "inset 3px 0 0 var(--color-status-booking)",
+  background: "var(--color-sidebar)",
+  color: "#fff",
 };
 export const blockStyle = (b?: Block): CSSProperties => (b && isChannelBlock(b) ? BOOKING_STYLE : { background: BLOCK_BG });
 export const blockHref = (b: Block) => (isChannelBlock(b) ? paths.booking : paths.bloqueos({ editar: b.id }));
@@ -182,7 +183,10 @@ export function ReservationTip({ r, cabin }: { r: Reservation; cabin: string }) 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-3">
-        <strong className="text-[13px]">{r.guest.fullName}</strong>
+        <strong className="flex items-center gap-1.5 text-[13px]">
+          {isFromBooking(r) && <BookingIcon size={13} className="flex-none" />}
+          {r.guest.fullName}
+        </strong>
         <span className="text-paper/70">{r.code}</span>
       </div>
       <span className="text-paper/85">{cabin}</span>
@@ -196,6 +200,15 @@ export function ReservationTip({ r, cabin }: { r: Reservation; cabin: string }) 
       </span>
       {r.status === "pending_deposit" && <span className="text-yellow">Sin confirmar · no aparta las fechas hasta el abono</span>}
       {r.source === "panel" && <span className="text-paper/70">Creada por el equipo</span>}
+      {isFromBooking(r) && (
+        <span
+          className="flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold text-white"
+          style={{ background: "var(--color-sidebar)" }}
+        >
+          <BookingIcon size={12} className="flex-none" />
+          Reserva creada desde Booking
+        </span>
+      )}
       <span className="mt-0.5 flex items-center justify-between gap-2 border-t border-paper/15 pt-1.5">
         <span className="rounded-full px-2 py-px text-[11px] font-bold text-ink" style={{ background: statusOf(r.status).bg }}>
           {statusOf(r.status).label}
@@ -211,10 +224,10 @@ export function BlockTip({ b, cabin }: { b: Block; cabin: string }) {
     <div className="flex flex-col gap-1">
       {isChannelBlock(b) ? (
         <>
-          <strong className="text-[13px]">Booking.com · reserva o cierre</strong>
+          <strong className="text-[13px]">Nueva reserva en Booking</strong>
           <span className="text-paper/85">{cabin}</span>
           <span>{`${fmtDate(b.from)} → ${fmtDate(addDays(b.to, 1))} · ${plural(nightsBetween(b.from, b.to) + 1, "noche", "noches")}`}</span>
-          <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Se gestiona en el extranet de Booking.com</span>
+          <span className="mt-0.5 border-t border-paper/15 pt-1.5 text-paper/60">Clic para completar los datos del huésped</span>
         </>
       ) : (
         <>
@@ -240,7 +253,7 @@ const LEGEND: { label: string; style: CSSProperties; bare?: boolean }[] = [
   { label: "En estadía", style: barStyle({ status: "checked_in" }) },
   { label: "Finalizada", style: barStyle({ status: "completed" }) },
   { label: "Bloqueo", style: { background: BLOCK_BG }, bare: true },
-  { label: "Booking.com", style: { background: "var(--color-status-booking)" }, bare: true },
+  { label: CHANNEL_NAME, style: { background: "var(--color-sidebar)" }, bare: true },
 ];
 
 export function CalendarLegend() {

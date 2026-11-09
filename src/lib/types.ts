@@ -279,6 +279,8 @@ export type NotificationKind =
   | "booking_cancelled"
   | "booking_failed"
   | "channel_conflict"
+  | "channel_moved" // cambió en el panel una reserva enlazada: falta hacer lo mismo en el extranet
+  | "channel_cancelled" // Booking ya no tiene una noche enlazada a una reserva
   | "channel_sync_failed"
   | "reservation_moved"; // sin abono: otra reserva pagó sus fechas y se corrió a las próximas libres
 
@@ -356,6 +358,18 @@ export type ChannelStay = {
   echo: boolean;
   firstSeenAt: string;
   removedAt: string | null;
+  reservationCode: string | null; // ya tiene los datos del huésped: es esa reserva la que ocupa la cabaña
+};
+
+// Datos del huésped copiados del extranet para convertir una noche de Booking en una reserva del panel.
+export type ChannelStayCompletion = {
+  stayId: string;
+  guest: Guest;
+  adults: number;
+  children: number;
+  total: number;
+  ref?: string; // número de reserva en Booking
+  notes?: string;
 };
 
 // Un calendario por cabaña: importUrl es el enlace de exportación de Booking; exportUrl, el que Booking importa del panel.
@@ -458,6 +472,8 @@ export type AdminAction =
       group?: boolean;
     }
   | { code: string; action: "reschedule"; checkIn: string; checkOut: string }
+  // Otra cabaña física, mismas fechas y mismo valor.
+  | { code: string; action: "move"; cabinTypeId: string; unit: number }
   // Plazo nuevo para pagar el abono: amplía (o reactiva, si venció) la retención de una reserva sin abono.
   | { code: string; action: "extend_hold"; group?: boolean } // reactiva una vencida, sin plazo
   | { code: string; action: "note"; text: string }

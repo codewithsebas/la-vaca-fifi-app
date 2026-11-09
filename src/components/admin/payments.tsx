@@ -7,15 +7,18 @@ import { ClockIcon, DownloadIcon, FileTextIcon, HomeIcon, TrendIcon, WalletIcon 
 import { balanceDue, finance, pendingOf, paymentsOf, recordsByCode, type Payment } from "@/lib/admin-metrics";
 import { cop, download, fmtDate, plural } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
+import { StatusPill } from "@/components/ui/status-pill";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { PeriodFilter, usePeriod } from "@/components/admin/period";
 import { ProofCard } from "@/components/admin/proofs";
 import { MODULES, paths } from "@/components/admin/routes";
-import { csv } from "@/components/admin/shared";
+import { csv, norm } from "@/components/admin/shared";
+import { LIST_CARD, LIST_MOBILE_ROW, LIST_ROW, LIST_ROW_HOVER, LIST_ROW_LATEST, ListSearch, ListTableHead } from "@/components/admin/list-table";
+import { RowActions } from "@/components/admin/reservations";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { can } from "@/lib/permissions";
-import { Button, Card, CardHeader, EmptyState, PageHeader, Segmented, StatCard, Tabs } from "@/components/admin/ui";
+import { Badge, Button, Card, EmptyState, PageHeader, StatCard, Tabs } from "@/components/admin/ui";
 
 type Tab = "recibidos" | "por-cobrar" | "comprobantes";
 type ProofFilter = "por-revisar" | "aprobados" | "rechazados" | "todos";
@@ -115,17 +118,23 @@ function ProofsTab() {
 
   return (
     <>
-      <Segmented
-        label="Estado del comprobante"
-        value={filter}
-        onChange={setFilter}
-        options={[
-          { value: "por-revisar", label: "Por revisar", count: count("pending") },
-          { value: "aprobados", label: "Aprobados", count: count("approved") },
-          { value: "rechazados", label: "Rechazados", count: count("rejected") },
-          { value: "todos", label: "Todos" },
-        ]}
-      />
+      <div className="w-full sm:w-[260px]">
+        <label htmlFor="pg-estado" className="sr-only">
+          Estado del comprobante
+        </label>
+        <Combobox
+          id="pg-estado"
+          value={filter}
+          onChange={(v) => setFilter(v as ProofFilter)}
+          searchable={false}
+          options={[
+            { value: "por-revisar", label: "Por revisar", description: plural(count("pending"), "comprobante", "comprobantes") },
+            { value: "aprobados", label: "Aprobados", description: plural(count("approved"), "comprobante", "comprobantes") },
+            { value: "rechazados", label: "Rechazados", description: plural(count("rejected"), "comprobante", "comprobantes") },
+            { value: "todos", label: "Todos" },
+          ]}
+        />
+      </div>
       {list.length ? (
         <>
           <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
@@ -154,9 +163,15 @@ function ReceivedTab() {
   const { data, cabin } = useAdmin();
   const period = usePeriod("30");
   const [cabinId, setCabinId] = useParam("cabana", "");
+  const [q, setQ] = useParam("q", "");
+  const nq = norm(q.trim());
   const records = recordsByCode(data.payments);
   const rows = data.reservations
-    .filter((r) => !cabinId || r.cabinTypeId === cabinId)
+    .filter(
+      (r) =>
+        (!cabinId || r.cabinTypeId === cabinId) &&
+        (!nq || [r.code, r.guest.fullName, r.guest.phone, r.guest.docNumber].some((v) => norm(v || "").includes(nq))),
+    )
     .flatMap((r) => paymentsOf(r, records.get(r.code)))
     .filter((p) => p.date >= period.range.from && p.date <= period.range.to)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -181,82 +196,113 @@ function ReceivedTab() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <ListSearch
+          id="pg-q"
+          label="Buscar pagos"
+          value={q}
+          onChange={setQ}
+          placeholder="Nombre, código, celular o documento"
+          className="w-full sm:w-[300px]"
+        />
         <PeriodFilter period={period} />
         <div className="w-full sm:w-[220px]">
           <Combobox
             value={cabinId}
             onChange={setCabinId}
             options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]}
-            icon={<HomeIcon size={15} className="text-ink-muted" />}
+            icon={<HomeIcon size={14} className="text-ink-muted" />}
           />
         </div>
-      </div>
-      <Card aria-labelledby="pg-rec" className="flex flex-col gap-3 p-4 sm:p-5">
-        <CardHeader
-          id="pg-rec"
-          icon={<WalletIcon size={18} />}
-          title={`${cop(total)} recibidos`}
-          subtitle={`${plural(rows.length, "pago", "pagos")} · ${period.label}`}
-          actions={
-            rows.length ? (
-              <Button size="sm" icon={<DownloadIcon size={14} />} onClick={exportCsv}>
-                Descargar CSV
-              </Button>
-            ) : undefined
-          }
-        />
-        {rows.length ? (
-          <PaymentsTable rows={rows} reset={`${period.range.from}|${period.range.to}|${cabinId}`} />
-        ) : (
-          <EmptyState compact icon={<WalletIcon size={18} />} title="No se recibieron pagos en este periodo" text="Prueba con un periodo más largo." />
+        {rows.length > 0 && (
+          <Button icon={<DownloadIcon size={14} />} onClick={exportCsv} className="ml-auto">
+            Descargar CSV
+          </Button>
         )}
-      </Card>
+      </div>
+      {rows.length ? (
+        <PaymentsTable rows={rows} total={total} reset={`${period.range.from}|${period.range.to}|${cabinId}|${nq}`} />
+      ) : (
+        <Card className="p-4">
+          <EmptyState icon={<WalletIcon size={18} />} title="No hay pagos con esos filtros" text="Prueba con un periodo más largo u otra búsqueda." />
+        </Card>
+      )}
     </>
   );
 }
 
-function PaymentsTable({ rows, reset }: { rows: Payment[]; reset: string }) {
-  const { cabin } = useAdmin();
+function PaymentsTable({ rows, total, reset }: { rows: Payment[]; total: number; reset: string }) {
+  const { cabinLabel, openReservation } = useAdmin();
   const paged = usePaged(rows, "pagos-recibidos", reset);
+  const latest = rows[0];
+  const concept = (p: Payment) => (
+    <span className="inline-flex items-center gap-1.5 text-ink">
+      <span aria-hidden="true" className={`size-2 rounded-[2px] ${p.kind === "deposit" ? "bg-series-1" : "bg-series-2"}`} />
+      {p.kind === "deposit" ? "Abono" : "Saldo"}
+    </span>
+  );
   return (
     <>
-      <div className="-mx-4 overflow-x-auto sm:-mx-5">
-        <table className="w-full min-w-[520px] text-[13.5px]">
-          <thead className="border-y border-line bg-canvas/70 text-left text-[12px] text-ink-muted">
-            <tr>
-              {["Fecha", "Reserva", "Concepto", "Valor"].map((h) => (
-                <th key={h} scope="col" className={`px-4 py-2 font-semibold sm:px-5 ${h === "Valor" ? "text-right" : ""}`}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
+      <Card className={LIST_CARD}>
+        <table className="w-full text-[14px]">
+          <ListTableHead columns={["Reserva", "Huésped", "Cabaña", "Fecha", "Concepto", "Valor", "Acciones"]} right={["Valor", "Acciones"]} />
           <tbody className="divide-y divide-line">
             {paged.rows.map((p) => (
-              <tr key={`${p.r.code}-${p.kind}`} className="transition-colors hover:bg-canvas/60">
-                <td className="px-4 py-2.5 whitespace-nowrap text-ink-muted sm:px-5">{fmtDate(p.date)}</td>
-                <td className="px-4 py-2.5 sm:px-5">
-                  <Link href={paths.reserva(p.r.code)} className="group block">
-                    <span className="block font-semibold text-ink underline-offset-2 group-hover:underline">{p.r.guest.fullName}</span>
-                    <span className="block text-[12px] text-ink-muted">
-                      {p.r.code} · {cabin(p.r.cabinTypeId)?.nombre}
-                    </span>
+              <tr
+                key={`${p.r.code}-${p.kind}`}
+                onClick={() => openReservation(p.r.code)}
+                className={`${LIST_ROW} ${p === latest ? LIST_ROW_LATEST : LIST_ROW_HOVER}`}
+              >
+                <td className="px-4 py-3">
+                  <Link
+                    href={paths.reserva(p.r.code)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="rounded-sm font-bold whitespace-nowrap text-ink underline-offset-2 hover:underline"
+                  >
+                    {p.r.code}
                   </Link>
                 </td>
-                <td className="px-4 py-2.5 sm:px-5">
-                  <span className="inline-flex items-center gap-1.5 text-ink">
-                    <span aria-hidden="true" className={`size-2 rounded-[2px] ${p.kind === "deposit" ? "bg-series-1" : "bg-series-2"}`} />
-                    {p.kind === "deposit" ? "Abono" : "Saldo"}
-                  </span>
+                <td className="px-4 py-3 font-semibold text-ink">{p.r.guest.fullName}</td>
+                <td className="px-4 py-3 text-ink">{cabinLabel(p.r.cabinTypeId, p.r.unit)}</td>
+                <td className="px-4 py-3 whitespace-nowrap text-ink">{fmtDate(p.date)}</td>
+                <td className="px-4 py-3">{concept(p)}</td>
+                <td className="px-4 py-3 text-right font-semibold text-ink tabular-nums">{cop(p.amount)}</td>
+                <td className="px-4 py-3">
+                  <RowActions r={p.r} only={[]} />
                 </td>
-                <td className="px-4 py-2.5 text-right font-semibold text-ink tabular-nums sm:px-5">{cop(p.amount)}</td>
               </tr>
             ))}
           </tbody>
+          <tfoot className="border-t border-line bg-canvas/70">
+            <tr>
+              <td colSpan={5} className="px-4 py-2.5 text-right text-[13px] font-semibold text-ink-muted">
+                Total recibido
+              </td>
+              <td className="px-4 py-2.5 text-right font-bold text-ink tabular-nums">{cop(total)}</td>
+              <td />
+            </tr>
+          </tfoot>
         </table>
-      </div>
-      <Paginator p={paged} noun="pagos" />
+        <Paginator p={paged} noun="pagos" className="border-t border-line px-4 py-3" />
+      </Card>
+      <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:hidden">
+        {paged.rows.map((p) => (
+          <li key={`${p.r.code}-${p.kind}`}>
+            <Link href={paths.reserva(p.r.code)} className={`${LIST_MOBILE_ROW} ${p === latest ? "bg-yellow-soft/70" : "bg-paper"}`}>
+              <span className="flex w-full items-center justify-between gap-2">
+                <strong className="text-[13px] font-bold text-ink-muted">{p.r.code}</strong>
+                <strong className="font-semibold text-ink tabular-nums">{cop(p.amount)}</strong>
+              </span>
+              <span className="font-semibold text-ink">{p.r.guest.fullName}</span>
+              <span className="flex w-full items-center justify-between gap-2 text-[13px] text-ink-muted">
+                <span>{`${cabinLabel(p.r.cabinTypeId, p.r.unit)} · ${fmtDate(p.date)}`}</span>
+                {concept(p)}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Paginator p={paged} noun="pagos" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line xl:hidden" />
     </>
   );
 }
@@ -264,70 +310,129 @@ function PaymentsTable({ rows, reset }: { rows: Payment[]; reset: string }) {
 /* ───────────── Por cobrar ───────────── */
 
 function DueTab({ rows }: { rows: Reservation[] }) {
+  const { data, cabinLabel, openReservation } = useAdmin();
   const [kind, setKind] = useParam<Due>("tipo", "todo");
+  const [q, setQ] = useParam("q", "");
+  const [cabinId, setCabinId] = useParam("cabana", "");
+  const nq = norm(q.trim());
   const list = rows
-    .filter((r) => kind === "todo" || (kind === "abonos" ? pendingOf(r).deposit > 0 : pendingOf(r).balance > 0))
+    .filter(
+      (r) =>
+        (kind === "todo" || (kind === "abonos" ? pendingOf(r).deposit > 0 : pendingOf(r).balance > 0)) &&
+        (!cabinId || r.cabinTypeId === cabinId) &&
+        (!nq || [r.code, r.guest.fullName, r.guest.phone, r.guest.docNumber].some((v) => norm(v || "").includes(nq))),
+    )
     .sort((a, b) => (a.checkIn < b.checkIn ? -1 : 1));
-  const total = list.reduce((s, r) => s + (kind === "abonos" ? pendingOf(r).deposit : kind === "saldos" ? pendingOf(r).balance : pendingOf(r).total), 0);
-  const paged = usePaged(list, "por-cobrar", kind);
+  const amount = (r: Reservation) => (kind === "abonos" ? pendingOf(r).deposit : kind === "saldos" ? pendingOf(r).balance : pendingOf(r).total);
+  const total = list.reduce((s, r) => s + amount(r), 0);
+  const paged = usePaged(list, "por-cobrar", [kind, nq, cabinId].join("|"));
+  const detail = (r: Reservation) => {
+    return r.status === "pending_deposit"
+      ? "Sin confirmar, no aparta las fechas"
+      : balanceDue(r)
+        ? "En estadía, saldo por cobrar"
+        : "Saldo antes de llegar o en recepción";
+  };
 
   return (
     <>
-      <Segmented
-        label="Qué falta por cobrar"
-        value={kind}
-        onChange={setKind}
-        options={[
-          { value: "todo", label: "Todo" },
-          { value: "abonos", label: "Abonos", count: rows.filter((r) => pendingOf(r).deposit > 0).length },
-          { value: "saldos", label: "Saldos", count: rows.filter((r) => pendingOf(r).balance > 0).length },
-        ]}
-      />
-      <Card aria-labelledby="pg-due" className="flex flex-col gap-3 p-4 sm:p-5">
-        <CardHeader
-          id="pg-due"
-          icon={<ClockIcon size={18} />}
-          title={`${cop(total)} por cobrar`}
-          subtitle="Abonos de fechas retenidas y saldos de estadías confirmadas o en curso, ordenados por fecha de llegada."
-        />
-        {list.length ? (
-          <ul className="-mx-2 flex flex-col">
-            {paged.rows.map((r) => {
-              const p = pendingOf(r);
-              const bd = balanceDue(r);
-              return (
-                <li key={r.code}>
-                  <Link
-                    href={paths.reserva(r.code)}
-                    className="flex w-full items-center gap-3 rounded-[16px] px-2.5 py-2.5 text-left transition-colors hover:bg-canvas/70"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13.5px] font-semibold text-ink">{r.guest.fullName}</span>
-                      <span className="block truncate text-[12px] text-ink-muted">
-                        {r.code} · llega {fmtDate(r.checkIn)}
-                        {p.deposit
-                          ? " · sin confirmar, no aparta las fechas"
-                          : bd
-                            ? " · en estadía, saldo por cobrar"
-                            : " · saldo antes de llegar o en recepción"}
-                      </span>
-                    </span>
-                    <span className="text-right">
-                      <span className="block text-[13.5px] font-semibold text-ink tabular-nums">
-                        {cop(kind === "abonos" ? p.deposit : kind === "saldos" ? p.balance : p.total)}
-                      </span>
-                      <span className="block text-[11.5px] text-ink-muted">{p.deposit ? `Abono ${cop(p.deposit)}` : "Saldo"}</span>
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+      <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-3">
+        <ListSearch id="pg-due-q" label="Buscar por cobrar" value={q} onChange={setQ} placeholder="Nombre, código, celular o documento" />
+        <div className="min-w-0">
+          <label htmlFor="pg-tipo" className="sr-only">
+            Qué falta por cobrar
+          </label>
+          <Combobox
+            id="pg-tipo"
+            value={kind}
+            onChange={(v) => setKind(v as Due)}
+            searchable={false}
+            options={[
+              { value: "todo", label: "Todo por cobrar" },
+              { value: "abonos", label: "Abonos", description: plural(rows.filter((r) => pendingOf(r).deposit > 0).length, "reserva", "reservas") },
+              { value: "saldos", label: "Saldos", description: plural(rows.filter((r) => pendingOf(r).balance > 0).length, "reserva", "reservas") },
+            ]}
+          />
+        </div>
+        <div className="min-w-0">
+          <Combobox
+            value={cabinId}
+            onChange={setCabinId}
+            options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]}
+            icon={<HomeIcon size={14} className="text-ink-muted" />}
+          />
+        </div>
+      </div>
+      {list.length ? (
+        <>
+          <Card className={LIST_CARD}>
+            <table className="w-full text-[14px]">
+              <ListTableHead columns={["Reserva", "Huésped", "Cabaña", "Llegada", "Por cobrar", "Estado", "Acciones"]} right={["Por cobrar", "Acciones"]} />
+              <tbody className="divide-y divide-line">
+                {paged.rows.map((r) => (
+                  <tr key={r.code} onClick={() => openReservation(r.code)} className={`${LIST_ROW} ${LIST_ROW_HOVER}`}>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={paths.reserva(r.code)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded-sm font-bold whitespace-nowrap text-ink underline-offset-2 hover:underline"
+                      >
+                        {r.code}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="block font-semibold text-ink">{r.guest.fullName}</span>
+                      <span className="block text-[12.5px] text-ink-muted">{detail(r)}</span>
+                    </td>
+                    <td className="px-4 py-3 text-ink">{cabinLabel(r.cabinTypeId, r.unit)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-ink">{fmtDate(r.checkIn)}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <span className="block font-semibold text-ink tabular-nums">{cop(amount(r))}</span>
+                      <span className="block text-[12px] text-ink-muted">{pendingOf(r).deposit ? "Abono" : "Saldo"}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill status={r.status} size="sm" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <RowActions r={r} only={["pay"]} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t border-line bg-canvas/70">
+                <tr>
+                  <td colSpan={4} className="px-4 py-2.5 text-right text-[13px] font-semibold text-ink-muted">
+                    Total por cobrar
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-bold text-ink tabular-nums">{cop(total)}</td>
+                  <td colSpan={2} />
+                </tr>
+              </tfoot>
+            </table>
+            <Paginator p={paged} noun="reservas" className="border-t border-line px-4 py-3" />
+          </Card>
+          <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:hidden">
+            {paged.rows.map((r) => (
+              <li key={r.code}>
+                <Link href={paths.reserva(r.code)} className={`${LIST_MOBILE_ROW} bg-paper`}>
+                  <span className="flex w-full items-center justify-between gap-2">
+                    <strong className="text-[13px] font-bold text-ink-muted">{r.code}</strong>
+                    <strong className="font-semibold text-ink tabular-nums">{cop(amount(r))}</strong>
+                  </span>
+                  <span className="font-semibold text-ink">{r.guest.fullName}</span>
+                  <span className="text-[13px] text-ink-muted">{`Llega ${fmtDate(r.checkIn)} · ${detail(r)}`}</span>
+                  <Badge tone={pendingOf(r).deposit ? "warning" : "neutral"}>{pendingOf(r).deposit ? "Abono" : "Saldo"}</Badge>
+                </Link>
+              </li>
+            ))}
           </ul>
-        ) : (
-          <EmptyState compact icon={<ClockIcon size={18} />} title="No hay pagos pendientes" />
-        )}
-        <Paginator p={paged} noun="reservas" />
-      </Card>
+          <Paginator p={paged} noun="reservas" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line xl:hidden" />
+        </>
+      ) : (
+        <Card className="p-4">
+          <EmptyState icon={<ClockIcon size={18} />} title={rows.length ? "No hay pagos pendientes con esos filtros" : "No hay pagos pendientes"} />
+        </Card>
+      )}
     </>
   );
 }

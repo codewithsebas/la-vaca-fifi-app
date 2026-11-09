@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   BanIcon,
+  BookingIcon,
   CalendarIcon,
+  ClockIcon,
   CloseIcon,
   FileTextIcon,
   HomeIcon,
@@ -14,29 +16,33 @@ import {
   SearchIcon,
   WalletIcon,
   WhatsAppIcon,
+  SwapIcon,
 } from "@/components/ui/icons";
 import { useLabelTip } from "@/components/ui/floating";
 import { StatusPill } from "@/components/ui/status-pill";
-import { paymentState } from "@/lib/admin-metrics";
-import { STATUS, isISO, monthStart, plural } from "@/lib/format";
+import { paymentState, pendingOf } from "@/lib/admin-metrics";
+import { STATUS, addDays, cop, isISO, monthStart, plural } from "@/lib/format";
 import { lastOfMonth, monthOptions } from "@/components/admin/calendar/shared";
-import type { Reservation, ReservationStatus } from "@/lib/types";
+import { CHANNEL_NAME, isFromBooking, staysWithoutData } from "@/lib/booking";
+import { LIST_CARD_BASE } from "@/components/admin/list-table";
+import type { ChannelStay, Reservation, ReservationStatus } from "@/lib/types";
+import { BookingStayDialog, BookingStaysPending } from "@/components/admin/booking-stay";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
 import { NewReservationDialog } from "@/components/admin/new-reservation";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { MODULES, paths } from "@/components/admin/routes";
-import { adminInput, norm, rowOf } from "@/components/admin/shared";
+import { ARRIVING, DEPARTING, adminInput, norm, rowOf } from "@/components/admin/shared";
 import { SyncMark } from "@/components/admin/sync";
 import { useReservationActions, type ActionKind } from "@/components/admin/reservation-detail";
-import { Badge, Button, Card, EmptyState, IconButton, ModalPresence, iconButtonClass } from "@/components/admin/ui";
+import { Badge, Button, Card, EmptyState, IconButton, ModalPresence, StatCard, iconButtonClass } from "@/components/admin/ui";
 
 // Más reciente primero; si dos se crearon a la vez (un grupo), desempata el código para que el orden no salte.
 const newestFirst = (a: Reservation, b: Reservation) => b.createdAt.localeCompare(a.createdAt) || b.code.localeCompare(a.code);
 
 // Un solo filtro de estado: los estados de la reserva y dos vistas de trabajo (comprobantes por revisar, próximas llegadas).
-type View = "" | "comprobantes" | "proximas" | ReservationStatus;
+type View = "" | "comprobantes" | "proximas" | "booking-sin-datos" | ReservationStatus;
 type Sort = "creada-desc" | "llegada-desc" | "llegada-asc" | "valor-desc";
 
 // Lista de reservas. Los filtros viven en la URL: al abrir una reserva y volver, la lista sigue igual.
@@ -49,6 +55,8 @@ export function ReservationsView() {
   const [toP, setTo] = useParam("hasta", "");
   const [sort, setSort] = useParam<Sort>("orden", "creada-desc");
   const [creating, setCreating] = useState(false);
+  const [staying, setStaying] = useState<ChannelStay | null>(null);
+  const missing = staysWithoutData(data.channelStays ?? [], today).length;
   const from = isISO(fromP) ? fromP : null;
   const to = isISO(toP) ? toP : null;
 
@@ -124,6 +132,7 @@ export function ReservationsView() {
             </Button>
           </div>
         </header>
+        <ReservationStats />
         <form
           role="search"
           aria-label="Filtrar reservas"
@@ -156,6 +165,7 @@ export function ReservationsView() {
                 { value: "", label: "Todas las reservas" },
                 { value: "comprobantes", label: "Comprobantes por revisar", description: plural(proofCodes.size, "reserva", "reservas") },
                 { value: "proximas", label: "Próximas llegadas", description: "Pendientes, confirmadas y reprogramadas" },
+                { value: "booking-sin-datos", label: "Booking sin datos", description: plural(missing, "estadía por completar", "estadías por completar") },
                 ...(Object.entries(STATUS) as [ReservationStatus, (typeof STATUS)[ReservationStatus]][]).map(([v, s]) => ({
                   value: v,
                   label: s.label,
@@ -233,10 +243,14 @@ export function ReservationsView() {
         </form>
       </div>
 
-      {list.length > 0 ? (
-        <>
-          <Card className="hidden overflow-hidden bg-paper! shadow-[0_1px_2px_rgb(0_0_0/0.04)] ring-1 ring-line lg:block">
-            <table className="w-full text-[14px]">
+      <ModalPresence>{staying && <BookingStayDialog stay={staying} onClose={() => setStaying(null)} />}</ModalPresence>
+      {view === "booking-sin-datos" ? (
+        <BookingStaysPending onComplete={setStaying} />
+      ) : list.length > 0 ? (
+        // La tabla necesita 1060 px: según el espacio real (con el menú lateral abierto o cerrado), tabla o tarjetas.
+        <div className="@container flex flex-col gap-4">
+          <Card className={`hidden @min-[1060px]:block ${LIST_CARD_BASE}`}>
+            <table className="w-full text-[14px] [&_td]:px-3 [&_th]:px-3">
               <thead className="border-b border-line bg-canvas/70 text-left text-[12px] font-semibold text-ink-muted">
                 <tr>
                   {["Reserva", "Huésped", "Cabaña", "Fechas", "Total", "Pago", "Estado"].map((h) => (
@@ -267,7 +281,15 @@ export function ReservationsView() {
                         >
                           {x.code}
                         </Link>
-                        {r.source === "import" && <span className="block text-[11.5px] text-ink-muted">{r.channel || "Importada"}</span>}
+                        {r.source === "import" &&
+                          (isFromBooking(r) ? (
+                            <span className="flex items-center gap-1 text-[11.5px] whitespace-nowrap text-ink-muted">
+                              <BookingIcon size={12} className="flex-none" />
+                              {CHANNEL_NAME}
+                            </span>
+                          ) : (
+                            <span className="block text-[11.5px] text-ink-muted">{r.channel || "Importada"}</span>
+                          ))}
                       </td>
                       <td className="px-4 py-3">
                         <span className="block font-semibold text-ink">{x.name}</span>
@@ -304,7 +326,7 @@ export function ReservationsView() {
             </table>
             <Paginator p={paged} noun="reservas" className="border-t border-line px-4 py-3" />
           </Card>
-          <ul className="flex flex-col gap-2.5 lg:hidden">
+          <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 @min-[1060px]:hidden">
             {paged.rows.map((r) => {
               const x = rowOf(r, cabinLabel);
               const pay = paymentState(r);
@@ -330,8 +352,8 @@ export function ReservationsView() {
               );
             })}
           </ul>
-          <Paginator p={paged} noun="reservas" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line lg:hidden" />
-        </>
+          <Paginator p={paged} noun="reservas" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line @min-[1060px]:hidden" />
+        </div>
       ) : (
         <Card className="p-4">
           <EmptyState
@@ -346,12 +368,47 @@ export function ReservationsView() {
   );
 }
 
+// Resumen de todas las reservas: no cambia con los filtros de la lista. Llegadas y salidas se cuentan igual que en Inicio.
+function ReservationStats() {
+  const { data, today } = useAdmin();
+  const R = data.reservations;
+  const arrivals = R.filter((r) => r.checkIn === today && ARRIVING.includes(r.status)).length;
+  const departures = R.filter((r) => r.checkOut === today && DEPARTING.includes(r.status)).length;
+  const inHouse = R.filter((r) => r.status === "checked_in").length;
+  const upcoming = R.filter((r) => r.checkIn >= today && ARRIVING.includes(r.status));
+  const week = addDays(today, 7);
+  const thisWeek = upcoming.filter((r) => r.checkIn <= week).length;
+  const unpaid = R.filter((r) => pendingOf(r).deposit > 0); // La misma cuenta de Pagos.
+
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatCard accent="blue" label="Llegadas hoy" value={arrivals} hint={arrivals ? "por recibir" : "Ninguna hoy"} icon={<LoginIcon size={15} />} />
+      <StatCard
+        accent="green"
+        label="En estadía"
+        value={inHouse}
+        hint={departures ? plural(departures, "salida hoy", "salidas hoy") : "Sin salidas hoy"}
+        icon={<HomeIcon size={15} />}
+      />
+      <StatCard accent="pink" label="Por llegar" value={upcoming.length} hint={`${thisWeek} en los próximos 7 días`} icon={<CalendarIcon size={15} />} />
+      <StatCard
+        accent="yellow"
+        label="Sin abono"
+        value={unpaid.length}
+        hint={unpaid.length ? `${cop(unpaid.reduce((s, r) => s + pendingOf(r).deposit, 0))} por recibir` : "Ninguno ahora"}
+        icon={<ClockIcon size={15} />}
+      />
+    </div>
+  );
+}
+
 // Icono y gesto (globals.css, [data-gesture]) de cada acción de la fila.
 const ACTION_ICON: Record<ActionKind, { icon: ReactNode; gesture: string }> = {
   pay: { icon: <WalletIcon size={15} />, gesture: "pay" },
   checkin: { icon: <LoginIcon size={15} />, gesture: "checkin" },
   checkout: { icon: <LogoutIcon size={15} />, gesture: "checkout" },
   reschedule: { icon: <CalendarIcon size={15} />, gesture: "calendar" },
+  move: { icon: <SwapIcon size={15} />, gesture: "checkin" },
   // Sin grupo, «Cancelar reserva»; en un grupo, la X es solo esta cabaña y el círculo tachado, todo el grupo.
   cancel: { icon: <CloseIcon size={15} />, gesture: "cancel" },
   "cancel-group": { icon: <BanIcon size={15} />, gesture: "cancel" },
@@ -359,24 +416,27 @@ const ACTION_ICON: Record<ActionKind, { icon: ReactNode; gesture: string }> = {
 
 // Las mismas acciones del detalle de la reserva, como botones de icono con su nombre en el tooltip. Los clics no abren la
 // reserva (la fila entera sí).
-function RowActions({ r }: { r: Reservation }) {
+// `only`: deja solo esas acciones (WhatsApp siempre está).
+export function RowActions({ r, only }: { r: Reservation; only?: ActionKind[] }) {
   const { actions, whatsapp, dialog } = useReservationActions(r);
   const waTip = useLabelTip("WhatsApp");
   return (
     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-      {actions.map((a) => (
-        <IconButton
-          key={a.label}
-          label={a.disabled ? `${a.label} · ${a.disabled}` : a.label}
-          size="sm"
-          variant={a.primary ? "primary" : a.danger ? "danger-ghost" : "secondary"}
-          disabled={!!a.disabled}
-          data-gesture={ACTION_ICON[a.id].gesture}
-          onClick={a.run}
-        >
-          {ACTION_ICON[a.id].icon}
-        </IconButton>
-      ))}
+      {actions
+        .filter((a) => !only || only.includes(a.id))
+        .map((a) => (
+          <IconButton
+            key={a.label}
+            label={a.disabled ? `${a.label} · ${a.disabled}` : a.label}
+            size="sm"
+            variant={a.primary ? "primary" : a.danger ? "danger-ghost" : "secondary"}
+            disabled={!!a.disabled}
+            data-gesture={ACTION_ICON[a.id].gesture}
+            onClick={a.run}
+          >
+            {ACTION_ICON[a.id].icon}
+          </IconButton>
+        ))}
       <a
         href={whatsapp}
         target="_blank"

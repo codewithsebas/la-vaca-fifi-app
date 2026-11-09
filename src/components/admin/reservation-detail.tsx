@@ -8,6 +8,7 @@ import { useState, type ReactNode } from "react";
 import {
   AlertIcon,
   ArrowRightIcon,
+  BookingIcon,
   CalendarIcon,
   CheckIcon,
   ClockIcon,
@@ -29,7 +30,7 @@ import {
 } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/status-pill";
 import { balanceDue, buildClients, pendingOf, typeMarks, type ClientSummary } from "@/lib/admin-metrics";
-import { ACTIVE_STATUSES, busyBlocks, validateGuest } from "@/lib/booking";
+import { ACTIVE_STATUSES, CHANNEL_NAME, busyBlocks, isFromBooking, validateGuest } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { config } from "@/lib/config";
 import { can } from "@/lib/permissions";
@@ -43,6 +44,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { useAdmin } from "@/components/admin/context";
 import { BathroomWarning } from "@/components/admin/bathrooms";
 import { initialsOf } from "@/components/admin/calendar/shared";
+import { MoveCabinDialog } from "@/components/admin/move-cabin";
 import { ProofCard } from "@/components/admin/proofs";
 import { paths } from "@/components/admin/routes";
 import { SyncMark } from "@/components/admin/sync";
@@ -69,7 +71,7 @@ import {
 
 const OCC: Record<string, string> = { aniversario: "Aniversario", cumpleanos: "Cumpleaños", propuesta: "Propuesta", otra: "Otra" };
 
-export type ActionKind = "pay" | "checkin" | "checkout" | "reschedule" | "cancel" | "cancel-group";
+export type ActionKind = "pay" | "checkin" | "checkout" | "reschedule" | "move" | "cancel" | "cancel-group";
 export type Action = { id: ActionKind; label: string; primary: boolean; danger: boolean; disabled?: string; run: () => void };
 type ActionId = "checkin" | "checkout" | "cancel" | "reschedule";
 
@@ -198,7 +200,14 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
       <SyncMark entity={`reservations:${r.code}`} />
       {inGroup && <Badge tone="info">{`Grupo ${r.groupCode} · ${plural(group.length, "cabaña", "cabañas")}`}</Badge>}
       {r.source === "panel" && <Badge tone="neutral">Creada por el equipo</Badge>}
-      {r.source === "import" && <Badge tone="neutral">{`Importada${r.channel ? ` · ${r.channel}` : ""}`}</Badge>}
+      {isFromBooking(r) ? (
+        <Badge tone="neutral" icon={<BookingIcon size={12} />}>
+          {CHANNEL_NAME}
+        </Badge>
+      ) : (
+        r.source === "import" && <Badge tone="neutral">{`Importada${r.channel ? ` · ${r.channel}` : ""}`}</Badge>
+      )}
+      {(data.channelStays ?? []).some((s) => s.reservationCode === r.code && !s.removedAt) && <Badge tone="info">Enlazada con Booking</Badge>}
       {pendingProof && (
         <Badge tone="info" icon={<FileTextIcon size={12} />}>
           Comprobante por revisar
@@ -876,6 +885,7 @@ const PAY_ERRORS: Record<string, string> = {
 export function useReservationActions(r: Reservation) {
   const { data, ask, cabinLabel, today, reload } = useAdmin();
   const [paying, setPaying] = useState<string | null>(null); // título del diálogo de pago abierto
+  const [moving, setMoving] = useState(false);
   const cabin = cabinLabel(r.cabinTypeId, r.unit);
   const group = groupOf(data.reservations, r);
   const inGroup = group.length > 1;
@@ -933,7 +943,10 @@ export function useReservationActions(r: Reservation) {
     if (due) actions.push(pay("Registrar pago del saldo", true));
     actions.push(act("Marcar check-out", "checkout", { primary: !due, disabled: due ? "Disponible cuando el saldo esté pagado" : undefined }));
   }
+  const move: Action = { id: "move", label: "Cambiar de cabaña", primary: false, danger: false, run: () => setMoving(true) };
+  if (r.status === "checked_in") actions.push(move);
   if (["pending_deposit", "confirmed", "rescheduled"].includes(r.status)) {
+    actions.push(move);
     actions.push(
       act("Reprogramar", "reschedule", {
         reschedule: true,
@@ -965,7 +978,12 @@ export function useReservationActions(r: Reservation) {
   }
 
   const whatsapp = waTo(r.guest.phone, `Hola ${r.guest.fullName.split(" ")[0]}, te escribimos de ${config.name} por tu reserva ${r.code}.`);
-  const dialog = <ModalPresence>{paying && <PaymentDialog r={m} group={inGroup} title={paying} onClose={() => setPaying(null)} />}</ModalPresence>;
+  const dialog = (
+    <>
+      <ModalPresence>{paying && <PaymentDialog r={m} group={inGroup} title={paying} onClose={() => setPaying(null)} />}</ModalPresence>
+      <ModalPresence>{moving && <MoveCabinDialog r={r} onClose={() => setMoving(false)} />}</ModalPresence>
+    </>
+  );
   return { actions, whatsapp, earlyDue, dialog };
 }
 

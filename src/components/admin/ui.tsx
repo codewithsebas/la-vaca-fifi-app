@@ -676,7 +676,7 @@ export function Breadcrumbs({ items, className = "" }: { items: Crumb[]; classNa
 
 export function PageHeader({ title, description, actions, children }: { title: string; description?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
         <h1 id="ad-title" tabIndex={-1} className="text-[25px] leading-[1.12] font-bold tracking-[-0.03em] text-ink focus:outline-none">
           {title}
@@ -932,7 +932,7 @@ export function StatCard({
               <span aria-hidden="true">{up ? "▲" : "▼"}</span>
               <span className="sr-only">{up ? "Sube" : "Baja"}</span>&nbsp;
               {Math.abs(delta).toLocaleString("es-CO", { maximumFractionDigits: deltaUnit === "pp" || Math.abs(delta) >= 10 ? 0 : 1 })}
-              {deltaUnit === "pp" ? " p. p." : " %"}
+              {deltaUnit === "pp" ? " puntos" : " %"}
             </span>
           )}
           {delta === null && <span className="font-semibold">Sin datos previos</span>}

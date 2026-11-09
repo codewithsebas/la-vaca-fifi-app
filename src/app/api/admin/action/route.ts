@@ -1,5 +1,5 @@
 import { after, type NextRequest } from "next/server";
-import { TRANSITIONS, computeQuote, findUnit, normalizePhone, validateGuest } from "@/lib/booking";
+import { TRANSITIONS, computeQuote, findUnit, normalizePhone, unitFree, validateGuest } from "@/lib/booking";
 import { addDays, isISO, nightsBetween } from "@/lib/format";
 import { isExclusionViolation, loadCabinTypes, loadDepositPct, loadOccupancy, loadSeasons, toReservation } from "@/lib/server/db";
 import { baseVersionOf, businessError, fail, json, occurredAtOf, opIdOf, operationDay, readJson, requireStaff, syncRoute } from "@/lib/server/http";
@@ -143,6 +143,17 @@ export const POST = syncRoute(async (req: NextRequest) => {
         .throwOnError();
       // Cambiar las fechas encola el correo al huésped (lo hace la base de datos): se envía después de responder.
       after(() => processOutbox(siteUrl(originOf(req))));
+    } else if (b.action === "move") {
+      // Otra cabaña, mismas fechas y mismo valor. Repetir la operación (cola sin conexión) no hace nada.
+      const { types, units } = await loadCabinTypes(sb, { activeOnly: true });
+      const type = types.find((t) => t.id === b.cabinTypeId);
+      if (!type || !Number.isInteger(b.unit) || b.unit < 1 || b.unit > (units[type.id] ?? 0)) return fail(400, "INVALID_BODY");
+      if (current.cabin_type_id !== type.id || current.unit !== b.unit) {
+        if (current.adults + current.children > type.maxPersonas) return fail(422, "OVER_CAPACITY");
+        const occ = await loadOccupancy(sb, current.check_in, addDays(current.check_out, -1), type.id);
+        if (!unitFree(occ, units[type.id] ?? 0, type.id, b.unit, current.check_in, current.check_out, current.code)) return fail(409, "DATES_UNAVAILABLE");
+        await sb.from("reservations").update({ cabin_type_id: type.id, unit: b.unit }).eq("code", current.code).throwOnError();
+      }
     } else if (b.action === "cancel" && groupCode) {
       if (b.group) {
         // La principal al final: su aviso y su correo hablan por el grupo.

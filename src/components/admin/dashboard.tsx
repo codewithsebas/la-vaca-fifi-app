@@ -24,7 +24,7 @@ import {
 import { StatusPill } from "@/components/ui/status-pill";
 import { Combobox } from "@/components/ui/combobox";
 import { balanceDue, pendingOf } from "@/lib/admin-metrics";
-import { BLOCKING_STATUSES, busyBlocks } from "@/lib/booking";
+import { BLOCKING_STATUSES, busyBlocks, isFromBooking, staysWithoutData } from "@/lib/booking";
 import { MONTHS, addDays, cop, countdown, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, waTo } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
@@ -321,18 +321,24 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
                 <li
                   key={d.day}
                   aria-label={`${fmtDate(d.day)}: ${plural(d.n, "llegada", "llegadas")}`}
-                  {...tip(() => (
-                    <span>
-                      <strong>{i === 0 ? "Hoy" : fmtDate(d.day)}</strong> · {plural(d.n, "llegada", "llegadas")}
-                    </span>
-                  ))}
+                  {...tip(
+                    () => (
+                      <span>
+                        <strong>{i === 0 ? "Hoy" : fmtDate(d.day)}</strong> · {plural(d.n, "llegada", "llegadas")}
+                      </span>
+                    ),
+                    { anchor: (el) => el.firstElementChild?.firstElementChild as HTMLElement | null },
+                  )}
                   className="flex h-full flex-1 items-end justify-center"
                 >
                   <span
                     aria-hidden="true"
-                    className={`block w-full max-w-[11px] rounded-full ${d.n ? "bg-ink" : "border-[1.5px] border-dashed border-ink/45"}`}
+                    className={`relative block w-full max-w-[11px] rounded-full ${d.n ? "bg-ink" : "border-[1.5px] border-dashed border-ink/45"}`}
                     style={{ height: `${heights[i]}%` }}
-                  />
+                  >
+                    {/* Un poco arriba de la barra: de aquí sale el tooltip. */}
+                    <span className="absolute -top-2.5 left-1/2 size-0" />
+                  </span>
                 </li>
               ))}
             </ol>
@@ -458,16 +464,22 @@ function OccupancyLine({ span }: { span: { day: string; pc: number; busy: number
         />
         {/* Zonas invisibles por día para el detalle al pasar el mouse. */}
         <ol aria-hidden="true" className="absolute inset-0 flex">
-          {span.map((d) => (
+          {span.map((d, i) => (
             <li
               key={d.day}
               className="h-full flex-1"
-              {...tip(() => (
-                <span>
-                  <strong>{fmtDate(d.day)}</strong> · {d.pc} % · {d.busy} de {d.total} cabañas
-                </span>
-              ))}
-            />
+              {...tip(
+                () => (
+                  <span>
+                    <strong>{fmtDate(d.day)}</strong> · {d.pc} % · {d.busy} de {d.total} cabañas
+                  </span>
+                ),
+                { anchor: (el) => el.firstElementChild as HTMLElement | null },
+              )}
+            >
+              {/* Un poco arriba del punto de ese día en la línea: el tooltip sale de aquí y no de lo alto de la zona. */}
+              <span className="absolute size-0" style={{ left: `${(i / (span.length - 1)) * 100}%`, top: `calc(${y(pcs[i])}% - 10px)` }} />
+            </li>
           ))}
         </ol>
       </div>
@@ -780,10 +792,14 @@ function MiniCalendar() {
     const d = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + n, 1));
     setMonth(d.toISOString().slice(0, 10));
   };
-  const arrivals = new Map<string, number>();
-  data.reservations.forEach(
-    (r) => ARRIVING.concat(["checked_in", "completed"]).includes(r.status) && arrivals.set(r.checkIn, (arrivals.get(r.checkIn) ?? 0) + 1),
-  );
+  // Llegadas de cada día, separando las de Booking: las reservas creadas desde Booking y las noches que aún no tienen datos.
+  const arrivals = new Map<string, { own: number; booking: number }>();
+  const add = (day: string, kind: "own" | "booking") => {
+    const a = arrivals.get(day) ?? { own: 0, booking: 0 };
+    arrivals.set(day, { ...a, [kind]: a[kind] + 1 });
+  };
+  data.reservations.forEach((r) => ARRIVING.concat(["checked_in", "completed"]).includes(r.status) && add(r.checkIn, isFromBooking(r) ? "booking" : "own"));
+  staysWithoutData(data.channelStays ?? [], today).forEach((s) => add(s.checkIn, "booking"));
   const label = `${MONTHS[first.getUTCMonth()]} ${first.getUTCFullYear()}`;
 
   return (
@@ -815,13 +831,14 @@ function MiniCalendar() {
           return Array.from({ length: 7 }, (_, i) => {
             const day = addDays(weekStart, i);
             const inMonth = day.slice(0, 7) === month.slice(0, 7);
-            const n = arrivals.get(day) ?? 0;
+            const { own, booking } = arrivals.get(day) ?? { own: 0, booking: 0 };
+            const n = own + booking;
             const isToday = day === today;
             return (
               <Link
                 key={day}
                 href={paths.calendario({ vista: "dia", fecha: day })}
-                aria-label={`${fmtDate(day)}${n ? `: ${plural(n, "llegada", "llegadas")}` : ""}`}
+                aria-label={`${fmtDate(day)}${n ? `: ${plural(n, "llegada", "llegadas")}${booking ? `, ${booking} de Booking` : ""}` : ""}`}
                 className={`relative mx-auto grid size-9 place-items-center rounded-full text-[13px] tabular-nums transition-colors ${
                   isToday
                     ? "bg-ink font-bold text-paper"
@@ -833,12 +850,27 @@ function MiniCalendar() {
                 }`}
               >
                 {parseISO(day).getUTCDate()}
-                {n > 0 && <span aria-hidden="true" className="absolute bottom-1 size-1 rounded-full bg-ink" />}
+                {n > 0 && (
+                  <span aria-hidden="true" className="absolute bottom-[3px] flex gap-0.5">
+                    {own > 0 && <span className={`size-1.5 rounded-full ${isToday ? "bg-paper" : "bg-ink"}`} />}
+                    {booking > 0 && <span className="size-1.5 rounded-full bg-blue" />}
+                  </span>
+                )}
               </Link>
             );
           });
         })}
       </div>
+      <p aria-hidden="true" className="flex items-center justify-center gap-4 text-[11.5px] font-medium text-ink-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-ink" />
+          Reservas
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-blue" />
+          Booking
+        </span>
+      </p>
     </section>
   );
 }

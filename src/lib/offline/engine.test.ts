@@ -508,6 +508,24 @@ describe("reservas sin conexión", () => {
   });
 });
 
+describe("cambiar de cabaña sin conexión", () => {
+  it("cambia la cabaña y conserva las fechas y el valor", async () => {
+    const { engine } = await start(fakeServer(), false);
+    const res = await engine.mutate("reservation.action", { code: "VF-AAAAA", action: "move", cabinTypeId: "c1", unit: 2 });
+    expect(res.queued).toBe(true);
+    const r = engine.data.reservations[0];
+    expect([r.cabinTypeId, r.unit, r.checkIn, r.checkOut, r.quote.total]).toEqual(["c1", 2, "2099-02-01", "2099-02-03", 1000]);
+  });
+
+  it("no deja pasar a una cabaña que no existe", async () => {
+    const { engine } = await start(fakeServer(), false);
+    const taken = await engine.mutate("reservation.action", { code: "VF-AAAAA", action: "move", cabinTypeId: "c1", unit: 3 });
+    expect(taken.status).toBe(400);
+    await engine.mutate("reservation.action", { code: "VF-AAAAA", action: "move", cabinTypeId: "c1", unit: 2 });
+    expect(engine.data.reservations[0].unit).toBe(2);
+  });
+});
+
 describe("importar", () => {
   it("las filas que el servidor rechaza quedan a la vista, no se pierden", async () => {
     const srv = fakeServer();

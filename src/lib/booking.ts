@@ -17,6 +17,7 @@ import type {
   ReservationInput,
   ReservationStatus,
   SeasonDayRate,
+  ChannelStayCompletion,
 } from "@/lib/types";
 
 export const ACTIVE_STATUSES: ReservationStatus[] = ["pending_deposit", "confirmed", "rescheduled", "checked_in"];
@@ -32,6 +33,7 @@ export const TRANSITIONS: Record<string, { from: ReservationStatus[]; to?: Reser
   checkout: { from: ["checked_in"], to: "completed" },
   cancel: { from: ["pending_deposit", "confirmed", "rescheduled"], to: "cancelled" },
   reschedule: { from: ["pending_deposit", "confirmed", "rescheduled"] },
+  move: { from: ["pending_deposit", "confirmed", "rescheduled", "checked_in"] },
   extend_hold: { from: ["pending_deposit", "expired"] },
   note: { from: ["pending_deposit", "confirmed", "cancelled", "expired", "rescheduled", "checked_in", "completed"] },
   guest: { from: ["pending_deposit", "confirmed", "cancelled", "expired", "rescheduled", "checked_in", "completed"] },
@@ -486,20 +488,49 @@ export const CHANNEL_ID = "booking:";
 // Las noches ocupadas en Booking entran a la disponibilidad como bloqueos (hasta la última noche, incluida): así cuentan
 // en freeUnits, findUnit y el calendario del panel sin reglas aparte. No cuentan las canceladas (removedAt) ni los ecos
 // (las noches que Booking cerró porque ya estaban ocupadas en el panel).
+// Nombre con el que el calendario muestra lo que llega de Booking.
+export const CHANNEL_NAME = "Reserva Booking";
+
+// ¿Se creó completando una noche de Booking? Solo esas guardan el canal «Booking.com». Las importadas por correo de Ayenda
+// quedaron con «Booking» aunque no todas vengan de ahí.
+export const isFromBooking = (r: { source?: string; channel?: string }) => r.source === "import" && r.channel === "Booking.com";
+
 export function channelBlocks(stays: ChannelStay[]): Block[] {
   return stays
-    .filter((s) => !s.removedAt && !s.echo)
+    .filter((s) => !s.removedAt && !s.echo && !s.reservationCode) // enlazada a una reserva: ocupa la reserva
     .map((s) => ({
       id: CHANNEL_ID + s.id,
       cabinTypeId: s.cabinTypeId,
       unit: s.unit,
       from: s.checkIn,
       to: addDays(s.checkOut, -1),
-      reason: "Booking.com",
+      reason: CHANNEL_NAME,
       notes: s.summary,
     }));
 }
 export const isChannelBlock = (b: Pick<Block, "id">) => b.id.startsWith(CHANNEL_ID);
+export const channelStayIdOf = (b: Pick<Block, "id">) => b.id.slice(CHANNEL_ID.length);
+
+// Noches de Booking que aún no tienen los datos del huésped. Los cierres largos del extranet no cuentan (el iCal no los
+// distingue de una reserva): una estadía normal no pasa de 30 noches.
+export const staysWithoutData = (stays: ChannelStay[], today: string) =>
+  stays
+    .filter((s) => !s.removedAt && !s.echo && !s.reservationCode && s.checkOut > addDays(today, -30) && nightsBetween(s.checkIn, s.checkOut) <= 30)
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+
+// Datos para completar una noche de Booking: nombre y celular obligatorios; documento y correo, si los hay.
+export function validateStayCompletion(b: ChannelStayCompletion, type: Pick<CabinType, "maxPersonas"> | undefined): FieldErrors {
+  const g = b.guest ?? ({} as ChannelStayCompletion["guest"]);
+  const f: FieldErrors = Object.fromEntries(Object.entries(validateGuest(g)).map(([k, v]) => [`guest.${k}`, v]));
+  const adults = Number(b.adults);
+  const children = Number(b.children);
+  if (!Number.isInteger(adults) || adults < 1 || !Number.isInteger(children) || children < 0) f.adults = "Número de huéspedes no válido.";
+  else if (type && adults + children > type.maxPersonas) f.adults = `Máximo ${type.maxPersonas} personas en esta cabaña.`;
+  if (!Number.isInteger(b.total) || b.total <= 0 || b.total > 100_000_000) f.total = "Escribe el valor total que muestra Booking.";
+  if ((b.ref ?? "").length > 60) f.ref = "El número de reserva es demasiado largo.";
+  if ((b.notes ?? "").length > 500) f.notes = "El texto es demasiado largo.";
+  return f;
+}
 
 // Bloqueos del panel más las noches de Booking: lo que ocupa una cabaña al calcular disponibilidad en el panel.
 export const busyBlocks = (d: { blocks: Block[]; channelStays?: ChannelStay[] }): Block[] => [...d.blocks, ...channelBlocks(d.channelStays ?? [])];

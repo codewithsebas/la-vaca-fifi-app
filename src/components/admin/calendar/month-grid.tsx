@@ -2,6 +2,7 @@
 
 import { LoginIcon } from "@/components/ui/icons";
 import { addDays, fmtDate, parseISO, plural, statusOf } from "@/lib/format";
+import { CHANNEL_NAME, isChannelBlock } from "@/lib/booking";
 import { useAdmin } from "@/components/admin/context";
 import { useTip } from "@/components/ui/floating";
 import { CalendarLegend, DayName, type Unit, barColor, blocks, lastOfMonth, mondayOf, occupies, useCalBlocks } from "@/components/admin/calendar/shared";
@@ -55,8 +56,8 @@ export function MonthGrid({ month, rows, today, onPick }: { month: string; rows:
                       {s.kind === "res"
                         ? `${s.r.guest.fullName} (${statusOf(s.r.status).label})`
                         : s.kind === "block"
-                          ? s.b.reason === "Booking.com"
-                            ? "Booking.com"
+                          ? isChannelBlock(s.b)
+                            ? CHANNEL_NAME
                             : `Bloqueada · ${s.b.reason}`
                           : "Libre"}
                     </span>

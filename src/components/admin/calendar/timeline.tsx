@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { BanIcon, BathIcon, ChevronDownIcon, PlusIcon, RefreshIcon } from "@/components/ui/icons";
-import { computeQuote, isChannelBlock, nightlyRate, unitLabel } from "@/lib/booking";
+import { BanIcon, BathIcon, BookingIcon, ChevronDownIcon, PlusIcon } from "@/components/ui/icons";
+import { CHANNEL_NAME, channelStayIdOf, computeQuote, isChannelBlock, isFromBooking, nightlyRate, unitLabel } from "@/lib/booking";
 import { addDays, cop, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, statusOf } from "@/lib/format";
 import type { CabinType } from "@/lib/types";
 import { useAdmin, useParam } from "@/components/admin/context";
@@ -37,6 +37,7 @@ type TimelineProps = {
   width: number;
   onDay: (d: string) => void;
   onNew: (d: NewReservationDraft) => void;
+  onStay: (id: string) => void; // noche de Booking: completar los datos del huésped
   onOpen: (code: string) => void;
   footer?: boolean; // leyenda y ayuda al pie (la primera quincena del mes no la lleva)
   className?: string;
@@ -50,7 +51,7 @@ type Line = { kind: "group"; cabin: CabinType; units: Unit[] } | { kind: "unit";
 // las unidades con algo en el periodo; las demás quedan en una línea que las despliega, tipo por tipo, como un acordeón
 // (?unidades=doble,familiar: los tipos abiertos).
 // Arrastrar sobre noches libres de una unidad (con el mouse) abre «Nueva reserva» con esa cabaña y esas fechas.
-export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, footer = true, className = "" }: TimelineProps) {
+export function Timeline({ days, rows, today, width, onDay, onNew, onStay, onOpen, footer = true, className = "" }: TimelineProps) {
   const { data, cabinLabel } = useAdmin();
   const calBlocks = useCalBlocks();
   const tip = useTip();
@@ -379,7 +380,15 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                       <Link
                         key={b.id}
                         href={blockHref(b)}
-                        aria-label={`${isChannelBlock(b) ? "Booking.com" : `Bloqueo ${b.reason}`}, ${fmtDate(b.from)} a ${fmtDate(b.to)}`}
+                        onClick={
+                          isChannelBlock(b)
+                            ? (e) => {
+                                e.preventDefault();
+                                onStay(channelStayIdOf(b));
+                              }
+                            : undefined
+                        }
+                        aria-label={`${isChannelBlock(b) ? CHANNEL_NAME : `Bloqueo ${b.reason}`}, ${fmtDate(b.from)} a ${fmtDate(b.to)}`}
                         {...tip(() => <BlockTip b={b} cabin={cabinLabel(b.cabinTypeId, b.unit)} />)}
                         className={`@container relative z-1 my-auto flex h-[30px] min-w-0 items-center gap-1.5 overflow-hidden px-2.5 text-left text-[12px] font-semibold text-ink-muted transition-[filter,box-shadow] duration-150 hover:shadow-panel hover:brightness-95 ${
                           cut.l ? "rounded-l-none" : "ml-0.5 rounded-l-full"
@@ -387,7 +396,7 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                         style={{ gridRow, gridColumn: `${start} / ${end}`, ...blockStyle(b) }}
                       >
                         {isChannelBlock(b) ? (
-                          <RefreshIcon size={13} className="hidden flex-none @min-[48px]:block" />
+                          <BookingIcon size={13} className="hidden flex-none @min-[48px]:block" />
                         ) : (
                           <BanIcon size={13} className="hidden flex-none @min-[48px]:block" />
                         )}
@@ -441,6 +450,14 @@ export function Timeline({ days, rows, today, width, onDay, onNew, onOpen, foote
                         style={{ gridRow, gridColumn: `${start} / ${end}`, ...barStyle(r), boxShadow: undefined }}
                       >
                         {/* Nombre y apellidos; si no caben, con puntos suspensivos. El nombre completo está en el tooltip. */}
+                        {isFromBooking(r) && (
+                          <span
+                            className="mr-1.5 -ml-1 grid size-[20px] flex-none place-items-center rounded-full text-white"
+                            style={{ background: "var(--color-sidebar)" }}
+                          >
+                            <BookingIcon size={12} />
+                          </span>
+                        )}
                         <span className="truncate">{r.guest.fullName}</span>
                       </Link>
                     );

@@ -435,6 +435,7 @@ export type Database = {
           first_seen_at: string
           id: string
           removed_at: string | null
+          reservation_code: string | null
           summary: string
           unit: number
         }
@@ -448,6 +449,7 @@ export type Database = {
           first_seen_at?: string
           id?: string
           removed_at?: string | null
+          reservation_code?: string | null
           summary?: string
           unit: number
         }
@@ -461,6 +463,7 @@ export type Database = {
           first_seen_at?: string
           id?: string
           removed_at?: string | null
+          reservation_code?: string | null
           summary?: string
           unit?: number
         }
@@ -478,6 +481,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "channel_calendars"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_stays_reservation_code_fkey"
+            columns: ["reservation_code"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -1218,6 +1228,20 @@ export type Database = {
       bump_unpaid: {
         Args: { p_from: string; p_to: string; p_type: string }
         Returns: undefined
+      }
+      complete_channel_stay: {
+        Args: {
+          p_adults: number
+          p_arrival: string
+          p_children: number
+          p_code: string
+          p_guest: Json
+          p_notes: string
+          p_quote: Json
+          p_ref: string
+          p_stay: string
+        }
+        Returns: string
       }
       enqueue_arrival_reminders: { Args: never; Returns: undefined }
       free_unit: {

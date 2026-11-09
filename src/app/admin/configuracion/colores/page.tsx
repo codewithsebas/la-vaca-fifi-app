@@ -1,5 +1,5 @@
-import { PanelColorsView } from "@/components/admin/panel-colors";
+import { SiteColorsView } from "@/components/admin/site-colors";
 
-export default function PanelColorsPage() {
-  return <PanelColorsView />;
+export default function SiteColorsPage() {
+  return <SiteColorsView />;
 }

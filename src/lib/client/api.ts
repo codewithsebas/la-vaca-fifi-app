@@ -26,6 +26,7 @@ import type {
   CabinType,
   ChannelCalendar,
   ChannelStay,
+  ChannelStayCompletion,
   ChannelSyncResult,
   ClientProfile,
   ClientProfileInput,
@@ -44,7 +45,6 @@ import type {
   PaymentTerms,
   SiteInput,
 } from "@/lib/types";
-import type { PanelColors } from "@/lib/panel-colors";
 import type { NotificationGroup } from "@/lib/notification-groups";
 import type { SiteContent, SiteService } from "@/lib/site";
 
@@ -128,7 +128,6 @@ export const api = {
       mutate("email.retry", { id }, () => request<EmailRecord | ApiError>("POST", "/admin/emails", { body: { action: "retry", id } })),
     reset: () => request<object>("POST", "/admin/reset"),
     saveSite: (b: SiteInput) => mutate("site.save", b, () => request<SiteContent>("PUT", "/admin/site", { body: b })),
-    savePanelColors: (b: PanelColors) => mutate("panelColors.save", b, () => request<SiteContent>("PUT", "/admin/panel-colors", { body: b })),
     savePaymentTerms: (b: PaymentTerms) => mutate("terms.save", b, () => request<SiteContent>("PUT", "/admin/payment-terms", { body: b })),
     uploadPhoto: (slot: string, file: Blob, name: string) =>
       mutate("sitePhoto.set", { slot, file, name }, () => upload<Record<string, string>>("/admin/photos", formOf({ slot, file }, name))),
@@ -185,6 +184,9 @@ export const api = {
       list: () => request<Channels>("GET", "/admin/channels"),
       setUrl: (id: string, importUrl: string | null) => request<Channels | ApiError>("PATCH", "/admin/channels", { body: { id, importUrl } }),
       sync: (id?: string) => request<Channels | ApiError>("POST", "/admin/channels", { body: { id } }),
+      // Depende de lo que Booking tenga ahora: siempre con conexión.
+      completeStay: (b: ChannelStayCompletion) =>
+        onlineOnly(() => request<Reservation | ValidationError | ApiError>("POST", "/admin/channels/complete", { body: b })),
     },
     // La contraseña nunca entra en la cola: cambiarla exige conexión.
     profile: (b: ProfileInput) => {

@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { BanIcon, ClockIcon, LogoutIcon, PlusIcon } from "@/components/ui/icons";
-import { StatusPill } from "@/components/ui/status-pill";
-import { nightlyRate } from "@/lib/booking";
-import { addDays, cop, fmtDate, nightsBetween, plural } from "@/lib/format";
+import { BanIcon, BookingIcon, ClockIcon, LogoutIcon, PlusIcon } from "@/components/ui/icons";
+import { channelStayIdOf, isChannelBlock, isFromBooking, nightlyRate } from "@/lib/booking";
+import { addDays, cop, fmtDate, nightsBetween, plural, statusOf } from "@/lib/format";
 import { pendingOf } from "@/lib/admin-metrics";
 import { fmtTime } from "@/lib/site";
 import { useAdmin } from "@/components/admin/context";
@@ -17,11 +16,13 @@ export function DayAgenda({
   day,
   rows,
   onNew,
+  onStay,
   onOpen,
 }: {
   day: string;
   rows: Unit[];
   onNew: (d: NewReservationDraft) => void;
+  onStay: (id: string) => void; // noche de Booking: completar los datos del huésped
   onOpen: (code: string) => void;
 }) {
   const { data, cabinLabel, today } = useAdmin();
@@ -69,36 +70,53 @@ export function DayAgenda({
                 style={barStyle(stay)}
               >
                 <span className="flex items-center justify-between gap-2">
-                  <strong className="truncate text-[14px] text-ink">{stay.guest.fullName}</strong>
-                  <StatusPill status={stay.status} size="sm" />
+                  <strong className="flex min-w-0 items-center gap-1.5 text-[14px] text-ink">
+                    {isFromBooking(stay) && <BookingIcon size={14} className="flex-none" />}
+                    <span className="truncate">{stay.guest.fullName}</span>
+                  </strong>
+                  <span className="flex-none rounded-full bg-paper px-2.5 py-0.5 text-[12px] font-bold text-ink">{statusOf(stay.status).label}</span>
                 </span>
-                <span className="text-[12.5px] text-ink-muted">
+                <span className="text-[12.5px] font-medium text-ink">
                   {stay.code} · {plural(stay.adults + stay.children, "huésped", "huéspedes")}
                   {arriving && stay.estimatedArrival ? ` · llega ${stay.estimatedArrival}` : ""}
                 </span>
                 <span className="flex items-center gap-2">
-                  <span aria-hidden="true" className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper/70">
-                    <span className="block h-full rounded-full bg-ink/60" style={{ width: `${(night / total) * 100}%` }} />
+                  <span aria-hidden="true" className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink/20">
+                    <span className="block h-full rounded-full bg-ink" style={{ width: `${(night / total) * 100}%` }} />
                   </span>
                   <span className="text-[12px] font-semibold text-ink tabular-nums">
                     Noche {night} de {total}
                   </span>
                 </span>
                 {stay.status === "pending_deposit" ? (
-                  <span className="flex items-center gap-1 text-[12.5px] font-semibold text-warning">
+                  <span className="flex w-fit items-center gap-1 rounded-[12px] bg-paper px-2.5 py-1 text-[12.5px] font-bold text-ink">
                     <ClockIcon size={13} />
                     Sin confirmar · no aparta las fechas hasta el abono
                   </span>
                 ) : (
                   pendingOf(stay).total > 0 && (
-                    <span className="text-[12.5px] font-semibold text-warning">Pendiente por cobrar {cop(pendingOf(stay).total)}</span>
+                    <span className="w-fit rounded-full bg-paper px-2.5 py-1 text-[12.5px] font-bold text-ink tabular-nums">
+                      Pendiente por cobrar {cop(pendingOf(stay).total)}
+                    </span>
                   )
                 )}
               </Link>
             ) : block ? (
-              <Link href={blockHref(block)} className="flex flex-col gap-1 rounded-[16px] p-3 text-left" style={blockStyle(block)}>
-                <strong className="text-[14px] text-ink">{block.reason}</strong>
-                <span className="text-[12.5px] text-ink-muted">
+              <Link
+                href={blockHref(block)}
+                onClick={
+                  isChannelBlock(block)
+                    ? (e) => {
+                        e.preventDefault();
+                        onStay(channelStayIdOf(block));
+                      }
+                    : undefined
+                }
+                className="flex flex-col gap-1 rounded-[16px] p-3 text-left"
+                style={blockStyle(block)}
+              >
+                <strong className={`text-[14px] ${isChannelBlock(block) ? "" : "text-ink"}`}>{block.reason}</strong>
+                <span className={`text-[12.5px] ${isChannelBlock(block) ? "opacity-85" : "text-ink-muted"}`}>
                   {`${fmtDate(block.from)} → ${fmtDate(block.to)}`}
                   {block.notes ? ` · ${block.notes}` : ""}
                 </span>

@@ -28,7 +28,8 @@ import { MODULES } from "@/components/admin/routes";
 import { DateRangePicker } from "@/components/admin/date-picker";
 import { BathroomsPanel } from "@/components/admin/bathrooms";
 import { Paginator, usePaged } from "@/components/admin/paginator";
-import { adminInput } from "@/components/admin/shared";
+import { adminInput, norm } from "@/components/admin/shared";
+import { LIST_CARD, LIST_MOBILE_ROW, LIST_ROW, LIST_ROW_HOVER, LIST_ROW_LATEST, ListSearch, ListTableHead } from "@/components/admin/list-table";
 import {
   Badge,
   Button,
@@ -68,6 +69,8 @@ export function BlocksView() {
   const setParams = useSetParams();
   const [filter, setFilter] = useParam<Filter>("mostrar", "vigentes");
   const [view, setView] = useParam<View>("ver", "cabanas");
+  const [q, setQ] = useParam("q", "");
+  const [cabinId, setCabinId] = useParam("cabana-lista", "");
   const canDelete = can(data.me.role, "delete");
 
   // El editor se abre desde la URL: ?editar=<bloqueo> o ?nuevo=1[&cabana=&unidad=&fecha=] (atajo desde el calendario).
@@ -100,8 +103,14 @@ export function BlocksView() {
     () => [...data.blocks].sort((a, b) => stateOf(a, today).order - stateOf(b, today).order || (a.from < b.from ? -1 : 1)),
     [data.blocks, today],
   );
-  const list = sorted.filter((b) => filter === "todos" || (filter === "finalizados" ? b.to < today : b.to >= today));
-  const paged = usePaged(list, "bloqueos", filter);
+  const nq = norm(q.trim());
+  const list = sorted.filter(
+    (b) =>
+      (filter === "todos" || (filter === "finalizados" ? b.to < today : b.to >= today)) &&
+      (!cabinId || b.cabinTypeId === cabinId) &&
+      (!nq || norm(`${cabinLabel(b.cabinTypeId, b.unit)} ${b.reason} ${b.notes}`).includes(nq)),
+  );
+  const paged = usePaged(list, "bloqueos", [filter, nq, cabinId].join("|"));
   const baths = data.bathrooms ?? [];
   const bathBlocksToday = (data.bathroomBlocks ?? []).filter((k) => k.from <= today && today <= k.to);
   const inCourse = data.blocks.filter((b) => b.from <= today && b.to >= today).length;
@@ -199,89 +208,168 @@ export function BlocksView() {
             <StatCard accent="pink" label="Noches bloqueadas" value={nights} hint="en los próximos 30 días" icon={<MoonIcon size={15} />} />
           </div>
 
-          <Card className="flex flex-col gap-4 p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Segmented
-                label="Mostrar"
+          <div
+            role="search"
+            aria-label="Filtrar bloqueos"
+            className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]"
+          >
+            <ListSearch id="bl-q" label="Buscar bloqueos" value={q} onChange={setQ} placeholder="Cabaña, motivo o nota" />
+            <div className="min-w-0">
+              <label htmlFor="bl-mostrar" className="sr-only">
+                Mostrar
+              </label>
+              <Combobox
+                id="bl-mostrar"
                 value={filter}
-                onChange={setFilter}
+                onChange={(v) => setFilter(v as Filter)}
+                searchable={false}
                 options={[
-                  { value: "vigentes", label: "Vigentes y próximos", count: data.blocks.filter((b) => b.to >= today).length },
+                  {
+                    value: "vigentes",
+                    label: "Vigentes y próximos",
+                    description: plural(data.blocks.filter((b) => b.to >= today).length, "bloqueo", "bloqueos"),
+                  },
                   { value: "finalizados", label: "Finalizados" },
                   { value: "todos", label: "Todos" },
                 ]}
               />
             </div>
-            {list.length ? (
-              <>
-                <ul className="flex flex-col gap-2">
-                  {paged.rows.map((b) => {
-                    const st = stateOf(b, today);
-                    const days = nightsBetween(b.from, b.to) + 1;
-                    return (
-                      <li
-                        key={b.id}
-                        className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[18px] px-4 py-3 transition-colors ${st.order === 0 ? "bg-yellow-soft" : "bg-canvas/60"} ${st.order === 2 ? "opacity-75" : ""}`}
-                      >
-                        <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full text-ink-muted" style={{ background: BG }}>
-                          <BanIcon size={17} />
-                        </span>
-                        <div className="min-w-[200px] flex-1">
-                          <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-ink">
-                            {cabinLabel(b.cabinTypeId, b.unit)}
+            <div className="min-w-0">
+              <Combobox
+                value={cabinId}
+                onChange={setCabinId}
+                options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]}
+                icon={<HomeIcon size={14} className="text-ink-muted" />}
+              />
+            </div>
+          </div>
+
+          {list.length ? (
+            <>
+              <Card className={LIST_CARD}>
+                <table className="w-full text-[14px]">
+                  <ListTableHead columns={["Cabaña", "Fechas", "Motivo", "Estado", "Acciones"]} right={["Acciones"]} />
+                  <tbody className="divide-y divide-line">
+                    {paged.rows.map((b) => {
+                      const st = stateOf(b, today);
+                      const days = nightsBetween(b.from, b.to) + 1;
+                      return (
+                        <tr
+                          key={b.id}
+                          onClick={() => setParams({ editar: b.id, nuevo: null })}
+                          className={`${LIST_ROW} ${st.order === 0 ? LIST_ROW_LATEST : LIST_ROW_HOVER} ${st.order === 2 ? "[&>td:not(:last-child)]:opacity-60" : ""}`}
+                        >
+                          <td className="px-4 py-3 font-bold whitespace-nowrap text-ink">
+                            <span className="flex items-center gap-2">
+                              {cabinLabel(b.cabinTypeId, b.unit)}
+                              <SyncMark entity={`blocks:${b.id}`} />
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="block text-ink">{`${fmtDate(b.from)} → ${fmtDate(b.to)}`}</span>
+                            <span className="block text-[12.5px] text-ink-muted">{plural(days, "día", "días")}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="block font-semibold text-ink">{b.reason}</span>
+                            {b.notes && <span className="block max-w-[320px] truncate text-[12.5px] text-ink-muted">{b.notes}</span>}
+                          </td>
+                          <td className="px-4 py-3">
                             <Badge tone={st.tone} icon={st.order === 0 ? <ClockIcon size={11} /> : undefined}>
                               {st.label}
                             </Badge>
-                            <SyncMark entity={`blocks:${b.id}`} />
-                          </p>
-                          <p className="text-[13px] text-ink-muted">
-                            {fmtDate(b.from, true)} → {fmtDate(b.to, true)} · {plural(days, "día", "días")}
-                          </p>
-                          <p className="mt-1 text-[13px] text-ink">
-                            <strong className="font-semibold">{b.reason}</strong>
-                            {b.notes ? <span className="text-ink-muted"> · {b.notes}</span> : null}
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" icon={<PencilIcon size={13} />} onClick={() => setParams({ editar: b.id, nuevo: null })}>
-                            Editar
-                          </Button>
-                          {canDelete && (
-                            <IconButton
-                              label={`Eliminar bloqueo de ${cabinLabel(b.cabinTypeId, b.unit)}`}
-                              size="sm"
-                              variant="danger-ghost"
-                              onClick={() => remove(b)}
-                            >
-                              <TrashIcon size={15} />
-                            </IconButton>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <Paginator p={paged} noun="bloqueos" />
-              </>
-            ) : (
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                              <IconButton
+                                label="Editar bloqueo"
+                                size="sm"
+                                variant="secondary"
+                                data-gesture="cancel"
+                                onClick={() => setParams({ editar: b.id, nuevo: null })}
+                              >
+                                <PencilIcon size={15} />
+                              </IconButton>
+                              {canDelete && (
+                                <IconButton
+                                  label={`Eliminar bloqueo de ${cabinLabel(b.cabinTypeId, b.unit)}`}
+                                  size="sm"
+                                  variant="danger-ghost"
+                                  data-gesture="cancel"
+                                  onClick={() => remove(b)}
+                                >
+                                  <TrashIcon size={15} />
+                                </IconButton>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <Paginator p={paged} noun="bloqueos" className="border-t border-line px-4 py-3" />
+              </Card>
+              <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:hidden">
+                {paged.rows.map((b) => {
+                  const st = stateOf(b, today);
+                  const days = nightsBetween(b.from, b.to) + 1;
+                  return (
+                    <li key={b.id} className={`${LIST_MOBILE_ROW} ${st.order === 0 ? "bg-yellow-soft/70" : "bg-paper"} ${st.order === 2 ? "opacity-75" : ""}`}>
+                      <span className="flex w-full flex-wrap items-center justify-between gap-2">
+                        <strong className="font-bold text-ink">{cabinLabel(b.cabinTypeId, b.unit)}</strong>
+                        <Badge tone={st.tone} icon={st.order === 0 ? <ClockIcon size={11} /> : undefined}>
+                          {st.label}
+                        </Badge>
+                      </span>
+                      <span className="text-[13px] text-ink-muted">{`${fmtDate(b.from)} → ${fmtDate(b.to)} · ${plural(days, "día", "días")}`}</span>
+                      <span className="text-[13px] text-ink">
+                        <strong className="font-semibold">{b.reason}</strong>
+                        {b.notes ? <span className="text-ink-muted"> · {b.notes}</span> : null}
+                      </span>
+                      <SyncMark entity={`blocks:${b.id}`} />
+                      <span className="flex w-full justify-end gap-1">
+                        <Button size="sm" icon={<PencilIcon size={13} />} onClick={() => setParams({ editar: b.id, nuevo: null })}>
+                          Editar
+                        </Button>
+                        {canDelete && (
+                          <IconButton
+                            label={`Eliminar bloqueo de ${cabinLabel(b.cabinTypeId, b.unit)}`}
+                            size="sm"
+                            variant="danger-ghost"
+                            onClick={() => remove(b)}
+                          >
+                            <TrashIcon size={15} />
+                          </IconButton>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Paginator p={paged} noun="bloqueos" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line xl:hidden" />
+            </>
+          ) : (
+            <Card className="p-4">
               <EmptyState
                 icon={<CalendarIcon size={18} />}
-                title={filter === "finalizados" ? "No hay bloqueos finalizados" : "No hay fechas bloqueadas"}
+                title={
+                  filter === "finalizados" ? "No hay bloqueos finalizados" : nq || cabinId ? "No hay bloqueos con esos filtros" : "No hay fechas bloqueadas"
+                }
                 text={
-                  filter === "finalizados"
+                  filter === "finalizados" || nq || cabinId
                     ? undefined
                     : "Bloquea fechas por mantenimiento o uso propio. También puedes hacerlo desde el calendario, con un clic en un día libre."
                 }
                 action={
-                  filter !== "finalizados" ? (
+                  filter !== "finalizados" && !nq && !cabinId ? (
                     <Button icon={<PlusIcon size={14} />} onClick={openNew}>
                       Nuevo bloqueo
                     </Button>
                   ) : undefined
                 }
               />
-            )}
-          </Card>
+            </Card>
+          )}
         </>
       )}
 
