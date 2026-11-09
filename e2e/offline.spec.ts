@@ -132,7 +132,7 @@ test("3, 4 y 5. Crear, editar y eliminar sin conexión: nada llega aún al servi
   await expect(page.getByText("Guardado en este dispositivo").first()).toBeVisible();
 
   // Editar un bloqueo que ya existía.
-  const toEdit = page.locator("li").filter({ hasText: `${TAG}-a-editar` });
+  const toEdit = page.locator("li:visible, tr:visible").filter({ hasText: `${TAG}-a-editar` });
   await toEdit.getByRole("button", { name: "Editar" }).click();
   await page
     .getByRole("dialog")
@@ -142,7 +142,7 @@ test("3, 4 y 5. Crear, editar y eliminar sin conexión: nada llega aún al servi
   await expect(page.getByText(`${TAG}-editado`).first()).toBeVisible();
 
   // Eliminar otro.
-  const toDelete = page.locator("li").filter({ hasText: `${TAG}-a-borrar` });
+  const toDelete = page.locator("li:visible, tr:visible").filter({ hasText: `${TAG}-a-borrar` });
   await toDelete.getByRole("button", { name: /^Eliminar bloqueo/ }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Eliminar bloqueo" }).click();
   await expect(page.getByText(`${TAG}-a-borrar`)).toHaveCount(0);
@@ -275,7 +275,7 @@ test("9. Dos usuarios: campos distintos se funden, mismo campo queda por revisar
   await context.setOffline(true);
   await expect(chip(page)).toHaveAttribute("data-sync-state", "offline");
   const row = page
-    .locator("li")
+    .locator("li:visible, tr:visible")
     .filter({ hasText: `${TAG}-recepcion` })
     .filter({ has: page.getByRole("button", { name: "Editar" }) });
   await row.getByRole("button", { name: "Editar" }).first().click();
@@ -299,7 +299,7 @@ test("9. Dos usuarios: campos distintos se funden, mismo campo queda por revisar
   await context.setOffline(true);
   await expect(chip(page)).toHaveAttribute("data-sync-state", "offline");
   const row2 = page
-    .locator("li")
+    .locator("li:visible, tr:visible")
     .filter({ hasText: `${TAG}-del-admin` })
     .filter({ has: page.getByRole("button", { name: "Editar" }) });
   await row2.getByRole("button", { name: "Editar" }).first().click();
@@ -330,7 +330,7 @@ test("9. Dos usuarios: campos distintos se funden, mismo campo queda por revisar
   await context.setOffline(true);
   await expect(chip(page)).toHaveAttribute("data-sync-state", "offline");
   const row3 = page
-    .locator("li")
+    .locator("li:visible, tr:visible")
     .filter({ hasText: /jun/ })
     .filter({ hasText: TAG })
     .filter({ has: page.getByRole("button", { name: "Editar" }) });

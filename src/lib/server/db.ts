@@ -154,6 +154,7 @@ export function channelStayOf(s: Tables<"channel_stays">): ChannelStay {
     echo: s.echo,
     firstSeenAt: s.first_seen_at,
     removedAt: s.removed_at,
+    reservationCode: s.reservation_code,
   };
 }
 
@@ -162,7 +163,14 @@ export const isMissingTable = (e: unknown) => ["PGRST205", "42P01"].includes((e 
 
 // Noches de Booking vigentes (sin removed_at) que tocan alguna noche entre firstNight y lastNight.
 async function loadChannelStays(sb: Db, firstNight: string, lastNight: string, cabinTypeId?: string): Promise<ChannelStay[]> {
-  let q = sb.from("channel_stays").select("*").is("removed_at", null).eq("echo", false).lte("check_in", lastNight).gt("check_out", firstNight);
+  let q = sb
+    .from("channel_stays")
+    .select("*")
+    .is("removed_at", null)
+    .eq("echo", false)
+    .is("reservation_code", null)
+    .lte("check_in", lastNight)
+    .gt("check_out", firstNight);
   if (cabinTypeId) q = q.eq("cabin_type_id", cabinTypeId);
   const { data, error } = await q;
   if (error) {

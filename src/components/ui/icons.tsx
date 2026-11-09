@@ -241,6 +241,11 @@ export const WalletIcon = (p: IconProps) => (
     <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v3h-4a2 2 0 0 0 0 4h4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5" />
   </Stroke>
 );
+export const SwapIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" />
+  </Stroke>
+);
 export const RefreshIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
     <path d="M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5" />

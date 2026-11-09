@@ -31,7 +31,6 @@ import { groupMoney, groupOf } from "@/lib/groups";
 import { addDays, sleep, todayISO } from "@/lib/format";
 import { manualPaymentNote, unpaidUntil } from "@/lib/payments";
 import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "@/lib/site";
-import { mergePanelColors, type PanelColors } from "@/lib/panel-colors";
 import { mergeTheme } from "@/lib/theme";
 import type {
   AdminNotification,
@@ -460,7 +459,6 @@ const siteOf = (d: Db): SiteContent => ({
   settings: { ...defaultContent.settings, ...d.site?.settings },
   services: d.site?.services ?? defaultContent.services,
   theme: mergeTheme(d.site?.theme),
-  panelColors: mergePanelColors(d.site?.panelColors),
 });
 
 function save(d: Db) {
@@ -707,14 +705,6 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     return ok(db.site);
   }
 
-  if (method === "PUT" && path === "/admin/panel-colors") {
-    const no = deny("content");
-    if (no) return no;
-    db.site = { ...siteOf(db), panelColors: mergePanelColors(opts.body as PanelColors) };
-    save(db);
-    return ok(db.site);
-  }
-
   if (method === "PUT" && path === "/admin/site") {
     const b = opts.body as SiteInput;
     const prev = siteOf(db);
@@ -725,7 +715,6 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       texts: { ...mergeTexts(b.content ?? defaultTexts), payment: prev.texts.payment },
       services: siteOf(db).services,
       theme: mergeTheme(b.theme),
-      panelColors: prev.panelColors,
     };
     save(db);
     return ok(db.site);
@@ -893,6 +882,13 @@ export async function mockRequest(method: string, path: string, opts: MockReques
         status: r.status === "pending_deposit" ? "pending_deposit" : "rescheduled",
         quote: quoteFor(db, r.cabinTypeId, body.checkIn, body.checkOut, r.adults + r.children),
       });
+    } else if (body.action === "move") {
+      const type = db.cabins.find((c) => c.id === body.cabinTypeId);
+      const unit = Number(body.unit);
+      if (!type || unit < 1 || unit > type.units) return { status: 400, data: { error: "INVALID_BODY" } };
+      if (r.adults + r.children > type.maxPersonas) return { status: 422, data: { error: "OVER_CAPACITY" } };
+      if (!unitFree(occ(db), type.units, type.id, unit, r.checkIn, r.checkOut, r.code)) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
+      Object.assign(r, { cabinTypeId: type.id, unit });
     } else if (body.action === "guest") {
       const g = (opts.body as { guest: Reservation["guest"] }).guest;
       const fields = validateGuest(g);

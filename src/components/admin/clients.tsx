@@ -1,19 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   AlertIcon,
   CalendarIcon,
   CheckIcon,
   ChevronRightIcon,
+  CloseIcon,
   IdCardIcon,
   ListIcon,
   LockIcon,
   MailIcon,
   MoonIcon,
   NoteIcon,
-  SearchIcon,
   ShieldIcon,
   TagIcon,
   TrashIcon,
@@ -27,11 +28,13 @@ import { type ClientSummary, buildClients, paymentState, pendingOf, valueOf } fr
 import { api } from "@/lib/client/api";
 import { can } from "@/lib/permissions";
 import { config } from "@/lib/config";
-import { cop, dateOf, fmtDate, fmtDateTime, nightsBetween, plural, waTo } from "@/lib/format";
+import { cop, dateOf, fmtDate, fmtDateTime, mask, nightsBetween, plural, waTo } from "@/lib/format";
 import type { ClientProfile, ClientProfileInput, Reservation, Severity, Trust } from "@/lib/types";
 import { Combobox } from "@/components/ui/combobox";
+import { useLabelTip } from "@/components/ui/floating";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { Paginator, usePaged } from "@/components/admin/paginator";
+import { LIST_CARD, LIST_MOBILE_ROW, LIST_ROW, LIST_ROW_HOVER, LIST_ROW_LATEST, ListSearch, ListTableHead } from "@/components/admin/list-table";
 import { EmailComposer, hasEmail } from "@/components/admin/email-composer";
 import { Facts } from "@/components/admin/reservation-detail";
 import { MODULES, clientKeyOf, paths } from "@/components/admin/routes";
@@ -54,6 +57,7 @@ import {
   StatCard,
   Stars,
   buttonClass,
+  iconButtonClass,
   type Tone,
 } from "@/components/admin/ui";
 
@@ -70,7 +74,8 @@ const lastActivity = (c: ClientSummary) => c.reservations.reduce((m, r) => (r.cr
 /* ───────────── Listado ───────────── */
 
 export function ClientList() {
-  const { data, cabinLabel } = useAdmin();
+  const { data } = useAdmin();
+  const router = useRouter();
   const money = can(data.me.role, "finance");
   const clients = useClients();
   const [q, setQ] = useParam("q", "");
@@ -113,13 +118,38 @@ export function ClientList() {
   const total = clients.length;
   const recurring = clients.filter((c) => c.isRecurring).length;
   const value = clients.reduce((s, c) => s + c.value, 0);
-  const latest = [...data.reservations].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 6);
+  // El cliente más nuevo se pinta con otro fondo, como la última reserva en Reservas.
+  const newest = clients.reduce<ClientSummary | null>((a, c) => (!a || c.firstAt > a.firstAt ? c : a), null)?.key;
+  const active = filter !== "todos" || !!q || sort !== "actividad";
+  const clear = () => {
+    setQ("");
+    setFilter("todos");
+    setSort("actividad");
+  };
+  const badges = (c: ClientSummary) => (
+    <>
+      {c.isNew && <Badge tone="info">Nuevo</Badge>}
+      {c.isRecurring && <Badge tone="success">Recurrente</Badge>}
+      {(c.flagged || c.incidents > 0) && (
+        <Badge tone="danger" icon={<AlertIcon size={11} />}>
+          Alerta
+        </Badge>
+      )}
+    </>
+  );
 
   return (
     <>
       <PageHeader
         title={MODULES.clientes.label}
         description="Cada cliente se identifica por su documento. Su historial y la valoración interna del equipo están en su ficha."
+        actions={
+          active ? (
+            <Button size="sm" variant="ghost" icon={<CloseIcon size={14} />} onClick={clear}>
+              Limpiar filtros
+            </Button>
+          ) : undefined
+        }
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
@@ -164,145 +194,159 @@ export function ClientList() {
         />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <Card className="flex flex-col gap-3 p-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
-              <Field label="Buscar">
-                {(p) => (
-                  <div className="relative">
-                    <SearchIcon size={17} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle" />
-                    <input
-                      {...p}
-                      type="search"
-                      value={q}
-                      onChange={(e) => setQ(e.target.value)}
-                      placeholder="Nombre, correo, celular, documento o ciudad"
-                      className={`${adminInput} pl-9`}
-                    />
-                  </div>
-                )}
-              </Field>
-              <Field label="Mostrar">
-                {(p) => (
-                  <Combobox
-                    id={p.id}
-                    value={filter}
-                    onChange={(v) => setFilter(v as Filter)}
-                    options={[
-                      { value: "todos", label: "Todos los clientes", description: plural(total, "cliente", "clientes") },
-                      { value: "nuevos", label: "Nuevos", description: `${clients.filter(test.nuevos).length} en los últimos 30 días` },
-                      { value: "recurrentes", label: "Recurrentes", description: plural(recurring, "cliente", "clientes") },
-                      { value: "frecuentes", label: "Más frecuentes", description: "El 20 % con más estadías" },
-                      { value: "alertas", label: "Con alertas", description: plural(clients.filter(test.alertas).length, "cliente", "clientes") },
-                    ]}
-                  />
-                )}
-              </Field>
-              <Field label="Ordenar por">
-                {(p) => (
-                  <Combobox
-                    id={p.id}
-                    value={sort}
-                    onChange={(v) => setSort(v as Sort)}
-                    options={[
-                      { value: "actividad", label: "Actividad más reciente" },
-                      { value: "nuevos", label: "Clientes más nuevos" },
-                      { value: "reservas", label: "Más reservas" },
-                      ...(money ? [{ value: "valor", label: "Mayor valor generado" }] : []),
-                      { value: "nombre", label: "Nombre (A–Z)" },
-                    ]}
-                  />
-                )}
-              </Field>
-            </div>
-            <p aria-live="polite" className="border-t border-line pt-3 text-[13px] font-medium text-ink-muted">
-              {plural(list.length, "cliente", "clientes")}
-              {filter !== "todos" || nq ? " con estos filtros" : ""}
-            </p>
-          </Card>
-          {list.length ? (
-            <Card className="overflow-hidden">
-              <ul className="divide-y divide-line">
+      <div
+        role="search"
+        aria-label="Filtrar clientes"
+        className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]"
+      >
+        <ListSearch id="cl-q" label="Buscar clientes" value={q} onChange={setQ} placeholder="Nombre, correo, celular, documento o ciudad" />
+        <div className="min-w-0">
+          <label htmlFor="cl-filtro" className="sr-only">
+            Mostrar
+          </label>
+          <Combobox
+            id="cl-filtro"
+            value={filter}
+            onChange={(v) => setFilter(v as Filter)}
+            searchable={false}
+            options={[
+              { value: "todos", label: "Todos los clientes", description: plural(total, "cliente", "clientes") },
+              { value: "nuevos", label: "Nuevos", description: `${clients.filter(test.nuevos).length} en los últimos 30 días` },
+              { value: "recurrentes", label: "Recurrentes", description: plural(recurring, "cliente", "clientes") },
+              { value: "frecuentes", label: "Más frecuentes", description: "El 20 % con más estadías" },
+              { value: "alertas", label: "Con alertas", description: plural(clients.filter(test.alertas).length, "cliente", "clientes") },
+            ]}
+          />
+        </div>
+        <div className="min-w-0">
+          <label htmlFor="cl-orden" className="sr-only">
+            Ordenar por
+          </label>
+          <Combobox
+            id="cl-orden"
+            value={sort}
+            onChange={(v) => setSort(v as Sort)}
+            searchable={false}
+            options={[
+              { value: "actividad", label: "Actividad más reciente" },
+              { value: "nuevos", label: "Clientes más nuevos" },
+              { value: "reservas", label: "Más reservas" },
+              ...(money ? [{ value: "valor", label: "Mayor valor generado" }] : []),
+              { value: "nombre", label: "Nombre (A–Z)" },
+            ]}
+          />
+        </div>
+      </div>
+
+      {list.length ? (
+        <>
+          <Card className={LIST_CARD}>
+            <table className="w-full text-[14px]">
+              <ListTableHead
+                columns={["Cliente", "Contacto", "Estadías", ...(money ? ["Valor"] : []), "Valoración", "Acciones"]}
+                right={["Valor", "Acciones"]}
+              />
+              <tbody className="divide-y divide-line">
                 {paged.rows.map((c) => (
-                  <li key={c.key}>
-                    <Link
-                      href={paths.cliente(c.key)}
-                      className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-canvas/60 md:grid-cols-[minmax(0,1.6fr)_90px_120px_minmax(0,1.1fr)_auto]"
-                    >
-                      <span className="min-w-0">
-                        <span className="flex flex-wrap items-center gap-1.5 font-semibold text-ink">
-                          {c.name}
-                          {c.isNew && <Badge tone="info">Nuevo</Badge>}
-                          {c.isRecurring && <Badge tone="success">Recurrente</Badge>}
-                          {(c.flagged || c.incidents > 0) && (
-                            <Badge tone="danger" icon={<AlertIcon size={11} />}>
-                              Alerta
-                            </Badge>
-                          )}
-                        </span>
-                        <span className="block truncate text-[12.5px] text-ink-muted">
-                          {c.email} · {c.city}
-                        </span>
+                  <tr
+                    key={c.key}
+                    onClick={() => router.push(paths.cliente(c.key))}
+                    className={`${LIST_ROW} ${c.key === newest ? LIST_ROW_LATEST : LIST_ROW_HOVER}`}
+                  >
+                    <td className="px-4 py-3">
+                      <span className="flex flex-wrap items-center gap-1.5 font-semibold text-ink">
+                        {c.name}
+                        {badges(c)}
                       </span>
-                      <span className="hidden text-[13px] text-ink md:block">
-                        <strong className="tabular-nums">{c.stays}</strong> <span className="text-ink-muted">{c.stays === 1 ? "estadía" : "estadías"}</span>
-                      </span>
-                      <span className="hidden text-right text-[13.5px] font-semibold text-ink tabular-nums md:block">{money ? cop(c.value) : ""}</span>
-                      <span className="hidden min-w-0 items-center gap-2 md:flex">
+                      <span className="block text-[12.5px] text-ink-muted">{`${c.docType} ${mask(c.docNumber)}`}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="block text-ink">{c.phone}</span>
+                      <span className="block max-w-[240px] truncate text-[12.5px] text-ink-muted">{[c.email, c.city].filter(Boolean).join(" · ")}</span>
+                    </td>
+                    <td className="px-4 py-3 text-ink tabular-nums">{c.stays}</td>
+                    {money && <td className="px-4 py-3 text-right font-semibold text-ink tabular-nums">{cop(c.value)}</td>}
+                    <td className="px-4 py-3">
+                      <span className="flex items-center gap-2">
                         <Stars value={c.profile?.rating ?? null} size={13} />
                         {c.profile && c.profile.trust !== "sin_evaluar" && <Badge tone={TRUST[c.profile.trust].tone}>{TRUST[c.profile.trust].label}</Badge>}
                       </span>
-                      <ChevronRightIcon size={16} className="text-ink-subtle transition-transform duration-150 motion-safe:group-hover:translate-x-0.5" />
-                      <span className="col-span-2 flex flex-wrap gap-x-3 text-[12.5px] text-ink-muted md:hidden">
-                        <span>{plural(c.stays, "estadía", "estadías")}</span>
-                        {money && <span className="font-semibold text-ink">{cop(c.value)}</span>}
-                        {c.profile?.rating ? <Stars value={c.profile.rating} size={12} /> : null}
-                      </span>
-                    </Link>
-                  </li>
+                    </td>
+                    <td className="px-4 py-3">
+                      <ClientActions c={c} />
+                    </td>
+                  </tr>
                 ))}
-              </ul>
-              <Paginator p={paged} noun="clientes" className="border-t border-line px-4 py-3" />
-            </Card>
-          ) : (
-            <Card className="p-4">
-              <EmptyState
-                icon={<UsersIcon size={18} />}
-                title={clients.length ? "No hay clientes con ese filtro" : "Aún no hay clientes"}
-                text={clients.length ? "Prueba con otra búsqueda o filtro." : "Cada persona que reserve aparecerá aquí con su historial."}
-              />
-            </Card>
-          )}
-        </div>
-
-        <Card aria-labelledby="cl-recent" className="flex flex-col gap-3 p-4 sm:p-5">
-          <CardHeader id="cl-recent" title="Últimas reservas" subtitle="De más reciente a más antigua" />
-          {latest.length ? (
-            <ul className="-mx-2 flex flex-col">
-              {latest.map((r) => (
-                <li key={r.code}>
-                  <Link
-                    href={paths.reserva(r.code)}
-                    className="flex w-full items-center gap-3 rounded-[16px] px-2.5 py-2 text-left transition-colors hover:bg-canvas/70"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13.5px] font-semibold text-ink">{r.guest.fullName}</span>
-                      <span className="block truncate text-[12px] text-ink-muted">
-                        {cabinLabel(r.cabinTypeId)} · {fmtDate(r.checkIn)}
-                      </span>
+              </tbody>
+            </table>
+            <Paginator p={paged} noun="clientes" className="border-t border-line px-4 py-3" />
+          </Card>
+          <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:hidden">
+            {paged.rows.map((c) => (
+              <li key={c.key}>
+                <Link href={paths.cliente(c.key)} className={`${LIST_MOBILE_ROW} ${c.key === newest ? "bg-yellow-soft/70" : "bg-paper"}`}>
+                  <span className="flex w-full items-center justify-between gap-2">
+                    <span className="flex min-w-0 flex-wrap items-center gap-1.5 font-semibold text-ink">
+                      {c.name}
+                      {badges(c)}
                     </span>
-                    <StatusPill status={r.status} size="sm" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[13px] text-ink-muted">Sin reservas todavía.</p>
-          )}
+                    <ChevronRightIcon size={16} className="flex-none text-ink-subtle" />
+                  </span>
+                  <span className="truncate text-[12.5px] text-ink-muted">{[c.email, c.city].filter(Boolean).join(" · ")}</span>
+                  <span className="flex flex-wrap items-center gap-x-3 text-[13px] text-ink-muted">
+                    <span>{plural(c.stays, "estadía", "estadías")}</span>
+                    {money && <span className="font-semibold text-ink">{cop(c.value)}</span>}
+                    {c.profile?.rating ? <Stars value={c.profile.rating} size={12} /> : null}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Paginator p={paged} noun="clientes" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line xl:hidden" />
+        </>
+      ) : (
+        <Card className="p-4">
+          <EmptyState
+            icon={<UsersIcon size={18} />}
+            title={clients.length ? "No hay clientes con ese filtro" : "Aún no hay clientes"}
+            text={clients.length ? "Prueba con otra búsqueda o filtro." : "Cada persona que reserve aparecerá aquí con su historial."}
+            action={active ? <Button onClick={clear}>Limpiar filtros</Button> : undefined}
+          />
         </Card>
-      </div>
+      )}
     </>
+  );
+}
+
+// WhatsApp y ficha del cliente. Los clics no abren la ficha dos veces (la fila entera también la abre).
+function ClientActions({ c }: { c: ClientSummary }) {
+  const waTip = useLabelTip("WhatsApp");
+  const fileTip = useLabelTip("Ver ficha");
+  return (
+    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+      <Link
+        href={paths.cliente(c.key)}
+        aria-label={`Ver ficha de ${c.name}`}
+        data-gesture="next"
+        className={iconButtonClass("secondary", "sm", "text-ink")}
+        {...fileTip}
+      >
+        <ChevronRightIcon size={15} />
+      </Link>
+      {c.phone && (
+        <a
+          href={waTo(c.phone, `Hola ${c.name.split(" ")[0]}, te escribimos de ${config.name}.`)}
+          target="_blank"
+          rel="noopener"
+          aria-label={`WhatsApp a ${c.name}`}
+          data-gesture="chat"
+          className={iconButtonClass("secondary", "sm", "text-ink")}
+          {...waTip}
+        >
+          <WhatsAppIcon size={15} />
+        </a>
+      )}
+    </div>
   );
 }
 

@@ -12,6 +12,7 @@ import {
   invalidPersonRates,
   invalidUnitLabels,
   findUnit,
+  unitFree,
   invalidDayRates,
   newReservationCode,
   normalizePhone,
@@ -52,7 +53,6 @@ import type {
   SeasonInput,
   SiteInput,
 } from "@/lib/types";
-import type { PanelColors } from "@/lib/panel-colors";
 
 export type OpState = "pending" | "confirmed" | "conflict";
 
@@ -218,6 +218,7 @@ const ACTION_LABEL: Record<string, string> = {
   checkout: "Check-out",
   cancel: "Cancelación",
   reschedule: "Reprogramación",
+  move: "Cambio de cabaña",
   extend_hold: "Plazo de pago",
   note: "Nota",
 };
@@ -356,6 +357,12 @@ const reservationOps = {
         const type = d.cabinTypes.find((t) => t.id === r.cabinTypeId);
         if (!type || !findUnit(occupancy(d), type.units, type.id, ci, co, r.code)) return err(409, "DATES_UNAVAILABLE");
       }
+      if (p.action === "move") {
+        const type = d.cabinTypes.find((t) => t.id === p.cabinTypeId);
+        if (!type || !Number.isInteger(p.unit) || p.unit < 1 || p.unit > type.units) return err(400, "INVALID_BODY");
+        if (r.adults + r.children > type.maxPersonas) return err(422, "OVER_CAPACITY");
+        if (!unitFree(occupancy(d), type.units, type.id, p.unit, r.checkIn, r.checkOut, r.code)) return err(409, "DATES_UNAVAILABLE");
+      }
       return p;
     },
     request: (body) => ({ method: "POST", path: "/admin/action", body }),
@@ -374,6 +381,7 @@ const reservationOps = {
           status: "pending_deposit",
           depositDueAt: unpaidUntil(x.checkIn),
         }));
+      if (p.action === "move") return updateReservation(d, p.code, (x) => ({ ...x, cabinTypeId: p.cabinTypeId, unit: p.unit }));
       if (p.action === "reschedule") {
         const type = d.cabinTypes.find((t) => t.id === r.cabinTypeId);
         if (!type) return d;
@@ -1066,16 +1074,6 @@ const contentOps = {
     result: (d) => d.site,
     version: (d) => d.site.version,
   } satisfies OpDef<SiteInput>,
-  "panelColors.save": {
-    perm: "content",
-    label: () => "Colores del panel",
-    entities: () => ["site:site"],
-    request: (body) => ({ method: "PUT", path: "/admin/panel-colors", body }),
-    apply: (d, p) => withSite(d, { panelColors: p }),
-    result: (d) => d.site,
-    version: (d) => d.site.version,
-    view: (d) => d.site.panelColors,
-  } satisfies OpDef<PanelColors>,
   "terms.save": {
     perm: "rates",
     label: () => "Condiciones de pago",
@@ -1249,6 +1247,7 @@ export const CONFLICT_TEXT: Record<string, string> = {
   PAID_CHANGED: "Se registró otro pago de esta reserva mientras tanto. Comprueba que no sea el mismo dinero antes de registrarlo otra vez.",
   QUOTE_CHANGED: "Las tarifas cambiaron y el valor de esta reserva ya no es el que viste.",
   DATES_UNAVAILABLE: "Esas fechas ya no están libres.",
+  OVER_CAPACITY: "En esa cabaña no caben todas las personas de la reserva.",
   RESERVATION_CONFLICT: "Hay reservas activas en esas fechas.",
   BLOCK_OVERLAP: "Ya existe un bloqueo que se cruza con estas fechas.",
   NOT_FOUND: "Este registro ya no existe: otra persona lo borró.",

@@ -30,6 +30,8 @@ export const NOTIFICATION_GROUPS: { id: NotificationGroup; label: string; descri
       "booking_cancelled",
       "booking_failed",
       "channel_conflict",
+      "channel_moved",
+      "channel_cancelled",
       "channel_sync_failed",
     ],
   },

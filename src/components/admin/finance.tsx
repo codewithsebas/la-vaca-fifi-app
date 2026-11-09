@@ -19,8 +19,8 @@ const short = (n: number) =>
 // Variación contra el periodo anterior; sin base para comparar no se muestra.
 const vs = (now: number, before: number) => delta(now, before) ?? undefined;
 
-// Análisis del negocio por periodo: arriba los filtros y cuatro indicadores; luego el ingreso en el tiempo junto a lo que
-// falta por cobrar, y al final de dónde viene el ingreso. Los movimientos uno a uno se gestionan en Pagos.
+// Análisis del negocio por periodo: arriba los filtros, un resumen en una frase y cuatro indicadores; luego el ingreso en el
+// tiempo junto a lo que falta por cobrar, y al final de dónde viene el ingreso. Los movimientos uno a uno se gestionan en Pagos.
 export function FinanceView() {
   const { data } = useAdmin();
   const period = usePeriod("30");
@@ -46,7 +46,7 @@ export function FinanceView() {
     <>
       <PageHeader
         title={MODULES.finanzas.label}
-        description="Cuánto entró, qué falta por cobrar y cómo se ocupan las cabañas."
+        description="Cuánto dinero entró, cuánto falta por cobrar y cómo se ocupan las cabañas."
         actions={
           <Link href={paths.pagos({ vista: "recibidos", ...same })} className={buttonClass()}>
             <ReceiptIcon size={15} />
@@ -55,22 +55,20 @@ export function FinanceView() {
         }
       />
 
-      {/* Filtros en una sola barra: periodo y cabaña a la izquierda, las fechas que se están viendo a la derecha. */}
-      <Card className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
-        <PeriodFilter period={period} />
-        <div className="w-full sm:w-[220px]">
-          <Combobox
-            value={cabinId}
-            onChange={setCabinId}
-            options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]}
-            icon={<HomeIcon size={15} className="text-ink-muted" />}
-          />
+      <div className="flex flex-col gap-2">
+        <div role="search" aria-label="Filtrar finanzas" className="flex flex-wrap items-center gap-2">
+          <PeriodFilter period={period} />
+          <div className="w-full sm:w-[220px]">
+            <Combobox
+              value={cabinId}
+              onChange={setCabinId}
+              options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]}
+              icon={<HomeIcon size={14} className="text-ink-muted" />}
+            />
+          </div>
         </div>
-        <p className="text-[13px] text-ink-muted lg:ml-auto">
-          <span className="font-semibold text-ink">{period.label}</span> · {period.daysLabel}
-          <span className="max-sm:hidden"> · frente a los {period.daysLabel} anteriores</span>
-        </p>
-      </Card>
+        <p className="text-[13px] text-ink-muted">{`Mostrando ${period.label}, comparado con los ${period.daysLabel} anteriores.`}</p>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -86,7 +84,7 @@ export function FinanceView() {
           label="Reservas confirmadas"
           value={now.confirmedCount}
           delta={vs(now.confirmedCount, before.confirmedCount)}
-          hint="con su abono en el periodo"
+          hint="pagaron su abono en estas fechas"
           icon={<CalendarIcon size={15} />}
         />
         <StatCard
@@ -95,46 +93,44 @@ export function FinanceView() {
           value={`${Math.round(now.occupancy * 100)} %`}
           delta={before.available && now.available ? Math.round((now.occupancy - before.occupancy) * 100) : undefined}
           deltaUnit="pp"
-          hint={`${now.occupied} de ${now.available} noches`}
+          hint={`${now.occupied} de ${now.available} noches ocupadas`}
           icon={<HomeIcon size={15} />}
         />
         <StatCard
           accent="blue"
-          label="Ticket promedio"
+          label="Valor promedio por reserva"
           value={now.ticket ? cop(now.ticket) : "—"}
           delta={now.ticket && before.ticket ? vs(now.ticket, before.ticket) : undefined}
-          hint="por reserva confirmada"
+          hint="de las reservas confirmadas"
           icon={<UsersIcon size={15} />}
         />
       </div>
 
-      {/* El gráfico se estira hasta el alto de la columna derecha: sin huecos debajo. */}
+      {/* Lo que entró junto a lo que falta: las dos columnas miden lo mismo y el gráfico toma ese alto. */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <RevenueChart buckets={now.buckets} deposits={now.depositsTotal} balances={now.balancesTotal} />
-        <div className="flex min-w-0 flex-col gap-4 self-start">
-          <Receivables
-            deposits={awaiting.reduce((s, r) => s + pendingOf(r).deposit, 0)}
-            depositCount={awaiting.length}
-            balances={balances.reduce((s, r) => s + pendingOf(r).balance, 0)}
-            balanceCount={balances.length}
-            cabinId={cabinId}
-          />
-          <StaysMeter stays={now.stays} />
-        </div>
+        <Receivables
+          deposits={awaiting.reduce((s, r) => s + pendingOf(r).deposit, 0)}
+          depositCount={awaiting.length}
+          balances={balances.reduce((s, r) => s + pendingOf(r).balance, 0)}
+          balanceCount={balances.length}
+          cabinId={cabinId}
+        />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <StaysMeter stays={now.stays} />
         <BarList
           id="fi-cabin"
-          title="Ingresos por cabaña"
-          subtitle="¿Qué cabaña genera más?"
+          title="¿Qué cabaña genera más?"
+          subtitle="Dinero recibido en el periodo, por cabaña."
           rows={now.byCabin}
           total={now.received}
           icon={<HomeIcon size={18} />}
         />
         <BarList
           id="fi-type"
-          title="Ingresos por tipo de estadía"
+          title="¿Quién reserva?"
           subtitle="Pareja, familia (con niños), grupo (3 o más adultos) o individual."
           rows={now.byType}
           total={now.received}
@@ -185,10 +181,10 @@ function Receivables({
         icon={<WalletIcon size={18} />}
         accent="blue"
         title="Por cobrar hoy"
-        subtitle="De todas las reservas activas, sin importar el periodo."
+        subtitle="Lo pendiente de todas las reservas activas. No cambia con el periodo."
       />
       <p className="text-[30px] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">{cop(deposits + balances)}</p>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-1 flex-col gap-2">
         {row("yellow", <ClockIcon size={16} />, "Abonos por recibir", plural(depositCount, "reserva sin abono", "reservas sin abono"), deposits, "abonos")}
         {row("green", <WalletIcon size={16} />, "Saldos por cobrar", plural(balanceCount, "reserva confirmada", "reservas confirmadas"), balances, "saldos")}
       </ul>
@@ -209,13 +205,18 @@ export function RevenueChart({ buckets, deposits, balances }: { buckets: ReturnT
   const tip = useTip();
   const max = Math.max(1, ...buckets.map((b) => b.deposit + b.balance));
   const top = buckets.reduce((m, b, i) => (b.deposit + b.balance > buckets[m].deposit + buckets[m].balance ? i : m), 0);
-  const every = Math.ceil(buckets.length / 10); // etiquetas del eje x sin amontonarse
+  const every = Math.ceil(buckets.length / 10); // etiquetas del eje x sin amontonarse (en el teléfono, la mitad)
   const empty = buckets.every((b) => !b.deposit && !b.balance);
-  const by = buckets[0]?.from === buckets[0]?.to ? "Por día" : buckets[0]?.label.startsWith("Sem.") ? "Por semana" : "Por mes";
+  const by =
+    buckets[0]?.from === buckets[0]?.to
+      ? "Dinero recibido cada día"
+      : buckets[0]?.label.startsWith("Sem.")
+        ? "Dinero recibido cada semana"
+        : "Dinero recibido cada mes";
 
   return (
     <Card aria-labelledby="fi-trend" className="flex flex-col gap-5 p-5 sm:p-6">
-      <CardHeader id="fi-trend" icon={<TrendIcon size={18} />} accent="pink" title="Ingresos en el tiempo" subtitle={by} />
+      <CardHeader id="fi-trend" icon={<TrendIcon size={18} />} accent="pink" title="¿Cuándo entró el dinero?" subtitle={by} />
       {/* Totales del periodo, con el color de cada serie (también sirven de leyenda). */}
       <dl className="grid grid-cols-3 gap-2 rounded-[18px] bg-paper/60 px-4 py-3">
         {[
@@ -286,6 +287,7 @@ export function RevenueChart({ buckets, deposits, balances }: { buckets: ReturnT
                       {b.deposit > 0 && <span className="w-full rounded-full bg-series-1" style={{ flex: b.deposit }} />}
                       {b.balance > 0 && <span className="w-full rounded-full bg-series-2" style={{ flex: b.balance }} />}
                     </span>
+                    {total === 0 && <span aria-hidden="true" className="mb-px block size-1 rounded-full bg-ink/15" />}
                     {i === top && total > 0 && (
                       <span className="absolute -top-5 text-[11.5px] font-bold whitespace-nowrap text-ink tabular-nums">{short(total)}</span>
                     )}
@@ -298,7 +300,11 @@ export function RevenueChart({ buckets, deposits, balances }: { buckets: ReturnT
           <ol aria-hidden="true" className="mt-2 flex h-4 gap-[2px] text-[11px] text-ink-muted">
             {buckets.map((b, i) => (
               <li key={b.key} className="relative min-w-0 flex-1">
-                {i % every === 0 && <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">{b.label.replace(/^Sem\. /, "")}</span>}
+                {i % every === 0 && (
+                  <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap ${i % (every * 2) ? "max-sm:hidden" : ""}`}>
+                    {b.label.replace(/^Sem\. /, "")}
+                  </span>
+                )}
               </li>
             ))}
           </ol>
@@ -318,20 +324,20 @@ export function StaysMeter({ stays }: { stays: ReturnType<typeof finance>["stays
         id="fi-stays"
         icon={<CalendarIcon size={18} />}
         accent="green"
-        title="Estadías del periodo"
-        subtitle={stays.count ? `${plural(stays.count, "reserva llega", "reservas llegan")} en estas fechas` : "Llegadas en estas fechas"}
+        title="¿Ya pagaron quienes llegan?"
+        subtitle={stays.count ? `${plural(stays.count, "reserva llega", "reservas llegan")} en estas fechas` : "Reservas que llegan en estas fechas"}
       />
       {stays.count ? (
         <>
           <div className="flex items-end justify-between gap-3">
             <p className="text-[30px] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">{pct} %</p>
             <p className="text-right text-[12.5px] text-ink-muted">
-              cobrado de
+              ya cobrado, de un total de
               <strong className="block text-[14px] font-bold text-ink tabular-nums">{cop(stays.value)}</strong>
             </p>
           </div>
           <span aria-hidden="true" className="block h-2.5 overflow-hidden rounded-full bg-ink/8">
-            <span className="block h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${pct}%` }} />
+            <span className="block h-full rounded-full bg-status-confirmed transition-[width] duration-500" style={{ width: `${pct}%` }} />
           </span>
           <dl className="grid grid-cols-2 gap-2 text-[12.5px]">
             <div className="rounded-[16px] bg-paper/70 px-3.5 py-2.5">
@@ -369,18 +375,21 @@ export function BarList({
   icon?: ReactNode;
 }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
+  // Lo que no generó dinero no ocupa una fila: se resume al final.
+  const earning = rows.filter((r) => r.value > 0);
+  const none = rows.filter((r) => r.value <= 0);
   return (
     <Card aria-labelledby={id} className="flex flex-col gap-4 p-5 sm:p-6">
       <CardHeader id={id} icon={icon} title={title} subtitle={subtitle} />
       {total ? (
         <ol className="flex flex-col gap-2">
-          {rows.map((r, i) => {
+          {earning.map((r, i) => {
             const pct = Math.round((r.value / total) * 100);
             return (
               <li key={r.id} className="flex items-center gap-3 rounded-[16px] bg-paper/60 px-3.5 py-2.5">
                 <span
                   aria-hidden="true"
-                  className={`grid size-7 flex-none place-items-center rounded-full text-[12px] font-bold ${i === 0 && r.value ? "bg-ink text-paper" : "bg-panel text-ink-muted"}`}
+                  className={`grid size-7 flex-none place-items-center rounded-full text-[12px] font-bold ${i === 0 ? "bg-ink text-paper" : "bg-panel text-ink-muted"}`}
                 >
                   {i + 1}
                 </span>
@@ -398,6 +407,7 @@ export function BarList({
               </li>
             );
           })}
+          {none.length > 0 && <li className="px-1 pt-1 text-[12.5px] text-ink-muted">{`Sin ingresos: ${none.map((r) => r.label).join(", ")}.`}</li>}
         </ol>
       ) : (
         <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-muted">Sin ingresos en este periodo.</p>

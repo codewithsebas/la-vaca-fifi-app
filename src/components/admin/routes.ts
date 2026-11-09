@@ -249,8 +249,7 @@ export const CONTENT_SECTIONS: { id: ContentSectionId; label: string; group: (ty
     id: "colores",
     label: "Colores",
     group: "Apariencia",
-    where:
-      "Todo el sitio público: portada, secciones, cabañas, formulario de reserva, consulta de reservas y pie de página. Este panel usa los mismos colores.",
+    where: "Todo el sitio público: portada, secciones, cabañas, formulario de reserva, consulta de reservas y pie de página.",
     href: "/",
   },
 ];

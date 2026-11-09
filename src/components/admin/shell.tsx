@@ -16,7 +16,7 @@ import { closeSession, endSession, openSession } from "@/lib/offline/session";
 import { cabinName } from "@/lib/booking";
 import { config } from "@/lib/config";
 import { todayISO } from "@/lib/format";
-import { mergePanelColors, panelColorsCss, type PanelColors } from "@/lib/panel-colors";
+import { PANEL_THEME_CSS } from "@/components/admin/panel-theme";
 import { themeCss, type SiteTheme } from "@/lib/theme";
 import type { AdminData, PanelRole } from "@/lib/types";
 import { AdminProvider, type AdminCtx } from "@/components/admin/context";
@@ -54,16 +54,15 @@ import {
 
 /* ───────────── Colores ───────────── */
 
-// El panel tiene sus propios colores (app/globals.css), personalizables en Configuración → Colores. La paleta publicada
+// El panel tiene un tema fijo (components/admin/panel-theme.ts). La paleta publicada
 // del sitio se declara igual, para las vistas previas del sitio que muestra (fotos, colores, textos). Las hojas se van
 // con el panel al volver al sitio.
 function PanelTheme({ theme }: { theme: SiteTheme }) {
   return <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />;
 }
-function PanelColorsStyle({ colors }: { colors: PanelColors }) {
-  useEffect(syncBrowserBar, [colors]);
-  // Se valida aquí porque esta hoja envuelve todo el panel: unos datos sin colores no deben tumbarlo.
-  return <style dangerouslySetInnerHTML={{ __html: panelColorsCss(mergePanelColors(colors)) }} />;
+function FixedPanelTheme() {
+  useEffect(syncBrowserBar, []);
+  return <style dangerouslySetInnerHTML={{ __html: PANEL_THEME_CSS }} />;
 }
 
 /* ───────────── Acceso ───────────── */
@@ -77,19 +76,17 @@ type Gate =
 
 // La sesión la valida el servidor: si /admin/data responde 200 hay sesión de administrador.
 export function AdminShell({ children }: { children: ReactNode }) {
-  // Antes de entrar (carga, ingreso), los colores publicados que trae el sitio; dentro, los de los datos del panel,
-  // que cambian apenas se publica otra paleta.
-  const { theme, panelColors } = useSite();
+  const { theme } = useSite();
   useApplyTheme();
   return (
     <>
       <PanelTheme theme={theme} />
-      <Gated panelColors={panelColors}>{children}</Gated>
+      <Gated>{children}</Gated>
     </>
   );
 }
 
-function Gated({ panelColors, children }: { panelColors: PanelColors; children: ReactNode }) {
+function Gated({ children }: { children: ReactNode }) {
   const [gate, setGate] = useState<Gate>({ status: "checking" });
   const check = useCallback(() => {
     const online = () =>
@@ -134,9 +131,8 @@ function Gated({ panelColors, children }: { panelColors: PanelColors; children: 
     return () => closeSession();
   }, [check]);
 
-  // Antes de entrar, los colores publicados; dentro, los de los datos del panel (Panel). Mientras llegan los datos, el
-  // panel ya se ve con su forma (esqueletos); al entrar, cada pieza llega con animación.
-  const pre = <PanelColorsStyle colors={panelColors} />;
+  // Mientras llegan los datos, el panel ya se ve con su forma (esqueletos); al entrar, cada pieza llega con animación.
+  const pre = <FixedPanelTheme />;
   if (gate.status === "checking")
     return (
       <>
@@ -521,7 +517,6 @@ function Panel({
   const [now, setNow] = useState(() => Date.now());
   const [menu, setMenu] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [colorPreview, setColorPreview] = useState<PanelColors | null>(null);
   const mini = usePref(PREF.sidebar, "full") === "mini";
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const firstPath = useRef(true);
@@ -723,7 +718,6 @@ function Panel({
       const name = c?.nombre ?? id;
       return unit ? cabinName(c, unit) : name;
     },
-    previewColors: setColorPreview,
   };
 
   const badges: Badges = {
@@ -740,7 +734,7 @@ function Panel({
   return (
     <AdminProvider value={ctx}>
       <PanelTheme theme={data.site.theme} />
-      <PanelColorsStyle colors={colorPreview ?? data.site.panelColors} />
+      <FixedPanelTheme />
       <TipProvider>
         <Suspense fallback={null}>
           <LegacyRedirect />

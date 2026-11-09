@@ -211,13 +211,29 @@ export function TipProvider({ children }: { children: ReactNode }) {
     open.current = !!tip;
   }, [tip]);
 
+  // Si el elemento desaparece con el mouse encima (cambio de página o de datos), no llega el evento de salida.
+  useEffect(() => {
+    if (!tip) return;
+    const check = setInterval(() => {
+      if (!tip.anchor.isConnected) setTip(null);
+    }, 200);
+    return () => clearInterval(check);
+  }, [tip]);
+
   const api = useMemo<TipApi>(
     () => ({
       // Recorriendo elementos seguidos (los iconos del menú), el siguiente tooltip sale sin esperar.
       show: (a, content, { placement = "top", delay = 250 } = {}) => {
         clearTimeout(timer.current);
         const warm = Date.now() - closedAt.current < 400;
-        timer.current = setTimeout(() => setTip({ anchor: a, content, path: location.pathname, placement }), warm ? 0 : delay);
+        // La ruta se toma al pasar el mouse: si mientras tanto se cambió de página, ese elemento ya no cuenta.
+        const path = location.pathname;
+        timer.current = setTimeout(
+          () => {
+            if (a.isConnected && location.pathname === path) setTip({ anchor: a, content, path, placement });
+          },
+          warm ? 0 : delay,
+        );
       },
       hide: () => {
         clearTimeout(timer.current);

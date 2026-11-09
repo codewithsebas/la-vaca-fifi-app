@@ -1,8 +1,8 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
-import { CalendarIcon, CheckIcon, CloseIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/ui/icons";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { CalendarIcon, CheckIcon, CloseIcon, HomeIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, TagIcon, TrashIcon, WalletIcon } from "@/components/ui/icons";
 import {
   MAX_DAY_RATES,
   cleanPersonRates,
@@ -25,12 +25,12 @@ import { RatesTable } from "@/components/admin/rates-table";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { DatePicker, DateRangePicker } from "@/components/admin/date-picker";
 import { adminInput } from "@/components/admin/shared";
+import { LIST_CARD, LIST_MOBILE_ROW, LIST_ROW, LIST_ROW_HOVER, LIST_ROW_LATEST, ListTableHead } from "@/components/admin/list-table";
 import {
   Badge,
   Button,
   Callout,
   Card,
-  CardHeader,
   EmptyState,
   Field,
   FieldError,
@@ -39,7 +39,6 @@ import {
   ModalPresence,
   MoneyInput,
   PageHeader,
-  Segmented,
   Stepper,
   Switch,
   type Tone,
@@ -58,13 +57,26 @@ function seasonState(s: RateSeason, today: string): { label: string; tone: Tone;
   return { label: `Empieza el ${fmtDate(s.from)}`, tone: "info", order: 1 };
 }
 
+type RatesTab = "tarifas" | "temporadas" | "simulador";
+const RATES_TABS: { value: RatesTab; label: string; icon: ReactNode }[] = [
+  { value: "tarifas", label: "Tarifas", icon: <TagIcon size={14} /> },
+  { value: "temporadas", label: "Temporadas", icon: <CalendarIcon size={14} /> },
+  { value: "simulador", label: "Simulador", icon: <WalletIcon size={14} /> },
+];
+
 export function RatesView() {
   const { data, today } = useAdmin();
   const params = useSearchParams();
   const setParams = useSetParams();
+  const [tabP, setTab] = useParam<RatesTab>("vista", "tarifas");
+  // Un enlace directo a una temporada abre esa pestaña debajo de su editor.
+  const tab: RatesTab = params.get("temporada") ? "temporadas" : RATES_TABS.some((t) => t.value === tabP) ? tabP : "tarifas";
   const [filter, setFilter] = useParam<"vigentes" | "finalizadas" | "todas">("mostrar", "vigentes");
   const seasons = [...data.seasons].sort((a, b) => seasonState(a, today).order - seasonState(b, today).order || (a.from < b.from ? -1 : 1));
-  const shown = seasons.filter((s) => filter === "todas" || (filter === "finalizadas" ? s.to < today : s.to >= today));
+  const [cabinId, setCabinId] = useParam("cabana", "");
+  const shown = seasons.filter(
+    (s) => (filter === "todas" || (filter === "finalizadas" ? s.to < today : s.to >= today)) && (!cabinId || s.cabinTypeId === cabinId),
+  );
 
   // El editor de temporadas se abre desde la URL: ?temporada=nueva o ?temporada=<id>.
   const seasonId = params.get("temporada");
@@ -87,65 +99,126 @@ export function RatesView() {
         ? { ...found }
         : null;
   const edit = (id: string) => setParams({ temporada: id });
-  const paged = usePaged(shown, "temporadas", filter);
+  const paged = usePaged(shown, "temporadas", `${filter}|${cabinId}`);
+
+  // Barra de secciones compacta; en el teléfono ocupa todo el ancho, en partes iguales. En Tarifas va junto a los días de fin de semana.
+  const tabs = (
+    <div role="tablist" aria-label="Secciones de tarifas" className="grid w-full grid-cols-3 gap-1 rounded-full bg-panel p-1 sm:w-fit">
+      {RATES_TABS.map((t) => {
+        const on = t.value === tab;
+        const count = t.value === "temporadas" ? data.seasons.filter((s) => s.activa && s.to >= today).length : 0;
+        return (
+          <button
+            key={t.value}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => setTab(t.value)}
+            className={`inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-[13px] font-semibold whitespace-nowrap transition-colors duration-150 sm:px-4 ${on ? "bg-ink text-paper" : "text-ink-muted hover:text-ink"}`}
+          >
+            {t.icon}
+            {t.label}
+            {count > 0 && <span className="rounded-full bg-yellow px-1.5 text-[11px] font-bold text-ink tabular-nums">{count}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <>
       <PageHeader
         title={MODULES.tarifas.label}
-        description="Una sola tabla con el precio de todas las cabañas, como el % de abono. Las temporadas lo reemplazan en sus fechas (por ejemplo, fin de año o puentes festivos)."
-      />
-
-      <RatesTable />
-
-      <Card aria-labelledby="rt-seasons" className="flex flex-col gap-4 p-4 sm:p-5">
-        <CardHeader
-          id="rt-seasons"
-          icon={<CalendarIcon size={18} />}
-          title="Temporadas"
-          subtitle="Precio especial por fechas. Dos temporadas activas de la misma cabaña no pueden cruzarse."
-          actions={
+        description="El precio de cada noche. Las temporadas lo reemplazan en sus fechas."
+        actions={
+          tab === "temporadas" ? (
             <Button variant="primary" icon={<PlusIcon size={14} />} onClick={() => edit("nueva")}>
               Nueva temporada
             </Button>
-          }
-        />
-        {data.seasons.length > 0 && (
-          <Segmented
-            label="Mostrar"
-            value={filter}
-            onChange={setFilter}
-            options={[
-              { value: "vigentes", label: "Vigentes y próximas", count: data.seasons.filter((s) => s.to >= today).length },
-              { value: "finalizadas", label: "Finalizadas" },
-              { value: "todas", label: "Todas" },
-            ]}
-          />
-        )}
-        {shown.length ? (
-          <>
-            <ul className="flex flex-col gap-2">
-              {paged.rows.map((s) => (
-                <SeasonRow key={s.id} s={s} onEdit={() => edit(s.id)} />
-              ))}
-            </ul>
-            <Paginator p={paged} noun="temporadas" />
-          </>
-        ) : (
-          <EmptyState
-            compact
-            icon={<CalendarIcon size={18} />}
-            title={data.seasons.length ? "No hay temporadas en este filtro" : "Aún no hay temporadas"}
-            text={
-              data.seasons.length
-                ? undefined
-                : "Crea una temporada para cobrar distinto en fechas de alta demanda. Se aplica automáticamente al cotizar en el sitio."
-            }
-          />
-        )}
-      </Card>
+          ) : undefined
+        }
+      />
 
-      <Simulator />
+      {tab !== "tarifas" && tabs}
+
+      {/* Oculta, no desmontada: cambiar de pestaña no borra los cambios sin guardar. */}
+      <div className={tab === "tarifas" ? "" : "hidden"}>
+        <RatesTable toolbar={tabs} />
+      </div>
+
+      {tab === "simulador" && <Simulator />}
+
+      {tab === "temporadas" && (
+        <section aria-label="Temporadas" className="flex flex-col gap-3">
+          <p className="text-[13.5px] text-ink-muted">Dos temporadas activas de la misma cabaña no pueden cruzarse.</p>
+          {data.seasons.length > 0 && (
+            <div role="search" aria-label="Filtrar temporadas" className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2 xl:w-[560px]">
+              <div className="min-w-0">
+                <label htmlFor="rt-mostrar" className="sr-only">
+                  Mostrar
+                </label>
+                <Combobox
+                  id="rt-mostrar"
+                  value={filter}
+                  onChange={(v) => setFilter(v as typeof filter)}
+                  searchable={false}
+                  options={[
+                    {
+                      value: "vigentes",
+                      label: "Vigentes y próximas",
+                      description: plural(data.seasons.filter((s) => s.to >= today).length, "temporada", "temporadas"),
+                    },
+                    { value: "finalizadas", label: "Finalizadas" },
+                    { value: "todas", label: "Todas" },
+                  ]}
+                />
+              </div>
+              <div className="min-w-0">
+                <Combobox
+                  value={cabinId}
+                  onChange={setCabinId}
+                  options={[{ value: "", label: "Todas las cabañas" }, ...data.cabinTypes.map((c) => ({ value: c.id, label: c.nombre }))]}
+                  icon={<HomeIcon size={14} className="text-ink-muted" />}
+                />
+              </div>
+            </div>
+          )}
+          {shown.length ? (
+            <>
+              <Card className={LIST_CARD}>
+                <table className="w-full text-[14px]">
+                  <ListTableHead columns={["Temporada", "Cabaña", "Fechas", "Precio", "Estado", "Acciones"]} right={["Precio", "Acciones"]} />
+                  <tbody className="divide-y divide-line">
+                    {paged.rows.map((s) => (
+                      <SeasonTableRow key={s.id} s={s} onEdit={() => edit(s.id)} />
+                    ))}
+                  </tbody>
+                </table>
+                <Paginator p={paged} noun="temporadas" className="border-t border-line px-4 py-3" />
+              </Card>
+              <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:hidden">
+                {paged.rows.map((s) => (
+                  <SeasonCard key={s.id} s={s} onEdit={() => edit(s.id)} />
+                ))}
+              </ul>
+              <Paginator p={paged} noun="temporadas" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line xl:hidden" />
+            </>
+          ) : (
+            <Card className="p-4">
+              <EmptyState
+                compact
+                icon={<CalendarIcon size={18} />}
+                title={data.seasons.length ? "No hay temporadas con esos filtros" : "Aún no hay temporadas"}
+                text={
+                  data.seasons.length
+                    ? undefined
+                    : "Crea una temporada para cobrar distinto en fechas de alta demanda. Se aplica automáticamente al cotizar en el sitio."
+                }
+              />
+            </Card>
+          )}
+        </section>
+      )}
 
       <ModalPresence>{editing && <SeasonEditor key={seasonId} initial={editing} onClose={() => setParams({ temporada: null })} />}</ModalPresence>
     </>
@@ -223,11 +296,9 @@ function PersonRatesEditor({
 
 /* ───────────── Temporadas ───────────── */
 
-function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
-  const { today, cabin, ask } = useAdmin();
-  const st = seasonState(s, today);
-  const c = cabin(s.cabinTypeId);
-  const nights = nightsBetween(s.from, s.to) + 1;
+// Editar, pausar o activar y eliminar: los clics no abren el editor dos veces (la fila entera también lo abre).
+function SeasonActions({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
+  const { ask } = useAdmin();
   const toggle = () =>
     ask({
       title: s.activa ? "Pausar temporada" : "Activar temporada",
@@ -247,50 +318,88 @@ function SeasonRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
       done: "Temporada eliminada",
       run: () => api.admin.deleteSeason(s.id),
     });
-
   return (
-    <li
-      className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[18px] px-4 py-3 ${st.order === 0 ? "bg-green-soft" : "bg-canvas/60"} ${st.order >= 2 ? "opacity-75" : ""}`}
+    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+      <IconButton label={`Editar ${s.nombre}`} size="sm" variant="secondary" data-gesture="cancel" onClick={onEdit}>
+        <PencilIcon size={15} />
+      </IconButton>
+      <IconButton label={s.activa ? `Pausar ${s.nombre}` : `Activar ${s.nombre}`} size="sm" variant="secondary" data-gesture="pay" onClick={toggle}>
+        {s.activa ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
+      </IconButton>
+      <IconButton label={`Eliminar ${s.nombre}`} size="sm" variant="danger-ghost" data-gesture="cancel" onClick={remove}>
+        <TrashIcon size={15} />
+      </IconButton>
+    </div>
+  );
+}
+
+// Lo que comparten la fila de la tabla y la tarjeta del teléfono.
+function useSeasonView(s: RateSeason) {
+  const { today, cabin } = useAdmin();
+  const c = cabin(s.cabinTypeId);
+  const from = rateFrom(s);
+  return {
+    st: seasonState(s, today),
+    cabinName: c?.nombre ?? s.cabinTypeId,
+    nights: plural(nightsBetween(s.from, s.to) + 1, "noche", "noches"),
+    dates: `${fmtDate(s.from)} → ${fmtDate(s.to)}`,
+    price: cop(from.price),
+    priceHint: `para ${from.guests}${c ? ` · ${diff(from.price, rateFrom(c).price)}` : ""}`,
+    days: (s.dayRates ?? []).map((r) => (
+      <Badge key={dayRateLabel(r)} tone="info">
+        {dayRateLabel(r)} · {cop(rateFrom(r).price)}
+      </Badge>
+    )),
+  };
+}
+
+function SeasonTableRow({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
+  const v = useSeasonView(s);
+  return (
+    <tr
+      onClick={onEdit}
+      className={`${LIST_ROW} ${v.st.order === 0 ? LIST_ROW_LATEST : LIST_ROW_HOVER} ${v.st.order >= 2 ? "[&>td:not(:last-child)]:opacity-60" : ""}`}
     >
-      <span aria-hidden="true" className="grid size-10 flex-none place-items-center rounded-full bg-paper text-ink-muted">
-        <TagIcon size={17} />
+      <td className="px-4 py-3">
+        <span className="block font-bold text-ink">{s.nombre}</span>
+        {v.days.length > 0 && <span className="mt-1 flex flex-wrap gap-1.5">{v.days}</span>}
+      </td>
+      <td className="px-4 py-3 text-ink">{v.cabinName}</td>
+      <td className="px-4 py-3">
+        <span className="block whitespace-nowrap text-ink">{v.dates}</span>
+        <span className="block text-[12.5px] text-ink-muted">{v.nights}</span>
+      </td>
+      <td className="px-4 py-3 text-right">
+        <span className="block font-semibold text-ink tabular-nums">{v.price}</span>
+        <span className="block text-[12px] whitespace-nowrap text-ink-muted">{v.priceHint}</span>
+      </td>
+      <td className="px-4 py-3">
+        <Badge tone={v.st.tone}>{v.st.label}</Badge>
+      </td>
+      <td className="px-4 py-3">
+        <SeasonActions s={s} onEdit={onEdit} />
+      </td>
+    </tr>
+  );
+}
+
+function SeasonCard({ s, onEdit }: { s: RateSeason; onEdit: () => void }) {
+  const v = useSeasonView(s);
+  return (
+    <li className={`${LIST_MOBILE_ROW} ${v.st.order === 0 ? "bg-yellow-soft/70" : "bg-paper"} ${v.st.order >= 2 ? "opacity-75" : ""}`}>
+      <span className="flex w-full flex-wrap items-center justify-between gap-2">
+        <strong className="font-bold text-ink">{s.nombre}</strong>
+        <Badge tone={v.st.tone}>{v.st.label}</Badge>
       </span>
-      <div className="min-w-[200px] flex-1">
-        <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-ink">
-          {s.nombre}
-          <Badge tone={st.tone}>{st.label}</Badge>
-        </p>
-        <p className="text-[13px] text-ink-muted">
-          {c?.nombre ?? s.cabinTypeId} · noches del {fmtDate(s.from, true)} al {fmtDate(s.to, true)} ({plural(nights, "noche", "noches")})
-        </p>
-        {(s.dayRates ?? []).length > 0 && (
-          <p className="mt-1 flex flex-wrap gap-1.5">
-            {s.dayRates.map((r) => (
-              <Badge key={dayRateLabel(r)} tone="info">
-                {dayRateLabel(r)} · {cop(rateFrom(r).price)}
-              </Badge>
-            ))}
-          </p>
-        )}
-      </div>
-      <div className="text-right">
-        <p className="text-[15px] font-bold text-ink tabular-nums">{cop(rateFrom(s).price)}</p>
-        <p className="text-[12px] text-ink-muted">
-          {`para ${rateFrom(s).guests}`}
-          {c ? ` · ${diff(rateFrom(s).price, rateFrom(c).price)}` : ""}
-        </p>
-      </div>
-      <div className="flex gap-1">
-        <Button size="sm" icon={<PencilIcon size={13} />} onClick={onEdit}>
-          Editar
-        </Button>
-        <IconButton label={s.activa ? `Pausar ${s.nombre}` : `Activar ${s.nombre}`} size="sm" onClick={toggle}>
-          {s.activa ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
-        </IconButton>
-        <IconButton label={`Eliminar ${s.nombre}`} size="sm" variant="danger-ghost" onClick={remove}>
-          <TrashIcon size={15} />
-        </IconButton>
-      </div>
+      <span className="text-[13px] text-ink-muted">{`${v.cabinName} · ${v.dates} · ${v.nights}`}</span>
+      {v.days.length > 0 && <span className="flex flex-wrap gap-1.5">{v.days}</span>}
+      <span className="flex w-full flex-wrap items-center justify-between gap-2">
+        <span>
+          <strong className="block font-semibold text-ink tabular-nums">{v.price}</strong>
+          <span className="block text-[12px] text-ink-muted">{v.priceHint}</span>
+        </span>
+        <SeasonActions s={s} onEdit={onEdit} />
+      </span>
     </li>
   );
 }
@@ -744,14 +853,8 @@ function Simulator() {
 
   if (!active.length) return null;
   return (
-    <Card aria-labelledby="rt-sim" className="flex flex-col gap-4 p-4 sm:p-5">
-      <CardHeader
-        id="rt-sim"
-        icon={<TagIcon size={18} />}
-        title="Simulador de precio"
-        subtitle="Comprueba cuánto se cobraría con las tarifas y temporadas actuales."
-      />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.4fr_auto]">
+    <Card aria-label="Simulador de precio" className="flex flex-col gap-4 p-4 sm:p-5">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1.4fr_auto]">
         <Field label="Cabaña">
           {(p) => <Combobox id={p.id} value={cabinId} onChange={setCabinId} options={active.map((x) => ({ value: x.id, label: x.nombre }))} />}
         </Field>
@@ -760,11 +863,11 @@ function Simulator() {
         </Field>
         <Field label="Huéspedes">{(p) => <Stepper id={p.id} value={guests} onChange={setGuests} min={1} max={c?.maxPersonas ?? 12} />}</Field>
         {minPeople && guests < minPeople && (
-          <p className="-mt-1 text-[12.5px] text-ink-muted sm:col-span-3">{`${c?.nombre} cobra desde ${plural(minPeople, "persona", "personas")}: con ${guests} se cobra la tarifa de ${minPeople}.`}</p>
+          <p className="-mt-1 text-[12.5px] text-ink-muted md:col-span-3">{`${c?.nombre} cobra desde ${plural(minPeople, "persona", "personas")}: con ${guests} se cobra la tarifa de ${minPeople}.`}</p>
         )}
       </div>
       {result ? (
-        <div className="grid grid-cols-1 gap-4 rounded-[18px] bg-canvas/70 p-4 sm:grid-cols-[1fr_auto]">
+        <div className="grid grid-cols-1 gap-4 rounded-[18px] bg-paper p-4 ring-1 ring-line md:grid-cols-[1fr_auto]">
           <ul className="flex flex-col gap-1.5 text-[13.5px]">
             {result.groups.map((g) => (
               <li key={g.label} data-sim-line className="flex flex-wrap justify-between gap-x-4">
@@ -778,7 +881,7 @@ function Simulator() {
               </li>
             ))}
           </ul>
-          <div className="flex flex-col items-start gap-0.5 sm:items-end sm:border-l sm:border-line sm:pl-5">
+          <div className="flex flex-col items-start gap-0.5 border-t border-line pt-3 md:items-end md:border-t-0 md:border-l md:pt-0 md:pl-5">
             <span className="text-[12.5px] text-ink-muted">Total</span>
             <strong className="text-[24px] font-bold tracking-[-0.025em] text-ink tabular-nums">{cop(result.q.total)}</strong>
             <span className="text-[12.5px] text-ink-muted">

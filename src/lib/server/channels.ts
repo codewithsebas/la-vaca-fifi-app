@@ -186,12 +186,14 @@ async function applyStays(sb: Db, cal: CalendarRow, events: IcsEvent[], label: s
       )
       .throwOnError();
 
-    // Posibles sobreventas: fechas nuevas de Booking (no ecos, aún sin terminar) sobre reservas del panel.
+    // Posibles sobreventas: fechas nuevas de Booking (no ecos, aún sin terminar) sobre reservas del panel. Las enlazadas a
+    // una noche de Booking son esa misma estadía.
+    const linked = new Set(existing.flatMap((s) => s.reservation_code ?? []));
     const warned = new Set<string>();
     for (const { e, echo } of rows.slice(0, fresh.length)) {
       if (echo || e.checkOut <= today) continue;
       for (const b of busy) {
-        if (!b.code || warned.has(b.code) || !(b.from < e.checkOut && e.checkIn < b.to)) continue;
+        if (!b.code || warned.has(b.code) || !(b.from < e.checkOut && e.checkIn < b.to) || linked.has(b.code)) continue;
         warned.add(b.code);
         result.conflicts.push(b.code);
         await notify(
@@ -205,8 +207,27 @@ async function applyStays(sb: Db, cal: CalendarRow, events: IcsEvent[], label: s
     }
   }
 
-  const gone = existing.filter((s) => !s.removed_at && s.check_out > today && !incoming.has(s.external_uid)).map((s) => s.id);
-  if (gone.length) await sb.from("channel_stays").update({ removed_at: new Date().toISOString() }).in("id", gone).throwOnError();
+  const gone = existing.filter((s) => !s.removed_at && s.check_out > today && !incoming.has(s.external_uid));
+  if (gone.length)
+    await sb
+      .from("channel_stays")
+      .update({ removed_at: new Date().toISOString() })
+      .in(
+        "id",
+        gone.map((s) => s.id),
+      )
+      .throwOnError();
+  // La reserva enlazada no se cancela sola: puede ser un cambio en Booking o tener pagos. Lo decide el equipo.
+  for (const s of gone) {
+    if (!s.reservation_code) continue;
+    await notify(
+      sb,
+      "channel_cancelled",
+      `Booking ya no tiene la reserva · ${s.reservation_code}`,
+      `Booking dejó de ocupar la ${label} del ${fmtDate(s.check_in)} al ${fmtDate(s.check_out)}. Revisa en el extranet si se canceló y, si es así, cancela la reserva ${s.reservation_code} en el panel.`,
+      s.reservation_code,
+    );
+  }
 
   result.added += fresh.length;
   result.removed += gone.length;

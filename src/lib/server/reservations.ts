@@ -81,17 +81,11 @@ export async function holdGroup(
   return { error: "DATES_UNAVAILABLE" };
 }
 
-// Reserva que ya se hizo por otro canal (archivo importado o Booking): entra confirmada, finalizada o cancelada, sin
-// pagos registrados; el equipo registra los pagos después. `r` ya viene validada (invalidImportRow).
-export async function insertImported(
-  sb: Db,
-  r: ImportRow,
-  ctx: { depositPct: number; arrival: string },
-): Promise<{ code: string } | { error: "DATES_UNAVAILABLE" | "DUPLICATE" | "FAILED" }> {
-  const nights = nightsBetween(r.checkIn, r.checkOut);
-  const total = Math.round(r.total);
-  const deposit = Math.round((total * ctx.depositPct) / 100);
-  const quote: Quote = {
+// Cotización de una reserva hecha por otro canal: un solo valor total, sin desglose por persona.
+export function flatQuote(amount: number, nights: number, depositPct: number): Quote {
+  const total = Math.round(amount);
+  const deposit = Math.round((total * depositPct) / 100);
+  return {
     base: total,
     extraGuests: 0,
     extraAmount: 0,
@@ -102,6 +96,16 @@ export async function insertImported(
     extraPerNight: 0,
     nights,
   };
+}
+
+// Reserva que ya se hizo por otro canal (archivo importado o Booking): entra confirmada, finalizada o cancelada, sin
+// pagos registrados; el equipo registra los pagos después. `r` ya viene validada (invalidImportRow).
+export async function insertImported(
+  sb: Db,
+  r: ImportRow,
+  ctx: { depositPct: number; arrival: string },
+): Promise<{ code: string } | { error: "DATES_UNAVAILABLE" | "DUPLICATE" | "FAILED" }> {
+  const quote = flatQuote(r.total, nightsBetween(r.checkIn, r.checkOut), ctx.depositPct);
   const phone = String(r.phone ?? "")
     .replace(/\D/g, "")
     .slice(0, 15);

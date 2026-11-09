@@ -18,6 +18,7 @@ import { BLOCKING_STATUSES } from "@/lib/booking";
 import { MONTHS, MS, addDays, fmtDate, fmtFullDate, isISO, monthStart, parseISO, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
+import { BookingStayDialog } from "@/components/admin/booking-stay";
 import { NewReservationDialog, type NewReservationDraft } from "@/components/admin/new-reservation";
 import { ReservationModal } from "@/components/admin/reservation-detail";
 import { PREF, usePref } from "@/components/admin/prefs";
@@ -53,6 +54,8 @@ export function CalendarView() {
   // Reserva abierta en el modal (?reserva=CODIGO): se conserva al recargar y se puede compartir.
   const [openCode, setOpenCode] = useParam("reserva", "");
   const [draft, setDraft] = useState<NewReservationDraft | null>(null);
+  const [stayId, setStayId] = useState<string | null>(null);
+  const stay = (data.channelStays ?? []).find((s) => s.id === stayId);
   const rows = useMemo(() => units(data.cabinTypes, filter), [data.cabinTypes, filter]);
 
   const valid = (v: string): v is CalView => CALENDAR_VIEWS.some((x) => x.value === v);
@@ -230,7 +233,7 @@ export function CalendarView() {
             {!width ? (
               <Skeleton className="min-h-[360px]" />
             ) : view === "dia" ? (
-              <DayAgenda day={anchor} rows={rows} onNew={setDraft} onOpen={setOpenCode} />
+              <DayAgenda day={anchor} rows={rows} onNew={setDraft} onStay={setStayId} onOpen={setOpenCode} />
             ) : monthGrid ? (
               <div
                 className="touch-pan-y"
@@ -250,15 +253,18 @@ export function CalendarView() {
                 days={days}
                 active={half}
                 onActive={setHalf}
-                render={(part) => <Timeline days={part} rows={rows} today={today} width={width} onDay={showDay} onNew={setDraft} onOpen={setOpenCode} />}
+                render={(part) => (
+                  <Timeline days={part} rows={rows} today={today} width={width} onDay={showDay} onNew={setDraft} onStay={setStayId} onOpen={setOpenCode} />
+                )}
               />
             ) : (
-              <Timeline days={days} rows={rows} today={today} width={width} onDay={showDay} onNew={setDraft} onOpen={setOpenCode} />
+              <Timeline days={days} rows={rows} today={today} width={width} onDay={showDay} onNew={setDraft} onStay={setStayId} onOpen={setOpenCode} />
             )}
           </div>
         </>
       )}
       <ModalPresence>{draft && <NewReservationDialog draft={draft} onClose={() => setDraft(null)} />}</ModalPresence>
+      <ModalPresence>{stay && <BookingStayDialog stay={stay} onClose={() => setStayId(null)} />}</ModalPresence>
       <ModalPresence>{openCode && <ReservationModal key={openCode} code={openCode} onClose={() => setOpenCode("")} />}</ModalPresence>
     </div>
   );

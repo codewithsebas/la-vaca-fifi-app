@@ -36,7 +36,7 @@ export function SettingsView() {
     <>
       <PageHeader
         title="Configuración"
-        description="Preferencias de este navegador: apariencia, notificaciones, sonido de los avisos, vista del calendario y sesión. Los colores, en cambio, son para todo el equipo."
+        description="Preferencias de este navegador: apariencia, notificaciones, sonido de los avisos, vista del calendario y sesión. Los colores del sitio web, en cambio, son para todo el equipo."
       />
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
@@ -91,15 +91,12 @@ export function SettingsView() {
               <CardHeader
                 id="st-colors"
                 icon={<PaletteIcon size={18} />}
-                title="Colores de la plataforma"
-                subtitle="Negros, azules, fondos y estados del panel, y los colores del sitio web. Se aplican para todo el equipo."
+                title="Colores del sitio web"
+                subtitle="Los colores que ven los huéspedes en el sitio. Se publican para todos."
               />
               <div className="flex flex-wrap gap-2">
                 <Link href={paths.colores} className={buttonClass("primary")}>
-                  Colores del panel
-                </Link>
-                <Link href={`${paths.colores}?para=sitio`} className={buttonClass()}>
-                  Colores del sitio web
+                  Editar colores
                 </Link>
               </div>
             </Card>

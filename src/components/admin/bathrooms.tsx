@@ -4,7 +4,7 @@
 // bloqueos por fechas. Un baño fuera de servicio no cierra la cabaña: es un aviso en el calendario, la cabaña y la
 // reserva, para avisar al huésped o reubicarlo.
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { BanIcon, BathIcon, CalendarIcon, CheckIcon, ClockIcon, HomeIcon, PencilIcon, PlusIcon, TrashIcon, WrenchIcon } from "@/components/ui/icons";
 import { BATHROOM_BLOCK_REASONS, unitLabel } from "@/lib/booking";
 import { api, type Bathrooms } from "@/lib/client/api";
@@ -17,6 +17,7 @@ import { DateRangePicker, type DayMark } from "@/components/admin/date-picker";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { paths } from "@/components/admin/routes";
 import { adminInput } from "@/components/admin/shared";
+import { LIST_CARD, LIST_ROW_HOVER, LIST_ROW_LATEST, ListTableHead } from "@/components/admin/list-table";
 import { SyncMark } from "@/components/admin/sync";
 import {
   Badge,
@@ -149,24 +150,29 @@ function useBathroomSave() {
 }
 
 // Cambio rápido de estado (todo el equipo puede hacerlo).
-function StatusPicker({ b, size = "sm" }: { b: Bathroom; size?: "sm" | "md" }) {
+function StatusPicker({ b }: { b: Bathroom }) {
   const { toast } = useAdmin();
   const save = useBathroomSave();
   const [busy, setBusy] = useState(false);
+  const id = useId();
   return (
-    <Segmented
-      label={`Estado de ${b.name}`}
-      size={size}
-      value={b.status}
-      onChange={async (status) => {
-        if (busy || status === b.status) return;
-        setBusy(true);
-        const err = await save(() => api.admin.bathrooms.update({ id: b.id, status }));
-        setBusy(false);
-        toast(err ?? `${b.name}: ${BATHROOM_STATUS[status].label.toLowerCase()}`, err ? "error" : "ok");
-      }}
-      options={STATUSES.map((s) => ({ value: s, label: BATHROOM_STATUS[s].label }))}
-    />
+    <>
+      <label htmlFor={id} className="sr-only">{`Estado de ${b.name}`}</label>
+      <Combobox
+        id={id}
+        value={b.status}
+        searchable={false}
+        onChange={async (v) => {
+          const status = v as BathroomStatus;
+          if (busy || status === b.status) return;
+          setBusy(true);
+          const err = await save(() => api.admin.bathrooms.update({ id: b.id, status }));
+          setBusy(false);
+          toast(err ?? `${b.name}: ${BATHROOM_STATUS[status].label.toLowerCase()}`, err ? "error" : "ok");
+        }}
+        options={STATUSES.map((s) => ({ value: s, label: BATHROOM_STATUS[s].label }))}
+      />
+    </>
   );
 }
 
@@ -226,128 +232,230 @@ export function BathroomsPanel() {
       },
     });
 
+  const editBath = (b: Bathroom) =>
+    setBathEdit({ id: b.id, name: b.name, status: b.status, cabinTypeId: b.cabinTypeId ?? "", unit: b.unit ? String(b.unit) : "", notes: b.notes });
+  const editBlock = (k: BathroomBlock) => setBlockEdit({ id: k.id, bathroomId: k.bathroomId, from: k.from, to: k.to, reason: k.reason, notes: k.notes });
+
   const newBlock = (bathroomId = bathrooms[0]?.id ?? "") => setBlockEdit({ bathroomId, from: null, to: null, reason: BATHROOM_BLOCK_REASONS[0], notes: "" });
 
   return (
     <>
-      <Card aria-labelledby="bt-list" className="flex flex-col gap-4 p-4 sm:p-5">
-        <CardHeader
-          id="bt-list"
-          icon={<BathIcon size={18} />}
-          accent="blue"
-          title="Baños"
-          subtitle="Un baño fuera de servicio no cierra la cabaña: aparece como aviso en el calendario, la cabaña y la reserva."
-          actions={
-            can(role, "bathrooms") ? (
-              <Button
-                size="sm"
-                variant="primary"
-                icon={<PlusIcon size={13} />}
-                onClick={() => setBathEdit({ name: "", status: "available", cabinTypeId: "", unit: "", notes: "" })}
-              >
-                Nuevo baño
-              </Button>
-            ) : undefined
-          }
-        />
+      <section aria-labelledby="bt-list" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            <h2 id="bt-list" className="text-[17px] font-bold tracking-[-0.01em] text-ink">
+              Baños
+            </h2>
+            <p className="text-[13.5px] text-ink-muted">
+              Un baño fuera de servicio no cierra la cabaña: aparece como aviso en el calendario, la cabaña y la reserva.
+            </p>
+          </div>
+          {can(role, "bathrooms") && (
+            <Button
+              variant="primary"
+              icon={<PlusIcon size={13} />}
+              onClick={() => setBathEdit({ name: "", status: "available", cabinTypeId: "", unit: "", notes: "" })}
+            >
+              Nuevo baño
+            </Button>
+          )}
+        </div>
         {bathrooms.length ? (
-          <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
-            {bathrooms.map((b) => {
-              const now = blockedNow(b);
-              const issue = b.status !== "available" || !!now;
-              return (
-                <li key={b.id} className={`flex flex-col gap-3 rounded-[18px] p-4 ${issue ? "bg-yellow-soft" : "bg-paper/60"}`}>
-                  <div className="flex items-start gap-3">
-                    <span
-                      aria-hidden="true"
-                      className={`grid size-10 flex-none place-items-center rounded-full ${issue ? "bg-yellow text-ink" : "bg-blue text-ink"}`}
-                    >
-                      <BathIcon size={18} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14.5px] font-bold text-ink">{b.name}</p>
-                      <SyncMark entity={`bathrooms:${b.id}`} />
-                      <p className="flex items-center gap-1.5 text-[12.5px] text-ink-muted">
-                        <HomeIcon size={12} />
-                        {where(b)}
-                      </p>
+          <>
+            <Card className={LIST_CARD}>
+              <table className="w-full text-[14px]">
+                <ListTableHead columns={["Baño", "Ubicación", "Estado", "Aviso", "Último cambio", "Acciones"]} right={["Acciones"]} />
+                <tbody className="divide-y divide-line">
+                  {bathrooms.map((b) => {
+                    const now = blockedNow(b);
+                    const issue = b.status !== "available" || !!now;
+                    return (
+                      <tr key={b.id} className={`transition-colors ${issue ? LIST_ROW_LATEST : LIST_ROW_HOVER}`}>
+                        <td className="px-4 py-3 font-bold text-ink">
+                          {b.name}
+                          <SyncMark entity={`bathrooms:${b.id}`} />
+                        </td>
+                        <td className="px-4 py-3 text-ink">{where(b)}</td>
+                        <td className="w-[210px] px-4 py-3">
+                          <StatusPicker b={b} />
+                        </td>
+                        <td className="px-4 py-3 text-[13px] text-ink-muted">
+                          {now ? (
+                            <span className="inline-flex items-center gap-1 font-semibold text-warning">
+                              <BanIcon size={12} />
+                              Bloqueado hasta el {fmtDate(now.to)}
+                            </span>
+                          ) : (
+                            <span className="block max-w-[260px] truncate">{b.notes}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-[13px] whitespace-nowrap text-ink-muted">{timeAgo(b.statusUpdatedAt)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <IconButton label="Bloquear fechas" size="sm" variant="secondary" data-gesture="calendar" onClick={() => newBlock(b.id)}>
+                              <CalendarIcon size={15} />
+                            </IconButton>
+                            <IconButton label={`Editar ${b.name}`} size="sm" variant="secondary" data-gesture="cancel" onClick={() => editBath(b)}>
+                              <PencilIcon size={15} />
+                            </IconButton>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Card>
+            <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:hidden">
+              {bathrooms.map((b) => {
+                const now = blockedNow(b);
+                const issue = b.status !== "available" || !!now;
+                return (
+                  <li key={b.id} className={`flex flex-col gap-3 rounded-[20px] p-4 ring-1 ring-line ${issue ? "bg-yellow-soft/70" : "bg-paper"}`}>
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14.5px] font-bold text-ink">{b.name}</p>
+                        <SyncMark entity={`bathrooms:${b.id}`} />
+                        <p className="flex items-center gap-1.5 text-[12.5px] text-ink-muted">
+                          <HomeIcon size={12} />
+                          {where(b)}
+                        </p>
+                      </div>
+                      <IconButton label={`Editar ${b.name}`} size="sm" onClick={() => editBath(b)}>
+                        <PencilIcon size={14} />
+                      </IconButton>
                     </div>
-                    <IconButton
-                      label={`Editar ${b.name}`}
-                      size="sm"
-                      onClick={() =>
-                        setBathEdit({
-                          id: b.id,
-                          name: b.name,
-                          status: b.status,
-                          cabinTypeId: b.cabinTypeId ?? "",
-                          unit: b.unit ? String(b.unit) : "",
-                          notes: b.notes,
-                        })
-                      }
-                    >
-                      <PencilIcon size={14} />
-                    </IconButton>
-                  </div>
-                  <StatusPicker b={b} />
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-ink-muted">
-                    {now ? (
-                      <span className="inline-flex items-center gap-1 font-semibold text-warning">
-                        <BanIcon size={12} />
-                        Bloqueado hasta el {fmtDate(now.to)}
+                    <StatusPicker b={b} />
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-ink-muted">
+                      {now ? (
+                        <span className="inline-flex items-center gap-1 font-semibold text-warning">
+                          <BanIcon size={12} />
+                          Bloqueado hasta el {fmtDate(now.to)}
+                        </span>
+                      ) : null}
+                      {b.notes && <span className="truncate">{b.notes}</span>}
+                      <span className="ml-auto inline-flex items-center gap-1">
+                        <ClockIcon size={12} />
+                        {timeAgo(b.statusUpdatedAt)}
                       </span>
-                    ) : null}
-                    {b.notes && <span className="truncate">{b.notes}</span>}
-                    <span className="ml-auto inline-flex items-center gap-1">
-                      <ClockIcon size={12} />
-                      {timeAgo(b.statusUpdatedAt)}
-                    </span>
-                  </div>
-                  <Button size="sm" variant="ghost" icon={<BanIcon size={13} />} onClick={() => newBlock(b.id)} className="self-start">
-                    Bloquear fechas
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
+                    </div>
+                    <Button size="sm" variant="ghost" icon={<BanIcon size={13} />} onClick={() => newBlock(b.id)} className="self-start">
+                      Bloquear fechas
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         ) : (
-          <EmptyState
-            compact
-            icon={<BathIcon size={18} />}
-            title="Aún no hay baños"
-            text={can(role, "bathrooms") ? "Crea los baños y, si quieres, asígnalos a una cabaña para ver sus avisos." : "Un administrador puede crearlos."}
-          />
+          <Card className="p-4">
+            <EmptyState
+              compact
+              icon={<BathIcon size={18} />}
+              title="Aún no hay baños"
+              text={can(role, "bathrooms") ? "Crea los baños y, si quieres, asígnalos a una cabaña para ver sus avisos." : "Un administrador puede crearlos."}
+            />
+          </Card>
         )}
-      </Card>
+      </section>
 
-      <Card aria-labelledby="bt-blocks" className="flex flex-col gap-4 p-4 sm:p-5">
-        <CardHeader
-          id="bt-blocks"
-          icon={<BanIcon size={18} />}
-          accent="yellow"
-          title="Bloqueos de baños"
-          subtitle="Fechas en las que un baño no se puede usar (reparación, limpieza profunda…)."
-          actions={
-            bathrooms.length ? (
-              <Button size="sm" icon={<PlusIcon size={13} />} onClick={() => newBlock()}>
+      <section aria-labelledby="bt-blocks" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            <h2 id="bt-blocks" className="text-[17px] font-bold tracking-[-0.01em] text-ink">
+              Bloqueos de baños
+            </h2>
+            <p className="text-[13.5px] text-ink-muted">Fechas en las que un baño no se puede usar (reparación, limpieza profunda…).</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-[220px]">
+              <label htmlFor="bt-filtro" className="sr-only">
+                Mostrar
+              </label>
+              <Combobox
+                id="bt-filtro"
+                value={filter}
+                onChange={(v) => setFilter(v as BlockFilter)}
+                searchable={false}
+                options={[
+                  { value: "vigentes", label: "Vigentes y próximos", description: plural(blocks.filter((k) => k.to >= today).length, "bloqueo", "bloqueos") },
+                  { value: "finalizados", label: "Finalizados" },
+                  { value: "todos", label: "Todos" },
+                ]}
+              />
+            </div>
+            {bathrooms.length > 0 && (
+              <Button icon={<PlusIcon size={13} />} onClick={() => newBlock()}>
                 Bloquear un baño
               </Button>
-            ) : undefined
-          }
-        />
-        <Segmented
-          label="Mostrar"
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { value: "vigentes", label: "Vigentes y próximos", count: blocks.filter((k) => k.to >= today).length },
-            { value: "finalizados", label: "Finalizados" },
-            { value: "todos", label: "Todos" },
-          ]}
-        />
+            )}
+          </div>
+        </div>
         {list.length ? (
           <>
-            <ul className="flex flex-col gap-2">
+            <Card className={LIST_CARD}>
+              <table className="w-full text-[14px]">
+                <ListTableHead columns={["Baño", "Fechas", "Motivo", "Estado", "Acciones"]} right={["Acciones"]} />
+                <tbody className="divide-y divide-line">
+                  {paged.rows.map((k) => {
+                    const b = byId.get(k.bathroomId);
+                    const live = k.from <= today && today <= k.to;
+                    const days = nightsBetween(k.from, k.to) + 1;
+                    return (
+                      <tr
+                        key={k.id}
+                        onClick={() => editBlock(k)}
+                        className={`cursor-pointer transition-colors ${live ? LIST_ROW_LATEST : LIST_ROW_HOVER} ${k.to < today ? "[&>td:not(:last-child)]:opacity-60" : ""}`}
+                      >
+                        <td className="px-4 py-3">
+                          <span className="block font-bold text-ink">{b?.name ?? "Baño eliminado"}</span>
+                          <span className="block text-[12.5px] text-ink-muted">{b ? where(b) : ""}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="block text-ink">{`${fmtDate(k.from)} → ${fmtDate(k.to)}`}</span>
+                          <span className="block text-[12.5px] text-ink-muted">{plural(days, "día", "días")}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="block font-semibold text-ink">{k.reason}</span>
+                          {k.notes && <span className="block max-w-[320px] truncate text-[12.5px] text-ink-muted">{k.notes}</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          {live ? (
+                            <Badge tone="warning" icon={<ClockIcon size={11} />}>
+                              En curso
+                            </Badge>
+                          ) : k.to < today ? (
+                            <Badge>Finalizado</Badge>
+                          ) : (
+                            <Badge tone="info">Próximo</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                            <IconButton label="Editar bloqueo" size="sm" variant="secondary" data-gesture="cancel" onClick={() => editBlock(k)}>
+                              <PencilIcon size={15} />
+                            </IconButton>
+                            {can(role, "delete") && (
+                              <IconButton
+                                label={`Eliminar bloqueo de ${b?.name ?? "baño"}`}
+                                size="sm"
+                                variant="danger-ghost"
+                                data-gesture="cancel"
+                                onClick={() => removeBlock(k)}
+                              >
+                                <TrashIcon size={15} />
+                              </IconButton>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <Paginator p={paged} noun="bloqueos" className="border-t border-line px-4 py-3" />
+            </Card>
+            <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:hidden">
               {paged.rows.map((k) => {
                 const b = byId.get(k.bathroomId);
                 const live = k.from <= today && today <= k.to;
@@ -355,7 +463,7 @@ export function BathroomsPanel() {
                 return (
                   <li
                     key={k.id}
-                    className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[18px] px-4 py-3 ${live ? "bg-yellow-soft" : "bg-paper/60"} ${k.to < today ? "opacity-75" : ""}`}
+                    className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[20px] p-4 ring-1 ring-line ${live ? "bg-yellow-soft/70" : "bg-paper"} ${k.to < today ? "opacity-75" : ""}`}
                   >
                     <div className="min-w-[200px] flex-1">
                       <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-ink">
@@ -374,11 +482,7 @@ export function BathroomsPanel() {
                       </p>
                     </div>
                     <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        icon={<PencilIcon size={13} />}
-                        onClick={() => setBlockEdit({ id: k.id, bathroomId: k.bathroomId, from: k.from, to: k.to, reason: k.reason, notes: k.notes })}
-                      >
+                      <Button size="sm" icon={<PencilIcon size={13} />} onClick={() => editBlock(k)}>
                         Editar
                       </Button>
                       {can(role, "delete") && (
@@ -391,12 +495,18 @@ export function BathroomsPanel() {
                 );
               })}
             </ul>
-            <Paginator p={paged} noun="bloqueos" />
+            <Paginator p={paged} noun="bloqueos" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line xl:hidden" />
           </>
         ) : (
-          <EmptyState compact icon={<CalendarIcon size={18} />} title={filter === "finalizados" ? "No hay bloqueos finalizados" : "No hay baños bloqueados"} />
+          <Card className="p-4">
+            <EmptyState
+              compact
+              icon={<CalendarIcon size={18} />}
+              title={filter === "finalizados" ? "No hay bloqueos finalizados" : "No hay baños bloqueados"}
+            />
+          </Card>
         )}
-      </Card>
+      </section>
 
       <ModalPresence>
         {bathEdit && (

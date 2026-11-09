@@ -10,12 +10,12 @@ import {
   IdCardIcon,
   PencilIcon,
   RefreshIcon,
-  SearchIcon,
   ShieldIcon,
   TrashIcon,
   UserPlusIcon,
   UsersIcon,
 } from "@/components/ui/icons";
+import { Combobox } from "@/components/ui/combobox";
 import { api } from "@/lib/client/api";
 import { ROLE_HINT, ROLE_LABEL } from "@/lib/permissions";
 import { fmtDate, dateOf, timeAgo } from "@/lib/format";
@@ -26,6 +26,7 @@ import { MODULES } from "@/components/admin/routes";
 import { Avatar, RoleBadge, RoleCapabilities, displayName } from "@/components/admin/account";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { adminInput, norm } from "@/components/admin/shared";
+import { LIST_CARD, LIST_ROW, LIST_ROW_HOVER, LIST_ROW_LATEST, ListSearch, ListTableHead } from "@/components/admin/list-table";
 import {
   Badge,
   Button,
@@ -40,7 +41,6 @@ import {
   ModalPresence,
   Callout,
   PageHeader,
-  Segmented,
   Skeleton,
   StatCard,
   Switch,
@@ -98,6 +98,9 @@ export function EmployeesView() {
   );
   const paged = usePaged(shown, "empleados", `${filter}|${nq}`);
   const active = all.filter((e) => e.active);
+  // La última cuenta creada se pinta con otro fondo, como la última reserva en Reservas.
+  const newest = all.reduce<Employee | null>((a, e) => (!a || e.createdAt > a.createdAt ? e : a), null)?.id;
+  const editOf = (e: Employee) => setEditing({ id: e.id, name: e.name, email: e.email, role: e.role, password: "", active: e.active });
 
   // Desactivar quita el acceso sin borrar la cuenta; activar lo devuelve. La propia cuenta no se puede desactivar.
   const toggle = (e: Employee) =>
@@ -187,41 +190,39 @@ export function EmployeesView() {
         />
       </div>
 
-      <Card className="flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="relative w-full sm:max-w-[320px]">
-            <SearchIcon size={17} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle" />
-            <input
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              aria-label="Buscar empleados"
-              placeholder="Buscar por nombre o correo"
-              className={`${adminInput} pl-9`}
-            />
-          </div>
-          <Segmented
-            label="Mostrar"
+      <div role="search" aria-label="Filtrar empleados" className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <ListSearch id="em-q" label="Buscar empleados" value={q} onChange={setQ} placeholder="Buscar por nombre o correo" />
+        <div className="min-w-0">
+          <label htmlFor="em-filtro" className="sr-only">
+            Mostrar
+          </label>
+          <Combobox
+            id="em-filtro"
             value={filter}
-            onChange={setFilter}
+            onChange={(v) => setFilter(v as Filter)}
+            searchable={false}
             options={[
-              { value: "todos", label: "Todos", count: all.length },
+              { value: "todos", label: "Todos los empleados", description: `${all.length} en total` },
               { value: "admin", label: "Administradores" },
               { value: "recepcion", label: "Recepción" },
-              { value: "inactivos", label: "Desactivados", count: all.length - active.length || undefined },
+              { value: "inactivos", label: "Desactivados", description: all.length - active.length ? `${all.length - active.length} en total` : undefined },
             ]}
           />
         </div>
+      </div>
 
+      <div className="flex flex-col gap-3">
         {failed ? (
-          <ErrorState
-            title="No pudimos cargar los empleados"
-            text="Revisa tu conexión e inténtalo de nuevo."
-            onRetry={() => {
-              setFailed(false);
-              load();
-            }}
-          />
+          <Card className="p-4">
+            <ErrorState
+              title="No pudimos cargar los empleados"
+              text="Revisa tu conexión e inténtalo de nuevo."
+              onRetry={() => {
+                setFailed(false);
+                load();
+              }}
+            />
+          </Card>
         ) : !list ? (
           <div className="flex flex-col gap-2">
             {[0, 1, 2].map((i) => (
@@ -230,24 +231,17 @@ export function EmployeesView() {
           </div>
         ) : shown.length ? (
           <>
-            <div className="hidden overflow-hidden rounded-[18px] bg-paper/60 lg:block">
+            <Card className={LIST_CARD}>
               <table className="w-full text-[14px]">
-                <thead className="border-b border-line text-left text-[12px] font-semibold text-ink-muted">
-                  <tr>
-                    {["Empleado", "Rol", "Estado", "Último ingreso", "Creada"].map((h) => (
-                      <th key={h} scope="col" className="px-4 py-2.5 font-semibold">
-                        {h}
-                      </th>
-                    ))}
-                    <th scope="col">
-                      <span className="sr-only">Acciones</span>
-                    </th>
-                  </tr>
-                </thead>
+                <ListTableHead columns={["Empleado", "Rol", "Estado", "Último ingreso", "Creada", "Acciones"]} right={["Acciones"]} />
                 <tbody className="divide-y divide-line">
                   {paged.rows.map((e) => (
                     // Desactivada: los datos se atenúan, las acciones no (para que «Activar» se vea disponible).
-                    <tr key={e.id} className={e.active ? "" : "[&>td:not(:last-child)]:opacity-60"}>
+                    <tr
+                      key={e.id}
+                      onClick={() => editOf(e)}
+                      className={`${LIST_ROW} ${e.id === newest ? LIST_ROW_LATEST : LIST_ROW_HOVER} ${e.active ? "" : "[&>td:not(:last-child)]:opacity-60"}`}
+                    >
                       <td className="px-4 py-3">
                         <span className="flex items-center gap-3">
                           <Avatar user={e} size={36} />
@@ -266,18 +260,30 @@ export function EmployeesView() {
                       <td className="px-4 py-3">{e.active ? <Badge tone="success">Activa</Badge> : <Badge>Desactivada</Badge>}</td>
                       <td className="px-4 py-3 text-ink-muted">{e.lastSignInAt ? timeAgo(e.lastSignInAt, now) : "Nunca"}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-ink-muted">{fmtDate(dateOf(e.createdAt), true)}</td>
-                      <td className="pr-3">
-                        <div className="flex items-center justify-end gap-1">
-                          {toggleButton(e)}
-                          <IconButton
-                            label={`Editar a ${displayName(e)}`}
-                            size="sm"
-                            onClick={() => setEditing({ id: e.id, name: e.name, email: e.email, role: e.role, password: "", active: e.active })}
-                          >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1" onClick={(ev) => ev.stopPropagation()}>
+                          {e.id !== data.me.id && (
+                            <IconButton
+                              label={`${e.active ? "Desactivar" : "Activar"} a ${displayName(e)}`}
+                              size="sm"
+                              variant={e.active ? "secondary" : "primary"}
+                              data-gesture={e.active ? "cancel" : "checkin"}
+                              onClick={() => toggle(e)}
+                            >
+                              {e.active ? <BanIcon size={15} /> : <CheckIcon size={15} />}
+                            </IconButton>
+                          )}
+                          <IconButton label={`Editar a ${displayName(e)}`} size="sm" variant="secondary" data-gesture="cancel" onClick={() => editOf(e)}>
                             <PencilIcon size={15} />
                           </IconButton>
                           {e.id !== data.me.id && (
-                            <IconButton label={`Borrar la cuenta de ${displayName(e)}`} size="sm" variant="danger-ghost" onClick={() => remove(e)}>
+                            <IconButton
+                              label={`Borrar la cuenta de ${displayName(e)}`}
+                              size="sm"
+                              variant="danger-ghost"
+                              data-gesture="cancel"
+                              onClick={() => remove(e)}
+                            >
                               <TrashIcon size={15} />
                             </IconButton>
                           )}
@@ -287,14 +293,15 @@ export function EmployeesView() {
                   ))}
                 </tbody>
               </table>
-            </div>
-            <ul className="flex flex-col gap-2 lg:hidden">
+              <Paginator p={paged} noun="cuentas" className="border-t border-line px-4 py-3" />
+            </Card>
+            <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:hidden">
               {paged.rows.map((e) => (
                 // En el celular, activar o desactivar va en su propia fila: así el nombre y el correo conservan su espacio.
-                <li key={e.id} className="overflow-hidden rounded-[18px] bg-paper/60">
+                <li key={e.id} className={`overflow-hidden rounded-[20px] ring-1 ring-line ${e.id === newest ? "bg-yellow-soft/70" : "bg-paper"}`}>
                   <button
                     type="button"
-                    onClick={() => setEditing({ id: e.id, name: e.name, email: e.email, role: e.role, password: "", active: e.active })}
+                    onClick={() => editOf(e)}
                     className={`flex w-full items-center gap-3 p-3.5 text-left transition-colors hover:bg-paper ${e.active ? "" : "opacity-60"}`}
                   >
                     <Avatar user={e} size={40} />
@@ -313,16 +320,18 @@ export function EmployeesView() {
                 </li>
               ))}
             </ul>
-            <Paginator p={paged} noun="cuentas" />
+            <Paginator p={paged} noun="cuentas" className="rounded-[20px] bg-paper px-4 py-3 ring-1 ring-line xl:hidden" />
           </>
         ) : (
-          <EmptyState
-            icon={<UsersIcon size={18} />}
-            title={all.length ? "Nadie coincide con la búsqueda" : "Aún no hay empleados"}
-            text={all.length ? "Prueba con otro nombre o cambia el filtro." : "Crea una cuenta para cada persona del equipo."}
-          />
+          <Card className="p-4">
+            <EmptyState
+              icon={<UsersIcon size={18} />}
+              title={all.length ? "Nadie coincide con la búsqueda" : "Aún no hay empleados"}
+              text={all.length ? "Prueba con otro nombre o cambia el filtro." : "Crea una cuenta para cada persona del equipo."}
+            />
+          </Card>
         )}
-      </Card>
+      </div>
 
       <section aria-labelledby="em-roles" className="flex flex-col gap-3">
         <div>
