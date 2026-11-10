@@ -69,7 +69,7 @@ function Panel({ t = "plain", eyebrow, title, children }: { t?: keyof typeof ton
   return (
     <section aria-labelledby="pay-title" className={`flex flex-col gap-3.5 rounded-lg p-[clamp(20px,3.5vw,32px)] text-on-light ${tone[t]}`}>
       {eyebrow && <span className="text-[.74rem] font-extrabold tracking-[.08em] uppercase">{eyebrow}</span>}
-      <h2 id="pay-title" className="display text-[clamp(1.9rem,4.5vw,2.5rem)] leading-[.95]">
+      <h2 id="pay-title" className="display text-[clamp(1.4rem,3vw,1.7rem)] leading-tight">
         {title}
       </h2>
       {children}
@@ -232,7 +232,7 @@ export function PaymentHistory({ payments }: { payments?: PublicPayment[] }) {
   if (!list.length) return null;
   return (
     <section aria-labelledby="pay-hist" className="flex flex-col gap-3 rounded-lg bg-card p-[clamp(20px,3.5vw,32px)] text-on-light">
-      <h2 id="pay-hist" className="display text-[1.7rem] leading-none">
+      <h2 id="pay-hist" className="display text-[1.35rem] leading-tight">
         Tus pagos
       </h2>
       <ul className="flex flex-col">

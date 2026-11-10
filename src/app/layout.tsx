@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Nunito } from "next/font/google";
+import { Nunito, Plus_Jakarta_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import { ServiceWorker } from "@/components/site/service-worker";
 import { SiteProvider } from "@/components/site/site-provider";
@@ -15,6 +15,9 @@ import "@/app/globals.css";
 // servidor alcance Google al compilar o al arrancar en desarrollo; si no lo alcanzaba, salía la letra de reserva.
 const lilita = localFont({ src: "./fonts/lilita-one-latin.woff2", variable: "--font-lilita", weight: "400", display: "swap" });
 const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"] });
+// Plus Jakarta Sans: la letra del sitio público (clase .site-ui en globals.css: portada y páginas de app/(site)), de la familia de las
+// letras de los sitios de alojamiento. Es la misma del panel, que la carga por su cuenta (app/admin/layout.tsx).
+const landingFont = Plus_Jakarta_Sans({ variable: "--font-landing", subsets: ["latin"] });
 
 // Las páginas se regeneran cada hora o al guardar contenido en el panel (revalidatePath).
 export const revalidate = 3600;
@@ -39,7 +42,7 @@ const ADMIN_THEME = `try{if(location.pathname.startsWith("/admin")){var p=localS
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [content, cabins] = await Promise.all([getSiteContent(), getSiteCabins()]);
   return (
-    <html lang="es" data-scroll-behavior="smooth" className={`${lilita.variable} ${nunito.variable}`} suppressHydrationWarning>
+    <html lang="es" data-scroll-behavior="smooth" className={`${lilita.variable} ${nunito.variable} ${landingFont.variable}`} suppressHydrationWarning>
       <body>
         <Script id="admin-theme" strategy="beforeInteractive">
           {ADMIN_THEME}

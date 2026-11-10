@@ -34,6 +34,7 @@ export const TRANSITIONS: Record<string, { from: ReservationStatus[]; to?: Reser
   cancel: { from: ["pending_deposit", "confirmed", "rescheduled"], to: "cancelled" },
   reschedule: { from: ["pending_deposit", "confirmed", "rescheduled"] },
   move: { from: ["pending_deposit", "confirmed", "rescheduled", "checked_in"] },
+  adjust: { from: ["pending_deposit", "confirmed", "rescheduled", "checked_in"] },
   extend_hold: { from: ["pending_deposit", "expired"] },
   note: { from: ["pending_deposit", "confirmed", "cancelled", "expired", "rescheduled", "checked_in", "completed"] },
   guest: { from: ["pending_deposit", "confirmed", "cancelled", "expired", "rescheduled", "checked_in", "completed"] },
@@ -279,6 +280,32 @@ export function computeQuote(t: Priced, checkIn: string, checkOut: string, guest
 export function withTotal(q: Quote, total: number, depositPct = config.depositPct): Quote {
   const deposit = Math.round((total * depositPct) / 100);
   return { ...q, total, deposit, balance: total - deposit, adjustment: total - (q.base + q.extraAmount) };
+}
+
+type PricedStay = {
+  quote: Quote;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  paid: number;
+  depositPaidAt?: string | null;
+  source?: string;
+};
+
+// Valor sugerido al cambiar las personas: suma o resta solo lo que cambia la tarifa, y así respeta un precio especial o la
+// tarifa con la que se reservó. Lo importado (Booking, Excel) lo definió el canal: la sugerencia es el mismo valor.
+export function suggestedTotal(r: PricedStay, t: Priced, people: number, seasons: RateSeason[] = []) {
+  if (r.source === "import") return r.quote.total;
+  const tariff = (n: number) => computeQuote(t, r.checkIn, r.checkOut, n, seasons).total;
+  return Math.max(0, r.quote.total + tariff(people) - tariff(r.adults + r.children));
+}
+
+// Otras personas y otro valor, mismas fechas. Con el abono ya pagado, el abono es lo que se pagó y el saldo es el resto.
+export function adjustedQuote(r: PricedStay, t: Priced, people: number, total: number, seasons: RateSeason[] = [], depositPct = config.depositPct): Quote {
+  const rate = computeQuote(t, r.checkIn, r.checkOut, people, seasons, depositPct);
+  const q = total === rate.total ? rate : withTotal(rate, total, depositPct);
+  return r.depositPaidAt ? { ...q, deposit: r.quote.deposit, balance: Math.max(0, total - r.paid) } : q;
 }
 
 // Celular con indicativo: "300 123 4567" → "+573001234567" (Colombia por defecto); "+1 555…" se conserva.

@@ -7,10 +7,7 @@ import type { ReactNode } from "react";
 // Pista del interruptor (solo visual: el control accesible es el botón o la casilla que lo contiene).
 export function SwitchTrack({ on }: { on: boolean }) {
   return (
-    <span
-      aria-hidden="true"
-      className={`relative h-[30px] w-[52px] flex-none rounded-full transition-colors duration-200 ${on ? "bg-cta" : "bg-[color-mix(in_srgb,var(--color-on-light)_35%,var(--color-card-muted))]"}`}
-    >
+    <span aria-hidden="true" className={`relative h-[30px] w-[52px] flex-none rounded-full transition-colors duration-200 ${on ? "bg-cta" : "bg-on-light/20"}`}>
       <span
         className={`absolute top-1 left-1 size-[22px] rounded-full bg-card shadow-[0_1px_2px_rgb(0_0_0/0.18)] transition-transform duration-200 ${on ? "translate-x-[22px]" : ""}`}
       />

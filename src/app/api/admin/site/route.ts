@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { baseVersionOf, fail, json, readJson, requireAdmin, syncRoute } from "@/lib/server/http";
 import { loadSiteContent } from "@/lib/server/site";
-import { TEXT_LIMITS, mergeTexts } from "@/lib/site";
+import { TEXT_LIMITS, lines, listIssue, mergeTexts } from "@/lib/site";
 import { THEME_KEYS, mergeTheme, normalizeHex } from "@/lib/theme";
 import type { SiteInput } from "@/lib/types";
 
@@ -38,14 +38,24 @@ export const PUT = syncRoute(async (req: NextRequest) => {
   // Textos: solo las claves conocidas; cada una con su límite. Las redes sociales deben ser enlaces https.
   const t = mergeTexts(b.content);
   const trim = (v: string) => v.trim();
+  // Listas: un elemento por línea, sin líneas vacías.
+  const list = (v: string) => lines(v).join("\n");
   const texts = {
     hero: {
       title: trim(t.hero.title),
       highlight: trim(t.hero.highlight),
-      // Una frase por línea, sin líneas vacías.
-      rotating: t.hero.rotating.split("\n").map(trim).filter(Boolean).join("\n"),
+      words: list(t.hero.words),
       badge: trim(t.hero.badge),
       description: trim(t.hero.description),
+    },
+    rating: { score: trim(t.rating.score), reviews: trim(t.rating.reviews), source: trim(t.rating.source) },
+    mosaic: { labels: list(t.mosaic.labels) },
+    stay: { highlights: list(t.stay.highlights) },
+    restaurant: {
+      title: trim(t.restaurant.title),
+      highlight: trim(t.restaurant.highlight),
+      description: trim(t.restaurant.description),
+      items: list(t.restaurant.items),
     },
     location: { note: trim(t.location.note) },
     payment: { instructions: trim(t.payment.instructions) },
@@ -53,9 +63,29 @@ export const PUT = syncRoute(async (req: NextRequest) => {
   };
   if (!texts.hero.title || texts.hero.title.length > TEXT_LIMITS.title || texts.hero.highlight.length > TEXT_LIMITS.highlight)
     errors.hero = "El título de la portada es obligatorio (máximo 40 caracteres por línea).";
-  const lines = texts.hero.rotating ? texts.hero.rotating.split("\n") : [];
-  if (texts.hero.rotating.length > TEXT_LIMITS.rotating || lines.length > TEXT_LIMITS.rotatingLines || lines.some((l) => l.length > TEXT_LIMITS.highlight))
-    errors.heroRotating = `Hasta ${TEXT_LIMITS.rotatingLines} frases alternas, de máximo ${TEXT_LIMITS.highlight} caracteres cada una.`;
+  const words = listIssue(texts.hero.words, "words");
+  if (words) errors.heroWords = `Frases del título: ${words.toLowerCase()}`;
+  if (
+    !texts.rating.score ||
+    texts.rating.score.length > TEXT_LIMITS.ratingScore ||
+    !/^\d{1,6}$/.test(texts.rating.reviews) ||
+    !texts.rating.source ||
+    texts.rating.source.length > TEXT_LIMITS.ratingSource
+  )
+    errors.rating = "La calificación necesita la nota, el número de reseñas (solo números) y dónde se calificó.";
+  const labels = listIssue(texts.mosaic.labels, "labels");
+  if (labels) errors.mosaic = `Etiquetas del mosaico: ${labels.toLowerCase()}`;
+  const stay = listIssue(texts.stay.highlights, "highlights");
+  if (stay || !texts.stay.highlights) errors.stay = `Lo que incluye la estadía: ${(stay ?? "escribe al menos una línea.").toLowerCase()}`;
+  const items = listIssue(texts.restaurant.items, "items");
+  if (
+    !texts.restaurant.title ||
+    texts.restaurant.title.length > TEXT_LIMITS.restaurantTitle ||
+    texts.restaurant.highlight.length > TEXT_LIMITS.restaurantHighlight ||
+    texts.restaurant.description.length > TEXT_LIMITS.restaurantDescription ||
+    items
+  )
+    errors.restaurant = "Revisa los textos del restaurante: el título es obligatorio y cada texto tiene un largo máximo.";
   if (texts.hero.badge.length > TEXT_LIMITS.badge || texts.hero.description.length > TEXT_LIMITS.description)
     errors.heroText = "La etiqueta o la descripción de la portada es demasiado larga.";
   if (texts.location.note.length > TEXT_LIMITS.note) errors.location = "La nota de ubicación es demasiado larga.";

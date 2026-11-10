@@ -427,7 +427,7 @@ export type BookingInboxItem = {
 export type BookingInboxAction = { action: "assign"; ref: string; cabinTypeId: CabinTypeId; unit: number } | { action: "dismiss"; ref: string };
 
 // Cuerpo de PUT /admin/site.
-export type SiteInput = { settings: SiteSettings; policies: SitePolicy[]; content: SiteTexts; theme: SiteTheme };
+export type SiteInput = { settings: SiteSettings; policies: SitePolicy[]; content: SiteTexts; theme?: SiteTheme }; // sin theme: se conservan los colores guardados
 
 // Condiciones de pago (solo administradores): el abono para confirmar (% del total) y los datos para pagar que ve el huésped.
 export type PaymentTerms = { depositPct: number; instructions: string };
@@ -474,6 +474,8 @@ export type AdminAction =
   | { code: string; action: "reschedule"; checkIn: string; checkOut: string }
   // Otra cabaña física, mismas fechas y mismo valor.
   | { code: string; action: "move"; cabinTypeId: string; unit: number }
+  // Otras personas y otro valor total, mismas fechas y misma cabaña.
+  | { code: string; action: "adjust"; adults: number; children: number; total: number }
   // Plazo nuevo para pagar el abono: amplía (o reactiva, si venció) la retención de una reserva sin abono.
   | { code: string; action: "extend_hold"; group?: boolean } // reactiva una vencida, sin plazo
   | { code: string; action: "note"; text: string }

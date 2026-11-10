@@ -8,7 +8,7 @@ export function generateViewport() {
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="site-ui flex min-h-screen flex-col text-on-light">
       <SiteTheme />
       <SiteHeader />
       <div className="flex-1">{children}</div>

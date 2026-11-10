@@ -7,7 +7,7 @@ const PAGES = [
     ...Object.values(MODULES).map((m) => m.href),
     ...CONTENT_SECTIONS.map((s) => `/admin/contenido/${s.id}`),
     "/admin/cabanas/nueva",
-    "/admin/configuracion/colores",
+    "/vista-previa", // la vista previa de Contenido del sitio
     // Una copia por estructura de página (las mismas de public/sw.js): sirven para cualquier reserva, cliente o cabaña.
     "/admin/reservas/VF-00000",
     "/admin/clientes/cc-00000",

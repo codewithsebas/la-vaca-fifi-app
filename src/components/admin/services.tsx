@@ -88,11 +88,11 @@ export function ServicesManager() {
   return (
     <>
       <Callout>
-        Los cambios se publican <strong>al instante</strong> en la sección «Servicios incluidos». Ocultar un servicio lo quita del sitio sin borrarlo.
+        Cada cambio de servicios se publica <strong>al instante</strong>. Ocultar uno lo quita del sitio sin borrarlo.
         {isMockApi && <strong> En modo simulado se guardan solo en este navegador.</strong>}
       </Callout>
 
-      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
+      <div data-zone="servicios">
         <Card aria-labelledby="sv-title" className="flex flex-col gap-4 p-4 sm:p-5">
           <CardHeader
             id="sv-title"
@@ -168,25 +168,6 @@ export function ServicesManager() {
             />
           )}
         </Card>
-
-        {/* Así se ven en el sitio (solo los visibles, en orden) */}
-        <section aria-labelledby="sv-prev" className="flex flex-col gap-2 xl:sticky xl:top-20">
-          <h3 id="sv-prev" className="flex items-center gap-1.5 text-[13px] font-semibold text-ink-muted">
-            <CheckIcon size={14} />
-            Así se ven en el sitio
-          </h3>
-          <ul
-            aria-hidden="true"
-            style={themeStyle(data.site.theme)}
-            className="grid max-h-[70dvh] grid-cols-2 gap-1 overflow-y-auto rounded-2xl bg-surface p-3 text-on-dark"
-          >
-            {visible.map((s) => (
-              <li key={s.id}>
-                <ServiceCard s={s} />
-              </li>
-            ))}
-          </ul>
-        </section>
       </div>
 
       <ModalPresence>

@@ -109,6 +109,15 @@
   --animate-fifi-bean: ec-fifi-bean 2.4s ease-in-out infinite alternate;
   --animate-fifi-bob: ec-fifi-bob 4.5s ease-in-out infinite alternate;
   --animate-bubble-pop: ec-bubble-pop 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  /* Frase que cambia en el título de la portada: entra desde abajo. */
+  --animate-word-in: ec-word-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  @keyframes ec-word-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.45em);
+      filter: blur(4px);
+    }
+  }
   --animate-menu-drop: ec-menu-drop 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-sway: ec-sway 3.8s ease-in-out infinite alternate;
   --animate-ken-burns: ec-ken-burns 26s ease-in-out infinite alternate;
@@ -884,6 +893,120 @@
     --ring-offset: 2px;
   }
 
+  /* Sitio público (portada app/page.tsx y páginas de app/(site): reservar, mi reserva, políticas…): estilo limpio y
+     sobrio con los mismos colores de Fifí. Bordes finos de tinta translúcida, sombras suaves, botones de esquinas
+     redondeadas sin contorno grueso, esquinas más moderadas (los radios del tema son de calcomanía) y la letra del
+     sitio (Plus Jakarta Sans). */
+  .site-ui {
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    /* Paneles suaves (resumen de la reserva, avisos): crema claro en lugar del arena. */
+    --color-surface: #fbf5ea;
+    --line: color-mix(in srgb, var(--color-on-dark) 11%, transparent);
+    --line-strong: color-mix(in srgb, var(--color-on-dark) 20%, transparent);
+    --shadow-soft: 0 1px 2px rgb(36 26 20 / 0.05), 0 10px 30px -14px rgb(36 26 20 / 0.22);
+    --shadow-lift: 0 2px 4px rgb(36 26 20 / 0.06), 0 22px 48px -18px rgb(36 26 20 / 0.32);
+    background: var(--color-card);
+    font-family: var(--font-landing), system-ui, sans-serif;
+  }
+  /* En la portada, también los títulos que usan la letra de cartel (calendario) van en la letra de la portada; el nombre del logo
+     (font-wordmark) conserva la suya. */
+  .site-ui :is(.display, .font-display) {
+    font-family: var(--font-landing), system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  /* Títulos de las páginas internas y líneas que los presentan, en la letra del sitio y sin ladear. */
+  /* Paneles blancos de las páginas internas (formularios, resúmenes, políticas) sobre el fondo blanco: filo fino y sombra
+     suave. Los que traen su propio marco (seleccionado, error) lo conservan: las utilidades ganan a esta capa. */
+  .site-ui main .rounded-lg.bg-card {
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+  }
+  .site-ui .page-title {
+    font-family: var(--font-landing), system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .site-ui .kicker {
+    font-family: var(--font-landing), system-ui, sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    transform: none;
+  }
+  .site-ui .poster-text {
+    -webkit-text-stroke: 0;
+    text-shadow: none;
+  }
+  .site-ui .btn {
+    gap: 8px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    box-shadow: none;
+    font-weight: 800;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .site-ui .btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -12px rgb(36 26 20 / 0.45);
+  }
+  .site-ui .btn:not(:disabled):active {
+    transform: none;
+    box-shadow: none;
+  }
+  .site-ui :is(.btn-card, .btn-outline-light, .btn-outline-dark) {
+    border-color: var(--line-strong);
+    background: var(--color-card);
+    color: var(--color-on-light);
+  }
+  .site-ui :is(.btn-card, .btn-outline-light, .btn-outline-dark):not(:disabled):hover {
+    border-color: var(--color-on-dark);
+    background: var(--color-card);
+  }
+  .site-ui .btn-icon {
+    border-radius: 999px;
+  }
+  .site-ui :is(.sticker, .sticker-sm) {
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+  }
+  /* Colores de las cabañas (los palos de las barandas, los postes y los marcos): rojo, verde, amarillo, azul y naranja.
+     «-ink» es el amarillo para trazos y textos sobre blanco (el amarillo puro no se lee). */
+  .site-ui {
+    --c-red: #d2283f;
+    --c-green: #1f8a5b;
+    --c-yellow: #f2b705;
+    --c-yellow-ink: #b98200;
+    --c-blue: #1f6fc4;
+    --c-orange: #e2572b;
+  }
+  /* Franja de baranda: tramos de los cinco colores, como los palos de las barandas de las cabañas. */
+  .railing {
+    background: repeating-linear-gradient(90deg, #d2283f 0 22px, #1f8a5b 22px 44px, #f2b705 44px 66px, #1f6fc4 66px 88px, #e2572b 88px 110px);
+  }
+
+  /* Títulos de la portada. */
+  .h-pro {
+    font-family: var(--font-landing), system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  /* Línea corta que presenta una sección: el rojo de la lengua de Fifí. */
+  .eyebrow-pro {
+    color: var(--color-cta);
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   .skeleton {
     background: var(--color-card-muted);
     animation: var(--animate-pulse-soft);
@@ -1353,4 +1476,15 @@
   :hover > [data-deco="calendar"] > rect {
     transform: translateY(-1.5px);
   }
+}
+
+/* En la portada los botones y controles de acción van en el azul de las cabañas (botón principal, lupa del buscador,
+   «Escribir», interruptores encendidos y días elegidos del calendario). Los textos resaltados siguen en rojo. Fuera de
+   las capas para ganarle a las utilidades bg-cta. */
+.site-ui :is(.btn-cta, .bg-cta) {
+  background: #1f6fc4;
+}
+.site-ui .btn-cta:not(:disabled):hover,
+.site-ui .bg-cta:is(:hover, .group:hover > *) {
+  background: #185aa1;
 }

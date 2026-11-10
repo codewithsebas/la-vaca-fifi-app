@@ -77,3 +77,19 @@ export const SERVICE_ICON_KEYS = Object.keys(SERVICE_ICONS) as ServiceIcon[];
 export const isServiceIcon = (v: unknown): v is ServiceIcon => typeof v === "string" && v in SERVICE_ICONS;
 // Ícono de un servicio guardado (si la clave ya no existe, el genérico).
 export const serviceIconPath = (icon: string) => (isServiceIcon(icon) ? SERVICE_ICONS[icon].d : SERVICE_ICONS.check.d);
+
+// Ícono de cada cosa de «Lo que incluye tu estadía» (se escribe en el panel): por la primera palabra clave que aparezca.
+const HIGHLIGHT_ICONS: [RegExp, string][] = [
+  [/desayun|comida|almuerz|cena/i, "desayuno"],
+  [/mascota|perr|gat|pet/i, "mascota"],
+  [/parqueadero|parqueo|carro|estacionamiento/i, "parqueadero"],
+  [/wifi|internet/i, "wifi"],
+  [/parque|niñ|juego/i, "parque"],
+  [/fogata|fuego/i, "fogata"],
+  [/vista|montaña|balc/i, "montana"],
+  [/baño|ducha|agua caliente/i, "ducha"],
+  [/restaurante|café/i, "restaurante"],
+  [/jard|flor/i, "flores"],
+  [/tv|televis/i, "tv"],
+];
+export const highlightIcon = (text: string) => HIGHLIGHT_ICONS.find(([re]) => re.test(text))?.[1] ?? "check";

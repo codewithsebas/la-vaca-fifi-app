@@ -727,7 +727,7 @@ function Panel({
     notificaciones: { n: unread, label: "sin leer" },
   };
   // El calendario usa todo el ancho de la pantalla; su alto crece con las filas y se desplaza con la página.
-  const fullWidth = mod === "calendario";
+  const fullWidth = mod === "calendario" || mod === "contenido";
   // La sección de contenido conserva su formulario al cambiar de pestaña: no se vuelve a montar.
   const pageKey = mod === "contenido" ? "contenido" : pathname;
 

@@ -303,7 +303,7 @@ export function LookupForm() {
               <LiveBadge status={live} />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 id="lk-title" className="display text-[clamp(2.4rem,7vw,3.6rem)] leading-none tracking-[.04em]">
+              <h2 id="lk-title" className="display text-[clamp(1.8rem,5vw,2.4rem)] leading-none tracking-[.02em]">
                 {r.code}
               </h2>
               <p className="font-bold">
@@ -334,7 +334,7 @@ export function LookupForm() {
           </div>
 
           <section aria-labelledby="lk-details" className="flex flex-col gap-4 rounded-lg bg-card p-[clamp(22px,4vw,36px)] text-on-light lg:col-start-1">
-            <h2 id="lk-details" className="display text-[2rem] leading-none">
+            <h2 id="lk-details" className="display text-[1.4rem] leading-tight">
               Detalles
             </h2>
             <KeyValues rows={rows} />

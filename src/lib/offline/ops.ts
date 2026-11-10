@@ -7,6 +7,7 @@ import {
   cleanDayRates,
   cleanPersonRates,
   cleanUnitLabels,
+  adjustedQuote,
   computeQuote,
   busyBlocks,
   invalidPersonRates,
@@ -363,6 +364,12 @@ const reservationOps = {
         if (r.adults + r.children > type.maxPersonas) return err(422, "OVER_CAPACITY");
         if (!unitFree(occupancy(d), type.units, type.id, p.unit, r.checkIn, r.checkOut, r.code)) return err(409, "DATES_UNAVAILABLE");
       }
+      if (p.action === "adjust") {
+        const type = d.cabinTypes.find((t) => t.id === r.cabinTypeId);
+        if (!type || ![p.adults, p.children, p.total].every((n) => Number.isInteger(n)) || p.adults < 1 || p.children < 0 || p.total <= 0)
+          return err(400, "INVALID_BODY");
+        if (p.adults + p.children > type.maxPersonas) return err(422, "OVER_CAPACITY");
+      }
       return p;
     },
     request: (body) => ({ method: "POST", path: "/admin/action", body }),
@@ -382,6 +389,18 @@ const reservationOps = {
           depositDueAt: unpaidUntil(x.checkIn),
         }));
       if (p.action === "move") return updateReservation(d, p.code, (x) => ({ ...x, cabinTypeId: p.cabinTypeId, unit: p.unit }));
+      if (p.action === "adjust") {
+        const type = d.cabinTypes.find((t) => t.id === r.cabinTypeId);
+        if (!type) return d;
+        const quote = adjustedQuote(r, type, p.adults + p.children, p.total, activeSeasons(d), depositPct(d));
+        return updateReservation(d, p.code, (x) => ({
+          ...x,
+          adults: p.adults,
+          children: p.children,
+          quote,
+          balancePaidAt: x.balancePaidAt && p.total > x.paid ? null : x.balancePaidAt,
+        }));
+      }
       if (p.action === "reschedule") {
         const type = d.cabinTypes.find((t) => t.id === r.cabinTypeId);
         if (!type) return d;
@@ -1069,7 +1088,8 @@ const contentOps = {
         settings: { ...p.settings, depositPct: d.site.settings.depositPct },
         policies: p.policies,
         texts: { ...p.content, payment: d.site.texts.payment },
-        theme: p.theme,
+        // El panel ya no edita colores: sin `theme` en el cuerpo se conservan los guardados (como hace PUT /admin/site).
+        ...(p.theme && { theme: p.theme }),
       }),
     result: (d) => d.site,
     version: (d) => d.site.version,
