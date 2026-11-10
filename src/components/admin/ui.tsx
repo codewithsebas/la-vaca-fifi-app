@@ -899,6 +899,7 @@ export function StatCard({
   icon,
   tone,
   accent,
+  action,
 }: {
   label: string;
   value: ReactNode;
@@ -908,6 +909,7 @@ export function StatCard({
   icon?: ReactNode;
   tone?: Tone;
   accent?: Accent;
+  action?: ReactNode; // botón para editar el dato desde la tarjeta
 }) {
   const up = (delta ?? 0) >= 0;
   return (
@@ -939,6 +941,7 @@ export function StatCard({
           {hint}
         </p>
       )}
+      {action}
     </div>
   );
 }

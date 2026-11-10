@@ -474,6 +474,8 @@ export type AdminAction =
   | { code: string; action: "reschedule"; checkIn: string; checkOut: string }
   // Otra cabaña física, mismas fechas y mismo valor.
   | { code: string; action: "move"; cabinTypeId: string; unit: number }
+  // Otras personas y otro valor total, mismas fechas y misma cabaña.
+  | { code: string; action: "adjust"; adults: number; children: number; total: number }
   // Plazo nuevo para pagar el abono: amplía (o reactiva, si venció) la retención de una reserva sin abono.
   | { code: string; action: "extend_hold"; group?: boolean } // reactiva una vencida, sin plazo
   | { code: string; action: "note"; text: string }

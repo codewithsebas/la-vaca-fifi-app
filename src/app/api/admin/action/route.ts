@@ -1,5 +1,5 @@
 import { after, type NextRequest } from "next/server";
-import { TRANSITIONS, computeQuote, findUnit, normalizePhone, unitFree, validateGuest } from "@/lib/booking";
+import { TRANSITIONS, adjustedQuote, computeQuote, findUnit, normalizePhone, unitFree, validateGuest } from "@/lib/booking";
 import { addDays, isISO, nightsBetween } from "@/lib/format";
 import { isExclusionViolation, loadCabinTypes, loadDepositPct, loadOccupancy, loadSeasons, toReservation } from "@/lib/server/db";
 import { baseVersionOf, businessError, fail, json, occurredAtOf, opIdOf, operationDay, readJson, requireStaff, syncRoute } from "@/lib/server/http";
@@ -153,6 +153,26 @@ export const POST = syncRoute(async (req: NextRequest) => {
         const occ = await loadOccupancy(sb, current.check_in, addDays(current.check_out, -1), type.id);
         if (!unitFree(occ, units[type.id] ?? 0, type.id, b.unit, current.check_in, current.check_out, current.code)) return fail(409, "DATES_UNAVAILABLE");
         await sb.from("reservations").update({ cabin_type_id: type.id, unit: b.unit }).eq("code", current.code).throwOnError();
+      }
+    } else if (b.action === "adjust") {
+      // Otras personas y otro valor. Repetir la operación (cola sin conexión) no hace nada.
+      const { adults, children, total } = b;
+      if (![adults, children, total].every((n) => Number.isInteger(n)) || adults < 1 || children < 0 || total <= 0) return fail(400, "INVALID_BODY");
+      if (adults !== current.adults || children !== current.children || total !== (current.quote as Quote).total) {
+        const [{ types }, seasons, depositPct] = await Promise.all([loadCabinTypes(sb), loadSeasons(sb, { activeOnly: true }), loadDepositPct(sb)]);
+        const type = types.find((t) => t.id === current.cabin_type_id)!;
+        if (adults + children > type.maxPersonas) return fail(422, "OVER_CAPACITY");
+        await sb
+          .from("reservations")
+          .update({
+            adults,
+            children,
+            quote: adjustedQuote(toReservation(current), type, adults + children, total, seasons, depositPct),
+            // Si ya estaba todo pagado y el valor nuevo es mayor, vuelve a quedar saldo pendiente.
+            ...(current.balance_paid_at && total > current.paid_amount && { balance_paid_at: null }),
+          })
+          .eq("code", current.code)
+          .throwOnError();
       }
     } else if (b.action === "cancel" && groupCode) {
       if (b.group) {

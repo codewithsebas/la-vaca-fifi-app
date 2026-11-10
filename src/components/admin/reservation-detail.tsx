@@ -1,7 +1,7 @@
 "use client";
 
 // Una reserva: la página (/admin/reservas/[codigo]) y el modal que abre el calendario muestran lo mismo. Arriba, el estado,
-// las acciones y cuatro tarjetas (estadía, pago, huéspedes y el siguiente paso); debajo, el huésped (editable, con su
+// las acciones y cinco tarjetas (estadía, cabaña, pago, huéspedes y el siguiente paso); debajo, el huésped (editable, con su
 // historial de cliente) y la estadía como línea de tiempo, y después el pago, los correos, los comprobantes y las notas.
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -14,6 +14,7 @@ import {
   ClockIcon,
   CloseIcon,
   FileTextIcon,
+  HomeIcon,
   ListIcon,
   LockIcon,
   LoginIcon,
@@ -30,7 +31,7 @@ import {
 } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/status-pill";
 import { balanceDue, buildClients, pendingOf, typeMarks, type ClientSummary } from "@/lib/admin-metrics";
-import { ACTIVE_STATUSES, CHANNEL_NAME, busyBlocks, isFromBooking, validateGuest } from "@/lib/booking";
+import { ACTIVE_STATUSES, CHANNEL_NAME, busyBlocks, isFromBooking, unitLabel, validateGuest } from "@/lib/booking";
 import { api } from "@/lib/client/api";
 import { config } from "@/lib/config";
 import { can } from "@/lib/permissions";
@@ -45,6 +46,8 @@ import { useAdmin } from "@/components/admin/context";
 import { BathroomWarning } from "@/components/admin/bathrooms";
 import { initialsOf } from "@/components/admin/calendar/shared";
 import { MoveCabinDialog } from "@/components/admin/move-cabin";
+import { AdjustReservationDialog } from "@/components/admin/adjust-reservation";
+import { ACTION_ICON, ActionMenu, inMenu, type Action, type ActionKind } from "@/components/admin/action-menu";
 import { ProofCard } from "@/components/admin/proofs";
 import { paths } from "@/components/admin/routes";
 import { SyncMark } from "@/components/admin/sync";
@@ -71,8 +74,7 @@ import {
 
 const OCC: Record<string, string> = { aniversario: "Aniversario", cumpleanos: "Cumpleaños", propuesta: "Propuesta", otra: "Otra" };
 
-export type ActionKind = "pay" | "checkin" | "checkout" | "reschedule" | "move" | "cancel" | "cancel-group";
-export type Action = { id: ActionKind; label: string; primary: boolean; danger: boolean; disabled?: string; run: () => void };
+export type { ActionKind } from "@/components/admin/action-menu";
 type ActionId = "checkin" | "checkout" | "cancel" | "reschedule";
 
 /* ───────────── Página y modal ───────────── */
@@ -115,7 +117,7 @@ export function ReservationModal({ code, onClose }: { code: string; onClose: () 
       labelledBy="rm-title"
       dismissOnBackdrop
       initialFocus="#rm-close"
-      className="m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-24px)] max-w-[1120px] overflow-y-auto rounded-[28px] bg-canvas! p-0"
+      className="m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-24px)] max-w-[1360px] overflow-y-auto rounded-[28px] bg-canvas! p-0"
     >
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur-md sm:px-6">
         <p className="min-w-0 truncate text-[13px] font-semibold text-ink-muted">
@@ -162,6 +164,7 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
   const pendingProof = proofs.some((p) => p.status === "pending");
   const due = balanceDue(m);
   const nights = nightsBetween(r.checkIn, r.checkOut);
+  const cabinType = data.cabinTypes.find((c) => c.id === r.cabinTypeId);
 
   const { actions, earlyDue, whatsapp, dialog } = useReservationActions(r);
 
@@ -217,19 +220,36 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
       {due && <Badge tone="warning">{`Saldo por cobrar: ${cop(due.amount)}`}</Badge>}
     </div>
   );
+  // A la vista, lo del día a día; lo que cambia la reserva y cancelar, en «Editar reserva».
   const buttons = (
     <>
-      {actions.map((a) => (
-        <Button key={a.label} variant={a.primary ? "primary" : a.danger ? "danger-ghost" : "secondary"} onClick={a.run} disabled={!!a.disabled}>
-          {a.label}
-        </Button>
-      ))}
+      {actions
+        .filter((a) => !inMenu(a))
+        .map((a) => (
+          <Button key={a.label} variant={a.primary ? "primary" : "secondary"} onClick={a.run} disabled={!!a.disabled} icon={ACTION_ICON[a.id].icon(16)}>
+            {a.label}
+          </Button>
+        ))}
       <a href={whatsapp} target="_blank" rel="noopener" className={buttonClass("secondary")}>
         <WhatsAppIcon size={16} />
         WhatsApp
       </a>
+      <ActionMenu actions={actions.filter(inMenu)} />
     </>
   );
+  // Editar desde la tarjeta que muestra el dato.
+  const cardAction = (id: ActionKind, label: string) => {
+    const a = actions.find((x) => x.id === id);
+    return a ? (
+      <button
+        type="button"
+        onClick={a.run}
+        className="mt-1 self-start rounded-full bg-paper/70 px-3 py-1 text-[12.5px] font-semibold text-ink transition-colors hover:bg-paper"
+      >
+        {label}
+      </button>
+    ) : null;
+  };
 
   return (
     <>
@@ -254,13 +274,22 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
 
       {/* Columnas según el ancho disponible (modal o página, con o sin barra lateral), no el de la pantalla. */}
       <div className="@container flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-3 @lg:grid-cols-2 @4xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 @lg:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-5">
           <StatCard
             accent="yellow"
             label="Estadía"
             value={`${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}`}
-            hint={`${plural(nights, "noche", "noches")} · ${cabin}`}
+            hint={plural(nights, "noche", "noches")}
             icon={<CalendarIcon size={15} />}
+            action={cardAction("reschedule", "Cambiar fechas")}
+          />
+          <StatCard
+            accent="pink"
+            label="Cabaña"
+            value={unitLabel(cabinType, r.unit)}
+            hint={cabinType?.nombre}
+            icon={<HomeIcon size={15} />}
+            action={cardAction("move", "Cambiar")}
           />
           <StatCard
             accent="green"
@@ -282,8 +311,9 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
             value={r.adults + r.children}
             hint={`${plural(r.adults, "adulto", "adultos")}${r.children ? ` · ${plural(r.children, "niño", "niños")}` : ""}${r.pet?.hasPet ? " · mascota" : ""}`}
             icon={<UsersIcon size={15} />}
+            action={cardAction("adjust", "Editar")}
           />
-          <StatCard accent="pink" label="Siguiente paso" value={next.value} hint={next.hint} icon={<ClockIcon size={15} />} />
+          <StatCard accent="yellow" label="Siguiente paso" value={next.value} hint={next.hint} icon={<ClockIcon size={15} />} />
         </div>
 
         {ACTIVE_STATUSES.includes(r.status) && <BathroomWarning cabinTypeId={r.cabinTypeId} unit={r.unit} from={r.checkIn} to={addDays(r.checkOut, -1)} />}
@@ -886,6 +916,7 @@ export function useReservationActions(r: Reservation) {
   const { data, ask, cabinLabel, today, reload } = useAdmin();
   const [paying, setPaying] = useState<string | null>(null); // título del diálogo de pago abierto
   const [moving, setMoving] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
   const cabin = cabinLabel(r.cabinTypeId, r.unit);
   const group = groupOf(data.reservations, r);
   const inGroup = group.length > 1;
@@ -894,9 +925,14 @@ export function useReservationActions(r: Reservation) {
   const units = data.cabinTypes.find((c) => c.id === r.cabinTypeId)?.units ?? 1;
   const due = balanceDue(m);
 
-  const act = (label: string, action: ActionId, opts: Partial<ConfirmCfg> & { primary?: boolean; disabled?: string; group?: boolean } = {}): Action => ({
+  const act = (
+    label: string,
+    action: ActionId,
+    opts: Partial<ConfirmCfg> & { primary?: boolean; disabled?: string; group?: boolean; hint?: string } = {},
+  ): Action => ({
     id: (action === "cancel" && opts.group ? "cancel-group" : action) as ActionKind,
     label,
+    hint: opts.hint,
     primary: !!opts.primary,
     danger: !!opts.danger,
     disabled: opts.disabled,
@@ -943,12 +979,28 @@ export function useReservationActions(r: Reservation) {
     if (due) actions.push(pay("Registrar pago del saldo", true));
     actions.push(act("Marcar check-out", "checkout", { primary: !due, disabled: due ? "Disponible cuando el saldo esté pagado" : undefined }));
   }
-  const move: Action = { id: "move", label: "Cambiar de cabaña", primary: false, danger: false, run: () => setMoving(true) };
-  if (r.status === "checked_in") actions.push(move);
+  const move: Action = {
+    id: "move",
+    label: "Cambiar de cabaña",
+    hint: "Mismas fechas y mismo valor",
+    primary: false,
+    danger: false,
+    run: () => setMoving(true),
+  };
+  const adjust: Action = {
+    id: "adjust",
+    label: "Personas y valor",
+    hint: "Adultos, niños y valor total",
+    primary: false,
+    danger: false,
+    run: () => setAdjusting(true),
+  };
+  if (r.status === "checked_in") actions.push(move, adjust);
   if (["pending_deposit", "confirmed", "rescheduled"].includes(r.status)) {
-    actions.push(move);
+    actions.push(move, adjust);
     actions.push(
-      act("Reprogramar", "reschedule", {
+      act("Cambiar fechas", "reschedule", {
+        hint: "Valida la disponibilidad y recalcula el valor",
         reschedule: true,
         ci: r.checkIn,
         co: r.checkOut,
@@ -957,18 +1009,21 @@ export function useReservationActions(r: Reservation) {
       }),
     );
     const refund = m.depositPaidAt ? "El abono recibido no es reembolsable según las políticas." : "Las fechas quedarán libres.";
-    if (can(data.me.role, "cancel") && !inGroup) actions.push(act("Cancelar reserva", "cancel", { danger: true, text: `${r.code} · ${refund}` }));
+    if (can(data.me.role, "cancel") && !inGroup)
+      actions.push(act("Cancelar reserva", "cancel", { hint: "Libera las fechas y avisa al huésped", danger: true, text: `${r.code} · ${refund}` }));
     if (can(data.me.role, "cancel") && inGroup) {
       // La principal lleva el código del grupo: se cancela con todas. Las demás pueden salir solas.
       if (r.code !== r.groupCode)
         actions.push(
           act("Cancelar esta cabaña", "cancel", {
+            hint: "Sale del grupo y libera sus fechas",
             danger: true,
             text: `${r.code} · ${cabin} sale de la reserva ${r.groupCode} y sus fechas quedan libres. Lo pagado por esta cabaña se queda con ella. El huésped recibe un correo.`,
           }),
         );
       actions.push(
         act("Cancelar todo el grupo", "cancel", {
+          hint: "Cancela todas las cabañas del grupo",
           danger: true,
           group: true,
           text: `${r.groupCode} · ${plural(group.length, "cabaña", "cabañas")}. ${refund}`,
@@ -982,6 +1037,7 @@ export function useReservationActions(r: Reservation) {
     <>
       <ModalPresence>{paying && <PaymentDialog r={m} group={inGroup} title={paying} onClose={() => setPaying(null)} />}</ModalPresence>
       <ModalPresence>{moving && <MoveCabinDialog r={r} onClose={() => setMoving(false)} />}</ModalPresence>
+      <ModalPresence>{adjusting && <AdjustReservationDialog r={r} onClose={() => setAdjusting(false)} />}</ModalPresence>
     </>
   );
   return { actions, whatsapp, earlyDue, dialog };

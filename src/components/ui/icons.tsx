@@ -90,6 +90,16 @@ export const ChevronDownIcon = (p: IconProps) => (
     <path d="M6 9l6 6 6-6" />
   </Stroke>
 );
+export const DollarIcon = (p: IconProps) => (
+  <Stroke {...p}>
+    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </Stroke>
+);
+export const MoreIcon = (p: IconProps) => (
+  <Stroke stroke={3} {...p}>
+    <path d="M5 12h.01M12 12h.01M19 12h.01" />
+  </Stroke>
+);
 export const MenuIcon = (p: IconProps) => (
   <Stroke size={20} stroke={2.4} {...p}>
     <path d="M4 7h16M4 12h16M4 17h10" />

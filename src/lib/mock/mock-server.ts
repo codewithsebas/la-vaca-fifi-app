@@ -23,6 +23,7 @@ import {
   validateManualReservation,
   validateReservation,
   withTotal,
+  adjustedQuote,
 } from "@/lib/booking";
 import { config } from "@/lib/config";
 import { can, type Permission } from "@/lib/permissions";
@@ -889,6 +890,16 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       if (r.adults + r.children > type.maxPersonas) return { status: 422, data: { error: "OVER_CAPACITY" } };
       if (!unitFree(occ(db), type.units, type.id, unit, r.checkIn, r.checkOut, r.code)) return { status: 409, data: { error: "DATES_UNAVAILABLE" } };
       Object.assign(r, { cabinTypeId: type.id, unit });
+    } else if (body.action === "adjust") {
+      const b = opts.body as { adults: number; children: number; total: number };
+      const type = db.cabins.find((c) => c.id === r.cabinTypeId)!;
+      if (b.adults + b.children > type.maxPersonas) return { status: 422, data: { error: "OVER_CAPACITY" } };
+      Object.assign(r, {
+        adults: b.adults,
+        children: b.children,
+        quote: adjustedQuote(r, type, b.adults + b.children, b.total, db.seasons),
+        balancePaidAt: r.balancePaidAt && b.total > r.paid ? null : r.balancePaidAt,
+      });
     } else if (body.action === "guest") {
       const g = (opts.body as { guest: Reservation["guest"] }).guest;
       const fields = validateGuest(g);

@@ -1,23 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
-import {
-  BanIcon,
-  BookingIcon,
-  CalendarIcon,
-  ClockIcon,
-  CloseIcon,
-  FileTextIcon,
-  HomeIcon,
-  LoginIcon,
-  LogoutIcon,
-  PlusIcon,
-  SearchIcon,
-  WalletIcon,
-  WhatsAppIcon,
-  SwapIcon,
-} from "@/components/ui/icons";
+import { useMemo, useState } from "react";
+import { BookingIcon, CalendarIcon, ClockIcon, CloseIcon, FileTextIcon, HomeIcon, LoginIcon, PlusIcon, SearchIcon, WhatsAppIcon } from "@/components/ui/icons";
 import { useLabelTip } from "@/components/ui/floating";
 import { StatusPill } from "@/components/ui/status-pill";
 import { paymentState, pendingOf } from "@/lib/admin-metrics";
@@ -35,7 +20,8 @@ import { Paginator, usePaged } from "@/components/admin/paginator";
 import { MODULES, paths } from "@/components/admin/routes";
 import { ARRIVING, DEPARTING, adminInput, norm, rowOf } from "@/components/admin/shared";
 import { SyncMark } from "@/components/admin/sync";
-import { useReservationActions, type ActionKind } from "@/components/admin/reservation-detail";
+import { useReservationActions } from "@/components/admin/reservation-detail";
+import { ACTION_ICON, ActionMenu, inMenu, type ActionKind } from "@/components/admin/action-menu";
 import { Badge, Button, Card, EmptyState, IconButton, ModalPresence, StatCard, iconButtonClass } from "@/components/admin/ui";
 
 // Más reciente primero; si dos se crearon a la vez (un grupo), desempata el código para que el orden no salte.
@@ -402,28 +388,16 @@ function ReservationStats() {
   );
 }
 
-// Icono y gesto (globals.css, [data-gesture]) de cada acción de la fila.
-const ACTION_ICON: Record<ActionKind, { icon: ReactNode; gesture: string }> = {
-  pay: { icon: <WalletIcon size={15} />, gesture: "pay" },
-  checkin: { icon: <LoginIcon size={15} />, gesture: "checkin" },
-  checkout: { icon: <LogoutIcon size={15} />, gesture: "checkout" },
-  reschedule: { icon: <CalendarIcon size={15} />, gesture: "calendar" },
-  move: { icon: <SwapIcon size={15} />, gesture: "checkin" },
-  // Sin grupo, «Cancelar reserva»; en un grupo, la X es solo esta cabaña y el círculo tachado, todo el grupo.
-  cancel: { icon: <CloseIcon size={15} />, gesture: "cancel" },
-  "cancel-group": { icon: <BanIcon size={15} />, gesture: "cancel" },
-};
-
-// Las mismas acciones del detalle de la reserva, como botones de icono con su nombre en el tooltip. Los clics no abren la
-// reserva (la fila entera sí).
-// `only`: deja solo esas acciones (WhatsApp siempre está).
+// Las mismas acciones del detalle de la reserva: las del día a día como botones de icono (nombre en el tooltip) y las que
+// cambian la reserva, en el menú «⋯». Los clics no abren la reserva (la fila entera sí).
+// `only`: deja solo esas acciones, sin menú (WhatsApp siempre está).
 export function RowActions({ r, only }: { r: Reservation; only?: ActionKind[] }) {
   const { actions, whatsapp, dialog } = useReservationActions(r);
   const waTip = useLabelTip("WhatsApp");
   return (
     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
       {actions
-        .filter((a) => !only || only.includes(a.id))
+        .filter((a) => (only ? only.includes(a.id) : !inMenu(a)))
         .map((a) => (
           <IconButton
             key={a.label}
@@ -434,7 +408,7 @@ export function RowActions({ r, only }: { r: Reservation; only?: ActionKind[] })
             data-gesture={ACTION_ICON[a.id].gesture}
             onClick={a.run}
           >
-            {ACTION_ICON[a.id].icon}
+            {ACTION_ICON[a.id].icon(15)}
           </IconButton>
         ))}
       <a
@@ -448,6 +422,7 @@ export function RowActions({ r, only }: { r: Reservation; only?: ActionKind[] })
       >
         <WhatsAppIcon size={15} />
       </a>
+      {!only && <ActionMenu actions={actions.filter(inMenu)} compact />}
       {dialog}
     </div>
   );

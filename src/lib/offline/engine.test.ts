@@ -526,6 +526,23 @@ describe("cambiar de cabaña sin conexión", () => {
   });
 });
 
+describe("editar personas y valor sin conexión", () => {
+  it("cambia las personas y el valor, y conserva fechas y cabaña", async () => {
+    const { engine } = await start(fakeServer(), false);
+    const res = await engine.mutate("reservation.action", { code: "VF-AAAAA", action: "adjust", adults: 3, children: 1, total: 1500 });
+    expect(res.queued).toBe(true);
+    const r = engine.data.reservations[0];
+    expect([r.adults, r.children, r.quote.total, r.checkIn, r.unit]).toEqual([3, 1, 1500, "2099-02-01", 1]);
+  });
+
+  it("no deja pasar de la capacidad de la cabaña", async () => {
+    const { engine } = await start(fakeServer(), false);
+    const res = await engine.mutate("reservation.action", { code: "VF-AAAAA", action: "adjust", adults: 4, children: 1, total: 1500 });
+    expect(res.status).toBe(422);
+    expect(engine.data.reservations[0].adults).toBe(2);
+  });
+});
+
 describe("importar", () => {
   it("las filas que el servidor rechaza quedan a la vista, no se pierden", async () => {
     const srv = fakeServer();

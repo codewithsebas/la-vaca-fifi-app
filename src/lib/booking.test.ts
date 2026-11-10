@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  adjustedQuote,
+  suggestedTotal,
   clashingReservations,
   computeQuote,
   dayRateLabel,
@@ -56,6 +58,42 @@ describe("withTotal", () => {
   it("recalcula abono y saldo con un precio especial y deja la diferencia en adjustment", () => {
     const q = withTotal(computeQuote(cabin, "2026-11-10", "2026-11-11", 2), 100_000);
     expect(q).toMatchObject({ total: 100_000, deposit: 30_000, balance: 70_000, adjustment: -60_000 });
+  });
+});
+
+describe("editar personas y valor", () => {
+  const stay = (over = {}) => ({
+    quote: computeQuote(cabin, "2026-11-10", "2026-11-12", 2),
+    checkIn: "2026-11-10",
+    checkOut: "2026-11-12",
+    adults: 2,
+    children: 0,
+    paid: 0,
+    ...over,
+  });
+
+  it("sugiere el valor sumando solo lo que cambia la tarifa", () => {
+    expect(suggestedTotal(stay(), cabin, 3)).toBe(320_000 + 80_000);
+  });
+
+  it("conserva un precio especial al sugerir", () => {
+    const quote = withTotal(computeQuote(cabin, "2026-11-10", "2026-11-12", 2), 250_000);
+    expect(suggestedTotal(stay({ quote }), cabin, 3)).toBe(330_000);
+  });
+
+  it("no cambia la sugerencia en lo importado", () => {
+    expect(suggestedTotal(stay({ source: "import" }), cabin, 3)).toBe(320_000);
+  });
+
+  it("recalcula el abono si aún no se ha pagado", () => {
+    const q = adjustedQuote(stay(), cabin, 3, 300_000);
+    expect(q).toMatchObject({ total: 300_000, deposit: 90_000, balance: 210_000, adjustment: -100_000, extraGuests: 1 });
+  });
+
+  it("con el abono pagado, conserva el abono y deja como saldo el resto", () => {
+    const base = stay({ paid: 96_000, depositPaidAt: "2026-11-01T00:00:00Z" });
+    expect(adjustedQuote(base, cabin, 2, 400_000)).toMatchObject({ total: 400_000, deposit: base.quote.deposit, balance: 304_000 });
+    expect(adjustedQuote(base, cabin, 2, 50_000)).toMatchObject({ total: 50_000, balance: 0 });
   });
 });
 
