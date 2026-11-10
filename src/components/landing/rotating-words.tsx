@@ -18,7 +18,7 @@ export function RotatingWords({ words, every = 2800, className = "" }: { words: 
     <span className={className}>
       <span className="sr-only">{words[0]}</span>
       <span key={i} aria-hidden="true" className="inline-block motion-safe:animate-word-in">
-        {words[i]}
+        {words[i % words.length]}
       </span>
     </span>
   );

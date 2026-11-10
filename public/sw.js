@@ -96,7 +96,7 @@ const TEMPLATES = [
   [/^\/admin\/cabanas\/(?!nueva$)[^/]+$/, "/admin/cabanas/plantilla"],
 ];
 const templateOf = (pathname) => TEMPLATES.find(([re]) => re.test(pathname))?.[1] ?? pathname;
-const isPanel = (pathname) => pathname === "/admin" || pathname.startsWith("/admin/");
+const isPanel = (pathname) => pathname === "/admin" || pathname.startsWith("/admin/") || pathname === "/vista-previa";
 
 // Abrir una página del panel: primero la red; sin conexión, su copia (o la de su estructura, o el inicio del panel).
 async function panelPage(event, url) {

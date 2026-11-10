@@ -6,6 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // calendario de cada cabaña que importa Booking (/api/ical).
 const ABIERTAS = [
   "/admin",
+  "/vista-previa", // sin datos propios: solo pinta lo que le envía el panel que la contiene
   "/api/admin",
   "/api/push",
   "/api/email",

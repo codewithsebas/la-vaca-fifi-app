@@ -436,7 +436,19 @@ export function CountBadge({ n, tone = "muted", label }: { n: number; tone?: "mu
 // Va pegada al borde inferior de la ventana y ocupa todo el ancho del área de contenido (de la barra lateral al borde
 // derecho), aunque el formulario sea corto. Publica su alto en --savebar-h: el panel deja ese espacio libre al final
 // de la página (shell.tsx) y los avisos flotantes aparecen por encima de ella.
-export function SaveBar({ dirty, onDiscard, onSave, saveLabel }: { dirty: boolean; onDiscard: () => void; onSave: () => void; saveLabel: string }) {
+export function SaveBar({
+  dirty,
+  onDiscard,
+  onSave,
+  saveLabel,
+  wide = false,
+}: {
+  dirty: boolean;
+  onDiscard: () => void;
+  onSave: () => void;
+  saveLabel: string;
+  wide?: boolean; // en páginas a todo el ancho
+}) {
   const bar = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = bar.current;
@@ -456,7 +468,7 @@ export function SaveBar({ dirty, onDiscard, onSave, saveLabel }: { dirty: boolea
       data-savebar
       className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/92 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-canvas/80 lg:left-[var(--admin-sidebar,264px)]"
     >
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8">
+      <div className={`mx-auto flex ${wide ? "max-w-none" : "max-w-[1440px]"} flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8`}>
         <p aria-live="polite" className="flex items-center gap-2 text-[13.5px] font-medium text-ink-muted">
           <span aria-hidden="true" className={`size-2 rounded-full transition-colors ${dirty ? "bg-pink-deep" : "bg-line-strong"}`} />
           {dirty ? "Tienes cambios sin guardar" : "Sin cambios pendientes"}
@@ -776,7 +788,7 @@ export function GroupedNavTabs({
   current,
   label,
 }: {
-  groups: { label: string; tabs: { href: string; id: string; label: ReactNode; icon?: ReactNode; count?: number }[] }[];
+  groups: { label: string; tabs: { href: string; id: string; label: ReactNode; icon?: ReactNode; count?: number; changed?: boolean }[] }[];
   current: string;
   label: string;
 }) {
@@ -809,6 +821,11 @@ export function GroupedNavTabs({
                   {t.icon}
                   {t.label}
                   {t.count !== undefined && t.count > 0 && <span className="rounded-full bg-pink px-1.5 text-[11px] text-ink tabular-nums">{t.count}</span>}
+                  {t.changed && !t.count && (
+                    <span title="Con cambios sin publicar" className="size-2 rounded-full bg-pink-deep">
+                      <span className="sr-only"> (con cambios sin publicar)</span>
+                    </span>
+                  )}
                 </Link>
               );
             })}
