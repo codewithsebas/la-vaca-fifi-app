@@ -181,7 +181,6 @@ export const MODULES: Record<ModuleId, Module> = {
     icon: SlidersIcon,
     group: "Administración",
     description: "Apariencia, sonido, tiempo real y preferencias de este navegador.",
-    nav: false,
   },
   sincronizacion: {
     label: "Sincronización",
