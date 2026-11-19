@@ -171,7 +171,7 @@ export function SiteFooterView({ c, texts, tall = false }: { c: SiteConfig; text
           </a>
         </div>
       </div>
-      <CabinRow className={tall ? "h-[clamp(80px,min(17vw,24svh),260px)] flex-none" : "h-[clamp(96px,13vw,190px)]"} />
+      <CabinRow className={tall ? "h-[clamp(110px,min(20vw,30svh),320px)] flex-none" : "h-[clamp(120px,16vw,300px)]"} />
     </footer>
   );
 }
