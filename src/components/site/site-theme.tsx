@@ -1,12 +1,19 @@
 import type { Viewport } from "next";
+import { getSiteContent } from "@/lib/server/site";
+import { DEFAULT_THEME, sameTheme, themeCss } from "@/lib/theme";
 
-// El sitio público usa los colores fijos de su diseño (globals.css): los colores que se guardaban desde el panel ya no
-// se aplican. Se conserva el componente para no tocar cada página que lo incluye.
-export function SiteTheme() {
-  return null;
+// Colores del sitio elegidos en el panel (Contenido del sitio › Colores, columna site_settings.theme). Con theme vacío
+// (o igual a la paleta original de Fifí) no se agrega nada: el sitio usa los colores de su diseño (globals.css). Va en
+// las páginas públicas y no en el layout raíz: el panel tiene sus propios colores. También en .site-ui, que aclara el
+// fondo de los paneles suaves con un valor fijo.
+export async function SiteTheme() {
+  const { theme } = await getSiteContent();
+  if (sameTheme(theme, DEFAULT_THEME)) return null;
+  return <style dangerouslySetInnerHTML={{ __html: themeCss(theme).replace(/^:root\{/, ":root,.site-ui{") }} />;
 }
 
-// Color de la barra del navegador en el celular: el fondo del sitio.
-export function siteViewport(): Viewport {
-  return { themeColor: "#fffdf8" };
+// Color de la barra del navegador en el celular: el fondo del sitio (las tarjetas, en el diseño de Fifí).
+export async function siteViewport(): Promise<Viewport> {
+  const { theme } = await getSiteContent();
+  return { themeColor: sameTheme(theme, DEFAULT_THEME) ? "#fffdf8" : theme.card };
 }

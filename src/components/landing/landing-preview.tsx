@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LandingView } from "@/components/landing/landing-view";
 import { SiteProvider } from "@/components/site/site-provider";
 import { mergeSite } from "@/lib/site";
+import { themeCss } from "@/lib/theme";
 import { isPreviewZone, type FromPreview, type PreviewData, type PreviewZone, type ToPreview } from "@/lib/site-preview";
 
 // Solo la zona más interna bajo el puntero se marca: un clic ahí abre su editor en el panel.
@@ -78,6 +79,8 @@ export function LandingPreview() {
   return (
     <SiteProvider content={data.content} cabins={data.cabins}>
       <style>{STYLES}</style>
+      {/* Los colores del borrador, por encima de los publicados (html:root pesa más que :root). */}
+      <style>{`html${themeCss(data.content.theme)}`}</style>
       <LandingView cabins={data.cabins} site={site} photos={data.content.photos} texts={data.content.texts} services={data.content.services} />
     </SiteProvider>
   );

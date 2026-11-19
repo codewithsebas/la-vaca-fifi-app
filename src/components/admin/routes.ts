@@ -216,11 +216,11 @@ export function moduleOf(pathname: string): ModuleId | null {
 
 /* ───────────── Contenido del sitio: una ruta por zona ───────────── */
 
-export type ContentSectionId = "portada" | "restaurante" | "experiencias" | "servicios" | "horarios" | "politicas" | "contacto" | "redes";
+export type ContentSectionId = "portada" | "restaurante" | "experiencias" | "servicios" | "horarios" | "politicas" | "contacto" | "redes" | "colores";
 
 // Las zonas van agrupadas por lo que son, y así se muestran en las pestañas: lo que se ve en la página de inicio, lo que
 // el huésped necesita saber para reservar y quedarse, los datos del negocio y la apariencia.
-export const CONTENT_GROUPS = ["Página de inicio", "Reservas y estadía", "Datos del negocio"] as const;
+export const CONTENT_GROUPS = ["Página de inicio", "Reservas y estadía", "Datos del negocio", "Apariencia"] as const;
 
 export const CONTENT_SECTIONS: { id: ContentSectionId; label: string; group: (typeof CONTENT_GROUPS)[number]; where: string; href: string }[] = [
   {
@@ -261,6 +261,14 @@ export const CONTENT_SECTIONS: { id: ContentSectionId; label: string; group: (ty
     href: "/#contacto",
   },
   { id: "redes", label: "Redes y datos legales", group: "Datos del negocio", where: "Pie de página: redes sociales y número de RNT.", href: "/#contacto" },
+  {
+    id: "colores",
+    label: "Colores",
+    group: "Apariencia",
+    where:
+      "Fondos, tarjetas, tinta, acentos y botones de todo el sitio. Sin cambios, el sitio usa la paleta original de Fifí. El panel tiene sus propios colores.",
+    href: "/",
+  },
 ];
 
 export const isContentSection = (s: string): s is ContentSectionId => CONTENT_SECTIONS.some((x) => x.id === s);

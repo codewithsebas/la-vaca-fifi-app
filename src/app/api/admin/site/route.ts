@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { baseVersionOf, fail, json, readJson, requireAdmin, syncRoute } from "@/lib/server/http";
 import { loadSiteContent } from "@/lib/server/site";
 import { TEXT_LIMITS, lines, listIssue, mergeTexts } from "@/lib/site";
-import { THEME_KEYS, mergeTheme, normalizeHex } from "@/lib/theme";
+import { DEFAULT_THEME, THEME_KEYS, mergeTheme, normalizeHex, sameTheme } from "@/lib/theme";
 import type { SiteInput } from "@/lib/types";
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -115,7 +115,8 @@ export const PUT = syncRoute(async (req: NextRequest) => {
       whatsapp,
       rnt: String(s.rnt ?? "").trim(),
       content: texts,
-      ...(b.theme !== undefined && { theme }),
+      // La paleta original de Fifí se guarda vacía: con theme vacío el sitio usa los colores del código (globals.css).
+      ...(b.theme !== undefined && { theme: sameTheme(theme, DEFAULT_THEME) ? {} : theme }),
     })
     .throwOnError();
   // Primero se guardan las políticas y luego se borran las que ya no están: nunca queda la lista vacía.
