@@ -317,8 +317,8 @@ export type AdminData = {
 
 // admin: todo. recepcion: el día a día (sin finanzas, tarifas, cabañas, contenido del sitio, cancelar ni eliminar).
 export type PanelRole = "superadmin" | "admin" | "recepcion";
-// photo: URL pública de la foto de perfil (null sin foto).
-export type PanelUser = { id: string; email: string; name: string; role: PanelRole; photo: string | null };
+// photo: URL pública de la foto de perfil (null sin foto). toured: ya vio (o saltó) la guía del panel de su primer ingreso.
+export type PanelUser = { id: string; email: string; name: string; role: PanelRole; photo: string | null; toured?: boolean };
 export type Employee = PanelUser & { createdAt: string; lastSignInAt: string | null; active: boolean };
 // Crear: email, name, role y password. Editar: id y lo que cambia (password solo para asignar una nueva).
 export type EmployeeInput = { id?: string; email?: string; name?: string; role?: PanelRole; password?: string; active?: boolean };
@@ -347,8 +347,8 @@ export type ActivityPage = {
   size: number;
   actors: { id: string; name: string; email: string; role: PanelRole | null }[];
 };
-// Perfil propio: nombre y, si se quiere, contraseña nueva.
-export type ProfileInput = { name?: string; password?: string };
+// Perfil propio: nombre y, si se quiere, contraseña nueva; `toured` marca la guía del panel como vista.
+export type ProfileInput = { name?: string; password?: string; toured?: true };
 
 /* ───────────── Baños ───────────── */
 

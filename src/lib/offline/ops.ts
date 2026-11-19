@@ -1181,6 +1181,13 @@ const contentOps = {
     result: (d) => ({ me: d.me }),
     family: { name: "profile", role: "update" },
   } satisfies OpDef<{ name: string }>,
+  "profile.tour": {
+    label: () => "Guía del panel vista",
+    entities: () => ["profile"],
+    request: () => ({ method: "PUT", path: "/admin/profile", body: { toured: true } }),
+    apply: (d) => ({ ...d, me: { ...d.me, toured: true } }),
+    result: (d) => ({ me: d.me }),
+  } satisfies OpDef<Record<string, never>>,
   "profilePhoto.set": {
     label: () => "Mi foto",
     entities: () => ["profile"],

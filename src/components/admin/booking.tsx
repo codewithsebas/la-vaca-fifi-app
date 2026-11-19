@@ -88,7 +88,7 @@ export function BookingView() {
         </div>
       ) : (
         <>
-          <Card className="flex flex-col gap-4 p-4 sm:p-5">
+          <Card data-tour="booking-inbox" className="flex flex-col gap-4 p-4 sm:p-5">
             <CardHeader
               title="Por asignar"
               subtitle={pending.length ? `${plural(pending.length, "reserva espera", "reservas esperan")} una cabaña` : undefined}

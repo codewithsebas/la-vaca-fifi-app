@@ -116,7 +116,7 @@ export function BookingCalendars({ offline }: { offline: boolean }) {
   const linked = state?.calendars.filter((c) => c.importUrl).length ?? 0;
 
   return (
-    <Card className="flex flex-col gap-4 p-4 sm:p-5" aria-labelledby="bk-cal">
+    <Card data-tour="booking-ical" className="flex flex-col gap-4 p-4 sm:p-5" aria-labelledby="bk-cal">
       <CardHeader
         id="bk-cal"
         title="Calendarios de Booking.com"

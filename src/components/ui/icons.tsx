@@ -164,6 +164,12 @@ export const InfoIcon = (p: IconProps) => (
     <path d="M12 16v-4M12 8h.01" />
   </Stroke>
 );
+export const CompassIcon = (p: IconProps) => (
+  <Stroke stroke={2} {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m15.5 8.5-2 5-5 2 2-5z" />
+  </Stroke>
+);
 export const AlertIcon = (p: IconProps) => (
   <Stroke stroke={2} {...p}>
     <circle cx="12" cy="12" r="9" />

@@ -125,7 +125,7 @@ export function CabinList() {
         title={MODULES.cabanas.label}
         description="Lo que ves aquí es lo que se ofrece en el sitio. El orden también es el del sitio."
         actions={
-          <Link href={paths.nuevaCabana} className={buttonClass("primary")}>
+          <Link href={paths.nuevaCabana} data-tour="new-cabin" className={buttonClass("primary")}>
             <PlusIcon size={14} />
             Nueva cabaña
           </Link>
@@ -416,7 +416,7 @@ export function CabinEditor({ id }: { id?: string }) {
             </Field>
           </Card>
 
-          <Card aria-labelledby="cb-cap" className="flex flex-col gap-4 p-4 sm:p-5">
+          <Card aria-labelledby="cb-cap" data-tour="cabin-capacity" className="flex flex-col gap-4 p-4 sm:p-5">
             <CardHeader
               id="cb-cap"
               icon={<UsersIcon size={18} />}

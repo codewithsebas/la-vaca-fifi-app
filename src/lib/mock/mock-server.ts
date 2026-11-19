@@ -1441,10 +1441,10 @@ async function handle(method: string, path: string, opts: MockRequest): Promise<
 
   // ----- Perfil propio -----
   if (method === "PUT" && path === "/admin/profile") {
-    const b = (opts.body ?? {}) as { name?: string; password?: string };
+    const b = (opts.body ?? {}) as { name?: string; password?: string; toured?: true };
     if (b.name !== undefined && String(b.name).trim().length < 2) return invalid({ name: "Escribe tu nombre (2 a 80 caracteres)." });
     if (b.password !== undefined && String(b.password).length < 8) return invalid({ password: "Mínimo 8 caracteres." });
-    const updated: PanelUser = { ...me, ...(b.name !== undefined && { name: String(b.name).trim() }) };
+    const updated: PanelUser = { ...me, ...(b.name !== undefined && { name: String(b.name).trim() }), ...(b.toured && { toured: true }) };
     sessionStorage.setItem(ME_KEY, JSON.stringify(updated));
     db.employees = employeesOf(db, me).map((e) => (e.id === me.id ? { ...e, name: updated.name } : e));
     save(db);

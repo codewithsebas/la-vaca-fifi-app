@@ -32,6 +32,7 @@ import { ThemeMenu, syncBrowserBar, useApplyTheme } from "@/components/admin/app
 import { BookingSyncButton } from "@/components/admin/booking-calendars";
 import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, canOpen, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "@/components/admin/routes";
 import { AccessDenied, AccountMenu } from "@/components/admin/account";
+import { Onboarding } from "@/components/admin/onboarding";
 import { GlobalSearch } from "@/components/admin/global-search";
 import { SyncChip } from "@/components/admin/sync";
 import { type Ask, type ConfirmCfg, adminInput } from "@/components/admin/shared";
@@ -860,6 +861,7 @@ function Panel({
           </ModalPresence>
 
           <Toasts toast={toast} onDismiss={() => setToast(null)} />
+          <Onboarding />
           <ModalPresence>
             {confirm && <ConfirmDialog cf={confirm} onChange={(p) => setConfirm({ ...confirm, ...p })} onCancel={() => setConfirm(null)} onOk={runConfirm} />}
           </ModalPresence>

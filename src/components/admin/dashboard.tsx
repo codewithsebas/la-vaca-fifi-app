@@ -132,7 +132,7 @@ export function Dashboard() {
                     <CalendarIcon size={16} />
                     Calendario
                   </Link>
-                  <Button variant="primary" icon={<PlusIcon size={14} />} onClick={() => setCreating(true)}>
+                  <Button variant="primary" data-tour="new-reservation" icon={<PlusIcon size={14} />} onClick={() => setCreating(true)}>
                     Nueva reserva
                   </Button>
                 </div>
@@ -153,7 +153,7 @@ export function Dashboard() {
             <MiniCalendar />
           </div>
           <div {...enter(2.5, "pop")} className="flex items-center gap-2">
-            <Button variant="primary" size="lg" className="flex-1" icon={<PlusIcon size={15} />} onClick={() => setCreating(true)}>
+            <Button variant="primary" size="lg" data-tour="new-reservation" className="flex-1" icon={<PlusIcon size={15} />} onClick={() => setCreating(true)}>
               Nueva reserva
             </Button>
             <IconButton label="Actualizar los datos" variant="secondary" size="lg" data-gesture="refresh" onClick={refresh} disabled={refreshing}>
@@ -307,7 +307,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
   ).length;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div data-tour="pulse" className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Highlight id="d-hl-today" order={1} accent="yellow" shape="sun" title="Hoy:">
           <div className="grid grid-cols-3 gap-3 pr-10">

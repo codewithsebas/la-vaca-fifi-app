@@ -196,6 +196,8 @@ export const api = {
       const direct = () => request<{ me: PanelUser } | ValidationError>("PUT", "/admin/profile", { body: b });
       return b.password === undefined && b.name !== undefined ? mutate("profile.save", { name: b.name }, direct) : direct();
     },
+    // Marca la guía del panel como vista (también sin conexión: se envía al volver).
+    finishTour: () => mutate("profile.tour", {}, () => request<{ me: PanelUser }>("PUT", "/admin/profile", { body: { toured: true } })),
     uploadProfilePhoto: (file: Blob, name: string) =>
       mutate("profilePhoto.set", { file, name }, () => upload<{ me: PanelUser }>("/admin/profile/photo", formOf({ file }, name))),
     deleteProfilePhoto: () => mutate("profilePhoto.delete", {}, () => request<{ me: PanelUser }>("DELETE", "/admin/profile/photo")),

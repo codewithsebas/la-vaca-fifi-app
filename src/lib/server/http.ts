@@ -56,7 +56,8 @@ export async function requireStaff(): Promise<Staff> {
   const uid = typeof c.sub === "string" ? c.sub : null;
   const name = String((c.user_metadata as { full_name?: string } | undefined)?.full_name ?? "").trim();
   const email = typeof c.email === "string" ? c.email : "";
-  return { sb, uid, me: { id: uid ?? "", email, name, role, photo: avatarOf(c.user_metadata) } };
+  const toured = (c.user_metadata as { tour_done?: boolean } | undefined)?.tour_done === true;
+  return { sb, uid, me: { id: uid ?? "", email, name, role, photo: avatarOf(c.user_metadata), toured } };
 }
 
 // Solo administradores (y superadministradores), o un permiso concreto (recepción tiene algunos: lib/permissions.ts).
