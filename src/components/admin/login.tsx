@@ -160,7 +160,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
             {lg.error}
           </Callout>
         )}
-        <Button type="submit" variant="primary" size="lg" loading={lg.loading}>
+        <Button type="submit" variant="primary" size="lg" loading={lg.loading} className="h-12! text-[14px]">
           {lg.loading ? "Entrando…" : "Entrar"}
         </Button>
         <p className="text-center text-[13.5px] text-ink-muted">
