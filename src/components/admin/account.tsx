@@ -21,7 +21,7 @@ import {
 import { api } from "@/lib/client/api";
 import { resizeImage, type Crop } from "@/lib/client/image-resize";
 import { isMockApi } from "@/lib/config";
-import { CAPABILITIES, ROLE_HINT, ROLE_LABEL, can } from "@/lib/permissions";
+import { CAPABILITIES, ROLE_HINT, ROLE_LABEL, can, isAdminRole } from "@/lib/permissions";
 import type { PanelRole, PanelUser } from "@/lib/types";
 import { Popover, useLabelTip } from "@/components/ui/floating";
 import { useAdmin } from "@/components/admin/context";
@@ -79,7 +79,7 @@ export function Avatar({
 
 export function RoleBadge({ role }: { role: PanelRole }) {
   return (
-    <Badge tone={role === "admin" ? "accent" : "info"} icon={role === "admin" ? <ShieldIcon size={11} /> : undefined}>
+    <Badge tone={role === "superadmin" ? "warning" : role === "admin" ? "accent" : "info"} icon={isAdminRole(role) ? <ShieldIcon size={11} /> : undefined}>
       {ROLE_LABEL[role]}
     </Badge>
   );

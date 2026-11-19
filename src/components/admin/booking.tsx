@@ -9,6 +9,7 @@ import { CheckIcon, CloseIcon, ExternalLinkIcon, MailIcon, PhoneIcon } from "@/c
 import { Combobox } from "@/components/ui/combobox";
 import { busyBlocks, findUnit, unitFree, unitLabel, type Occupancy } from "@/lib/booking";
 import { api } from "@/lib/client/api";
+import { isAdminRole } from "@/lib/permissions";
 import { cop, fmtDate, nightsBetween, plural, timeAgo } from "@/lib/format";
 import type { CabinTypeId } from "@/lib/config";
 import type { BookingInboxItem } from "@/lib/types";
@@ -66,7 +67,7 @@ export function BookingView() {
     <div className="flex flex-col gap-5">
       <PageHeader title={MODULES.booking.label} description="Conexión con Booking.com: el calendario de cada cabaña y las reservas que llegan por correo." />
 
-      {data.me.role === "admin" && <BookingCalendars offline={offline} />}
+      {isAdminRole(data.me.role) && <BookingCalendars offline={offline} />}
 
       {offline && <Callout tone="warning">Sin conexión: para asignar o descartar reservas de Booking necesitas internet.</Callout>}
 

@@ -1,12 +1,14 @@
 import type { User } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { EMAIL_RE } from "@/lib/booking";
-import { isRole } from "@/lib/permissions";
+import { canManageRole, isAdminRole, isRole } from "@/lib/permissions";
 import { avatarOf, fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Employee, EmployeeInput } from "@/lib/types";
 
-// Empleados del panel: cuentas de Supabase Auth con rol en app_metadata («admin» o «recepcion»). Solo administradores.
+// Empleados del panel: cuentas de Supabase Auth con rol en app_metadata («superadmin», «admin» o «recepcion»). Solo
+// administradores. Las cuentas de superadministrador solo las crea, cambia, desactiva o borra otro superadministrador
+// (canManageRole), y nadie le da ese rol a otra cuenta sin serlo.
 // Se crean con una contraseña inicial que el administrador le entrega; cada quien la cambia en «Mi perfil».
 // Desactivar no borra la cuenta: la bloquea hasta reactivarla.
 
@@ -39,10 +41,13 @@ async function listEmployees() {
     });
     if (data.users.length < 200) break;
   }
-  return out.sort((a, b) => (a.role === b.role ? a.email.localeCompare(b.email) : a.role === "admin" ? -1 : 1));
+  const rank = { superadmin: 0, admin: 1, recepcion: 2 } as const;
+  return out.sort((a, b) => rank[a.role] - rank[b.role] || a.email.localeCompare(b.email));
 }
 
-const activeAdmins = (list: Employee[]) => list.filter((e) => e.role === "admin" && e.active);
+// Administradores activos (incluidos los superadministradores): siempre debe quedar al menos uno.
+const activeAdmins = (list: Employee[]) => list.filter((e) => isAdminRole(e.role) && e.active);
+const SUPERADMIN_ONLY = () => fail(403, "SUPERADMIN_ONLY");
 
 // GET /api/admin/employees → empleados del panel.
 export const GET = route(async () => {
@@ -53,7 +58,7 @@ export const GET = route(async () => {
 
 // POST /api/admin/employees { email, name, role, password } → crea la cuenta, ya confirmada.
 export const POST = route(async (req: NextRequest) => {
-  const { error } = await requireAdmin("employees");
+  const { me, error } = await requireAdmin("employees");
   if (error) return error;
   const b = await readJson<EmployeeInput>(req);
   const email = String(b?.email ?? "")
@@ -66,6 +71,7 @@ export const POST = route(async (req: NextRequest) => {
   if (!isRole(b?.role)) fields.role = "Elige el rol.";
   if (String(b?.password ?? "").length < 8) fields.password = "Mínimo 8 caracteres.";
   if (Object.keys(fields).length) return fail(422, "VALIDATION_ERROR", { fields });
+  if (!canManageRole(me.role, b!.role!)) return SUPERADMIN_ONLY();
   const { error: createErr } = await createServiceClient().auth.admin.createUser({
     email,
     password: b!.password!,
@@ -82,8 +88,8 @@ export const POST = route(async (req: NextRequest) => {
   return json(await listEmployees(), 201);
 });
 
-// PUT /api/admin/employees { id, name?, role?, active?, password? } → edita. Nadie se quita su propio acceso de
-// administrador ni se desactiva, y siempre queda al menos un administrador activo.
+// PUT /api/admin/employees { id, name?, role?, active?, password? } → edita. Nadie cambia su propio rol ni se desactiva, y
+// siempre queda al menos un administrador activo.
 export const PUT = route(async (req: NextRequest) => {
   const { me, error } = await requireAdmin("employees");
   if (error) return error;
@@ -97,8 +103,11 @@ export const PUT = route(async (req: NextRequest) => {
   if (b.role !== undefined && !isRole(b.role)) fields.role = "Elige el rol.";
   if (b.password !== undefined && String(b.password).length < 8) fields.password = "Mínimo 8 caracteres.";
   if (Object.keys(fields).length) return fail(422, "VALIDATION_ERROR", { fields });
-  const losesAdmin = target.role === "admin" && target.active && ((b.role !== undefined && b.role !== "admin") || b.active === false);
-  if (target.id === me.id && (losesAdmin || b.active === false)) return fail(409, "SELF_LOCKOUT");
+  // Una cuenta de superadministrador, o darle ese rol a otra: solo un superadministrador.
+  if (!canManageRole(me.role, target.role) || (b.role !== undefined && !canManageRole(me.role, b.role))) return SUPERADMIN_ONLY();
+  const losesAdmin = isAdminRole(target.role) && target.active && ((b.role !== undefined && !isAdminRole(b.role)) || b.active === false);
+  // Nadie cambia su propio rol (ni de superadministrador a administrador) ni se desactiva.
+  if (target.id === me.id && ((b.role !== undefined && b.role !== target.role) || b.active === false)) return fail(409, "SELF_LOCKOUT");
   if (losesAdmin && activeAdmins(list).length <= 1) return fail(409, "LAST_ADMIN");
   const update: Parameters<ReturnType<typeof createServiceClient>["auth"]["admin"]["updateUserById"]>[1] = {};
   if (b.name !== undefined) update.user_metadata = { full_name: String(b.name).trim() };
@@ -118,8 +127,9 @@ export const DELETE = route(async (req: NextRequest) => {
   const list = await listEmployees();
   const target = list.find((e) => e.id === id);
   if (!target) return fail(404, "NOT_FOUND");
+  if (!canManageRole(me.role, target.role)) return SUPERADMIN_ONLY();
   if (target.id === me.id) return fail(409, "SELF_LOCKOUT");
-  if (target.role === "admin" && target.active && activeAdmins(list).length <= 1) return fail(409, "LAST_ADMIN");
+  if (isAdminRole(target.role) && target.active && activeAdmins(list).length <= 1) return fail(409, "LAST_ADMIN");
   const { error: delErr } = await createServiceClient().auth.admin.deleteUser(target.id);
   if (delErr) throw delErr;
   return json(await listEmployees());

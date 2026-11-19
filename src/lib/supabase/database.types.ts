@@ -1257,6 +1257,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      is_superadmin: { Args: never; Returns: boolean }
       panel_role: { Args: never; Returns: string }
       place_unpaid: {
         Args: {

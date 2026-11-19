@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
 import { api } from "@/lib/client/api";
-import { ROLE_HINT, ROLE_LABEL } from "@/lib/permissions";
+import { ROLE_HINT, ROLE_LABEL, canManageRole, isAdminRole } from "@/lib/permissions";
 import { fmtDate, dateOf, timeAgo } from "@/lib/format";
 import type { ApiResult, Employee, EmployeeInput, PanelRole } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
@@ -49,11 +49,13 @@ import {
 type Filter = "todos" | PanelRole | "inactivos";
 type Draft = { id?: string; name: string; email: string; role: PanelRole; password: string; active: boolean };
 
-const ROLES: PanelRole[] = ["recepcion", "admin"];
+// Roles que se pueden dar: el de superadministrador, solo otro superadministrador (canManageRole).
+const rolesFor = (me: PanelRole): PanelRole[] => (["recepcion", "admin", "superadmin"] as PanelRole[]).filter((r) => canManageRole(me, r));
 
 // Mensaje de los rechazos del servidor que no son de un campo.
 const REFUSAL: Record<string, string> = {
-  SELF_LOCKOUT: "No puedes quitarte tu propio acceso de administrador ni desactivar o borrar tu cuenta.",
+  SELF_LOCKOUT: "No puedes cambiar tu propio rol ni desactivar o borrar tu cuenta.",
+  SUPERADMIN_ONLY: "Solo un superadministrador puede crear, cambiar o borrar cuentas de superadministrador.",
   LAST_ADMIN: "Debe quedar al menos un administrador activo.",
 };
 
@@ -100,7 +102,9 @@ export function EmployeesView() {
   const active = all.filter((e) => e.active);
   // La última cuenta creada se pinta con otro fondo, como la última reserva en Reservas.
   const newest = all.reduce<Employee | null>((a, e) => (!a || e.createdAt > a.createdAt ? e : a), null)?.id;
-  const editOf = (e: Employee) => setEditing({ id: e.id, name: e.name, email: e.email, role: e.role, password: "", active: e.active });
+  // Las cuentas de superadministrador solo las gestiona otro superadministrador.
+  const manageable = (e: Employee) => canManageRole(data.me.role, e.role);
+  const editOf = (e: Employee) => manageable(e) && setEditing({ id: e.id, name: e.name, email: e.email, role: e.role, password: "", active: e.active });
 
   // Desactivar quita el acceso sin borrar la cuenta; activar lo devuelve. La propia cuenta no se puede desactivar.
   const toggle = (e: Employee) =>
@@ -124,7 +128,8 @@ export function EmployeesView() {
       },
     });
   const toggleButton = (e: Employee) =>
-    e.id !== data.me.id && (
+    e.id !== data.me.id &&
+    manageable(e) && (
       <Button size="sm" variant="ghost" icon={e.active ? <BanIcon size={14} /> : <CheckIcon size={14} />} onClick={() => toggle(e)}>
         {e.active ? "Desactivar" : "Activar"}
         <span className="sr-only">{` a ${displayName(e)}`}</span>
@@ -177,7 +182,7 @@ export function EmployeesView() {
         <StatCard
           accent="yellow"
           label="Administradores"
-          value={list ? active.filter((e) => e.role === "admin").length : "—"}
+          value={list ? active.filter((e) => isAdminRole(e.role)).length : "—"}
           hint="todo el panel"
           icon={<ShieldIcon size={15} />}
         />
@@ -203,6 +208,7 @@ export function EmployeesView() {
             searchable={false}
             options={[
               { value: "todos", label: "Todos los empleados", description: `${all.length} en total` },
+              ...(all.some((e) => e.role === "superadmin") ? [{ value: "superadmin", label: "Superadministradores" }] : []),
               { value: "admin", label: "Administradores" },
               { value: "recepcion", label: "Recepción" },
               { value: "inactivos", label: "Desactivados", description: all.length - active.length ? `${all.length - active.length} en total` : undefined },
@@ -262,7 +268,7 @@ export function EmployeesView() {
                       <td className="px-4 py-3 whitespace-nowrap text-ink-muted">{fmtDate(dateOf(e.createdAt), true)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1" onClick={(ev) => ev.stopPropagation()}>
-                          {e.id !== data.me.id && (
+                          {e.id !== data.me.id && manageable(e) && (
                             <IconButton
                               label={`${e.active ? "Desactivar" : "Activar"} a ${displayName(e)}`}
                               size="sm"
@@ -273,10 +279,12 @@ export function EmployeesView() {
                               {e.active ? <BanIcon size={15} /> : <CheckIcon size={15} />}
                             </IconButton>
                           )}
-                          <IconButton label={`Editar a ${displayName(e)}`} size="sm" variant="secondary" data-gesture="cancel" onClick={() => editOf(e)}>
-                            <PencilIcon size={15} />
-                          </IconButton>
-                          {e.id !== data.me.id && (
+                          {manageable(e) && (
+                            <IconButton label={`Editar a ${displayName(e)}`} size="sm" variant="secondary" data-gesture="cancel" onClick={() => editOf(e)}>
+                              <PencilIcon size={15} />
+                            </IconButton>
+                          )}
+                          {e.id !== data.me.id && manageable(e) && (
                             <IconButton
                               label={`Borrar la cuenta de ${displayName(e)}`}
                               size="sm"
@@ -314,7 +322,7 @@ export function EmployeesView() {
                         {e.id === data.me.id && <Badge>Tú</Badge>}
                       </span>
                     </span>
-                    <PencilIcon size={15} className="flex-none text-ink-subtle" />
+                    {manageable(e) && <PencilIcon size={15} className="flex-none text-ink-subtle" />}
                   </button>
                   {e.id !== data.me.id && <div className="flex justify-end border-t border-line px-2 py-1.5">{toggleButton(e)}</div>}
                 </li>
@@ -340,13 +348,13 @@ export function EmployeesView() {
           </h2>
           <p className="text-[13.5px] text-ink-muted">Lo que incluye cada rol. La API y la base de datos aplican las mismas reglas.</p>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {(["admin", "recepcion"] as PanelRole[]).map((role) => (
+        <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${data.me.role === "superadmin" ? "xl:grid-cols-3" : ""}`}>
+          {(data.me.role === "superadmin" ? (["superadmin", "admin", "recepcion"] as PanelRole[]) : (["admin", "recepcion"] as PanelRole[])).map((role) => (
             <Card key={role} aria-labelledby={`em-role-${role}`} className="flex flex-col gap-4 p-4 sm:p-5">
               <CardHeader
                 id={`em-role-${role}`}
-                icon={role === "admin" ? <ShieldIcon size={18} /> : <IdCardIcon size={18} />}
-                accent={role === "admin" ? "pink" : "blue"}
+                icon={isAdminRole(role) ? <ShieldIcon size={18} /> : <IdCardIcon size={18} />}
+                accent={role === "superadmin" ? "yellow" : role === "admin" ? "pink" : "blue"}
                 title={ROLE_LABEL[role]}
                 subtitle={ROLE_HINT[role]}
               />
@@ -390,7 +398,8 @@ function EmployeeEditor({
   onSaved: (list: Employee[]) => void;
   onDelete?: () => void;
 }) {
-  const { toast, onAuthError } = useAdmin();
+  const { toast, onAuthError, data } = useAdmin();
+  const roles = rolesFor(data.me.role);
   const [d, setD] = useState(initial);
   const [show, setShow] = useState(!initial.id);
   const [busy, setBusy] = useState(false);
@@ -488,8 +497,8 @@ function EmployeeEditor({
 
           <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="mb-1.5 text-[13px] font-semibold text-ink">Rol</legend>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {ROLES.map((role) => {
+            <div className={`grid grid-cols-1 gap-2 ${roles.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+              {roles.map((role) => {
                 const on = d.role === role;
                 return (
                   <label

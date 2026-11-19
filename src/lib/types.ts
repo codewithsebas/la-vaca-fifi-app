@@ -316,7 +316,7 @@ export type AdminData = {
 /* ───────────── Equipo ───────────── */
 
 // admin: todo. recepcion: el día a día (sin finanzas, tarifas, cabañas, contenido del sitio, cancelar ni eliminar).
-export type PanelRole = "admin" | "recepcion";
+export type PanelRole = "superadmin" | "admin" | "recepcion";
 // photo: URL pública de la foto de perfil (null sin foto).
 export type PanelUser = { id: string; email: string; name: string; role: PanelRole; photo: string | null };
 export type Employee = PanelUser & { createdAt: string; lastSignInAt: string | null; active: boolean };

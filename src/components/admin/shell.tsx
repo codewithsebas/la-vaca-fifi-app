@@ -9,6 +9,7 @@ import { Brand, BrandName, Logo } from "@/components/brand/logo";
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, InfoIcon, MenuIcon, RefreshIcon, SearchIcon, SettingsIcon, WarningIcon } from "@/components/ui/icons";
 import { useSite } from "@/components/site/site-provider";
 import { api } from "@/lib/client/api";
+import { isAdminRole } from "@/lib/permissions";
 import { offlineEnabled } from "@/lib/offline/config";
 import type { SyncEngine } from "@/lib/offline/engine";
 import { precacheShell } from "@/lib/offline/precache";
@@ -352,7 +353,7 @@ function NavList({
             const active = current === id;
             const b = badges[id];
             // Junto a Booking (solo administradores, que son quienes leen Booking), un botón para leerlo ya.
-            const reloadBooking = id === "booking" && role === "admin" && !mini;
+            const reloadBooking = id === "booking" && isAdminRole(role) && !mini;
             const link = (
               <Link
                 key={id}

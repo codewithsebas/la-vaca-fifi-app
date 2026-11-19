@@ -26,7 +26,7 @@ import {
   adjustedQuote,
 } from "@/lib/booking";
 import { config } from "@/lib/config";
-import { can, type Permission } from "@/lib/permissions";
+import { can, canManageRole, isAdminRole, type Permission } from "@/lib/permissions";
 import { MOCK_DB_KEY } from "@/lib/mock/keys";
 import { groupMoney, groupOf } from "@/lib/groups";
 import { addDays, sleep, todayISO } from "@/lib/format";
@@ -657,7 +657,8 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       id: "demo-" + email,
       email,
       name: email.split("@")[0].replace(/[._-]+/g, " "),
-      role: email.includes("recepcion") ? "recepcion" : "admin",
+      // Correo con «recepcion» → recepción; con «super» → superadministrador; cualquier otro → administrador.
+      role: email.includes("recepcion") ? "recepcion" : email.includes("super") ? "superadmin" : "admin",
       photo: null,
     };
     sessionStorage.setItem(ME_KEY, JSON.stringify(me));
@@ -1241,8 +1242,10 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     if (no) return no;
     const list = employeesOf(db, me);
     const b = (opts.body ?? {}) as EmployeeInput;
-    const admins = list.filter((e) => e.role === "admin" && e.active);
+    const admins = list.filter((e) => isAdminRole(e.role) && e.active);
+    const superOnly = { status: 403, data: { error: "SUPERADMIN_ONLY" } };
     if (method === "POST") {
+      if (!canManageRole(me.role, b.role ?? "recepcion")) return superOnly;
       const email = String(b.email ?? "")
         .trim()
         .toLowerCase();
@@ -1268,8 +1271,9 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     } else if (method === "PUT") {
       const t = list.find((e) => e.id === b.id);
       if (!t) return { status: 404, data: { error: "NOT_FOUND" } };
-      const losesAdmin = t.role === "admin" && t.active && ((b.role !== undefined && b.role !== "admin") || b.active === false);
-      if (t.id === me.id && (losesAdmin || b.active === false)) return { status: 409, data: { error: "SELF_LOCKOUT" } };
+      if (!canManageRole(me.role, t.role) || (b.role !== undefined && !canManageRole(me.role, b.role))) return superOnly;
+      const losesAdmin = isAdminRole(t.role) && t.active && ((b.role !== undefined && !isAdminRole(b.role)) || b.active === false);
+      if (t.id === me.id && ((b.role !== undefined && b.role !== t.role) || b.active === false)) return { status: 409, data: { error: "SELF_LOCKOUT" } };
       if (losesAdmin && admins.length <= 1) return { status: 409, data: { error: "LAST_ADMIN" } };
       if (b.password !== undefined && String(b.password).length < 8) return invalid({ password: "Mínimo 8 caracteres." });
       db.employees = list.map((e) =>
@@ -1285,8 +1289,9 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     } else if (method === "DELETE") {
       const t = list.find((e) => e.id === q.id);
       if (!t) return { status: 404, data: { error: "NOT_FOUND" } };
+      if (!canManageRole(me.role, t.role)) return superOnly;
       if (t.id === me.id) return { status: 409, data: { error: "SELF_LOCKOUT" } };
-      if (t.role === "admin" && t.active && admins.length <= 1) return { status: 409, data: { error: "LAST_ADMIN" } };
+      if (isAdminRole(t.role) && t.active && admins.length <= 1) return { status: 409, data: { error: "LAST_ADMIN" } };
       db.employees = list.filter((e) => e.id !== t.id);
     }
     save(db);
