@@ -4,7 +4,7 @@ import { nightsBetween } from "@/lib/format";
 import { loadCabinTypes, loadDepositPct, toReservation } from "@/lib/server/db";
 import { businessError, fail, json, readJson, requireStaff, route } from "@/lib/server/http";
 import { flatQuote } from "@/lib/server/reservations";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createActorClient } from "@/lib/supabase/server";
 import type { ChannelStayCompletion } from "@/lib/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,12 +13,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // huésped (copiados del extranet): entra confirmada, sin pagos ni correos, y la noche queda enlazada a ella. La cabaña y las
 // fechas las pone la noche de Booking; todo ocurre en una sola transacción (complete_channel_stay).
 export const POST = route(async (req: NextRequest) => {
-  const { error } = await requireStaff();
+  const { me, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<ChannelStayCompletion>(req);
   if (!b || typeof b.stayId !== "string" || !UUID.test(b.stayId) || !b.guest) return fail(400, "INVALID_BODY");
 
-  const sb = createServiceClient();
+  const sb = await createActorClient(me.id);
   const { data: stay } = await sb.from("channel_stays").select("cabin_type_id, check_in, check_out").eq("id", b.stayId).maybeSingle().throwOnError();
   if (!stay) return fail(404, "NOT_FOUND");
   const { types } = await loadCabinTypes(sb);

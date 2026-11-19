@@ -322,6 +322,31 @@ export type PanelUser = { id: string; email: string; name: string; role: PanelRo
 export type Employee = PanelUser & { createdAt: string; lastSignInAt: string | null; active: boolean };
 // Crear: email, name, role y password. Editar: id y lo que cambia (password solo para asignar una nueva).
 export type EmployeeInput = { id?: string; email?: string; name?: string; role?: PanelRole; password?: string; active?: boolean };
+
+// Registro de actividad (solo superadministradores): cada escritura del equipo en la base de datos, más los inicios y
+// cierres de sesión. `changes`: por campo, [antes, después] (null donde no había o ya no hay).
+export type ActivityAction = "insert" | "update" | "delete" | "login" | "logout" | "login_failed" | "sync";
+export type ActivityEntry = {
+  id: number;
+  actor: { id: string | null; email: string | null; name: string | null; role: PanelRole | null };
+  action: ActivityAction;
+  entity: string;
+  entityId: string | null;
+  label: string | null;
+  changes: Record<string, [unknown, unknown]> | null;
+  refs: { reservation?: string; client?: string; cabin?: string } | null; // a qué más se refiere (para enlazarlo)
+  occurredAt: string; // cuándo se hizo (sin conexión, la hora del dispositivo)
+  receivedAt: string; // cuándo llegó al servidor
+  ip: string | null;
+  userAgent: string | null;
+};
+export type ActivityPage = {
+  items: ActivityEntry[];
+  total: number;
+  page: number;
+  size: number;
+  actors: { id: string; name: string; email: string; role: PanelRole | null }[];
+};
 // Perfil propio: nombre y, si se quiere, contraseña nueva.
 export type ProfileInput = { name?: string; password?: string };
 

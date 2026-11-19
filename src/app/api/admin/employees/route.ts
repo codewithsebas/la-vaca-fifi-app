@@ -2,13 +2,14 @@ import type { User } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { EMAIL_RE } from "@/lib/booking";
 import { canManageRole, isAdminRole, isRole } from "@/lib/permissions";
+import { logActivity } from "@/lib/server/activity";
 import { avatarOf, fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Employee, EmployeeInput } from "@/lib/types";
 
 // Empleados del panel: cuentas de Supabase Auth con rol en app_metadata («superadmin», «admin» o «recepcion»). Solo
 // administradores. Las cuentas de superadministrador solo las crea, cambia, desactiva o borra otro superadministrador
-// (canManageRole), y nadie le da ese rol a otra cuenta sin serlo.
+// (canManageRole), y nadie le da ese rol a otra cuenta sin serlo. Cada cambio queda en el registro de actividad.
 // Se crean con una contraseña inicial que el administrador le entrega; cada quien la cambia en «Mi perfil».
 // Desactivar no borra la cuenta: la bloquea hasta reactivarla.
 
@@ -72,7 +73,7 @@ export const POST = route(async (req: NextRequest) => {
   if (String(b?.password ?? "").length < 8) fields.password = "Mínimo 8 caracteres.";
   if (Object.keys(fields).length) return fail(422, "VALIDATION_ERROR", { fields });
   if (!canManageRole(me.role, b!.role!)) return SUPERADMIN_ONLY();
-  const { error: createErr } = await createServiceClient().auth.admin.createUser({
+  const { data: created, error: createErr } = await createServiceClient().auth.admin.createUser({
     email,
     password: b!.password!,
     email_confirm: true,
@@ -85,6 +86,13 @@ export const POST = route(async (req: NextRequest) => {
     if (/password/i.test(createErr.message)) return fail(422, "VALIDATION_ERROR", { fields: { password: "La contraseña no cumple los requisitos." } });
     throw createErr;
   }
+  await logActivity(me, {
+    action: "insert",
+    entity: "employees",
+    entityId: created.user.id,
+    label: name,
+    changes: { email: [null, email], name: [null, name], role: [null, b!.role] },
+  });
   return json(await listEmployees(), 201);
 });
 
@@ -116,6 +124,13 @@ export const PUT = route(async (req: NextRequest) => {
   if (b.password !== undefined) update.password = b.password;
   const { error: upErr } = await createServiceClient().auth.admin.updateUserById(target.id, update);
   if (upErr) throw upErr;
+  const changes: Record<string, [unknown, unknown]> = {};
+  if (b.name !== undefined && String(b.name).trim() !== target.name) changes.name = [target.name, String(b.name).trim()];
+  if (b.role !== undefined && b.role !== target.role) changes.role = [target.role, b.role];
+  if (b.active !== undefined && b.active !== target.active) changes.active = [target.active, b.active];
+  if (b.password !== undefined) changes.password = ["…", "nueva"]; // nunca el valor
+  if (Object.keys(changes).length)
+    await logActivity(me, { action: "update", entity: "employees", entityId: target.id, label: target.name || target.email, changes });
   return json(await listEmployees());
 });
 
@@ -132,5 +147,12 @@ export const DELETE = route(async (req: NextRequest) => {
   if (isAdminRole(target.role) && target.active && activeAdmins(list).length <= 1) return fail(409, "LAST_ADMIN");
   const { error: delErr } = await createServiceClient().auth.admin.deleteUser(target.id);
   if (delErr) throw delErr;
+  await logActivity(me, {
+    action: "delete",
+    entity: "employees",
+    entityId: target.id,
+    label: target.name || target.email,
+    changes: { email: [target.email, null], role: [target.role, null] },
+  });
   return json(await listEmployees());
 });

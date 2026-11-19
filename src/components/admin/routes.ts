@@ -13,6 +13,7 @@ import {
   ListIcon,
   ReceiptIcon,
   RefreshIcon,
+  ShieldIcon,
   SlidersIcon,
   SpreadsheetIcon,
   TagIcon,
@@ -40,6 +41,7 @@ export type ModuleId =
   | "condiciones"
   | "contenido"
   | "empleados"
+  | "actividad"
   | "configuracion"
   | "sincronizacion"
   | "perfil";
@@ -164,6 +166,14 @@ export const MODULES: Record<ModuleId, Module> = {
     group: "Administración",
     description: "Cuentas del equipo, su rol y su acceso al panel.",
     perm: "employees",
+  },
+  actividad: {
+    label: "Actividad",
+    href: "/admin/actividad",
+    icon: ShieldIcon,
+    group: "Administración",
+    description: "Quién hizo qué y cuándo en el panel, e inicios de sesión del equipo.",
+    perm: "activity",
   },
   configuracion: {
     label: "Configuración",
@@ -302,6 +312,7 @@ export const paths = {
   sincronizacion: "/admin/sincronizacion",
   importar: "/admin/importar",
   empleados: "/admin/empleados",
+  actividad: (q?: Query) => withQuery("/admin/actividad", q),
   perfil: "/admin/perfil",
 };
 
