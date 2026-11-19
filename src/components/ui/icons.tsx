@@ -29,11 +29,15 @@ export const WhatsAppIcon = (p: IconProps) => (
     <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
   </Stroke>
 );
-export const WhatsAppFabIcon = (p: IconProps) => (
-  <Stroke {...p}>
-    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-    <path d="M9 10c.5 2 2 3.5 4 4l1.2-1.2 2 1-.5 1.7c-3.5.2-7-3.3-6.8-6.8l1.7-.5 1 2z" />
-  </Stroke>
+// Logo de WhatsApp relleno (globo con el auricular), para el botón flotante: se lee mejor que el de trazo en tamaño grande.
+export const WhatsAppFabIcon = ({ size = 18, className, style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-icon="" className={className} style={style}>
+    <path
+      fillRule="evenodd"
+      d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 1.8a8.2 8.2 0 1 1-4.2 15.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 0 1 12 3.8Z"
+    />
+    <path d="M8.6 7.3c-.2 0-.5 0-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.7.5 0 1.7-.7 1.9-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.4l-2-1c-.3-.1-.5-.1-.7.1l-.9 1.1c-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.4.1-.6l.5-.6.3-.5c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.5Z" />
+  </svg>
 );
 export const PhoneIcon = (p: IconProps) => (
   <Stroke {...p}>
