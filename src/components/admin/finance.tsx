@@ -113,7 +113,7 @@ export function FinanceView() {
           icon={<UsersIcon size={15} />}
         />
         <StatCard
-          label="Ingreso por noche ocupada"
+          label="Por noche ocupada"
           value={perNight(now) ? cop(perNight(now)) : "—"}
           delta={perNight(now) && perNight(before) ? vs(perNight(now), perNight(before)) : undefined}
           hint={`${cop(now.available ? Math.round(now.received / now.available) : 0)} por noche disponible`}
