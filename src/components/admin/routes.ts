@@ -101,7 +101,7 @@ export const MODULES: Record<ModuleId, Module> = {
     href: "/admin/booking",
     icon: BookingIcon,
     group: "Principal",
-    description: "Reservas de Booking.com que llegan por correo de Ayenda, para asignarles una cabaña.",
+    description: "Lo que llega de Booking.com: cifras, calendarios iCal de cada cabaña y las reservas por correo de Ayenda por asignar.",
   },
   importar: {
     label: "Importar reservas",

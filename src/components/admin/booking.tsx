@@ -1,23 +1,26 @@
 "use client";
 
-// Reservas de Booking que llegan por correo de Ayenda. El correo trae el huésped, las fechas y el valor, pero no la
-// cabaña: cada una entra «por asignar» y alguien del equipo elige la cabaña. En ese momento se crea la reserva
-// (confirmada, canal Booking, se paga en el hotel) y las fechas quedan bloqueadas en el sitio.
+// Booking.com en el panel. Arriba, las cifras de lo que llega de Booking (por llegar, este mes, sin datos del huésped y
+// canceladas); debajo, los calendarios iCal de cada cabaña (solo administradores) y las reservas que llegan por correo
+// de Ayenda. El correo trae el huésped, las fechas y el valor, pero no la cabaña: cada una entra «por asignar» y alguien
+// del equipo elige la cabaña. En ese momento se crea la reserva (confirmada, canal Booking, se paga en el hotel) y las
+// fechas quedan bloqueadas en el sitio.
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckIcon, CloseIcon, ExternalLinkIcon, MailIcon, PhoneIcon } from "@/components/ui/icons";
+import { BookingIcon, CalendarIcon, CheckIcon, CloseIcon, ExternalLinkIcon, MailIcon, PhoneIcon, UserIcon } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
-import { busyBlocks, findUnit, unitFree, unitLabel, type Occupancy } from "@/lib/booking";
+import { busyBlocks, findUnit, isFromBooking, staysWithoutData, unitFree, unitLabel, type Occupancy } from "@/lib/booking";
 import { api } from "@/lib/client/api";
-import { isAdminRole } from "@/lib/permissions";
-import { cop, fmtDate, nightsBetween, plural, timeAgo } from "@/lib/format";
+import { can, isAdminRole } from "@/lib/permissions";
+import { addDays, cop, fmtDate, nightsBetween, plural, timeAgo } from "@/lib/format";
+import { money } from "@/components/admin/board";
 import type { CabinTypeId } from "@/lib/config";
 import type { BookingInboxItem } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { useSyncStatus } from "@/components/admin/sync";
 import { BookingCalendars } from "@/components/admin/booking-calendars";
 import { MODULES, paths } from "@/components/admin/routes";
-import { Badge, Button, Callout, Card, CardHeader, EmptyState, ErrorState, Field, PageHeader, Skeleton, type Tone } from "@/components/admin/ui";
+import { Badge, Button, Callout, Card, CardHeader, EmptyState, ErrorState, Field, PageHeader, Skeleton, StatCard, type Tone } from "@/components/admin/ui";
 
 const AYENDA_URL = (ref: string) => `https://pms.ayenda.co/reservations/${ref}`;
 
@@ -66,6 +69,8 @@ export function BookingView() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={MODULES.booking.label} description="Conexión con Booking.com: el calendario de cada cabaña y las reservas que llegan por correo." />
+
+      <BookingFigures inbox={list} />
 
       {isAdminRole(data.me.role) && <BookingCalendars offline={offline} />}
 
@@ -297,5 +302,73 @@ function DoneRow({ item }: { item: BookingInboxItem }) {
         </Link>
       )}
     </li>
+  );
+}
+
+/* ───────────── Cifras de Booking ───────────── */
+
+// Lo que llega de Booking, por las dos vías de Fifí: las reservas que entran por correo de Ayenda (bandeja y reservas ya
+// creadas con canal Booking) y las noches de los calendarios iCal que aún no tienen reserva en el panel.
+const ACTIVE = ["pending_deposit", "confirmed", "rescheduled", "checked_in"];
+
+function BookingFigures({ inbox }: { inbox: BookingInboxItem[] | null }) {
+  const { data, today } = useAdmin();
+  const money$ = can(data.me.role, "finance");
+  const m = useMemo(() => {
+    const month = today.slice(0, 7);
+    const res = data.reservations.filter(isFromBooking);
+    // Por llegar: reservas de Booking que aún no salen, correos por asignar y noches del calendario sin reserva.
+    const resUpcoming = res.filter((r) => r.checkOut > today && ACTIVE.includes(r.status));
+    const inboxUpcoming = (inbox ?? []).filter((i) => i.status === "pending" && i.checkOut > today);
+    const stays = data.channelStays.filter((s) => !s.echo);
+    const staysUpcoming = stays.filter((s) => !s.removedAt && !s.reservationCode && s.checkOut > today);
+    const nightsFrom = (ci: string, co: string) => nightsBetween(ci < today ? today : ci, co);
+    const upcomingNights =
+      resUpcoming.reduce((n, r) => n + nightsFrom(r.checkIn, r.checkOut), 0) +
+      inboxUpcoming.reduce((n, i) => n + nightsFrom(i.checkIn, i.checkOut), 0) +
+      staysUpcoming.reduce((n, s) => n + nightsFrom(s.checkIn, s.checkOut), 0);
+    // Este mes: reservas de Booking que llegan en el mes (sin canceladas), su valor y sus noches.
+    const monthStays = res.filter((r) => r.checkIn.slice(0, 7) === month && r.status !== "cancelled" && r.status !== "expired");
+    // Canceladas en Booking en los últimos 30 días: correos de cancelación y noches que el calendario quitó.
+    const since = addDays(today, -30);
+    const cancelled =
+      (inbox ?? []).filter((i) => i.status === "cancelled" && i.lastEmailAt.slice(0, 10) >= since).length +
+      stays.filter((s) => s.removedAt && s.removedAt.slice(0, 10) >= since).length;
+    return {
+      upcoming: resUpcoming.length + inboxUpcoming.length + staysUpcoming.length,
+      upcomingNights,
+      monthCount: monthStays.length,
+      monthValue: monthStays.reduce((s, r) => s + r.quote.total, 0),
+      monthNights: monthStays.reduce((n, r) => n + nightsBetween(r.checkIn, r.checkOut), 0),
+      withoutGuest: staysWithoutData(data.channelStays, today).length,
+      cancelled,
+    };
+  }, [data, today, inbox]);
+
+  return (
+    <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 xl:grid-cols-4">
+      <StatCard
+        accent="blue"
+        label="Por llegar"
+        value={m.upcoming}
+        hint={m.upcoming ? plural(m.upcomingNights, "noche reservada", "noches reservadas") : "Booking no tiene estadías por llegar"}
+        icon={<BookingIcon size={15} />}
+      />
+      <StatCard
+        accent="pink"
+        label="Booking este mes"
+        value={money$ ? money(m.monthValue) : m.monthCount}
+        hint={`${plural(m.monthCount, "estadía", "estadías")} · ${plural(m.monthNights, "noche", "noches")}`}
+        icon={<CalendarIcon size={15} />}
+      />
+      <StatCard
+        accent="yellow"
+        label="Sin datos del huésped"
+        value={m.withoutGuest}
+        hint={m.withoutGuest ? "noches del calendario sin reserva: complétalas" : "todas tienen su reserva"}
+        icon={<UserIcon size={15} />}
+      />
+      <StatCard accent="green" label="Canceladas en Booking" value={m.cancelled} hint="en los últimos 30 días" icon={<CloseIcon size={15} />} />
+    </div>
   );
 }
