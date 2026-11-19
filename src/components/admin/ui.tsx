@@ -1117,7 +1117,11 @@ export function RangeSlider({
       {ticks && (
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[calc(50%+12px)] h-4 text-[11px] font-medium text-ink-muted tabular-nums">
           {ticks.map((t) => (
-            <span key={t} className={`absolute -translate-x-1/2 transition-colors ${t === value ? "font-semibold text-ink" : ""}`} style={{ left: at(t) }}>
+            <span
+              key={t}
+              className={`absolute -translate-x-1/2 whitespace-nowrap transition-colors ${t === value ? "font-semibold text-ink" : ""}`}
+              style={{ left: at(t) }}
+            >
               {tickLabel(t)}
             </span>
           ))}

@@ -665,7 +665,7 @@ function Spotlight({ leaving, finishing, switching }: { leaving: boolean; finish
     >
       {/* Un solo trazado con los huecos recortados (evenodd): así lo oscurecido también bloquea el mouse (sin tooltips ni
           clics sobre lo que no es del paso) y los huecos lo dejan pasar. */}
-      <path ref={path} d={veilPath([])} fillRule="evenodd" fill="rgb(10 9 8 / 0.62)" className={leaving ? "" : "pointer-events-auto"} />
+      <path ref={path} d={veilPath([])} fillRule="evenodd" fill="rgba(10, 9, 8, 0.62)" className={leaving ? "" : "pointer-events-auto"} />
     </svg>
   );
 }
