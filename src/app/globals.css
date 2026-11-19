@@ -1679,3 +1679,87 @@
 .site-ui .bg-cta:is(:hover, .group:hover > *) {
   background: #185aa1;
 }
+
+/* Deslizador del panel (RangeSlider en admin/ui.tsx): pista redonda con la parte elegida rellena (--range-fill, 0–100 %),
+   pulgar blanco con anillo del color del deslizador (--range-color) y el anillo de foco del panel al usar el teclado. */
+@layer components {
+  .panel-range {
+    --range-color: var(--color-ink);
+    --range-track: color-mix(in srgb, var(--color-ink) 10%, transparent);
+    appearance: none;
+    width: 100%;
+    height: 28px;
+    background: transparent;
+    cursor: pointer;
+    touch-action: pan-y;
+  }
+  .panel-range:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+  .panel-range:focus {
+    outline: none;
+  }
+  .panel-range::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--range-color) var(--range-fill, 0%), var(--range-track) var(--range-fill, 0%));
+  }
+  .panel-range::-moz-range-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--range-track);
+  }
+  .panel-range::-moz-range-progress {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--range-color);
+  }
+  .panel-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -7px;
+    border-radius: 999px;
+    background: var(--color-paper);
+    border: 3px solid var(--range-color);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s;
+  }
+  .panel-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--color-paper);
+    border: 3px solid var(--range-color);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s;
+  }
+  .panel-range:not(:disabled):hover::-webkit-slider-thumb,
+  .panel-range:not(:disabled):active::-webkit-slider-thumb {
+    transform: scale(1.12);
+  }
+  .panel-range:not(:disabled):hover::-moz-range-thumb,
+  .panel-range:not(:disabled):active::-moz-range-thumb {
+    transform: scale(1.12);
+  }
+  .panel-range:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--range-color) 25%, transparent);
+  }
+  .panel-range:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--range-color) 25%, transparent);
+  }
+  /* Cada pseudo-elemento en su regla: un selector que un navegador no conoce anula toda la regla. */
+  @media (prefers-reduced-motion: reduce) {
+    .panel-range::-webkit-slider-thumb {
+      transition: none;
+    }
+    .panel-range::-moz-range-thumb {
+      transition: none;
+    }
+  }
+}

@@ -1052,6 +1052,81 @@ export function MoneyInput({ id, "aria-label": ariaLabel, value, onChange, inval
   );
 }
 
+// Deslizador del panel: pista rellena hasta el valor, escala opcional debajo (sin ocupar alto: así la pista queda a la
+// altura de un campo de 42px que esté al lado) y una marca opcional con el valor guardado cuando el actual es otro.
+// La posición de escala y marca descuenta el ancho del pulgar (22px), igual que el navegador.
+export function RangeSlider({
+  value,
+  onChange,
+  min = 0,
+  max = 100,
+  step = 1,
+  label,
+  valueText,
+  color,
+  ticks,
+  tickLabel = (v) => String(v),
+  saved,
+  savedLabel = (v) => `Guardado: ${v}`,
+  describedBy,
+  disabled,
+  className = "",
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  label: string;
+  valueText?: string;
+  color?: string;
+  ticks?: number[];
+  tickLabel?: (v: number) => string;
+  saved?: number;
+  savedLabel?: (v: number) => string;
+  describedBy?: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const frac = (v: number) => (Math.min(max, Math.max(min, v)) - min) / (max - min || 1);
+  const at = (v: number) => `calc(11px + (100% - 22px) * ${frac(v)})`;
+  return (
+    <div className={`relative flex h-[42px] min-w-0 items-center pointer-coarse:h-11 ${className}`}>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        aria-label={label}
+        aria-valuetext={valueText}
+        aria-describedby={describedBy}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="panel-range relative"
+        style={{ "--range-fill": `${frac(value) * 100}%`, ...(color ? { "--range-color": color } : {}) } as CSSProperties}
+      />
+      {saved !== undefined && saved !== value && (
+        <span
+          aria-hidden="true"
+          title={savedLabel(saved)}
+          className="pointer-events-none absolute top-[calc(50%-15px)] h-[6px] w-[2px] -translate-x-1/2 rounded-full bg-ink-muted motion-safe:animate-fade-in"
+          style={{ left: at(saved) }}
+        />
+      )}
+      {ticks && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[calc(50%+12px)] h-4 text-[11px] font-medium text-ink-muted tabular-nums">
+          {ticks.map((t) => (
+            <span key={t} className={`absolute -translate-x-1/2 transition-colors ${t === value ? "font-semibold text-ink" : ""}`} style={{ left: at(t) }}>
+              {tickLabel(t)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Número pequeño con botones − / + (capacidad, unidades, huéspedes).
 export function Stepper({ id, value, onChange, min = 0, max = 99, unit, describedBy }: NumProps & { min?: number; max?: number; unit?: string }) {
   return (
