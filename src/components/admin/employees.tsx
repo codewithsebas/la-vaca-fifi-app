@@ -1,6 +1,9 @@
 "use client";
 
-// Empleados del panel (solo administradores): cuentas del equipo, su rol, su acceso y su contraseña inicial.
+// Empleados del panel (solo administradores): cifras del equipo (cuentas activas por rol, quién entró esta semana, quién
+// nunca ha entrado y el último ingreso), las cuentas con su rol, su acceso y su contraseña inicial, la actividad reciente
+// del equipo y lo que incluye cada rol.
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   BanIcon,
@@ -10,6 +13,8 @@ import {
   IdCardIcon,
   PencilIcon,
   RefreshIcon,
+  ClockIcon,
+  LoginIcon,
   ShieldIcon,
   TrashIcon,
   UserPlusIcon,
@@ -17,12 +22,13 @@ import {
 } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
 import { api } from "@/lib/client/api";
-import { ROLE_HINT, ROLE_LABEL, canManageRole, isAdminRole } from "@/lib/permissions";
+import { ROLE_HINT, ROLE_LABEL, can, canManageRole, isAdminRole } from "@/lib/permissions";
 import { fmtDate, dateOf, timeAgo } from "@/lib/format";
 import type { ApiResult, Employee, EmployeeInput, PanelRole } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { useSyncStatus } from "@/components/admin/sync";
-import { MODULES } from "@/components/admin/routes";
+import { MODULES, paths } from "@/components/admin/routes";
+import { PartsBar } from "@/components/admin/board";
 import { Avatar, RoleBadge, RoleCapabilities, displayName } from "@/components/admin/account";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { adminInput, norm } from "@/components/admin/shared";
@@ -100,6 +106,13 @@ export function EmployeesView() {
   );
   const paged = usePaged(shown, "empleados", `${filter}|${nq}`);
   const active = all.filter((e) => e.active);
+  // Cifras del equipo: quién entró en los últimos 7 días, quién nunca ha entrado y los ingresos más recientes.
+  const week = active.filter((e) => e.lastSignInAt && now - Date.parse(e.lastSignInAt) < 7 * 864e5).length;
+  const never = active.filter((e) => !e.lastSignInAt);
+  const recent = all.filter((e) => e.lastSignInAt).sort((a, b) => (a.lastSignInAt! < b.lastSignInAt! ? 1 : -1));
+  const byRole = (["superadmin", "admin", "recepcion"] as PanelRole[])
+    .map((r) => ({ role: r, n: active.filter((e) => e.role === r).length }))
+    .filter((x) => x.n > 0 || x.role !== "superadmin");
   // La última cuenta creada se pinta con otro fondo, como la última reserva en Reservas.
   const newest = all.reduce<Employee | null>((a, e) => (!a || e.createdAt > a.createdAt ? e : a), null)?.id;
   // Las cuentas de superadministrador solo las gestiona otro superadministrador.
@@ -177,21 +190,34 @@ export function EmployeesView() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard accent="pink" label="Cuentas activas" value={list ? active.length : "—"} hint="pueden entrar al panel" icon={<UsersIcon size={15} />} />
+      <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          accent="pink"
+          label="Cuentas activas"
+          value={list ? active.length : "—"}
+          hint={list ? byRole.map((x) => `${x.n} ${ROLE_LABEL[x.role].toLowerCase()}`).join(" · ") : "pueden entrar al panel"}
+          icon={<UsersIcon size={15} />}
+        />
+        <StatCard
+          accent="green"
+          label="Entraron esta semana"
+          value={list ? week : "—"}
+          hint={list ? `de ${active.length} cuentas activas` : undefined}
+          icon={<LoginIcon size={15} />}
+        />
         <StatCard
           accent="yellow"
-          label="Administradores"
-          value={list ? active.filter((e) => isAdminRole(e.role)).length : "—"}
-          hint="todo el panel"
+          label="Nunca han entrado"
+          value={list ? never.length : "—"}
+          hint={list ? (never.length ? "entrégales su contraseña" : "todos ya entraron") : undefined}
           icon={<ShieldIcon size={15} />}
         />
         <StatCard
           accent="blue"
-          label="Recepción"
-          value={list ? active.filter((e) => e.role === "recepcion").length : "—"}
-          hint="el día a día"
-          icon={<IdCardIcon size={15} />}
+          label="Último ingreso"
+          value={<span className="block truncate">{list ? (recent[0] ? displayName(recent[0]) : "—") : "—"}</span>}
+          hint={recent[0] ? timeAgo(recent[0].lastSignInAt!, now) : list ? "nadie ha entrado" : undefined}
+          icon={<ClockIcon size={15} />}
         />
       </div>
 
@@ -340,6 +366,65 @@ export function EmployeesView() {
           </Card>
         )}
       </div>
+
+      {list && all.length > 0 && (
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+          <Card aria-labelledby="em-activity" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader
+              id="em-activity"
+              icon={<ClockIcon size={18} />}
+              accent="green"
+              title="Actividad reciente"
+              subtitle="Último ingreso de cada cuenta del equipo."
+              actions={
+                can(data.me.role, "activity") ? (
+                  <Link href={paths.actividad()} className="text-[13px] font-semibold text-ink underline-offset-2 hover:underline">
+                    Ver toda la actividad
+                  </Link>
+                ) : undefined
+              }
+            />
+            {recent.length ? (
+              <ul className="flex flex-col gap-2">
+                {recent.slice(0, 6).map((e) => (
+                  <li key={e.id} className="flex items-center gap-3 rounded-[16px] bg-paper/60 px-3 py-2.5">
+                    <Avatar user={e} size={34} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-semibold text-ink">{displayName(e)}</span>
+                      <span className="block truncate text-[12px] text-ink-muted">{ROLE_LABEL[e.role]}</span>
+                    </span>
+                    <span className="flex-none rounded-full bg-paper px-2.5 py-1 text-[12px] font-bold text-ink">{timeAgo(e.lastSignInAt!, now)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[13px] text-ink-muted">Nadie del equipo ha entrado todavía.</p>
+            )}
+            {never.length > 0 && (
+              <p className="text-[12.5px] text-ink-muted">
+                <strong className="font-semibold text-ink">Sin entrar todavía: </strong>
+                {never.map((e) => displayName(e)).join(", ")}.
+              </p>
+            )}
+          </Card>
+          <Card aria-labelledby="em-mix" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader id="em-mix" icon={<UsersIcon size={18} />} accent="pink" title="Cuentas activas por rol" subtitle="Quién puede entrar hoy al panel." />
+            <PartsBar
+              label="Cuentas activas por rol"
+              format={(n) => String(n)}
+              parts={byRole.map((x) => ({
+                key: x.role,
+                label: ROLE_LABEL[x.role],
+                value: x.n,
+                color: x.role === "superadmin" ? "var(--color-yellow-deep)" : x.role === "admin" ? "var(--color-pink-deep)" : "var(--color-blue-deep)",
+              }))}
+            />
+            <p className="text-[12.5px] text-ink-muted">
+              {all.length - active.length ? `${all.length - active.length} desactivadas, no cuentan aquí.` : "No hay cuentas desactivadas."}
+            </p>
+          </Card>
+        </div>
+      )}
 
       <section aria-labelledby="em-roles" className="flex flex-col gap-3">
         <div>
