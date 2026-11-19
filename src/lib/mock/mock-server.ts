@@ -95,6 +95,7 @@ type Db = {
   bathroomBlocks?: BathroomBlock[];
   employees?: Employee[];
   booking?: BookingInboxItem[];
+  channels?: Record<string, { importUrl: string | null; lastSyncedAt: string | null }>; // calendarios de Booking por cabaña
 };
 
 // Escenarios de prueba para el envío: localStorage.setItem('vf-mock-settings', '{"post":"409"}')
@@ -1314,6 +1315,56 @@ async function handle(method: string, path: string, opts: MockRequest): Promise<
     }
     save(db);
     return ok(bathroomsOf(db));
+  }
+
+  // ----- Calendarios de Booking (iCal), uno por cabaña (solo administradores). En modo simulado no se lee Booking de
+  // verdad: guardar un enlace https lo da por leído, sin noches nuevas. -----
+  if (path === "/admin/channels") {
+    if (!isAdminRole(me.role)) return { status: 403, data: { error: "FORBIDDEN" } };
+    const saved = db.channels ?? {};
+    const at = new Date().toISOString();
+    const list = () => ({
+      calendars: [...db.cabins]
+        .sort((a, b) => a.sort - b.sort)
+        .flatMap((c) =>
+          Array.from({ length: c.units }, (_, i) => {
+            const id = `${c.id}:${i + 1}`;
+            const x = (db.channels ?? {})[id];
+            return {
+              id,
+              label: `${c.nombre} · ${c.unitLabels?.[i]?.trim() || i + 1}`,
+              cabinTypeId: c.id,
+              unit: i + 1,
+              importUrl: x?.importUrl ?? null,
+              exportUrl: `${location.origin}/api/ical/demo-${c.id}-${i + 1}.ics`,
+              lastSyncedAt: x?.lastSyncedAt ?? null,
+              lastFetchedAt: x?.lastSyncedAt ?? null,
+              lastStatus: x?.importUrl ? ("ok" as const) : null,
+              lastError: "",
+              lastEventCount: 0,
+            };
+          }),
+        ),
+      stays: [],
+    });
+    const result = (id: string) => ({ calendarId: id, ok: true, events: 0, added: 0, removed: 0, conflicts: [] });
+    if (method === "GET") return ok(list());
+    if (method === "PATCH") {
+      const b = (opts.body ?? {}) as { id?: string; importUrl?: string | null };
+      if (!b.id || !list().calendars.some((c) => c.id === b.id)) return { status: 404, data: { error: "NOT_FOUND" } };
+      const url = typeof b.importUrl === "string" ? b.importUrl.trim() : "";
+      if (url && !/^https:\/\/\S+$/.test(url)) return { status: 400, data: { error: "INVALID_URL" } };
+      db.channels = { ...saved, [b.id]: { importUrl: url || null, lastSyncedAt: url ? at : null } };
+      save(db);
+      return ok({ ...list(), results: url ? [result(b.id)] : [] });
+    }
+    if (method === "POST") {
+      const id = (opts.body as { id?: string } | undefined)?.id;
+      const read = Object.entries(saved).filter(([k, v]) => v.importUrl && (!id || k === id));
+      db.channels = { ...saved, ...Object.fromEntries(read.map(([k, v]) => [k, { ...v, lastSyncedAt: at }])) };
+      save(db);
+      return ok({ ...list(), results: read.map(([k]) => result(k)) });
+    }
   }
 
   // ----- Reservas de Booking por correo (en modo simulado: una de ejemplo por asignar) -----
