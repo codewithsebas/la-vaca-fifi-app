@@ -65,7 +65,7 @@ export function PanelSkeleton() {
         </header>
         <main
           aria-hidden="true"
-          className={`admin-surface mx-auto flex w-full ${mod === "calendario" ? "max-w-none" : "max-w-[1440px]"} min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 motion-safe:animate-fade-in lg:px-8 lg:pt-3`}
+          className={`admin-surface flex w-full min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 motion-safe:animate-fade-in lg:px-8 lg:pt-3`}
         >
           {mod === "dashboard" ? (
             <DashboardSkeleton />

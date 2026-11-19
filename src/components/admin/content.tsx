@@ -309,7 +309,6 @@ export function ContentLayout({ children }: { children: ReactNode }) {
       )}
       {section && (dirty || !PHOTOS_ONLY.includes(section)) && (
         <SaveBar
-          wide
           dirty={dirty}
           onDiscard={() => {
             setF(saved);

@@ -743,8 +743,7 @@ function Panel({
     pagos: { n: data.proofs.filter((p) => p.status === "pending").length, label: "comprobantes por revisar" },
     notificaciones: { n: unread, label: "sin leer" },
   };
-  // El calendario usa todo el ancho de la pantalla; su alto crece con las filas y se desplaza con la página.
-  const fullWidth = mod === "calendario" || mod === "contenido";
+  // Todas las páginas usan el mismo ancho del encabezado (sin tope); el calendario crece hacia abajo con sus filas.
   // La sección de contenido conserva su formulario al cambiar de pestaña: no se vuelve a montar.
   const pageKey = mod === "contenido" ? "contenido" : pathname;
 
@@ -826,7 +825,7 @@ function Panel({
 
             {/* Con una barra de guardado (fija al pie), el final de la página deja libre su alto para no quedar tapado. */}
             <main
-              className={`admin-surface mx-auto flex w-full ${fullWidth ? "max-w-none" : "max-w-[1440px]"} min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)]`}
+              className={`admin-surface flex w-full min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)]`}
             >
               {loadError && (
                 <Callout tone="warning" role="alert">
