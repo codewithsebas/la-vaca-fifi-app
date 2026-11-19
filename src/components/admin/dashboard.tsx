@@ -314,7 +314,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
   ).length;
 
   return (
-    <div data-tour="pulse" className="flex flex-col gap-4">
+    <div data-tour="pulse" className="flex flex-col gap-4 rounded-[24px]">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Highlight id="d-hl-today" order={1} accent="yellow" shape="sun" title="Hoy:">
           <div className="grid grid-cols-3 gap-3 pr-10">
