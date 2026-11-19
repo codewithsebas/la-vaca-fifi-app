@@ -24,7 +24,6 @@ import { AdminProvider, type AdminCtx } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
 import { PanelFooter } from "@/components/admin/footer";
 import { TipProvider, useLabelTip, useTip } from "@/components/ui/floating";
-import { Login } from "@/components/admin/login";
 import { PanelSkeleton } from "@/components/admin/skeletons";
 import { NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
@@ -142,11 +141,15 @@ function Gated({ children }: { children: ReactNode }) {
         <PanelSkeleton />
       </>
     );
+  // Sin sesión: el ingreso tiene su propia página (/login); al entrar vuelve a esta ruta (components/admin/login.tsx).
   if (gate.status === "login")
     return (
       <>
         {pre}
-        <Login onSuccess={recheck} />
+        <Suspense fallback={null}>
+          <ToLogin />
+        </Suspense>
+        <PanelSkeleton />
       </>
     );
   if (gate.status === "error" || gate.status === "expired")
@@ -174,6 +177,18 @@ function Gated({ children }: { children: ReactNode }) {
       {children}
     </Panel>
   );
+}
+
+// Lleva a /login con la ruta actual en ?next=, para volver a ella después de entrar.
+function ToLogin() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams().toString();
+  useEffect(() => {
+    const here = pathname + (search ? `?${search}` : "");
+    router.replace(`/login?next=${encodeURIComponent(here)}`);
+  }, [router, pathname, search]);
+  return null;
 }
 
 /* ───────────── Confirmación ───────────── */
