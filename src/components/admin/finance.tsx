@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
-import { ArrowRightIcon, CalendarIcon, ClockIcon, HomeIcon, ReceiptIcon, TrendIcon, UsersIcon, WalletIcon } from "@/components/ui/icons";
+import { ArrowRightIcon, CalendarIcon, ClockIcon, HomeIcon, ListIcon, MoonIcon, ReceiptIcon, TrendIcon, UsersIcon, WalletIcon } from "@/components/ui/icons";
 import { delta, finance, pendingOf, previousRange, recordsByCode } from "@/lib/admin-metrics";
 import { cop, fmtDate, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";
@@ -11,6 +11,9 @@ import { useTip } from "@/components/ui/floating";
 import { PeriodFilter, usePeriod } from "@/components/admin/period";
 import { MODULES, paths } from "@/components/admin/routes";
 import { ACCENT, Card, CardHeader, EmptyState, PageHeader, StatCard, buttonClass, type Accent } from "@/components/admin/ui";
+import { Delta, money } from "@/components/admin/board";
+
+type Fin = ReturnType<typeof finance>;
 
 // "$1.250.000" → "$1,3 M" para ejes y etiquetas compactas.
 const short = (n: number) =>
@@ -19,8 +22,10 @@ const short = (n: number) =>
 // Variación contra el periodo anterior; sin base para comparar no se muestra.
 const vs = (now: number, before: number) => delta(now, before) ?? undefined;
 
-// Análisis del negocio por periodo: arriba los filtros, un resumen en una frase y cuatro indicadores; luego el ingreso en el
-// tiempo junto a lo que falta por cobrar, y al final de dónde viene el ingreso. Los movimientos uno a uno se gestionan en Pagos.
+// Análisis del negocio por periodo: arriba los filtros, un resumen en una frase y cinco indicadores con su variación contra
+// el periodo anterior; luego el ingreso en el tiempo junto a lo que falta por cobrar; el cobro de las llegadas y de dónde
+// viene el ingreso (cabaña y tipo de huésped, también con su variación); y al final los últimos pagos y la comparación
+// con el periodo anterior. Los movimientos uno a uno se gestionan en Pagos.
 export function FinanceView() {
   const { data } = useAdmin();
   const period = usePeriod("30");
@@ -41,6 +46,9 @@ export function FinanceView() {
     hasta: period.preset === "personalizado" ? range.to : null,
     cabana: cabinId || null,
   };
+  const against = `los ${period.daysLabel} anteriores`;
+  // Ingreso por noche ocupada: lo recibido entre las noches que se ocuparon en el periodo.
+  const perNight = (f: Fin) => (f.occupied ? Math.round(f.received / f.occupied) : 0);
 
   return (
     <>
@@ -70,7 +78,7 @@ export function FinanceView() {
         <p className="text-[13px] text-ink-muted">{`Mostrando ${period.label}, comparado con los ${period.daysLabel} anteriores.`}</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         <StatCard
           accent="pink"
           label="Ingresos recibidos"
@@ -104,6 +112,13 @@ export function FinanceView() {
           hint="de las reservas confirmadas"
           icon={<UsersIcon size={15} />}
         />
+        <StatCard
+          label="Ingreso por noche ocupada"
+          value={perNight(now) ? cop(perNight(now)) : "—"}
+          delta={perNight(now) && perNight(before) ? vs(perNight(now), perNight(before)) : undefined}
+          hint={`${cop(now.available ? Math.round(now.received / now.available) : 0)} por noche disponible`}
+          icon={<MoonIcon size={15} />}
+        />
       </div>
 
       {/* Lo que entró junto a lo que falta: las dos columnas miden lo mismo y el gráfico toma ese alto. */}
@@ -119,12 +134,13 @@ export function FinanceView() {
       </div>
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <StaysMeter stays={now.stays} />
+        <StaysMeter stays={now.stays} before={before.stays} against={against} />
         <BarList
           id="fi-cabin"
           title="¿Qué cabaña genera más?"
           subtitle="Dinero recibido en el periodo, por cabaña."
           rows={now.byCabin}
+          before={before.byCabin}
           total={now.received}
           icon={<HomeIcon size={18} />}
         />
@@ -133,9 +149,15 @@ export function FinanceView() {
           title="¿Quién reserva?"
           subtitle="Pareja, familia (con niños), grupo (3 o más adultos) o individual."
           rows={now.byType}
+          before={before.byType}
           total={now.received}
           icon={<UsersIcon size={18} />}
         />
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <LatestPayments payments={now.payments} href={paths.pagos({ vista: "recibidos", ...same })} />
+        <Compare now={now} before={before} perNight={perNight} against={against} />
       </div>
     </>
   );
@@ -316,8 +338,9 @@ export function RevenueChart({ buckets, deposits, balances }: { buckets: ReturnT
 
 /* ───────────── Cobro de las estadías del periodo ───────────── */
 
-export function StaysMeter({ stays }: { stays: ReturnType<typeof finance>["stays"] }) {
+export function StaysMeter({ stays, before, against }: { stays: Fin["stays"]; before?: Fin["stays"]; against?: string }) {
   const pct = stays.value ? Math.round((stays.received / stays.value) * 100) : 0;
+  const prevPct = before?.value ? Math.round((before.received / before.value) * 100) : null;
   return (
     <Card aria-labelledby="fi-stays" className="flex flex-col gap-4 p-5 sm:p-6">
       <CardHeader
@@ -330,7 +353,10 @@ export function StaysMeter({ stays }: { stays: ReturnType<typeof finance>["stays
       {stays.count ? (
         <>
           <div className="flex items-end justify-between gap-3">
-            <p className="text-[30px] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">{pct} %</p>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[30px] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">{pct} %</p>
+              {before && <Delta value={prevPct === null ? null : pct - prevPct} unit="pp" against={against} />}
+            </div>
             <p className="text-right text-[12.5px] text-ink-muted">
               ya cobrado, de un total de
               <strong className="block text-[14px] font-bold text-ink tabular-nums">{cop(stays.value)}</strong>
@@ -364,6 +390,7 @@ export function BarList({
   title,
   subtitle,
   rows,
+  before,
   total,
   icon,
 }: {
@@ -371,6 +398,7 @@ export function BarList({
   title: string;
   subtitle: string;
   rows: { id: string; label: string; value: number }[];
+  before?: { id: string; value: number }[];
   total: number;
   icon?: ReactNode;
 }) {
@@ -396,8 +424,11 @@ export function BarList({
                 <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="flex items-baseline justify-between gap-3 text-[13.5px]">
                     <span className="truncate font-semibold text-ink">{r.label}</span>
-                    <span className="flex-none text-ink-muted tabular-nums">
-                      <strong className="font-bold text-ink">{cop(r.value)}</strong> · {pct} %
+                    <span className="flex flex-none items-center gap-2 text-ink-muted tabular-nums">
+                      <span>
+                        <strong className="font-bold text-ink">{cop(r.value)}</strong> · {pct} %
+                      </span>
+                      {before && <Delta value={delta(r.value, before.find((b) => b.id === r.id)?.value ?? 0)} />}
                     </span>
                   </span>
                   <span className="block h-1.5 overflow-hidden rounded-full bg-ink/8">
@@ -412,6 +443,118 @@ export function BarList({
       ) : (
         <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-muted">Sin ingresos en este periodo.</p>
       )}
+    </Card>
+  );
+}
+
+/* ───────────── Últimos pagos ───────────── */
+
+function LatestPayments({ payments, href }: { payments: Fin["payments"]; href: string }) {
+  const { cabinLabel } = useAdmin();
+  return (
+    <Card aria-labelledby="fi-latest" className="flex flex-col gap-4 p-5 sm:p-6">
+      <CardHeader
+        id="fi-latest"
+        icon={<ListIcon size={18} />}
+        accent="pink"
+        title="Últimos pagos del periodo"
+        subtitle={payments.length ? plural(payments.length, "pago en estas fechas", "pagos en estas fechas") : "Pagos registrados en estas fechas"}
+      />
+      {payments.length ? (
+        <ul className="flex flex-col gap-2">
+          {payments.slice(0, 8).map((p, i) => (
+            <li key={`${p.r.code}:${p.date}:${i}`}>
+              <Link
+                href={paths.reserva(p.r.code)}
+                className="flex items-center gap-3 rounded-[16px] bg-paper/60 px-3.5 py-2.5 transition-colors hover:bg-paper"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`grid size-9 flex-none place-items-center rounded-full text-ink ${p.kind === "deposit" ? "bg-yellow" : "bg-green"}`}
+                >
+                  {p.kind === "deposit" ? <ClockIcon size={15} /> : <WalletIcon size={15} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-semibold text-ink">{p.r.guest.fullName}</span>
+                  <span className="block truncate text-[12px] text-ink-muted">{`${p.kind === "deposit" ? "Abono" : "Saldo"} · ${cabinLabel(p.r.cabinTypeId, p.r.unit)} · ${fmtDate(p.date)}`}</span>
+                </span>
+                <span className="flex-none rounded-full bg-panel px-3 py-1 text-[13px] font-bold text-ink tabular-nums">{cop(p.amount)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-muted">No hay pagos en este periodo.</p>
+      )}
+      {payments.length > 8 && (
+        <Link href={href} className={buttonClass("secondary", "sm", "self-start")}>
+          Ver los {payments.length} pagos
+          <ArrowRightIcon size={14} />
+        </Link>
+      )}
+    </Card>
+  );
+}
+
+/* ───────────── Comparación con el periodo anterior ───────────── */
+
+// Cada indicador ahora y en el periodo anterior, con su variación.
+function Compare({ now, before, perNight, against }: { now: Fin; before: Fin; perNight: (f: Fin) => number; against: string }) {
+  const rows: { k: string; a: string; b: string; d: number | null; unit?: "%" | "pp" }[] = [
+    { k: "Ingresos", a: money(now.received), b: money(before.received), d: delta(now.received, before.received) },
+    { k: "Abonos", a: money(now.depositsTotal), b: money(before.depositsTotal), d: delta(now.depositsTotal, before.depositsTotal) },
+    { k: "Saldos", a: money(now.balancesTotal), b: money(before.balancesTotal), d: delta(now.balancesTotal, before.balancesTotal) },
+    { k: "Confirmadas", a: String(now.confirmedCount), b: String(before.confirmedCount), d: delta(now.confirmedCount, before.confirmedCount) },
+    {
+      k: "Ocupación",
+      a: `${Math.round(now.occupancy * 100)} %`,
+      b: `${Math.round(before.occupancy * 100)} %`,
+      d: before.available && now.available ? (now.occupancy - before.occupancy) * 100 : null,
+      unit: "pp",
+    },
+    { k: "Noches ocupadas", a: String(now.occupied), b: String(before.occupied), d: delta(now.occupied, before.occupied) },
+    { k: "Por noche ocupada", a: money(perNight(now)), b: money(perNight(before)), d: perNight(before) ? delta(perNight(now), perNight(before)) : null },
+    { k: "Valor promedio", a: money(now.ticket), b: money(before.ticket), d: before.ticket ? delta(now.ticket, before.ticket) : null },
+  ];
+  return (
+    <Card aria-labelledby="fi-compare" className="flex flex-col gap-4 p-5 sm:p-6">
+      <CardHeader
+        id="fi-compare"
+        icon={<TrendIcon size={18} />}
+        accent="yellow"
+        title="Contra el periodo anterior"
+        subtitle={`Este periodo frente a ${against}.`}
+      />
+      <table className="w-full border-collapse text-left text-[13px]">
+        <thead>
+          <tr className="text-[11.5px] font-semibold tracking-[.04em] text-ink-muted uppercase">
+            <th scope="col" className="pb-2 font-semibold">
+              <span className="sr-only">Indicador</span>
+            </th>
+            <th scope="col" className="pb-2 text-right font-semibold">
+              Ahora
+            </th>
+            <th scope="col" className="pb-2 text-right font-semibold">
+              Antes
+            </th>
+            <th scope="col" className="pb-2 text-right font-semibold">
+              <span className="sr-only">Variación</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((x) => (
+            <tr key={x.k}>
+              <th scope="row" className="py-2.5 pr-2 font-semibold whitespace-nowrap text-ink">
+                {x.k}
+              </th>
+              <td className="py-2.5 text-right font-bold whitespace-nowrap text-ink tabular-nums">{x.a}</td>
+              <td className="py-2.5 pl-3 text-right whitespace-nowrap text-ink-muted tabular-nums">{x.b}</td>
+              <td className="py-2.5 pl-3 text-right">{x.d === null ? <span className="text-ink-subtle">—</span> : <Delta value={x.d} unit={x.unit} />}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </Card>
   );
 }
