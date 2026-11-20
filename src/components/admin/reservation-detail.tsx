@@ -217,7 +217,6 @@ function ReservationView({ r, modal = false }: { r: Reservation; modal?: boolean
         </Badge>
       )}
       {r.status === "pending_deposit" && <Badge tone="warning">Sin confirmar · no aparta fechas</Badge>}
-      {r.autoClosedAt && <Badge tone="warning">Cerrada automáticamente</Badge>}
       {due && <Badge tone="warning">{`Saldo por cobrar: ${cop(due.amount)}`}</Badge>}
     </div>
   );
@@ -438,13 +437,7 @@ function StayCard({ r, cabin }: { r: Reservation; cabin: string }) {
           icon={left ? <CheckIcon size={16} /> : <LogoutIcon size={16} />}
           label="Salida"
           day={fmtDate(r.checkOut, true)}
-          text={
-            left
-              ? r.autoClosedAt
-                ? "Cerrada automáticamente: pasó la fecha sin check-out"
-                : "Estadía finalizada"
-              : `Check-out hasta las ${clock(s.checkOutTime)}`
-          }
+          text={left ? "Estadía finalizada" : `Check-out hasta las ${clock(s.checkOutTime)}`}
           time={clock(s.checkOutTime)}
           timeLabel="Hora del check-out"
         />
@@ -1246,19 +1239,17 @@ function PaymentSummary({ r, payments }: { r: Reservation; payments: PaymentReco
         {line(
           "Saldo",
           balanceAmount,
-          r.balancePaidAt && payments.some((p) => p.provider === "auto")
-            ? "Dado por pagado al cerrar la estadía · sin confirmar"
-            : r.balancePaidAt
-              ? `Pagado el ${fmtDate(dateOf(r.balancePaidAt))}${fullPayment ? " · pago total" : r.checkedInAt && r.balancePaidAt < r.checkedInAt ? " · antes de llegar" : ""}`
-              : balanceReceived > 0
-                ? `${cop(balanceReceived)} recibido · faltan ${cop(balanceAmount - balanceReceived)}`
-                : due
-                  ? "En estadía · regístralo cuando lo pague en recepción"
-                  : r.status === "confirmed" || r.status === "rescheduled"
-                    ? "Se paga antes de llegar o en recepción"
-                    : r.status === "cancelled"
-                      ? "No aplica (cancelada)"
-                      : "—",
+          r.balancePaidAt
+            ? `Pagado el ${fmtDate(dateOf(r.balancePaidAt))}${fullPayment ? " · pago total" : r.checkedInAt && r.balancePaidAt < r.checkedInAt ? " · antes de llegar" : ""}`
+            : balanceReceived > 0
+              ? `${cop(balanceReceived)} recibido · faltan ${cop(balanceAmount - balanceReceived)}`
+              : due
+                ? "En estadía · regístralo cuando lo pague en recepción"
+                : r.status === "confirmed" || r.status === "rescheduled"
+                  ? "Se paga antes de llegar o en recepción"
+                  : r.status === "cancelled"
+                    ? "No aplica (cancelada)"
+                    : "—",
           r.balancePaidAt ? "ok" : due || r.status === "confirmed" || r.status === "rescheduled" ? "wait" : "muted",
         )}
       </ul>
@@ -1281,8 +1272,7 @@ function PaymentHistory({ payments }: { payments: PaymentRecord[] }) {
       <h3 className="mb-2 text-[13px] font-bold text-ink">Pagos registrados</h3>
       <ul className="flex flex-col gap-1.5">
         {list.map((p) => {
-          const auto = p.provider === "auto";
-          const st = auto ? { tone: "warning" as const, label: "Sin confirmar" } : PAYMENT_STATUS[p.status];
+          const st = PAYMENT_STATUS[p.status];
           return (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-[16px] bg-paper/50 px-3.5 py-2.5">
               <span className="min-w-0">
@@ -1291,8 +1281,8 @@ function PaymentHistory({ payments }: { payments: PaymentRecord[] }) {
                   <Badge tone={st.tone}>{st.label}</Badge>
                 </span>
                 <span className="block text-[12px] text-ink-muted">
-                  {p.provider === "manual" ? "Registrado por el equipo" : auto ? "Cierre automático" : "Pago en línea (anterior)"} ·{" "}
-                  {timeAgo(p.approvedAt ?? p.createdAt, now)} · {p.reference}
+                  {p.provider === "manual" ? "Registrado por el equipo" : "Pago en línea (anterior)"} · {timeAgo(p.approvedAt ?? p.createdAt, now)} ·{" "}
+                  {p.reference}
                 </span>
                 {p.detail && !(p.provider === "manual" && p.detail === "Registrado por el equipo") && (
                   <span className={`block text-[12px] ${p.status === "declined" || p.status === "error" ? "text-error" : "text-ink-muted"}`}>{p.detail}</span>

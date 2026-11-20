@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ActivityPage, AdminData, Employee, Reservation } from "@/lib/types";
+import type { ActivityPage, Employee } from "@/lib/types";
 
 // Almacenamiento del navegador en memoria (el modo simulado guarda todo en localStorage y sessionStorage).
 function memoryStorage(): Storage {
@@ -62,38 +62,5 @@ describe("modo simulado: superadministrador y registro de actividad", () => {
     expect(changes.total).toBe(1);
     expect(changes.items[0]).toMatchObject({ action: "insert", entity: "employees", actor: { role: "superadmin" } });
     expect(changes.items[0].changes?.password).toEqual(["…", "nueva"]);
-  });
-});
-
-describe("modo simulado: cierre automático de estadías", () => {
-  beforeEach(() => {
-    vi.stubGlobal("localStorage", memoryStorage());
-    vi.stubGlobal("sessionStorage", memoryStorage());
-  });
-
-  it("cierra las estadías vencidas, da por pagado lo que faltaba y avisa una vez", async () => {
-    await login("jefe@lavacafifi.test");
-    const data = (await mockRequest("GET", "/admin/data", {})).data as AdminData;
-    const out = data.site.settings.checkOutTime.slice(0, 5);
-    const past = (r: Reservation) => Date.now() >= Date.parse(`${r.checkOut}T${out}:00-05:00`) + 30 * 60e3;
-
-    // Ninguna estadía vencida queda abierta.
-    expect(data.reservations.filter((r) => ["confirmed", "rescheduled", "checked_in"].includes(r.status) && past(r))).toEqual([]);
-    const closed = data.reservations.filter((r) => r.autoClosedAt);
-    expect(closed.length).toBeGreaterThan(0);
-    for (const r of closed) {
-      expect(r.status).toBe("completed");
-      expect(r.paid).toBe(r.quote.total);
-      expect(r.balancePaidAt).toBeTruthy();
-      expect(r.checkedInAt).toBeTruthy();
-    }
-    const auto = data.payments.filter((p) => p.provider === "auto");
-    expect(auto.every((p) => closed.some((r) => r.code === p.reservationCode))).toBe(true);
-    expect(data.notifications.filter((n) => n.kind === "auto_closed")).toHaveLength(1);
-
-    // Otra pasada no vuelve a cobrar ni a avisar.
-    const again = (await mockRequest("GET", "/admin/data", {})).data as AdminData;
-    expect(again.payments.filter((p) => p.provider === "auto")).toHaveLength(auto.length);
-    expect(again.notifications.filter((n) => n.kind === "auto_closed")).toHaveLength(1);
   });
 });

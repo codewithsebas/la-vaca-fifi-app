@@ -954,7 +954,6 @@ export type Database = {
       reservations: {
         Row: {
           adults: number
-          auto_closed_at: string | null
           balance_paid_at: string | null
           cabin_type_id: string
           channel: string
@@ -993,7 +992,6 @@ export type Database = {
         }
         Insert: {
           adults: number
-          auto_closed_at?: string | null
           balance_paid_at?: string | null
           cabin_type_id: string
           channel?: string
@@ -1032,7 +1030,6 @@ export type Database = {
         }
         Update: {
           adults?: number
-          auto_closed_at?: string | null
           balance_paid_at?: string | null
           cabin_type_id?: string
           channel?: string

@@ -29,7 +29,7 @@ import { config } from "@/lib/config";
 import { can, canManageRole, isAdminRole, type Permission } from "@/lib/permissions";
 import { MOCK_DB_KEY } from "@/lib/mock/keys";
 import { groupMoney, groupOf } from "@/lib/groups";
-import { addDays, cop, sleep, todayISO } from "@/lib/format";
+import { addDays, sleep, todayISO } from "@/lib/format";
 import { manualPaymentNote, unpaidUntil } from "@/lib/payments";
 import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "@/lib/site";
 import { mergeTheme } from "@/lib/theme";
@@ -526,48 +526,17 @@ function expire(db: Db) {
       r.status = "expired";
       changed = true;
     }
-  });
-  // Como run_auto_checkouts: 30 minutos después de la hora de salida (hora de Colombia, UTC−5), toda estadía confirmada,
-  // reprogramada o en curso se cierra sola; lo que faltaba se da por pagado con un pago «sin confirmar» y sale un solo aviso.
-  const s = siteOf(db).settings;
-  const out = (s.checkOutTime || "12:00").slice(0, 5);
-  const due = db.reservations.filter(
-    (r) => ["confirmed", "rescheduled", "checked_in"].includes(r.status) && now >= Date.parse(`${r.checkOut}T${out}:00-05:00`) + 30 * 60e3,
-  );
-  let filled = 0;
-  let money = 0;
-  due.forEach((r) => {
-    const closedAt = new Date(Date.parse(`${r.checkOut}T${out}:00-05:00`)).toISOString();
-    const owed = Math.max(0, r.quote.total - r.paid);
-    if (owed > 0) {
-      const kind: PaymentKind = r.depositPaidAt ? "balance" : "full";
-      db.payments.push({
-        ...mockPayment(r, kind, "approved", closedAt, owed),
-        reference: `${r.code}-${kind === "full" ? "T" : "S"}-AUTO`,
-        provider: "auto",
-        method: "",
-        detail: "Registrado automáticamente al cerrar la estadía (sin confirmar)",
-      });
-      r.paid += owed;
-      filled++;
-      money += owed;
+    // Como run_auto_checkouts: estadía pagada, 30 minutos después de la hora de salida (hora de Colombia, UTC−5).
+    const pastCheckout =
+      r.status === "checked_in" && now >= Date.parse(`${r.checkOut}T${(siteOf(db).settings.checkOutTime || "12:00").slice(0, 5)}:00-05:00`) + 30 * 60e3;
+    if (pastCheckout && (r.balancePaidAt || r.paid >= r.quote.total)) {
+      r.status = "completed";
+      changed = true;
+    } else if (pastCheckout && !db.notifications.some((n) => n.kind === "checkout_pending" && n.reservationCode === r.code)) {
+      notify(db, "checkout_pending", `Check-out pendiente · ${r.guest.fullName}`, `${r.code} · saldo por cobrar`, r.code);
+      changed = true;
     }
-    r.depositPaidAt ??= closedAt;
-    r.balancePaidAt ??= closedAt;
-    r.checkedInAt ??= new Date(Date.parse(`${r.checkIn}T${(s.checkInStart || "15:00").slice(0, 5)}:00-05:00`)).toISOString();
-    r.status = "completed";
-    r.autoClosedAt = new Date(now).toISOString();
   });
-  if (due.length) {
-    notify(
-      db,
-      "auto_closed",
-      due.length === 1 ? `Estadía cerrada automáticamente · ${due[0].code}` : `Se cerraron ${due.length} estadías automáticamente`,
-      `Pasó la fecha de salida sin check-out.${filled ? ` Se dio por pagado ${cop(money)} de ${filled === 1 ? "1 reserva" : `${filled} reservas`} (sin confirmar). Revísalo en Pagos.` : " Ya estaban pagadas."}`,
-      due.length === 1 ? due[0].code : null,
-    );
-    changed = true;
-  }
   if (changed) save(db);
 }
 
