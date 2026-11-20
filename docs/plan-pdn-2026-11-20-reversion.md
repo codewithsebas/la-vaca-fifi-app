@@ -1,6 +1,6 @@
 # Plan para PDN: quitar el cierre automático (20 de noviembre)
 
-Estado: **propuesto, sin ejecutar.** Ningún paso se ejecuta sin la autorización explícita del responsable.
+Estado: **paso 0 hecho el 20 de noviembre (9:20 a. m.); pasos 1 a 4 sin ejecutar.** Ningún paso se ejecuta sin la autorización explícita del responsable.
 
 El 20 de noviembre se subió a PDN el cierre automático de estadías ([plan-pdn-2026-11-20.md](plan-pdn-2026-11-20.md)), que
 cerró 28 reservas y dio por pagados $5.378.300. El mismo día el responsable pidió **quitarlo y dejar todo como antes**. Este
@@ -74,6 +74,12 @@ select count(*) from public.payments;
 
 Y la comprobación de que la reversión deja cada reserva igual que antes del cierre (la consulta de
 `undo_check.sql`, comparada con `cierre-automatico-antes.json`). Si algo no coincide, se detiene el plan.
+
+**Resultado (20 de noviembre, 9:20 a. m., solo lectura):** última migración `20261120000000`; 28 reservas cerradas y 28 pagos
+`auto` por $5.378.300, como se esperaba; ningún pago real registrado después del cierre en esas reservas; ninguna estadía
+abierta sale hoy. Reservas: 57 confirmadas, 6 sin abono, 20 canceladas, 6 vencidas, 30 completadas (119). Pagos: 87 (uno real
+nuevo desde la mañana, en otra reserva). La reversión deja las 28 idénticas a `cierre-automatico-antes.json` (0
+diferencias). Después de la migración se espera: 85 confirmadas, 2 completadas y 59 pagos.
 
 ### 1. Respaldo (con Docker Desktop encendido)
 
