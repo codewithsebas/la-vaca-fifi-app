@@ -1,6 +1,8 @@
 # Plan para PDN: quitar el cierre automático (20 de noviembre)
 
-Estado: **pasos 0 a 2 hechos el 20 de noviembre, con autorización; pasos 3 y 4 sin ejecutar.** Respaldo en
+Estado: **pasos 0 a 3 hechos el 20 de noviembre, con autorización; falta el paso 4 (revisión con sesión).** `main` en
+`1d6c7aa`, publicado por Hostinger en unos 165 s; portada, `/reservar`, `/mi-reserva`, `/login` y `/admin` en 200 y el panel
+ya sin código del cierre automático. Respaldo en
 `~/respaldos-la-vaca-fifi/2026-11-20T14-21-38/` (119 reservas, 87 pagos, los 28 `-AUTO`). Migración aplicada a las 14:23 UTC
 (9:23 a. m.) en una transacción con su fila en el historial. Resultado: 85 confirmadas, 2 completadas, 59 pagos, 0 pagos
 automáticos, sin `auto_closing` ni `auto_closed_at`, `run_auto_checkouts` anterior, sin avisos ni correos nuevos; las 28
