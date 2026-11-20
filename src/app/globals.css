@@ -1034,6 +1034,185 @@
   background: radial-gradient(70vw 80vh at 100% 0%, var(--glow), transparent 72%);
 }
 
+/* Guía del panel (onboarding.tsx): lo que explica el paso y su enlace del menú, con un anillo por dentro del borde
+   (por fuera lo recortaría la lista con scroll del menú) que late en color. Todo lo resaltado se ve igual. */
+[data-tour-on] {
+  outline: 2px solid var(--color-yellow-deep);
+  outline-offset: -2px;
+  scroll-margin: 120px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* El anillo aparece de a poco y después late. */
+  [data-tour-on] {
+    animation:
+      ec-tour-ring-in 0.45s ease-out both,
+      ec-tour-ring 1.6s ease-in-out 0.45s infinite;
+  }
+  /* Tarjeta: sube al abrir y baja al cerrar; el contenido de cada paso entra deslizándose. Velo: se funde. */
+  .tour-card {
+    animation: ec-tour-card-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .tour-card[data-leaving] {
+    animation: ec-tour-card-out 0.26s ease-in both;
+  }
+  .tour-step {
+    animation: ec-tour-step 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) var(--tour-delay, 0ms) both;
+  }
+  .tour-veil {
+    animation: ec-fade-in 0.4s ease-out both;
+  }
+  .tour-veil[data-leaving] {
+    animation: ec-tour-veil-out 0.26s ease-in both;
+  }
+  /* «Terminar»: el velo se cierra casi del todo y, ya en el dashboard, se desvanece despacio. */
+  .tour-veil path {
+    transition: fill 0.24s ease-out;
+  }
+  /* Al pasar a un paso de otra página: lo mismo que «Terminar», más rápido. */
+  .tour-veil[data-switching] path {
+    fill: rgb(10 9 8 / 0.94);
+    transition-duration: 0.14s;
+  }
+  .tour-veil[data-finishing] path {
+    fill: rgb(10 9 8);
+    transition-duration: 0.42s;
+  }
+  .tour-veil[data-finishing][data-leaving] {
+    animation: ec-tour-veil-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+}
+/* Mensaje de despedida de la guía: cada pieza baja desde arriba, una tras otra; Fifí llega dando un saltico; el nombre
+   lleva un degradado rosado y amarillo que brilla una vez; detrás, un resplandor rosado. Al irse, todo baja y se desvanece. */
+.tour-farewell-glow {
+  background: radial-gradient(closest-side, rgb(244 184 214 / 0.18), rgb(245 212 98 / 0.06) 55%, transparent 75%);
+}
+.tour-farewell-name {
+  background: linear-gradient(100deg, #f9dcea 0%, #f4b8d6 35%, #fff6d8 50%, #f5d462 65%, #e994c0 100%);
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tour-farewell [data-f] {
+    animation: ec-farewell-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) both;
+  }
+  .tour-farewell .tour-farewell-fifi {
+    animation-name: ec-farewell-glide;
+    animation-duration: 0.9s;
+  }
+  .tour-farewell .tour-farewell-name {
+    animation:
+      ec-farewell-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) both,
+      ec-farewell-shine 1.6s ease-in-out calc(var(--d, 0ms) + 0.5s) both;
+  }
+  .tour-farewell-glow {
+    animation: ec-farewell-glow 1.2s ease-out both;
+  }
+  .tour-farewell[data-out] {
+    animation: ec-farewell-out 0.42s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+}
+@keyframes ec-farewell-in {
+  from {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+}
+@keyframes ec-farewell-glide {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) rotate(-8deg) scale(0.85);
+  }
+  60% {
+    transform: translateY(6px) rotate(3deg) scale(1.03);
+  }
+}
+@keyframes ec-farewell-shine {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+@keyframes ec-farewell-glow {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+@keyframes ec-farewell-out {
+  to {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+}
+@keyframes ec-tour-ring-in {
+  from {
+    outline-color: transparent;
+  }
+}
+@keyframes ec-tour-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+}
+@keyframes ec-tour-card-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+@keyframes ec-tour-step {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+@keyframes ec-tour-veil-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ec-tour-ring {
+  0%,
+  100% {
+    outline-color: var(--color-yellow-deep);
+  }
+  50% {
+    outline-color: color-mix(in srgb, var(--color-yellow-deep) 45%, transparent);
+  }
+}
+
+/* Tarjeta de la guía: invertida respecto al panel para que resalte. En claro va negra (con los colores del tema oscuro
+   adentro: texto claro y botón principal blanco); en oscuro, blanca (con los del tema claro). */
+.tour-card {
+  --color-paper: #171614;
+  --color-panel: #272623;
+  --color-line: #302e2a;
+  --color-line-strong: #5a564f;
+  --color-ink: #f3efe6;
+  --color-ink-muted: #aba59a;
+  --color-ink-subtle: #847e74;
+  background: var(--color-paper);
+  border: 1.5px solid #171614;
+  box-shadow: var(--shadow-overlay);
+}
+:root[data-admin-theme="dark"] .tour-card {
+  --color-paper: #ffffff;
+  --color-panel: #efe9dd;
+  --color-line: #e2dacb;
+  --color-line-strong: #cec5b3;
+  --color-ink: #171614;
+  --color-ink-muted: #66615a;
+  --color-ink-subtle: #857f75;
+  border-color: #ffffff;
+  box-shadow: 0 28px 70px -12px rgb(0 0 0 / 0.85);
+}
+
 /* Entrada del panel: al abrirlo (shell.tsx pone data-entering en .admin-root durante el primer segundo y medio), la barra
    lateral y sus módulos llegan desde la izquierda, el encabezado baja y las tarjetas suben una tras otra. Cada pieza
    marca su tipo en data-enter y su turno en --i. Después de la entrada (o con movimiento reducido) no se anima nada. */
@@ -1052,6 +1231,18 @@
   [data-entering] [data-enter="down"] {
     --enter-base: 60ms;
     animation-name: ec-enter-down;
+  }
+  /* Entrada al pasar de paso en la guía del panel: más rápida y fundiéndose desde el fondo. */
+  [data-entering][data-enter-fast] [data-enter] {
+    animation-name: ec-enter-fade;
+    animation-duration: 0.28s;
+    animation-delay: calc(var(--i, 0) * 22ms);
+  }
+}
+@keyframes ec-enter-fade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
   }
 }
 @keyframes ec-enter-rise {
@@ -1206,6 +1397,32 @@
     &[data-nav="booking"] svg > :nth-child(3) {
       animation: ec-nav-pop 0.45s ease-out 0.15s both;
     }
+    /* Contenido del sitio: la hoja se levanta y sus renglones se escriben uno tras otro. */
+    &[data-nav="contenido"] svg > :nth-child(1) {
+      animation: ec-nav-lift 0.45s ease-in-out both;
+    }
+    &[data-nav="contenido"] svg > :nth-child(n + 2) {
+      transform-origin: 0 50%;
+      animation: ec-nav-grow 0.35s ease-out both;
+    }
+    &[data-nav="contenido"] svg > :nth-child(3) {
+      animation-delay: 90ms;
+    }
+    &[data-nav="contenido"] svg > :nth-child(4) {
+      animation-delay: 180ms;
+    }
+    /* Actividad: el escudo se infla y vuelve, como un sello. */
+    &[data-nav="actividad"] svg {
+      animation: ec-nav-guard 0.55s ease-in-out both;
+    }
+    /* Configuración: cada perilla se desliza por su riel, en sentidos alternos. */
+    &[data-nav="configuracion"] svg > :nth-child(2),
+    &[data-nav="configuracion"] svg > :nth-child(4) {
+      animation: ec-nav-slide-l 0.6s ease-in-out both;
+    }
+    &[data-nav="configuracion"] svg > :nth-child(3) {
+      animation: ec-nav-slide-r 0.6s ease-in-out 0.06s both;
+    }
   }
 }
 /* En pantallas táctiles no hay hover: el :hover que queda pegado al tocar no anima el icono. */
@@ -1329,6 +1546,24 @@
 @keyframes ec-nav-full {
   to {
     transform: rotate(360deg);
+  }
+}
+@keyframes ec-nav-guard {
+  40% {
+    transform: scale(1.14) rotate(-6deg);
+  }
+  70% {
+    transform: scale(0.96) rotate(3deg);
+  }
+}
+@keyframes ec-nav-slide-l {
+  45% {
+    transform: translateX(-3px);
+  }
+}
+@keyframes ec-nav-slide-r {
+  45% {
+    transform: translateX(3px);
   }
 }
 @keyframes ec-nav-pop {
@@ -1487,4 +1722,88 @@
 .site-ui .btn-cta:not(:disabled):hover,
 .site-ui .bg-cta:is(:hover, .group:hover > *) {
   background: #185aa1;
+}
+
+/* Deslizador del panel (RangeSlider en admin/ui.tsx): pista redonda con la parte elegida rellena (--range-fill, 0–100 %),
+   pulgar blanco con anillo del color del deslizador (--range-color) y el anillo de foco del panel al usar el teclado. */
+@layer components {
+  .panel-range {
+    --range-color: var(--color-ink);
+    --range-track: color-mix(in srgb, var(--color-ink) 10%, transparent);
+    appearance: none;
+    width: 100%;
+    height: 28px;
+    background: transparent;
+    cursor: pointer;
+    touch-action: pan-y;
+  }
+  .panel-range:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+  .panel-range:focus {
+    outline: none;
+  }
+  .panel-range::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--range-color) var(--range-fill, 0%), var(--range-track) var(--range-fill, 0%));
+  }
+  .panel-range::-moz-range-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--range-track);
+  }
+  .panel-range::-moz-range-progress {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--range-color);
+  }
+  .panel-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -7px;
+    border-radius: 999px;
+    background: var(--color-paper);
+    border: 3px solid var(--range-color);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s;
+  }
+  .panel-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--color-paper);
+    border: 3px solid var(--range-color);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s;
+  }
+  .panel-range:not(:disabled):hover::-webkit-slider-thumb,
+  .panel-range:not(:disabled):active::-webkit-slider-thumb {
+    transform: scale(1.12);
+  }
+  .panel-range:not(:disabled):hover::-moz-range-thumb,
+  .panel-range:not(:disabled):active::-moz-range-thumb {
+    transform: scale(1.12);
+  }
+  .panel-range:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--range-color) 25%, transparent);
+  }
+  .panel-range:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--range-color) 25%, transparent);
+  }
+  /* Cada pseudo-elemento en su regla: un selector que un navegador no conoce anula toda la regla. */
+  @media (prefers-reduced-motion: reduce) {
+    .panel-range::-webkit-slider-thumb {
+      transition: none;
+    }
+    .panel-range::-moz-range-thumb {
+      transition: none;
+    }
+  }
 }

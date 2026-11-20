@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { invalidImportRow } from "@/lib/booking";
 import { config } from "@/lib/config";
 import type { Tables } from "@/lib/supabase/database.types";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createActorClient, createServiceClient } from "@/lib/supabase/server";
 import { loadCabinTypes } from "@/lib/server/db";
 import { fail, json, readJson, requireStaff, route } from "@/lib/server/http";
 import { insertImported } from "@/lib/server/reservations";
@@ -48,11 +48,11 @@ export const GET = route(async () => {
 // POST /api/admin/booking { action: "assign", ref, cabinTypeId, unit } → crea la reserva en esa cabaña (confirmada,
 // canal Booking, sin pagos: se paga en el hotel). { action: "dismiss", ref } → la descarta (ya estaba en el panel).
 export const POST = route(async (req: NextRequest) => {
-  const { error } = await requireStaff();
+  const { me, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<BookingInboxAction>(req);
   if (!b || typeof b.ref !== "string" || !/^\d{1,20}$/.test(b.ref)) return fail(400, "INVALID_BODY");
-  const sb = createServiceClient();
+  const sb = await createActorClient(me.id);
   const { data: item } = await sb.from("booking_inbox").select("*").eq("ref", b.ref).maybeSingle().throwOnError();
   if (!item) return fail(404, "NOT_FOUND");
   if (item.status !== "pending") return fail(409, "NOT_PENDING");

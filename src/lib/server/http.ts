@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { dateOf, todayISO } from "@/lib/format";
 import { createSessionClient, MissingSupabaseConfig } from "@/lib/supabase/server";
 import type { Db } from "@/lib/server/db";
-import { can, isRole, type Permission } from "@/lib/permissions";
+import { can, isAdminRole, isRole, type Permission } from "@/lib/permissions";
 import { photoUrl } from "@/lib/server/site";
 import type { PanelUser } from "@/lib/types";
 
@@ -42,7 +42,7 @@ export const avatarOf = (meta: unknown) => {
   return path ? photoUrl(path) : null;
 };
 
-// Sesión del equipo (Supabase Auth). El rol va en app_metadata, que el usuario no puede editar: «admin» o «recepcion».
+// Sesión del equipo (Supabase Auth). El rol va en app_metadata, que el usuario no puede editar: «superadmin», «admin» o «recepcion».
 // `me`: quién hace la solicitud (para el panel y para los permisos de cada ruta: lib/permissions.ts).
 type Staff = { sb: Db; uid: string | null; me: PanelUser; error?: never } | { sb?: never; uid?: never; me?: never; error: Response };
 
@@ -56,14 +56,15 @@ export async function requireStaff(): Promise<Staff> {
   const uid = typeof c.sub === "string" ? c.sub : null;
   const name = String((c.user_metadata as { full_name?: string } | undefined)?.full_name ?? "").trim();
   const email = typeof c.email === "string" ? c.email : "";
-  return { sb, uid, me: { id: uid ?? "", email, name, role, photo: avatarOf(c.user_metadata) } };
+  const toured = (c.user_metadata as { tour_done?: boolean } | undefined)?.tour_done === true;
+  return { sb, uid, me: { id: uid ?? "", email, name, role, photo: avatarOf(c.user_metadata), toured } };
 }
 
-// Solo administradores, o un permiso concreto (recepción tiene algunos: lib/permissions.ts).
+// Solo administradores (y superadministradores), o un permiso concreto (recepción tiene algunos: lib/permissions.ts).
 export async function requireAdmin(perm?: Permission): Promise<Staff> {
   const s = await requireStaff();
   if (s.error) return s;
-  if (perm ? !can(s.me.role, perm) : s.me.role !== "admin") return { error: fail(403, "FORBIDDEN") };
+  if (perm ? !can(s.me.role, perm) : !isAdminRole(s.me.role)) return { error: fail(403, "FORBIDDEN") };
   return s;
 }
 

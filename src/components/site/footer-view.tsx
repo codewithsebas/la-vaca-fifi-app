@@ -160,7 +160,8 @@ export function SiteFooterView({ c, texts, tall = false }: { c: SiteConfig; text
         <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-1 border-t border-on-dark/10 py-3 text-center text-[.8rem] text-on-light-muted sm:py-4 sm:text-[.84rem] [@media(max-height:760px)]:py-2">
           <p>
             © {new Date().getFullYear()} {c.name}
-            {c.rnt && ` · RNT ${c.rnt}`} · Vereda Pajonales, Murillo, Tolima
+            {c.rnt && ` · RNT ${c.rnt}`} · Vereda Pajonales, Murillo, Tolima · Desarrollado en Murillo por{" "}
+            <strong className="font-bold text-on-light">Joab Giraldo</strong>
           </p>
           <a href="#" className="group flex min-h-10 items-center gap-2 font-bold transition-colors hover:text-cta">
             Volver arriba
@@ -170,7 +171,7 @@ export function SiteFooterView({ c, texts, tall = false }: { c: SiteConfig; text
           </a>
         </div>
       </div>
-      <CabinRow className={tall ? "h-[clamp(80px,min(17vw,24svh),260px)] flex-none" : "h-[clamp(96px,13vw,190px)]"} />
+      <CabinRow className={tall ? "h-[clamp(110px,min(20vw,30svh),320px)] flex-none" : "h-[clamp(120px,16vw,300px)]"} />
     </footer>
   );
 }

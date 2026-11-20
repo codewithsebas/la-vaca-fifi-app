@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
 import { calendarOf, syncCalendars, validImportUrl } from "@/lib/server/channels";
 import { channelStayOf, isMissingTable } from "@/lib/server/db";
+import { logActivity } from "@/lib/server/activity";
 import { fail, json, readJson, requireAdmin, route } from "@/lib/server/http";
 import { originOf, siteUrl } from "@/lib/server/site";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createActorClient, createServiceClient } from "@/lib/supabase/server";
 import { addDays, todayISO } from "@/lib/format";
 
 // Calendarios de Booking.com, uno por cabaña (solo administradores: el enlace de Booking es secreto).
@@ -34,13 +35,13 @@ export const GET = route(async (req: NextRequest) => {
 });
 
 export const PATCH = route(async (req: NextRequest) => {
-  const { error } = await requireAdmin();
+  const { me, error } = await requireAdmin();
   if (error) return error;
   const body = await readJson<{ id?: string; importUrl?: string | null }>(req);
   if (!body?.id || typeof body.id !== "string") return fail(400, "INVALID_INPUT");
   const url = typeof body.importUrl === "string" ? body.importUrl.trim() : null;
   if (url && (url.length > 1000 || !validImportUrl(url))) return fail(400, "INVALID_URL");
-  const sb = createServiceClient();
+  const sb = await createActorClient(me.id);
   const { data } = await sb
     .from("channel_calendars")
     .update({ import_url: url || null, last_status: null, last_error: "", sync_started_at: null })
@@ -55,9 +56,11 @@ export const PATCH = route(async (req: NextRequest) => {
 });
 
 export const POST = route(async (req: NextRequest) => {
-  const { error } = await requireAdmin();
+  const { me, error } = await requireAdmin();
   if (error) return error;
   const body = await readJson<{ id?: string }>(req);
-  const results = await syncCalendars({ minAgeMs: 15_000, notifyErrors: false, calendarId: typeof body?.id === "string" ? body.id : undefined });
+  const calendarId = typeof body?.id === "string" ? body.id : undefined;
+  const results = await syncCalendars({ minAgeMs: 15_000, notifyErrors: false, calendarId });
+  await logActivity(me, { action: "sync", entity: "channel_calendars", entityId: calendarId ?? null, label: calendarId ? null : "Todos los calendarios" });
   return json({ ...(await load(siteUrl(originOf(req)))), results });
 });

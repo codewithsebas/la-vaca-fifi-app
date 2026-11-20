@@ -316,14 +316,39 @@ export type AdminData = {
 /* ───────────── Equipo ───────────── */
 
 // admin: todo. recepcion: el día a día (sin finanzas, tarifas, cabañas, contenido del sitio, cancelar ni eliminar).
-export type PanelRole = "admin" | "recepcion";
-// photo: URL pública de la foto de perfil (null sin foto).
-export type PanelUser = { id: string; email: string; name: string; role: PanelRole; photo: string | null };
+export type PanelRole = "superadmin" | "admin" | "recepcion";
+// photo: URL pública de la foto de perfil (null sin foto). toured: ya vio (o saltó) la guía del panel de su primer ingreso.
+export type PanelUser = { id: string; email: string; name: string; role: PanelRole; photo: string | null; toured?: boolean };
 export type Employee = PanelUser & { createdAt: string; lastSignInAt: string | null; active: boolean };
 // Crear: email, name, role y password. Editar: id y lo que cambia (password solo para asignar una nueva).
 export type EmployeeInput = { id?: string; email?: string; name?: string; role?: PanelRole; password?: string; active?: boolean };
-// Perfil propio: nombre y, si se quiere, contraseña nueva.
-export type ProfileInput = { name?: string; password?: string };
+
+// Registro de actividad (solo superadministradores): cada escritura del equipo en la base de datos, más los inicios y
+// cierres de sesión. `changes`: por campo, [antes, después] (null donde no había o ya no hay).
+export type ActivityAction = "insert" | "update" | "delete" | "login" | "logout" | "login_failed" | "sync";
+export type ActivityEntry = {
+  id: number;
+  actor: { id: string | null; email: string | null; name: string | null; role: PanelRole | null };
+  action: ActivityAction;
+  entity: string;
+  entityId: string | null;
+  label: string | null;
+  changes: Record<string, [unknown, unknown]> | null;
+  refs: { reservation?: string; client?: string; cabin?: string } | null; // a qué más se refiere (para enlazarlo)
+  occurredAt: string; // cuándo se hizo (sin conexión, la hora del dispositivo)
+  receivedAt: string; // cuándo llegó al servidor
+  ip: string | null;
+  userAgent: string | null;
+};
+export type ActivityPage = {
+  items: ActivityEntry[];
+  total: number;
+  page: number;
+  size: number;
+  actors: { id: string; name: string; email: string; role: PanelRole | null }[];
+};
+// Perfil propio: nombre y, si se quiere, contraseña nueva; `toured` marca la guía del panel como vista.
+export type ProfileInput = { name?: string; password?: string; toured?: true };
 
 /* ───────────── Baños ───────────── */
 

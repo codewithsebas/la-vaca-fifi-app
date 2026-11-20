@@ -13,6 +13,7 @@ import {
   ListIcon,
   ReceiptIcon,
   RefreshIcon,
+  ShieldIcon,
   SlidersIcon,
   SpreadsheetIcon,
   TagIcon,
@@ -40,6 +41,7 @@ export type ModuleId =
   | "condiciones"
   | "contenido"
   | "empleados"
+  | "actividad"
   | "configuracion"
   | "sincronizacion"
   | "perfil";
@@ -99,7 +101,7 @@ export const MODULES: Record<ModuleId, Module> = {
     href: "/admin/booking",
     icon: BookingIcon,
     group: "Principal",
-    description: "Reservas de Booking.com que llegan por correo de Ayenda, para asignarles una cabaña.",
+    description: "Lo que llega de Booking.com: cifras, calendarios iCal de cada cabaña y las reservas por correo de Ayenda por asignar.",
   },
   importar: {
     label: "Importar reservas",
@@ -165,13 +167,20 @@ export const MODULES: Record<ModuleId, Module> = {
     description: "Cuentas del equipo, su rol y su acceso al panel.",
     perm: "employees",
   },
+  actividad: {
+    label: "Actividad",
+    href: "/admin/actividad",
+    icon: ShieldIcon,
+    group: "Administración",
+    description: "Quién hizo qué y cuándo en el panel, e inicios de sesión del equipo.",
+    perm: "activity",
+  },
   configuracion: {
     label: "Configuración",
     href: "/admin/configuracion",
     icon: SlidersIcon,
     group: "Administración",
     description: "Apariencia, sonido, tiempo real y preferencias de este navegador.",
-    nav: false,
   },
   sincronizacion: {
     label: "Sincronización",
@@ -206,11 +215,11 @@ export function moduleOf(pathname: string): ModuleId | null {
 
 /* ───────────── Contenido del sitio: una ruta por zona ───────────── */
 
-export type ContentSectionId = "portada" | "restaurante" | "experiencias" | "servicios" | "horarios" | "politicas" | "contacto" | "redes";
+export type ContentSectionId = "portada" | "restaurante" | "experiencias" | "servicios" | "horarios" | "politicas" | "contacto" | "redes" | "colores";
 
 // Las zonas van agrupadas por lo que son, y así se muestran en las pestañas: lo que se ve en la página de inicio, lo que
 // el huésped necesita saber para reservar y quedarse, los datos del negocio y la apariencia.
-export const CONTENT_GROUPS = ["Página de inicio", "Reservas y estadía", "Datos del negocio"] as const;
+export const CONTENT_GROUPS = ["Página de inicio", "Reservas y estadía", "Datos del negocio", "Apariencia"] as const;
 
 export const CONTENT_SECTIONS: { id: ContentSectionId; label: string; group: (typeof CONTENT_GROUPS)[number]; where: string; href: string }[] = [
   {
@@ -251,6 +260,14 @@ export const CONTENT_SECTIONS: { id: ContentSectionId; label: string; group: (ty
     href: "/#contacto",
   },
   { id: "redes", label: "Redes y datos legales", group: "Datos del negocio", where: "Pie de página: redes sociales y número de RNT.", href: "/#contacto" },
+  {
+    id: "colores",
+    label: "Colores",
+    group: "Apariencia",
+    where:
+      "Fondos, tarjetas, tinta, acentos y botones de todo el sitio. Sin cambios, el sitio usa la paleta original de Fifí. El panel tiene sus propios colores.",
+    href: "/",
+  },
 ];
 
 export const isContentSection = (s: string): s is ContentSectionId => CONTENT_SECTIONS.some((x) => x.id === s);
@@ -302,6 +319,7 @@ export const paths = {
   sincronizacion: "/admin/sincronizacion",
   importar: "/admin/importar",
   empleados: "/admin/empleados",
+  actividad: (q?: Query) => withQuery("/admin/actividad", q),
   perfil: "/admin/perfil",
 };
 

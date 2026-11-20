@@ -150,7 +150,7 @@ export function CalendarView() {
             {title}
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 items-center gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+        <div data-tour="calendar-bar" className="grid w-full grid-cols-2 items-center gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
           {/* Anterior, «Hoy» y siguiente en una sola pieza del color de «Nueva reserva», pegada al mes. */}
           <div className="flex h-9 flex-none items-center justify-between gap-0.5 rounded-full bg-ink p-0.5 text-paper">
             <IconButton label={prevLabel} size="sm" variant="primary" onClick={() => step(-1)}>

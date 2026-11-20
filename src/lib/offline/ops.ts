@@ -1088,7 +1088,7 @@ const contentOps = {
         settings: { ...p.settings, depositPct: d.site.settings.depositPct },
         policies: p.policies,
         texts: { ...p.content, payment: d.site.texts.payment },
-        // El panel ya no edita colores: sin `theme` en el cuerpo se conservan los guardados (como hace PUT /admin/site).
+        // Colores del sitio (Contenido › Colores); sin `theme` en el cuerpo se conservan los guardados (como hace PUT /admin/site).
         ...(p.theme && { theme: p.theme }),
       }),
     result: (d) => d.site,
@@ -1181,6 +1181,13 @@ const contentOps = {
     result: (d) => ({ me: d.me }),
     family: { name: "profile", role: "update" },
   } satisfies OpDef<{ name: string }>,
+  "profile.tour": {
+    label: () => "Guía del panel vista",
+    entities: () => ["profile"],
+    request: () => ({ method: "PUT", path: "/admin/profile", body: { toured: true } }),
+    apply: (d) => ({ ...d, me: { ...d.me, toured: true } }),
+    result: (d) => ({ me: d.me }),
+  } satisfies OpDef<Record<string, never>>,
   "profilePhoto.set": {
     label: () => "Mi foto",
     entities: () => ["profile"],

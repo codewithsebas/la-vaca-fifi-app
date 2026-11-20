@@ -1,9 +1,11 @@
 "use client";
 
-// Inicio del panel: saludo con el resumen del día, indicadores principales, movimiento de hoy (lista + detalle), pagos
-// por completar; a la derecha, el mes, la agenda de hoy y las próximas llegadas. Las cifras de dinero viven en Finanzas.
+// Inicio del panel: saludo con el resumen del día, indicadores principales, el negocio del mes (dinero generado, ticket,
+// ingreso por noche, últimos 12 meses, canales y cabañas), movimiento de hoy (lista + detalle), pagos por completar; a la
+// derecha, el mes, la agenda de hoy y las próximas llegadas. Las cifras de dinero del negocio solo las ve quien tiene el
+// permiso de Finanzas (recepción ve lo que falta por cobrar, como antes, pero no lo generado).
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRightIcon,
   CalendarIcon,
@@ -23,12 +25,14 @@ import {
 } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Combobox } from "@/components/ui/combobox";
-import { balanceDue, pendingOf } from "@/lib/admin-metrics";
+import { balanceDue, delta, paymentsOf, pendingOf, recordsByCode, valueOf } from "@/lib/admin-metrics";
+import { can } from "@/lib/permissions";
 import { BLOCKING_STATUSES, busyBlocks, isFromBooking, staysWithoutData } from "@/lib/booking";
-import { MONTHS, addDays, cop, countdown, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, waTo } from "@/lib/format";
+import { MONTHS, MS, addDays, cop, countdown, fmtDate, fmtFullDate, nightsBetween, parseISO, plural, waTo } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { displayName } from "@/components/admin/account";
+import { Delta, MonthBars, PartsBar, RankBars, money } from "@/components/admin/board";
 import { Count, useTweened } from "@/components/admin/motion";
 import { useLabelTip, useTip } from "@/components/ui/floating";
 import { NewReservationDialog } from "@/components/admin/new-reservation";
@@ -132,7 +136,7 @@ export function Dashboard() {
                     <CalendarIcon size={16} />
                     Calendario
                   </Link>
-                  <Button variant="primary" icon={<PlusIcon size={14} />} onClick={() => setCreating(true)}>
+                  <Button variant="primary" data-tour="new-reservation" icon={<PlusIcon size={14} />} onClick={() => setCreating(true)}>
                     Nueva reserva
                   </Button>
                 </div>
@@ -140,6 +144,7 @@ export function Dashboard() {
             />
           </div>
           <Highlights arr={arr} dep={dep} pend={pend} />
+          <Business />
           <div {...enter(5)}>
             <TodayBoard arr={arr} dep={dep} />
           </div>
@@ -153,7 +158,7 @@ export function Dashboard() {
             <MiniCalendar />
           </div>
           <div {...enter(2.5, "pop")} className="flex items-center gap-2">
-            <Button variant="primary" size="lg" className="flex-1" icon={<PlusIcon size={15} />} onClick={() => setCreating(true)}>
+            <Button variant="primary" size="lg" data-tour="new-reservation" className="flex-1" icon={<PlusIcon size={15} />} onClick={() => setCreating(true)}>
               Nueva reserva
             </Button>
             <IconButton label="Actualizar los datos" variant="secondary" size="lg" data-gesture="refresh" onClick={refresh} disabled={refreshing}>
@@ -293,6 +298,8 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
   const balances = pend.filter((r) => r.status !== "pending_deposit");
   const proofs = data.proofs.filter((p) => p.status === "pending").length;
   const toCollect = data.reservations.reduce((s, r) => s + pendingOf(r).total, 0);
+  const depositSum = data.reservations.reduce((s, r) => s + pendingOf(r).deposit, 0);
+  const balanceSum = data.reservations.reduce((s, r) => s + pendingOf(r).balance, 0);
 
   // Próximos 7 días: llegadas, salidas, noches libres y baños fuera de servicio hoy.
   const nextWeek = Array.from({ length: 7 }, (_, i) => addDays(today, i + 1));
@@ -307,7 +314,7 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
   ).length;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div data-tour="pulse" className="flex flex-col gap-4 rounded-[24px]">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Highlight id="d-hl-today" order={1} accent="yellow" shape="sun" title="Hoy:">
           <div className="grid grid-cols-3 gap-3 pr-10">
@@ -379,6 +386,15 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
           <p className="text-[clamp(1.6rem,2.6vw,2.1rem)] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">
             <Count value={toCollect} format={cop} delay={DATA_DELAY.pay} />
           </p>
+          <div className="pr-8">
+            <PartsBar
+              label="Por cobrar"
+              parts={[
+                { key: "deposit", label: "Abonos", value: depositSum, color: "var(--color-ink)" },
+                { key: "balance", label: "Saldos", value: balanceSum, color: "var(--color-green-deep)" },
+              ]}
+            />
+          </div>
           <div className="mt-auto grid grid-cols-3 gap-3 sm:max-w-[420px]">
             <Stat value={<Count value={deposits.length} delay={DATA_DELAY.pay} />} label="Abonos" />
             <Stat value={<Count value={balances.length} delay={DATA_DELAY.pay} />} label="Saldos" />
@@ -409,6 +425,163 @@ function Highlights({ arr, dep, pend }: { arr: Reservation[]; dep: Reservation[]
             <Stat value={<Count value={weekDep} delay={DATA_DELAY.week} />} label="Salidas" />
             <Stat value={<Count value={freeNights} delay={DATA_DELAY.week} />} label="Noches libres" />
             <Stat value={<Count value={bathAlerts} delay={DATA_DELAY.week} />} label="Baños con aviso" />
+          </div>
+        </Highlight>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── El negocio este mes ───────────── */
+
+// Reservas concretadas (el abono se pagó).
+const SECURED_ST = ["confirmed", "rescheduled", "checked_in", "completed"];
+
+// Primer día del mes `n` meses antes o después del de `day` ("2026-11-18", -1 → "2026-10-01") y su último día.
+const monthStart = (day: string, n = 0) => {
+  const d = parseISO(day);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1)).toISOString().slice(0, 10);
+};
+const monthEnd = (first: string) => addDays(monthStart(first, 1), -1);
+
+// Canal de cada reserva: el sitio web, el panel (teléfono, WhatsApp, recepción), Booking (correo de Ayenda o calendario)
+// u otra importación.
+const CHANNELS = [
+  { key: "web", label: "Sitio web", color: "var(--color-ink)" },
+  { key: "panel", label: "Panel", color: "var(--color-pink-deep)" },
+  { key: "booking", label: "Booking", color: "var(--color-blue-deep)" },
+  { key: "otros", label: "Otros", color: "var(--color-green-deep)" },
+] as const;
+const channelOf = (r: Reservation) => (isFromBooking(r) ? "booking" : r.source === "panel" ? "panel" : r.source === "import" ? "otros" : "web");
+
+// Dinero generado (lo cobrado este mes contra el mismo tramo del mes anterior, el año, ticket promedio, ingreso por noche
+// y los últimos 12 meses), de dónde llegan las estadías del mes y qué cabaña genera más. Sin el permiso de Finanzas,
+// solo lo que no es dinero: canales y noches por cabaña.
+function Business() {
+  const { data, today } = useAdmin();
+  const money$ = can(data.me.role, "finance");
+  const m = useMemo(() => {
+    const records = recordsByCode(data.payments);
+    const pays = data.reservations.flatMap((r) => paymentsOf(r, records.get(r.code)));
+    const sum = (from: string, to: string) => pays.reduce((s, p) => (p.date >= from && p.date <= to ? s + p.amount : s), 0);
+    const first = monthStart(today);
+    const last = monthEnd(first);
+    const prevFirst = monthStart(today, -1);
+    const day = parseISO(today).getUTCDate();
+    const prevTo = addDays(prevFirst, day - 1) > monthEnd(prevFirst) ? monthEnd(prevFirst) : addDays(prevFirst, day - 1);
+    const mtd = sum(first, today);
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const f = monthStart(today, i - 11);
+      const d = parseISO(f);
+      return { key: f, label: MS[d.getUTCMonth()], full: `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`, value: sum(f, monthEnd(f)) };
+    });
+    // Estadías que llegan este mes ya concretadas: valor, noches y reservas (ticket e ingreso por noche).
+    const secured = data.reservations.filter((r) => SECURED_ST.includes(r.status) && r.checkIn >= first && r.checkIn <= last);
+    const nights = secured.reduce((n, r) => n + nightsBetween(r.checkIn, r.checkOut), 0);
+    const value = secured.reduce((s, r) => s + valueOf(r), 0);
+    // Canales: las estadías del mes concretadas o esperando el abono.
+    const stays = data.reservations.filter((r) => r.checkIn >= first && r.checkIn <= last && (SECURED_ST.includes(r.status) || r.status === "pending_deposit"));
+    const channels = CHANNELS.map((c) => ({ ...c, value: stays.filter((r) => channelOf(r) === c.key).length })).filter((c) => c.value > 0 || c.key !== "otros");
+    const byCabin = data.cabinTypes
+      .map((c) => {
+        const own = data.reservations.filter((r) => r.cabinTypeId === c.id);
+        return {
+          key: c.id,
+          label: c.nombre,
+          value: own.flatMap((r) => paymentsOf(r, records.get(r.code))).reduce((s, p) => (p.date >= first && p.date <= today ? s + p.amount : s), 0),
+          nights: own
+            .filter((r) => SECURED_ST.includes(r.status) && r.checkIn >= first && r.checkIn <= last)
+            .reduce((n, r) => n + nightsBetween(r.checkIn, r.checkOut), 0),
+        };
+      })
+      .filter((c) => c.value > 0 || c.nights > 0 || data.cabinTypes.find((x) => x.id === c.key)?.activa);
+    return {
+      mtd,
+      change: delta(mtd, sum(prevFirst, prevTo)),
+      ytd: sum(`${today.slice(0, 4)}-01-01`, today),
+      months,
+      nights,
+      ticket: secured.length ? Math.round(value / secured.length) : 0,
+      adr: nights ? Math.round(value / nights) : 0,
+      monthLabel: MONTHS[parseISO(first).getUTCMonth()],
+      stays: stays.length,
+      channels,
+      byCabin,
+    };
+  }, [data, today]);
+
+  const cabins = money$
+    ? [...m.byCabin].sort((a, b) => b.value - a.value).map((c) => ({ key: c.key, label: c.label, value: c.value }))
+    : [...m.byCabin].sort((a, b) => b.nights - a.nights).map((c) => ({ key: c.key, label: c.label, value: c.nights }));
+
+  return (
+    <div className="flex flex-col gap-4">
+      {money$ && (
+        <Highlight
+          id="d-hl-money"
+          order={4}
+          accent="yellow"
+          shape="coin"
+          title={`Dinero generado en ${m.monthLabel}:`}
+          action={
+            <Link href={paths.finanzas()} className="rounded-full bg-paper/70 px-3 py-1 text-[12.5px] font-semibold text-ink transition-colors hover:bg-paper">
+              Finanzas
+            </Link>
+          }
+        >
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+            <div className="flex min-w-0 flex-col gap-4">
+              <div>
+                <p className="text-[clamp(1.9rem,3.2vw,2.6rem)] leading-none font-bold tracking-[-0.035em] text-ink tabular-nums">
+                  <Count value={m.mtd} format={cop} delay={DATA_DELAY.week} />
+                </p>
+                <p className="mt-2 flex flex-wrap items-center gap-2 text-[12px] font-semibold text-ink/65">
+                  <Delta value={m.change} against="el mismo tramo del mes anterior" />
+                  {m.change !== null && "vs. el mismo tramo del mes anterior"}
+                </p>
+              </div>
+              <div className="mt-auto grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+                <Stat value={<Count value={m.ytd} format={money} delay={DATA_DELAY.week} />} label={`En ${today.slice(0, 4)}`} strong />
+                <Stat value={<Count value={m.ticket} format={money} delay={DATA_DELAY.week} />} label="Ticket promedio" />
+                <Stat value={<Count value={m.adr} format={money} delay={DATA_DELAY.week} />} label="Ingreso por noche" />
+                <Stat value={<Count value={m.nights} delay={DATA_DELAY.week} />} label="Noches vendidas" />
+              </div>
+            </div>
+            <div className="flex min-w-0 flex-col justify-end gap-1.5 pr-2">
+              <p className="text-[10.5px] font-semibold tracking-[.05em] text-ink/65 uppercase">Últimos 12 meses</p>
+              <MonthBars items={m.months} label="Dinero cobrado en los últimos 12 meses" delay={DATA_DELAY.week + 120} />
+            </div>
+          </div>
+        </Highlight>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Highlight id="d-hl-src" order={4.6} accent="blue" shape="burst" title="Reservas del mes por canal:" className="min-h-[164px]">
+          <p className="text-[clamp(1.6rem,2.6vw,2.1rem)] leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">
+            <Count value={m.stays} format={(n) => plural(n, "estadía", "estadías")} delay={DATA_DELAY.week} />
+          </p>
+          <div className="mt-auto pr-6">
+            {m.stays ? (
+              <PartsBar label="Estadías del mes por canal" parts={m.channels.map((c) => ({ ...c }))} format={(n) => String(n)} />
+            ) : (
+              <p className="text-[13px] font-medium text-ink/70">Aún no hay estadías este mes.</p>
+            )}
+          </div>
+        </Highlight>
+        <Highlight
+          id="d-hl-cab"
+          order={5}
+          accent="pink"
+          shape="cabin"
+          title={money$ ? "Cobrado por cabaña este mes:" : "Noches por cabaña este mes:"}
+          className="min-h-[164px]"
+        >
+          <div className="pr-8">
+            {cabins.some((c) => c.value) ? (
+              <RankBars items={cabins.slice(0, 5)} format={money$ ? money : (n) => plural(n, "noche", "noches")} delay={DATA_DELAY.week + 200} />
+            ) : (
+              <p className="text-[13px] font-medium text-ink/70">{money$ ? "Aún no hay pagos este mes." : "Aún no hay noches vendidas este mes."}</p>
+            )}
           </div>
         </Highlight>
       </div>

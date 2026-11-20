@@ -103,7 +103,7 @@ export function RatesView() {
 
   // Barra de secciones compacta; en el teléfono ocupa todo el ancho, en partes iguales. En Tarifas va junto a los días de fin de semana.
   const tabs = (
-    <div role="tablist" aria-label="Secciones de tarifas" className="grid w-full grid-cols-3 gap-1 rounded-full bg-panel p-1 sm:w-fit">
+    <div role="tablist" aria-label="Secciones de tarifas" data-tour="rates-tabs" className="grid w-full grid-cols-3 gap-1 rounded-full bg-panel p-1 sm:w-fit">
       {RATES_TABS.map((t) => {
         const on = t.value === tab;
         const count = t.value === "temporadas" ? data.seasons.filter((s) => s.activa && s.to >= today).length : 0;

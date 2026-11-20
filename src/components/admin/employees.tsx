@@ -1,6 +1,9 @@
 "use client";
 
-// Empleados del panel (solo administradores): cuentas del equipo, su rol, su acceso y su contraseña inicial.
+// Empleados del panel (solo administradores): cifras del equipo (cuentas activas por rol, quién entró esta semana, quién
+// nunca ha entrado y el último ingreso), las cuentas con su rol, su acceso y su contraseña inicial, la actividad reciente
+// del equipo y lo que incluye cada rol.
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   BanIcon,
@@ -10,6 +13,8 @@ import {
   IdCardIcon,
   PencilIcon,
   RefreshIcon,
+  ClockIcon,
+  LoginIcon,
   ShieldIcon,
   TrashIcon,
   UserPlusIcon,
@@ -17,12 +22,13 @@ import {
 } from "@/components/ui/icons";
 import { Combobox } from "@/components/ui/combobox";
 import { api } from "@/lib/client/api";
-import { ROLE_HINT, ROLE_LABEL } from "@/lib/permissions";
+import { ROLE_HINT, ROLE_LABEL, can, canManageRole, isAdminRole } from "@/lib/permissions";
 import { fmtDate, dateOf, timeAgo } from "@/lib/format";
 import type { ApiResult, Employee, EmployeeInput, PanelRole } from "@/lib/types";
 import { useAdmin } from "@/components/admin/context";
 import { useSyncStatus } from "@/components/admin/sync";
-import { MODULES } from "@/components/admin/routes";
+import { MODULES, paths } from "@/components/admin/routes";
+import { PartsBar } from "@/components/admin/board";
 import { Avatar, RoleBadge, RoleCapabilities, displayName } from "@/components/admin/account";
 import { Paginator, usePaged } from "@/components/admin/paginator";
 import { adminInput, norm } from "@/components/admin/shared";
@@ -49,11 +55,13 @@ import {
 type Filter = "todos" | PanelRole | "inactivos";
 type Draft = { id?: string; name: string; email: string; role: PanelRole; password: string; active: boolean };
 
-const ROLES: PanelRole[] = ["recepcion", "admin"];
+// Roles que se pueden dar: el de superadministrador, solo otro superadministrador (canManageRole).
+const rolesFor = (me: PanelRole): PanelRole[] => (["recepcion", "admin", "superadmin"] as PanelRole[]).filter((r) => canManageRole(me, r));
 
 // Mensaje de los rechazos del servidor que no son de un campo.
 const REFUSAL: Record<string, string> = {
-  SELF_LOCKOUT: "No puedes quitarte tu propio acceso de administrador ni desactivar o borrar tu cuenta.",
+  SELF_LOCKOUT: "No puedes cambiar tu propio rol ni desactivar o borrar tu cuenta.",
+  SUPERADMIN_ONLY: "Solo un superadministrador puede crear, cambiar o borrar cuentas de superadministrador.",
   LAST_ADMIN: "Debe quedar al menos un administrador activo.",
 };
 
@@ -98,9 +106,18 @@ export function EmployeesView() {
   );
   const paged = usePaged(shown, "empleados", `${filter}|${nq}`);
   const active = all.filter((e) => e.active);
+  // Cifras del equipo: quién entró en los últimos 7 días, quién nunca ha entrado y los ingresos más recientes.
+  const week = active.filter((e) => e.lastSignInAt && now - Date.parse(e.lastSignInAt) < 7 * 864e5).length;
+  const never = active.filter((e) => !e.lastSignInAt);
+  const recent = all.filter((e) => e.lastSignInAt).sort((a, b) => (a.lastSignInAt! < b.lastSignInAt! ? 1 : -1));
+  const byRole = (["superadmin", "admin", "recepcion"] as PanelRole[])
+    .map((r) => ({ role: r, n: active.filter((e) => e.role === r).length }))
+    .filter((x) => x.n > 0 || x.role !== "superadmin");
   // La última cuenta creada se pinta con otro fondo, como la última reserva en Reservas.
   const newest = all.reduce<Employee | null>((a, e) => (!a || e.createdAt > a.createdAt ? e : a), null)?.id;
-  const editOf = (e: Employee) => setEditing({ id: e.id, name: e.name, email: e.email, role: e.role, password: "", active: e.active });
+  // Las cuentas de superadministrador solo las gestiona otro superadministrador.
+  const manageable = (e: Employee) => canManageRole(data.me.role, e.role);
+  const editOf = (e: Employee) => manageable(e) && setEditing({ id: e.id, name: e.name, email: e.email, role: e.role, password: "", active: e.active });
 
   // Desactivar quita el acceso sin borrar la cuenta; activar lo devuelve. La propia cuenta no se puede desactivar.
   const toggle = (e: Employee) =>
@@ -124,7 +141,8 @@ export function EmployeesView() {
       },
     });
   const toggleButton = (e: Employee) =>
-    e.id !== data.me.id && (
+    e.id !== data.me.id &&
+    manageable(e) && (
       <Button size="sm" variant="ghost" icon={e.active ? <BanIcon size={14} /> : <CheckIcon size={14} />} onClick={() => toggle(e)}>
         {e.active ? "Desactivar" : "Activar"}
         <span className="sr-only">{` a ${displayName(e)}`}</span>
@@ -172,21 +190,34 @@ export function EmployeesView() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard accent="pink" label="Cuentas activas" value={list ? active.length : "—"} hint="pueden entrar al panel" icon={<UsersIcon size={15} />} />
+      <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          accent="pink"
+          label="Cuentas activas"
+          value={list ? active.length : "—"}
+          hint={list ? byRole.map((x) => `${x.n} ${ROLE_LABEL[x.role].toLowerCase()}`).join(" · ") : "pueden entrar al panel"}
+          icon={<UsersIcon size={15} />}
+        />
+        <StatCard
+          accent="green"
+          label="Entraron esta semana"
+          value={list ? week : "—"}
+          hint={list ? `de ${active.length} cuentas activas` : undefined}
+          icon={<LoginIcon size={15} />}
+        />
         <StatCard
           accent="yellow"
-          label="Administradores"
-          value={list ? active.filter((e) => e.role === "admin").length : "—"}
-          hint="todo el panel"
+          label="Nunca han entrado"
+          value={list ? never.length : "—"}
+          hint={list ? (never.length ? "entrégales su contraseña" : "todos ya entraron") : undefined}
           icon={<ShieldIcon size={15} />}
         />
         <StatCard
           accent="blue"
-          label="Recepción"
-          value={list ? active.filter((e) => e.role === "recepcion").length : "—"}
-          hint="el día a día"
-          icon={<IdCardIcon size={15} />}
+          label="Último ingreso"
+          value={<span className="block truncate">{list ? (recent[0] ? displayName(recent[0]) : "—") : "—"}</span>}
+          hint={recent[0] ? timeAgo(recent[0].lastSignInAt!, now) : list ? "nadie ha entrado" : undefined}
+          icon={<ClockIcon size={15} />}
         />
       </div>
 
@@ -203,6 +234,7 @@ export function EmployeesView() {
             searchable={false}
             options={[
               { value: "todos", label: "Todos los empleados", description: `${all.length} en total` },
+              ...(all.some((e) => e.role === "superadmin") ? [{ value: "superadmin", label: "Superadministradores" }] : []),
               { value: "admin", label: "Administradores" },
               { value: "recepcion", label: "Recepción" },
               { value: "inactivos", label: "Desactivados", description: all.length - active.length ? `${all.length - active.length} en total` : undefined },
@@ -262,7 +294,7 @@ export function EmployeesView() {
                       <td className="px-4 py-3 whitespace-nowrap text-ink-muted">{fmtDate(dateOf(e.createdAt), true)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1" onClick={(ev) => ev.stopPropagation()}>
-                          {e.id !== data.me.id && (
+                          {e.id !== data.me.id && manageable(e) && (
                             <IconButton
                               label={`${e.active ? "Desactivar" : "Activar"} a ${displayName(e)}`}
                               size="sm"
@@ -273,10 +305,12 @@ export function EmployeesView() {
                               {e.active ? <BanIcon size={15} /> : <CheckIcon size={15} />}
                             </IconButton>
                           )}
-                          <IconButton label={`Editar a ${displayName(e)}`} size="sm" variant="secondary" data-gesture="cancel" onClick={() => editOf(e)}>
-                            <PencilIcon size={15} />
-                          </IconButton>
-                          {e.id !== data.me.id && (
+                          {manageable(e) && (
+                            <IconButton label={`Editar a ${displayName(e)}`} size="sm" variant="secondary" data-gesture="cancel" onClick={() => editOf(e)}>
+                              <PencilIcon size={15} />
+                            </IconButton>
+                          )}
+                          {e.id !== data.me.id && manageable(e) && (
                             <IconButton
                               label={`Borrar la cuenta de ${displayName(e)}`}
                               size="sm"
@@ -314,7 +348,7 @@ export function EmployeesView() {
                         {e.id === data.me.id && <Badge>Tú</Badge>}
                       </span>
                     </span>
-                    <PencilIcon size={15} className="flex-none text-ink-subtle" />
+                    {manageable(e) && <PencilIcon size={15} className="flex-none text-ink-subtle" />}
                   </button>
                   {e.id !== data.me.id && <div className="flex justify-end border-t border-line px-2 py-1.5">{toggleButton(e)}</div>}
                 </li>
@@ -333,6 +367,65 @@ export function EmployeesView() {
         )}
       </div>
 
+      {list && all.length > 0 && (
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+          <Card aria-labelledby="em-activity" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader
+              id="em-activity"
+              icon={<ClockIcon size={18} />}
+              accent="green"
+              title="Actividad reciente"
+              subtitle="Último ingreso de cada cuenta del equipo."
+              actions={
+                can(data.me.role, "activity") ? (
+                  <Link href={paths.actividad()} className="text-[13px] font-semibold text-ink underline-offset-2 hover:underline">
+                    Ver toda la actividad
+                  </Link>
+                ) : undefined
+              }
+            />
+            {recent.length ? (
+              <ul className="flex flex-col gap-2">
+                {recent.slice(0, 6).map((e) => (
+                  <li key={e.id} className="flex items-center gap-3 rounded-[16px] bg-paper/60 px-3 py-2.5">
+                    <Avatar user={e} size={34} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-semibold text-ink">{displayName(e)}</span>
+                      <span className="block truncate text-[12px] text-ink-muted">{ROLE_LABEL[e.role]}</span>
+                    </span>
+                    <span className="flex-none rounded-full bg-paper px-2.5 py-1 text-[12px] font-bold text-ink">{timeAgo(e.lastSignInAt!, now)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[13px] text-ink-muted">Nadie del equipo ha entrado todavía.</p>
+            )}
+            {never.length > 0 && (
+              <p className="text-[12.5px] text-ink-muted">
+                <strong className="font-semibold text-ink">Sin entrar todavía: </strong>
+                {never.map((e) => displayName(e)).join(", ")}.
+              </p>
+            )}
+          </Card>
+          <Card aria-labelledby="em-mix" className="flex flex-col gap-4 p-4 sm:p-5">
+            <CardHeader id="em-mix" icon={<UsersIcon size={18} />} accent="pink" title="Cuentas activas por rol" subtitle="Quién puede entrar hoy al panel." />
+            <PartsBar
+              label="Cuentas activas por rol"
+              format={(n) => String(n)}
+              parts={byRole.map((x) => ({
+                key: x.role,
+                label: ROLE_LABEL[x.role],
+                value: x.n,
+                color: x.role === "superadmin" ? "var(--color-yellow-deep)" : x.role === "admin" ? "var(--color-pink-deep)" : "var(--color-blue-deep)",
+              }))}
+            />
+            <p className="text-[12.5px] text-ink-muted">
+              {all.length - active.length ? `${all.length - active.length} desactivadas, no cuentan aquí.` : "No hay cuentas desactivadas."}
+            </p>
+          </Card>
+        </div>
+      )}
+
       <section aria-labelledby="em-roles" className="flex flex-col gap-3">
         <div>
           <h2 id="em-roles" className="text-[17px] font-bold tracking-[-0.01em] text-ink">
@@ -340,13 +433,13 @@ export function EmployeesView() {
           </h2>
           <p className="text-[13.5px] text-ink-muted">Lo que incluye cada rol. La API y la base de datos aplican las mismas reglas.</p>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {(["admin", "recepcion"] as PanelRole[]).map((role) => (
+        <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${data.me.role === "superadmin" ? "xl:grid-cols-3" : ""}`}>
+          {(data.me.role === "superadmin" ? (["superadmin", "admin", "recepcion"] as PanelRole[]) : (["admin", "recepcion"] as PanelRole[])).map((role) => (
             <Card key={role} aria-labelledby={`em-role-${role}`} className="flex flex-col gap-4 p-4 sm:p-5">
               <CardHeader
                 id={`em-role-${role}`}
-                icon={role === "admin" ? <ShieldIcon size={18} /> : <IdCardIcon size={18} />}
-                accent={role === "admin" ? "pink" : "blue"}
+                icon={isAdminRole(role) ? <ShieldIcon size={18} /> : <IdCardIcon size={18} />}
+                accent={role === "superadmin" ? "yellow" : role === "admin" ? "pink" : "blue"}
                 title={ROLE_LABEL[role]}
                 subtitle={ROLE_HINT[role]}
               />
@@ -390,7 +483,8 @@ function EmployeeEditor({
   onSaved: (list: Employee[]) => void;
   onDelete?: () => void;
 }) {
-  const { toast, onAuthError } = useAdmin();
+  const { toast, onAuthError, data } = useAdmin();
+  const roles = rolesFor(data.me.role);
   const [d, setD] = useState(initial);
   const [show, setShow] = useState(!initial.id);
   const [busy, setBusy] = useState(false);
@@ -488,8 +582,8 @@ function EmployeeEditor({
 
           <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="mb-1.5 text-[13px] font-semibold text-ink">Rol</legend>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {ROLES.map((role) => {
+            <div className={`grid grid-cols-1 gap-2 ${roles.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+              {roles.map((role) => {
                 const on = d.role === role;
                 return (
                   <label

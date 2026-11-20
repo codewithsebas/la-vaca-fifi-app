@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LandingView } from "@/components/landing/landing-view";
-import { siteViewport } from "@/components/site/site-theme";
+import { SiteTheme, siteViewport } from "@/components/site/site-theme";
 import { config, type Cabin } from "@/lib/config";
 import { cop } from "@/lib/format";
 import { getSiteCabins } from "@/lib/server/cabins";
@@ -54,6 +54,7 @@ export default async function HomePage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(cabins, site)).replace(/</g, "\\u003c") }} />
+      <SiteTheme />
       <LandingView cabins={cabins} site={site} photos={photos} texts={texts} services={services} />
     </>
   );

@@ -6,7 +6,7 @@ import { fail, json, operationDay, readJson, requireStaff, syncRoute } from "@/l
 import { processOutbox } from "@/lib/server/mailer";
 import { holdGroup, holdReservation } from "@/lib/server/reservations";
 import { originOf, siteUrl } from "@/lib/server/site";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createActorClient } from "@/lib/supabase/server";
 import type { ManualReservationInput, ManualReservationResult } from "@/lib/types";
 
 const validation = (fields: Record<string, string>) => fail(422, "VALIDATION_ERROR", { fields });
@@ -15,13 +15,13 @@ const validation = (fields: Record<string, string>) => fail(422, "VALIDATION_ERR
 // retiene la cabaña con las mismas reglas de disponibilidad que la web y queda pendiente de abono hasta el plazo elegido.
 // El equipo registra el abono cuando lo recibe; si no llega a tiempo, las fechas se liberan solas.
 export const POST = syncRoute(async (req: NextRequest) => {
-  const { error } = await requireStaff();
+  const { me, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<ManualReservationInput>(req);
   if (!b || !b.guest) return fail(400, "INVALID_BODY");
 
   // La retención y la inserción usan la misma conexión de servicio que la web: ven todas las reservas.
-  const sb = createServiceClient();
+  const sb = await createActorClient(me.id);
   await runDeadlines();
   const { types, units, seasons, depositPct } = await loadPricing(sb);
   const input: ManualReservationInput = { ...b, unit: b.unit ?? null, total: b.total ?? null, guest: { ...b.guest, phone: normalizePhone(b.guest.phone) } };

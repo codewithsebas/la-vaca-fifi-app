@@ -8,6 +8,7 @@ import { useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
+  CompassIcon,
   ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
@@ -21,11 +22,12 @@ import {
 import { api } from "@/lib/client/api";
 import { resizeImage, type Crop } from "@/lib/client/image-resize";
 import { isMockApi } from "@/lib/config";
-import { CAPABILITIES, ROLE_HINT, ROLE_LABEL, can } from "@/lib/permissions";
+import { CAPABILITIES, ROLE_HINT, ROLE_LABEL, can, isAdminRole } from "@/lib/permissions";
 import type { PanelRole, PanelUser } from "@/lib/types";
 import { Popover, useLabelTip } from "@/components/ui/floating";
 import { useAdmin } from "@/components/admin/context";
 import { PhotoCropper } from "@/components/admin/photo-cropper";
+import { startTour } from "@/components/admin/onboarding";
 import { MODULES, paths, type ModuleId } from "@/components/admin/routes";
 import { adminInput } from "@/components/admin/shared";
 import { ACCENT, Badge, Button, Card, CardHeader, Deco, EmptyState, Field, ModalPresence, PageHeader, buttonClass, type Accent } from "@/components/admin/ui";
@@ -79,7 +81,7 @@ export function Avatar({
 
 export function RoleBadge({ role }: { role: PanelRole }) {
   return (
-    <Badge tone={role === "admin" ? "accent" : "info"} icon={role === "admin" ? <ShieldIcon size={11} /> : undefined}>
+    <Badge tone={role === "superadmin" ? "warning" : role === "admin" ? "accent" : "info"} icon={isAdminRole(role) ? <ShieldIcon size={11} /> : undefined}>
       {ROLE_LABEL[role]}
     </Badge>
   );
@@ -139,6 +141,18 @@ export function AccountMenu({ onLogout, compact = false }: { onLogout: () => voi
           <UserIcon size={17} className="text-ink-muted" />
           Mi perfil
         </Link>
+        <button
+          role="menuitem"
+          type="button"
+          onClick={() => {
+            close();
+            startTour();
+          }}
+          className={item}
+        >
+          <CompassIcon size={17} className="text-ink-muted" />
+          Guía del panel
+        </button>
         <a role="menuitem" href="/" target="_blank" rel="noopener" onClick={close} className={item}>
           <ExternalLinkIcon size={17} className="text-ink-muted" />
           Ver sitio web
@@ -227,8 +241,9 @@ const PHOTO_ERRORS: Record<number, string> = {
   501: "La foto de perfil no está disponible en modo simulado.",
 };
 
-// Foto de perfil: se elige, se encuadra en un marco cuadrado y se sube. Con foto, se puede cambiar o quitar.
-function ProfilePhoto() {
+// Foto de perfil: se elige, se encuadra en un marco cuadrado y se sube. Con foto, se puede cambiar o quitar (en el
+// primer ingreso, onboarding.tsx la pide sin la opción de quitarla: `required`).
+export function ProfilePhoto({ required = false }: { required?: boolean }) {
   const { data, setData, toast, onAuthError } = useAdmin();
   const me = data.me;
   const input = useRef<HTMLInputElement>(null);
@@ -269,7 +284,7 @@ function ProfilePhoto() {
         <Button size="sm" icon={<ImageIcon size={14} />} loading={busy} onClick={() => input.current?.click()}>
           {me.photo ? "Cambiar foto" : "Subir foto"}
         </Button>
-        {me.photo && (
+        {me.photo && !required && (
           <Button
             size="sm"
             variant="ghost"

@@ -504,6 +504,15 @@ export class SyncEngine {
 
   private async confirm(op: Op, body: unknown) {
     await this.putOp({ ...op, state: "confirmed", conflict: undefined, result: op.type === "import.run" ? body : undefined });
+    // El perfil propio (nombre, foto, guía vista) no viaja en los cambios que se traen del servidor: la cuenta confirmada
+    // queda como base. Sin esto, al confirmarse la operación el panel volvía a la cuenta de antes (p. ej., sin la foto).
+    const me = (body as { me?: PanelUser } | null)?.me;
+    if (me && me.id === this.me.id && !same(me, this.base.me)) {
+      this.me = me;
+      this.base = { ...this.base, me };
+      await this.store.setMeta("me", me);
+      this.recompute();
+    }
     // Las siguientes del mismo registro parten de la versión que dejó esta.
     for (const later of this.ops.filter((o) => o.seq > op.seq && o.entities[0] === op.entities[0] && o.state === "pending" && OPS[o.type]?.version))
       await this.putOp({ ...later, rebase: true });

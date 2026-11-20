@@ -9,6 +9,7 @@ import { Brand, BrandName, Logo } from "@/components/brand/logo";
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, InfoIcon, MenuIcon, RefreshIcon, SearchIcon, SettingsIcon, WarningIcon } from "@/components/ui/icons";
 import { useSite } from "@/components/site/site-provider";
 import { api } from "@/lib/client/api";
+import { isAdminRole } from "@/lib/permissions";
 import { offlineEnabled } from "@/lib/offline/config";
 import type { SyncEngine } from "@/lib/offline/engine";
 import { precacheShell } from "@/lib/offline/precache";
@@ -23,7 +24,6 @@ import { AdminProvider, type AdminCtx } from "@/components/admin/context";
 import { DateRangePicker } from "@/components/admin/date-picker";
 import { PanelFooter } from "@/components/admin/footer";
 import { TipProvider, useLabelTip, useTip } from "@/components/ui/floating";
-import { Login } from "@/components/admin/login";
 import { PanelSkeleton } from "@/components/admin/skeletons";
 import { NotificationCenter, chime, soundFor, unlockAudio, useRealtime } from "@/components/admin/notifications";
 import { PREF, usePref, writePref } from "@/components/admin/prefs";
@@ -31,6 +31,7 @@ import { ThemeMenu, syncBrowserBar, useApplyTheme } from "@/components/admin/app
 import { BookingSyncButton } from "@/components/admin/booking-calendars";
 import { CONTENT_SECTIONS, MODULES, MODULE_IDS, NAV_GROUPS, canOpen, clientKeyOf, legacyPath, moduleOf, paths, type ModuleId } from "@/components/admin/routes";
 import { AccessDenied, AccountMenu } from "@/components/admin/account";
+import { Onboarding } from "@/components/admin/onboarding";
 import { GlobalSearch } from "@/components/admin/global-search";
 import { SyncChip } from "@/components/admin/sync";
 import { type Ask, type ConfirmCfg, adminInput } from "@/components/admin/shared";
@@ -140,11 +141,15 @@ function Gated({ children }: { children: ReactNode }) {
         <PanelSkeleton />
       </>
     );
+  // Sin sesión: el ingreso tiene su propia página (/login); al entrar vuelve a esta ruta (components/admin/login.tsx).
   if (gate.status === "login")
     return (
       <>
         {pre}
-        <Login onSuccess={recheck} />
+        <Suspense fallback={null}>
+          <ToLogin />
+        </Suspense>
+        <PanelSkeleton />
       </>
     );
   if (gate.status === "error" || gate.status === "expired")
@@ -172,6 +177,18 @@ function Gated({ children }: { children: ReactNode }) {
       {children}
     </Panel>
   );
+}
+
+// Lleva a /login con la ruta actual en ?next=, para volver a ella después de entrar.
+function ToLogin() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams().toString();
+  useEffect(() => {
+    const here = pathname + (search ? `?${search}` : "");
+    router.replace(`/login?next=${encodeURIComponent(here)}`);
+  }, [router, pathname, search]);
+  return null;
 }
 
 /* ───────────── Confirmación ───────────── */
@@ -352,7 +369,7 @@ function NavList({
             const active = current === id;
             const b = badges[id];
             // Junto a Booking (solo administradores, que son quienes leen Booking), un botón para leerlo ya.
-            const reloadBooking = id === "booking" && role === "admin" && !mini;
+            const reloadBooking = id === "booking" && isAdminRole(role) && !mini;
             const link = (
               <Link
                 key={id}
@@ -726,8 +743,7 @@ function Panel({
     pagos: { n: data.proofs.filter((p) => p.status === "pending").length, label: "comprobantes por revisar" },
     notificaciones: { n: unread, label: "sin leer" },
   };
-  // El calendario usa todo el ancho de la pantalla; su alto crece con las filas y se desplaza con la página.
-  const fullWidth = mod === "calendario" || mod === "contenido";
+  // Todas las páginas usan el mismo ancho del encabezado (sin tope); el calendario crece hacia abajo con sus filas.
   // La sección de contenido conserva su formulario al cambiar de pestaña: no se vuelve a montar.
   const pageKey = mod === "contenido" ? "contenido" : pathname;
 
@@ -809,7 +825,7 @@ function Panel({
 
             {/* Con una barra de guardado (fija al pie), el final de la página deja libre su alto para no quedar tapado. */}
             <main
-              className={`admin-surface mx-auto flex w-full ${fullWidth ? "max-w-none" : "max-w-[1440px]"} min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)]`}
+              className={`admin-surface flex w-full min-w-0 flex-1 flex-col gap-6 px-4 pt-3 pb-6 lg:px-8 lg:pt-3 [.admin-root:has([data-savebar])_&]:pb-[calc(var(--savebar-h,64px)+24px)]`}
             >
               {loadError && (
                 <Callout tone="warning" role="alert">
@@ -859,6 +875,7 @@ function Panel({
           </ModalPresence>
 
           <Toasts toast={toast} onDismiss={() => setToast(null)} />
+          <Onboarding />
           <ModalPresence>
             {confirm && <ConfirmDialog cf={confirm} onChange={(p) => setConfirm({ ...confirm, ...p })} onCancel={() => setConfirm(null)} onOk={runConfirm} />}
           </ModalPresence>

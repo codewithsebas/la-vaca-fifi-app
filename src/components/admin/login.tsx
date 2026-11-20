@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type CSSProperties, type FormEvent } from "react";
 import { BrandName, Logo } from "@/components/brand/logo";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
 import { isMockApi } from "@/lib/config";
+import { panelNext } from "@/lib/panel-next";
 import { PanelFooter } from "@/components/admin/footer";
 import { adminInput } from "@/components/admin/shared";
 import { Button, Callout, Field } from "@/components/admin/ui";
@@ -158,7 +160,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
             {lg.error}
           </Callout>
         )}
-        <Button type="submit" variant="primary" size="lg" loading={lg.loading}>
+        <Button type="submit" variant="primary" size="lg" loading={lg.loading} className="h-12! text-[14px]">
           {lg.loading ? "Entrando…" : "Entrar"}
         </Button>
         <p className="text-center text-[13.5px] text-ink-muted">
@@ -171,4 +173,11 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       <PanelFooter className="relative w-full" />
     </main>
   );
+}
+
+// Página /login: al entrar vuelve a la ruta del panel de la que venía (?next=), o al inicio del panel (lib/panel-next.ts).
+export function LoginPage() {
+  const router = useRouter();
+  const target = panelNext(useSearchParams().get("next"));
+  return <Login onSuccess={() => router.replace(target)} />;
 }

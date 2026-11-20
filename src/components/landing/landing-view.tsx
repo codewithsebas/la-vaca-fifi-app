@@ -660,9 +660,15 @@ export function LandingView({
         target="_blank"
         rel="noopener"
         aria-label="Escribir por WhatsApp"
-        className="fixed right-4 bottom-[88px] z-60 grid size-[56px] place-items-center rounded-full bg-[#25d366] text-white shadow-(--shadow-lift) transition-transform hover:-translate-y-0.5 lg:bottom-6"
+        title="Escríbenos por WhatsApp"
+        className="group fixed right-4 bottom-[88px] z-60 grid size-[58px] place-items-center rounded-full bg-gradient-to-b from-[#2fe476] to-[#1ebe5b] text-white shadow-[0_10px_24px_-8px_rgb(18_140_68/0.7),inset_0_1px_0_rgb(255_255_255/0.35)] ring-4 ring-white/80 transition-transform duration-200 hover:-translate-y-0.5 hover:scale-105 lg:bottom-6"
       >
-        <WhatsAppFabIcon size={27} />
+        {/* Pulso suave que invita a escribir (quieto con movimiento reducido). */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full bg-[#25d366] opacity-40 motion-safe:animate-ping motion-safe:[animation-duration:2.6s]"
+        />
+        <WhatsAppFabIcon size={30} className="relative drop-shadow-[0_1px_1px_rgb(0_0_0/0.18)]" />
       </a>
     </div>
   );

@@ -4,6 +4,7 @@ import { formOf, request, upload } from "@/lib/client/http";
 import type { CabinTypeId } from "@/lib/config";
 import { cachedFile, cachedGet, mutate, onlineOnly } from "@/lib/offline/runtime";
 import type {
+  ActivityPage,
   AdminAction,
   AdminData,
   AdminNotification,
@@ -169,6 +170,8 @@ export const api = {
       update: (b: EmployeeInput) => request<Employee[] | ValidationError | ApiError>("PUT", "/admin/employees", { body: b }),
       remove: (id: string) => request<Employee[] | ApiError>("DELETE", "/admin/employees", { query: { id } }),
     },
+    // Registro de actividad (solo superadministradores; con conexión).
+    activity: (q: Record<string, string | number | undefined>) => request<ActivityPage>("GET", "/admin/activity", { query: q }),
     // Reservas de Booking que llegan por correo, por asignar a una cabaña. Solo con conexión.
     booking: {
       list: () => request<BookingInboxItem[]>("GET", "/admin/booking"),
@@ -193,6 +196,8 @@ export const api = {
       const direct = () => request<{ me: PanelUser } | ValidationError>("PUT", "/admin/profile", { body: b });
       return b.password === undefined && b.name !== undefined ? mutate("profile.save", { name: b.name }, direct) : direct();
     },
+    // Marca la guía del panel como vista (también sin conexión: se envía al volver).
+    finishTour: () => mutate("profile.tour", {}, () => request<{ me: PanelUser }>("PUT", "/admin/profile", { body: { toured: true } })),
     uploadProfilePhoto: (file: Blob, name: string) =>
       mutate("profilePhoto.set", { file, name }, () => upload<{ me: PanelUser }>("/admin/profile/photo", formOf({ file }, name))),
     deleteProfilePhoto: () => mutate("profilePhoto.delete", {}, () => request<{ me: PanelUser }>("DELETE", "/admin/profile/photo")),

@@ -26,7 +26,7 @@ import {
   adjustedQuote,
 } from "@/lib/booking";
 import { config } from "@/lib/config";
-import { can, type Permission } from "@/lib/permissions";
+import { can, canManageRole, isAdminRole, type Permission } from "@/lib/permissions";
 import { MOCK_DB_KEY } from "@/lib/mock/keys";
 import { groupMoney, groupOf } from "@/lib/groups";
 import { addDays, sleep, todayISO } from "@/lib/format";
@@ -34,6 +34,9 @@ import { manualPaymentNote, unpaidUntil } from "@/lib/payments";
 import { defaultContent, defaultTexts, mergeTexts, type SiteContent, type SiteService } from "@/lib/site";
 import { mergeTheme } from "@/lib/theme";
 import type {
+  ActivityAction,
+  ActivityEntry,
+  ActivityPage,
   AdminNotification,
   ApiResult,
   Block,
@@ -92,6 +95,7 @@ type Db = {
   bathroomBlocks?: BathroomBlock[];
   employees?: Employee[];
   booking?: BookingInboxItem[];
+  channels?: Record<string, { importUrl: string | null; lastSyncedAt: string | null }>; // calendarios de Booking por cabaña
 };
 
 // Escenarios de prueba para el envío: localStorage.setItem('vf-mock-settings', '{"post":"409"}')
@@ -550,7 +554,137 @@ const occ = (db: Db) => ({
 
 type MockRequest = { query?: Record<string, string | number | undefined>; body?: unknown; headers?: Record<string, string> };
 
+/* ───────────── Registro de actividad (en este navegador) ───────────── */
+
+const ACTIVITY_KEY = "vf-mock-activity";
+const ACTIVITY_MAX = 500;
+
+// Ruta del panel → tabla que se registraría en la base de datos real (activity_log).
+const ACTIVITY_ENTITY: [string, string][] = [
+  ["/admin/action", "reservations"],
+  ["/admin/reservations", "reservations"],
+  ["/admin/import", "reservations"],
+  ["/admin/blocks", "blocks"],
+  ["/admin/bathroom-blocks", "bathroom_blocks"],
+  ["/admin/bathrooms", "bathrooms"],
+  ["/admin/cabin-types", "cabin_types"],
+  ["/admin/cabins", "cabin_types"],
+  ["/admin/seasons", "rate_seasons"],
+  ["/admin/clients", "client_profiles"],
+  ["/admin/proofs", "payment_proofs"],
+  ["/admin/site", "site_settings"],
+  ["/admin/payment-terms", "site_settings"],
+  ["/admin/photos", "site_photos"],
+  ["/admin/services", "site_services"],
+  ["/admin/employees", "employees"],
+  ["/admin/channels", "channel_calendars"],
+  ["/admin/booking", "booking_inbox"],
+  ["/admin/emails", "email_outbox"],
+];
+
+function activityOf(): ActivityEntry[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(ACTIVITY_KEY) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+function logMock(actor: PanelUser | null, action: ActivityAction, entity: string, e: Partial<ActivityEntry> = {}) {
+  const list = activityOf();
+  const at = new Date().toISOString();
+  list.unshift({
+    id: (list[0]?.id ?? 0) + 1,
+    actor: { id: actor?.id ?? null, email: actor?.email ?? null, name: actor?.name ?? null, role: actor?.role ?? null },
+    action,
+    entity,
+    entityId: null,
+    label: null,
+    changes: null,
+    refs: null,
+    occurredAt: at,
+    receivedAt: at,
+    ip: null,
+    userAgent: typeof navigator === "undefined" ? null : navigator.userAgent,
+    ...e,
+  });
+  try {
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(list.slice(0, ACTIVITY_MAX)));
+  } catch {}
+}
+
+// Lo que se envió, como [antes, después] (en modo simulado no se conoce el «antes»).
+function changesOf(body: unknown): ActivityEntry["changes"] {
+  if (!body || typeof body !== "object") return null;
+  const out: Record<string, [unknown, unknown]> = {};
+  for (const [k, v] of Object.entries(body as Record<string, unknown>)) {
+    if (k === "password") out[k] = ["…", "nueva"];
+    else if (k !== "file" && !(typeof Blob !== "undefined" && v instanceof Blob)) out[k] = [null, v];
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function activityPage(q: Record<string, string>, actors: Employee[]): ActivityPage {
+  const sessions: ActivityAction[] = ["login", "logout", "login_failed"];
+  const view = q.view === "sessions" ? "sessions" : "changes";
+  const size = Math.max(10, Math.min(200, Number(q.size) || 50));
+  const page = Math.max(1, Number(q.page) || 1);
+  const from = q.from ? Date.parse(`${q.from}T00:00:00-05:00`) : null;
+  const to = q.to ? Date.parse(`${q.to}T23:59:59.999-05:00`) : null;
+  const list = activityOf().filter(
+    (e) =>
+      sessions.includes(e.action) === (view === "sessions") &&
+      (!q.action || e.action === q.action) &&
+      (!q.actor || e.actor.id === q.actor) &&
+      (!q.entity || e.entity === q.entity) &&
+      (from === null || Date.parse(e.occurredAt) >= from) &&
+      (to === null || Date.parse(e.occurredAt) <= to),
+  );
+  return {
+    items: list.slice((page - 1) * size, page * size),
+    total: list.length,
+    page,
+    size,
+    actors: actors.map((a) => ({ id: a.id, name: a.name, email: a.email, role: a.role })),
+  };
+}
+
+function mockAction(method: string, path: string): ActivityAction {
+  if (method === "DELETE") return "delete";
+  if (method === "POST" && path === "/admin/channels") return "sync";
+  if (method === "POST" && path !== "/admin/action" && path !== "/admin/proofs") return "insert";
+  return "update";
+}
+
+// Envuelve las rutas simuladas: registra lo que el equipo cambia y los inicios de sesión, como la base de datos real.
 export async function mockRequest(method: string, path: string, opts: MockRequest): Promise<ApiResult<unknown>> {
+  const res = await handle(method, path, opts);
+  const done = res.status >= 200 && res.status < 300;
+  const body = opts.body as Record<string, unknown> | undefined;
+  if (path === "/admin/login") {
+    const email = String(body?.email ?? "")
+      .trim()
+      .toLowerCase();
+    if (done) logMock(meOf(), "login", "session", { label: email });
+    else logMock(null, "login_failed", "session", { label: email || null });
+  } else if (done && method !== "GET" && path.startsWith("/admin")) {
+    const entity = ACTIVITY_ENTITY.find(([prefix]) => path === prefix || path.startsWith(prefix + "/"))?.[1];
+    if (entity) {
+      const q = (opts.query || {}) as Record<string, string>;
+      const code = typeof body?.code === "string" ? body.code : undefined;
+      logMock(meOf(), mockAction(method, path), entity, {
+        entityId: (typeof body?.id === "string" ? body.id : q.id) ?? code ?? null,
+        label: typeof body?.name === "string" ? body.name : (code ?? null),
+        changes: changesOf(body),
+        refs: code ? { reservation: code } : null,
+      });
+    }
+  }
+  return res;
+}
+
+async function handle(method: string, path: string, opts: MockRequest): Promise<ApiResult<unknown>> {
   const st = mockSettings();
   const q = (opts.query || {}) as Record<string, string>;
   const isAdmin = path.startsWith("/admin");
@@ -657,13 +791,15 @@ export async function mockRequest(method: string, path: string, opts: MockReques
       id: "demo-" + email,
       email,
       name: email.split("@")[0].replace(/[._-]+/g, " "),
-      role: email.includes("recepcion") ? "recepcion" : "admin",
+      // Correo con «recepcion» → recepción; con «super» → superadministrador; cualquier otro → administrador.
+      role: email.includes("recepcion") ? "recepcion" : email.includes("super") ? "superadmin" : "admin",
       photo: null,
     };
     sessionStorage.setItem(ME_KEY, JSON.stringify(me));
     return ok({});
   }
   if (method === "POST" && path === "/admin/logout") {
+    if (sessionStorage.getItem(AUTH_KEY) === "1") logMock(meOf(), "logout", "session");
     sessionStorage.removeItem(AUTH_KEY);
     sessionStorage.removeItem(ME_KEY);
     return ok({});
@@ -1181,6 +1317,56 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     return ok(bathroomsOf(db));
   }
 
+  // ----- Calendarios de Booking (iCal), uno por cabaña (solo administradores). En modo simulado no se lee Booking de
+  // verdad: guardar un enlace https lo da por leído, sin noches nuevas. -----
+  if (path === "/admin/channels") {
+    if (!isAdminRole(me.role)) return { status: 403, data: { error: "FORBIDDEN" } };
+    const saved = db.channels ?? {};
+    const at = new Date().toISOString();
+    const list = () => ({
+      calendars: [...db.cabins]
+        .sort((a, b) => a.sort - b.sort)
+        .flatMap((c) =>
+          Array.from({ length: c.units }, (_, i) => {
+            const id = `${c.id}:${i + 1}`;
+            const x = (db.channels ?? {})[id];
+            return {
+              id,
+              label: `${c.nombre} · ${c.unitLabels?.[i]?.trim() || i + 1}`,
+              cabinTypeId: c.id,
+              unit: i + 1,
+              importUrl: x?.importUrl ?? null,
+              exportUrl: `${location.origin}/api/ical/demo-${c.id}-${i + 1}.ics`,
+              lastSyncedAt: x?.lastSyncedAt ?? null,
+              lastFetchedAt: x?.lastSyncedAt ?? null,
+              lastStatus: x?.importUrl ? ("ok" as const) : null,
+              lastError: "",
+              lastEventCount: 0,
+            };
+          }),
+        ),
+      stays: [],
+    });
+    const result = (id: string) => ({ calendarId: id, ok: true, events: 0, added: 0, removed: 0, conflicts: [] });
+    if (method === "GET") return ok(list());
+    if (method === "PATCH") {
+      const b = (opts.body ?? {}) as { id?: string; importUrl?: string | null };
+      if (!b.id || !list().calendars.some((c) => c.id === b.id)) return { status: 404, data: { error: "NOT_FOUND" } };
+      const url = typeof b.importUrl === "string" ? b.importUrl.trim() : "";
+      if (url && !/^https:\/\/\S+$/.test(url)) return { status: 400, data: { error: "INVALID_URL" } };
+      db.channels = { ...saved, [b.id]: { importUrl: url || null, lastSyncedAt: url ? at : null } };
+      save(db);
+      return ok({ ...list(), results: url ? [result(b.id)] : [] });
+    }
+    if (method === "POST") {
+      const id = (opts.body as { id?: string } | undefined)?.id;
+      const read = Object.entries(saved).filter(([k, v]) => v.importUrl && (!id || k === id));
+      db.channels = { ...saved, ...Object.fromEntries(read.map(([k, v]) => [k, { ...v, lastSyncedAt: at }])) };
+      save(db);
+      return ok({ ...list(), results: read.map(([k]) => result(k)) });
+    }
+  }
+
   // ----- Reservas de Booking por correo (en modo simulado: una de ejemplo por asignar) -----
   if (path === "/admin/booking") {
     if (!db.booking) {
@@ -1235,14 +1421,23 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     return ok({ code: done.code, items: fresh.booking });
   }
 
+  // ----- Registro de actividad (solo superadministradores) -----
+  if (method === "GET" && path === "/admin/activity") {
+    const no = deny("activity");
+    if (no) return no;
+    return ok(activityPage(q, employeesOf(db, me)));
+  }
+
   // ----- Empleados (en modo simulado, solo en este navegador) -----
   if (path === "/admin/employees") {
     const no = deny("employees");
     if (no) return no;
     const list = employeesOf(db, me);
     const b = (opts.body ?? {}) as EmployeeInput;
-    const admins = list.filter((e) => e.role === "admin" && e.active);
+    const admins = list.filter((e) => isAdminRole(e.role) && e.active);
+    const superOnly = { status: 403, data: { error: "SUPERADMIN_ONLY" } };
     if (method === "POST") {
+      if (!canManageRole(me.role, b.role ?? "recepcion")) return superOnly;
       const email = String(b.email ?? "")
         .trim()
         .toLowerCase();
@@ -1268,8 +1463,9 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     } else if (method === "PUT") {
       const t = list.find((e) => e.id === b.id);
       if (!t) return { status: 404, data: { error: "NOT_FOUND" } };
-      const losesAdmin = t.role === "admin" && t.active && ((b.role !== undefined && b.role !== "admin") || b.active === false);
-      if (t.id === me.id && (losesAdmin || b.active === false)) return { status: 409, data: { error: "SELF_LOCKOUT" } };
+      if (!canManageRole(me.role, t.role) || (b.role !== undefined && !canManageRole(me.role, b.role))) return superOnly;
+      const losesAdmin = isAdminRole(t.role) && t.active && ((b.role !== undefined && !isAdminRole(b.role)) || b.active === false);
+      if (t.id === me.id && ((b.role !== undefined && b.role !== t.role) || b.active === false)) return { status: 409, data: { error: "SELF_LOCKOUT" } };
       if (losesAdmin && admins.length <= 1) return { status: 409, data: { error: "LAST_ADMIN" } };
       if (b.password !== undefined && String(b.password).length < 8) return invalid({ password: "Mínimo 8 caracteres." });
       db.employees = list.map((e) =>
@@ -1285,8 +1481,9 @@ export async function mockRequest(method: string, path: string, opts: MockReques
     } else if (method === "DELETE") {
       const t = list.find((e) => e.id === q.id);
       if (!t) return { status: 404, data: { error: "NOT_FOUND" } };
+      if (!canManageRole(me.role, t.role)) return superOnly;
       if (t.id === me.id) return { status: 409, data: { error: "SELF_LOCKOUT" } };
-      if (t.role === "admin" && t.active && admins.length <= 1) return { status: 409, data: { error: "LAST_ADMIN" } };
+      if (isAdminRole(t.role) && t.active && admins.length <= 1) return { status: 409, data: { error: "LAST_ADMIN" } };
       db.employees = list.filter((e) => e.id !== t.id);
     }
     save(db);
@@ -1295,10 +1492,10 @@ export async function mockRequest(method: string, path: string, opts: MockReques
 
   // ----- Perfil propio -----
   if (method === "PUT" && path === "/admin/profile") {
-    const b = (opts.body ?? {}) as { name?: string; password?: string };
+    const b = (opts.body ?? {}) as { name?: string; password?: string; toured?: true };
     if (b.name !== undefined && String(b.name).trim().length < 2) return invalid({ name: "Escribe tu nombre (2 a 80 caracteres)." });
     if (b.password !== undefined && String(b.password).length < 8) return invalid({ password: "Mínimo 8 caracteres." });
-    const updated: PanelUser = { ...me, ...(b.name !== undefined && { name: String(b.name).trim() }) };
+    const updated: PanelUser = { ...me, ...(b.name !== undefined && { name: String(b.name).trim() }), ...(b.toured && { toured: true }) };
     sessionStorage.setItem(ME_KEY, JSON.stringify(updated));
     db.employees = employeesOf(db, me).map((e) => (e.id === me.id ? { ...e, name: updated.name } : e));
     save(db);

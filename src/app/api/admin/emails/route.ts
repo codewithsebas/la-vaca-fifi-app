@@ -3,7 +3,7 @@ import { toEmail } from "@/lib/server/db";
 import { fail, json, readJson, requireStaff, route, syncRoute } from "@/lib/server/http";
 import { mailConfigured, processOutbox } from "@/lib/server/mailer";
 import { originOf, siteUrl } from "@/lib/server/site";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createActorClient } from "@/lib/supabase/server";
 
 const KEY = /^(CC|CE|Pasaporte|PPT):[A-Z0-9]{5,15}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,12 +25,12 @@ export const GET = route(async () => {
 //   { action: "retry", id } → reintenta ya un correo que falló.
 // Responde con el registro del correo (status "sent" o "failed" con el motivo); el resultado queda en la bandeja.
 export const POST = syncRoute(async (req: NextRequest) => {
-  const { sb, uid, error } = await requireStaff();
+  const { sb, uid, me, error } = await requireStaff();
   if (error) return error;
   const b = await readJson<Body>(req);
   if (!b) return fail(400, "INVALID_BODY");
   const base = siteUrl(originOf(req));
-  const service = createServiceClient();
+  const service = await createActorClient(me.id);
 
   if (b.action === "retry") {
     if (!UUID.test(String(b.id))) return fail(400, "INVALID_ID");
