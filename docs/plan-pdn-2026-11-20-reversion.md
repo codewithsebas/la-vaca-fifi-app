@@ -1,6 +1,10 @@
 # Plan para PDN: quitar el cierre automático (20 de noviembre)
 
-Estado: **paso 0 hecho el 20 de noviembre (9:20 a. m.); pasos 1 a 4 sin ejecutar.** Ningún paso se ejecuta sin la autorización explícita del responsable.
+Estado: **pasos 0 a 2 hechos el 20 de noviembre, con autorización; pasos 3 y 4 sin ejecutar.** Respaldo en
+`~/respaldos-la-vaca-fifi/2026-11-20T14-21-38/` (119 reservas, 87 pagos, los 28 `-AUTO`). Migración aplicada a las 14:23 UTC
+(9:23 a. m.) en una transacción con su fila en el historial. Resultado: 85 confirmadas, 2 completadas, 59 pagos, 0 pagos
+automáticos, sin `auto_closing` ni `auto_closed_at`, `run_auto_checkouts` anterior, sin avisos ni correos nuevos; las 28
+reservas idénticas a `cierre-automatico-antes.json` (0 diferencias). Ningún paso se ejecuta sin la autorización explícita del responsable.
 
 El 20 de noviembre se subió a PDN el cierre automático de estadías ([plan-pdn-2026-11-20.md](plan-pdn-2026-11-20.md)), que
 cerró 28 reservas y dio por pagados $5.378.300. El mismo día el responsable pidió **quitarlo y dejar todo como antes**. Este
