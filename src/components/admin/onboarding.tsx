@@ -9,21 +9,25 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CloseIcon, UserIcon } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
-import { isMockApi } from "@/lib/config";
 import { Fifi } from "@/components/brand/fifi";
 import { ProfilePhoto } from "@/components/admin/account";
 import { useAdmin } from "@/components/admin/context";
 import { canOpen, paths, type ModuleId } from "@/components/admin/routes";
 import { isAdminRole } from "@/lib/permissions";
 import { adminInput } from "@/components/admin/shared";
-import { Button, Field, FieldError, Modal, ModalPresence } from "@/components/admin/ui";
+import { Button, Field, Modal, ModalPresence } from "@/components/admin/ui";
 
 const TOUR_EVENT = "panel:tour";
 // Abre la guía desde cualquier parte del panel (menú de la cuenta).
 export const startTour = () => window.dispatchEvent(new Event(TOUR_EVENT));
 
-// En modo simulado no se pueden subir fotos: ahí solo se pide el nombre.
-const needsProfile = (me: { name: string; photo: string | null }) => me.name.trim().length < 2 || (!me.photo && !isMockApi);
+// Nombre y apellido: al menos dos palabras de dos letras o más. La foto es opcional.
+const isFullName = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2).length >= 2;
+const needsProfile = (me: { name: string }) => !isFullName(me.name);
 
 export function Onboarding() {
   const { data, setData, toast } = useAdmin();
@@ -55,22 +59,22 @@ export function Onboarding() {
   );
 }
 
-/* ───────────── Paso obligatorio: nombre y foto ───────────── */
+/* ───────────── Paso obligatorio: nombre y apellido (la foto es opcional) ───────────── */
 
 function ProfileSetup() {
   const { data, setData, onAuthError } = useAdmin();
   const me = data.me;
-  const [name, setName] = useState(me.name);
+  // Vacío: lo que hay suele ser la parte del correo antes de la @ (no es un nombre y apellido).
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [tried, setTried] = useState(false);
   const [error, setError] = useState("");
-  const nameErr = name.trim().length < 2 || name.trim().length > 80 ? "Escribe tu nombre (2 a 80 caracteres)." : "";
-  const photoErr = !me.photo && !isMockApi ? "Sube una foto de perfil para continuar." : "";
+  const nameErr = name.trim().length > 80 ? "Máximo 80 caracteres." : !isFullName(name) ? "Escribe tu nombre y tu apellido." : "";
 
   async function save() {
     setTried(true);
-    if (busy || nameErr || photoErr) return;
-    // Con el nombre ya guardado (y la foto), el diálogo se cierra solo: needsProfile deja de cumplirse.
+    if (busy || nameErr) return;
+    // Con el nombre ya guardado, el diálogo se cierra solo: needsProfile deja de cumplirse.
     if (name.trim() === me.name) return;
     setBusy(true);
     setError("");
@@ -121,18 +125,19 @@ function ProfileSetup() {
                 Bienvenido al panel
               </h2>
               <p id="ob-text" className="text-[13.5px] text-ink-muted">
-                Antes de empezar, pon tu nombre y tu foto: así el equipo sabe quién hizo cada cosa.
+                Antes de empezar, escribe tu nombre y tu apellido: así el equipo sabe quién hizo cada cosa. La foto es opcional.
               </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <p className="text-[13px] font-semibold text-ink">Foto de perfil</p>
-            <ProfilePhoto required />
-            {tried && photoErr && <FieldError>{photoErr}</FieldError>}
+            <p className="text-[13px] font-semibold text-ink">
+              Foto de perfil <span className="font-normal text-ink-muted">(opcional)</span>
+            </p>
+            <ProfilePhoto />
           </div>
 
-          <Field label="Tu nombre" error={error || (tried ? nameErr : "") || undefined}>
+          <Field label="Nombre y apellido" error={error || (tried ? nameErr : "") || undefined}>
             {(p) => (
               <input
                 {...p}
