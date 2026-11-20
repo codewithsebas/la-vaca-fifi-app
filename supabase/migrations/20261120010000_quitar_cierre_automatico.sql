@@ -179,6 +179,9 @@ update public.reservations r
   from undo_auto_close u
  where r.code = u.code and r.status = 'checked_in' and r.checked_in_at is distinct from u.checked_in_at;
 
+-- reservations_bump_unpaid es diferido: se ejecuta aquí (no al final) para poder cambiar la tabla después.
+set constraints all immediate;
+
 delete from public.admin_notifications where kind = 'auto_closed';
 
 -- ───────────── Columna y restricciones ─────────────
