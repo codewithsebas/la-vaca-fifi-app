@@ -1290,6 +1290,7 @@ export type Database = {
         }
         Returns: string
       }
+      auto_closing: { Args: never; Returns: boolean }
       bump_unpaid: {
         Args: { p_from: string; p_to: string; p_type: string }
         Returns: undefined
