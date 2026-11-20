@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
 import { ArrowRightIcon, CalendarIcon, ClockIcon, HomeIcon, ListIcon, MoonIcon, ReceiptIcon, TrendIcon, UsersIcon, WalletIcon } from "@/components/ui/icons";
 import { delta, finance, pendingOf, previousRange, recordsByCode } from "@/lib/admin-metrics";
-import { cop, dateOf, fmtDate, plural } from "@/lib/format";
+import { cop, fmtDate, plural } from "@/lib/format";
 import { Combobox } from "@/components/ui/combobox";
 import { useAdmin, useParam } from "@/components/admin/context";
 import { useTip } from "@/components/ui/floating";
@@ -47,12 +47,6 @@ export function FinanceView() {
     cabana: cabinId || null,
   };
   const against = `los ${period.daysLabel} anteriores`;
-  // Lo que el sistema dio por pagado al cerrar solas las estadías vencidas (sin que nadie lo confirmara).
-  const cabinOf = new Map(data.reservations.map((r) => [r.code, r.cabinTypeId]));
-  const autoPaid = data.payments
-    .filter((p) => p.provider === "auto" && p.status === "approved" && p.approvedAt)
-    .filter((p) => (!cabinId || cabinOf.get(p.reservationCode) === cabinId) && dateOf(p.approvedAt!) >= range.from && dateOf(p.approvedAt!) <= range.to)
-    .reduce((s, p) => s + p.amount, 0);
   // Ingreso por noche ocupada: lo recibido entre las noches que se ocuparon en el periodo.
   const perNight = (f: Fin) => (f.occupied ? Math.round(f.received / f.occupied) : 0);
 
@@ -90,7 +84,7 @@ export function FinanceView() {
           label="Ingresos recibidos"
           value={cop(now.received)}
           delta={vs(now.received, before.received)}
-          hint={`${plural(now.payments.length, "pago registrado", "pagos registrados")}${autoPaid ? ` · ${cop(autoPaid)} sin confirmar (cierre automático)` : ""}`}
+          hint={plural(now.payments.length, "pago registrado", "pagos registrados")}
           icon={<TrendIcon size={15} />}
         />
         <StatCard

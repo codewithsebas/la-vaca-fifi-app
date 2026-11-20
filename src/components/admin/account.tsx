@@ -241,8 +241,8 @@ const PHOTO_ERRORS: Record<number, string> = {
   501: "La foto de perfil no está disponible en modo simulado.",
 };
 
-// Foto de perfil: se elige, se encuadra en un marco cuadrado y se sube. Con foto, se puede cambiar o quitar (en el
-// primer ingreso, onboarding.tsx la pide sin la opción de quitarla: `required`).
+// Foto de perfil: se elige, se encuadra en un marco cuadrado y se sube. Con foto, se puede cambiar o quitar. `required` la
+// muestra sin la opción de quitarla (hoy nadie la exige: en el primer ingreso es opcional).
 export function ProfilePhoto({ required = false }: { required?: boolean }) {
   const { data, setData, toast, onAuthError } = useAdmin();
   const me = data.me;
