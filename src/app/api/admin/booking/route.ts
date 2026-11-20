@@ -75,7 +75,7 @@ export const POST = route(async (req: NextRequest) => {
     unit: Number(b.unit),
     total: item.total,
     commission: 0,
-    channel: "Booking",
+    channel: "Booking.com",
     status: "confirmed" as const,
     notes: `Booking vía Ayenda · reserva ${item.ref}`,
   };
