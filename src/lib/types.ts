@@ -180,6 +180,7 @@ export type Reservation = ReservationInput & {
   balancePaidAt: string | null;
   paid: number; // suma de los pagos aprobados
   checkedInAt: string | null;
+  autoClosedAt?: string | null; // la cerró el sistema al pasar la fecha de salida (pago «sin confirmar»)
   clientKey: string; // "CC:12345678": tipo y número de documento
   source?: ReservationSource; // sin valor: "web" (reservas anteriores)
   externalRef?: string | null; // reservas importadas: número de la reserva en el archivo
@@ -273,6 +274,7 @@ export type NotificationKind =
   | "proof_rejected"
   | "balance_paid"
   | "checkout_pending"
+  | "auto_closed" // estadías que el sistema cerró solas al pasar la fecha de salida
   | "email_failed"
   | "booking_pending"
   | "booking_modified"

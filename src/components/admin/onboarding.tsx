@@ -383,6 +383,14 @@ function Tour({ onDone }: { onDone: () => void }) {
     };
   }, [pathname, toPath, step]);
 
+  // Si la página no llega (la primera carga de su código en un servidor lento, o la conexión), el velo no se queda cerrado:
+  // a los 6 s se abre igual y la guía sigue; lo resaltado aparece cuando la página termine de cargar.
+  useEffect(() => {
+    if (toPath === null) return;
+    const t = setTimeout(() => setToPath(null), 6000);
+    return () => clearTimeout(t);
+  }, [toPath]);
+
   // Las páginas de la guía se piden por adelantado: el primer paso a cada una no espera a que cargue su código.
   useEffect(() => {
     steps.forEach((s) => router.prefetch(s.href));
@@ -421,6 +429,13 @@ function Tour({ onDone }: { onDone: () => void }) {
     const marked: HTMLElement[] = [];
     const unlisten: (() => void)[] = [];
     const mark = (el: HTMLElement) => {
+      // Todo lo resaltado va redondeado: si el elemento tiene esquinas rectas (p. ej. la barra del calendario), se le da un
+      // radio mientras dure el paso. El contorno y el hueco del velo siguen ese radio.
+      if ((parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0) < 14) {
+        const before = el.style.borderRadius;
+        el.style.borderRadius = "20px";
+        unlisten.push(() => void (el.style.borderRadius = before));
+      }
       el.setAttribute(ON, "");
       marked.push(el);
     };
@@ -573,6 +588,7 @@ function Tour({ onDone }: { onDone: () => void }) {
               size="sm"
               variant="primary"
               icon={last ? <CheckIcon size={14} /> : <ArrowRightIcon size={14} />}
+              loading={switching}
               onClick={() => (last ? finish() : goTo(i + 1))}
             >
               {last ? "Terminar" : "Siguiente"}

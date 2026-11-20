@@ -309,6 +309,7 @@ export function toReservation(r: ReservationRow & { reservation_notes?: { text: 
     version: r.version,
     unit: r.unit,
     groupCode: r.group_code,
+    autoClosedAt: r.auto_closed_at,
     adults: r.adults,
     children: r.children,
     pet: r.pet as Reservation["pet"],
